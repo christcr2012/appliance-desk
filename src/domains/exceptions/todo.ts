@@ -39,6 +39,7 @@ const ACTION_LABEL: Record<string, string> = {
   OVERDUE_JOB: "Open visit",
   EARLY_ENDING_NOT_DONE: "Schedule pickup",
   TAX_RETURN_DUE: "File return",
+  COMPLIANCE_DUE: "Open filing",
   TAX_LICENSE_RENEWAL: "Renew license",
   TAX_SETUP_CHECK: "Check setup",
   BUSINESS_PAPERWORK: "Open paperwork",

@@ -5262,7 +5262,7 @@
         "TFA-1",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS",
       "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
       "budget": 550,
       "units": [
@@ -5277,7 +5277,8 @@
         "tests/compliance-registry.test.ts",
         "tests/field-crypto.test.ts",
         "tests/compliance-forms.test.ts",
-        "e2e/compliance.spec.ts"
+        "e2e/compliance.spec.ts",
+        "tests/compliance-filings-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-1.md"
@@ -6044,6 +6045,10 @@
     {
       "id": "K-CASH-7",
       "path": "docs/pr-cards/execution/K-CASH-7.json"
+    },
+    {
+      "id": "CMP-1",
+      "path": "docs/pr-cards/execution/CMP-1.json"
     },
     {
       "id": "TFA-2",

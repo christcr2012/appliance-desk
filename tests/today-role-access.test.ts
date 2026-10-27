@@ -61,6 +61,9 @@ vi.mock("@/domains/exceptions/bank-payment-attention", () => ({
 vi.mock("@/domains/exceptions/dispute-attention", () => ({
   listDisputeAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/insurance-attention", () => ({
+  listInsuranceAttention: vi.fn(async () => []), // covered by tests/ops4-insurance-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
@@ -72,6 +75,9 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
   listNewLeadContact: vi.fn(async () => ({ rows: [], total: 0 })),
   listLeadFollowUps: vi.fn(async () => ({ rows: [], total: 0 })),
   listApprovedQuoteToRental: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/compliance-attention", () => ({
+  listComplianceDue: vi.fn(async () => ({ rows: [], total: 0 })), // covered by tests/compliance-filings-integration.test.ts
 }));
 vi.mock("@/domains/exceptions/goal-attention", () => ({
   listGoalAttention: vi.fn(async () => []), // covered by tests/goals-integration.test.ts

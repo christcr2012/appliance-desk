@@ -128,6 +128,10 @@ export const BACKUP_MODEL_POLICY = {
   RetailDeliveryFeeRate: "retailDeliveryFeeRate",
   RetailDeliveryFeeRecord: "retailDeliveryFeeRecord",
   BusinessSettings: "businessSettings",
+  // CMP-1: compliance facts and filings are business records. einEncrypted
+  // stays encrypted in backups too; a restore needs the same key.
+  ComplianceProfile: "complianceProfile",
+  ComplianceFiling: "complianceFiling",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",

@@ -1,4 +1,14 @@
 ## October 26 — OPS-4: insurance (built, PR pending)
+## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
+
+One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
+registries' identifier keys (the generic-api-key false positives that needed a new
+per-commit fingerprint after every commit touching those lines); 48 fingerprint
+lines came out of `.gitleaksignore`, including all of CMP-1's. Verified: full-history
+scan clean with the fingerprints removed, and planted real-shaped keys still flag,
+including inside the registry files. Merge is sequenced by the lane heartbeat.
+Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
+## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-4`. New **More → Insurance** screen (`/desk/insurance`, owner only): your policies (general liability, commercial auto, equipment, workers' comp, other) with company, policy number, limits as your agent wrote them, yearly cost, end date, agent and where the certificate is kept. A To do appears at 60 days and again at 30 days before a policy ends (both numbers are settings, with "Restore recommended"), and once it has ended. Workers' compensation status is recorded (no employees and rejected as an LLC member, with form date and certified-mail number, or a policy in place); entering one or more employees without a live policy puts "Workers' compensation insurance is required now" on To do. "Request a certificate of insurance" records the ask and writes the email to your agent for you to read and send yourself (the app sends nothing).
 Proof: `tests/ops4-insurance-rules.test.ts` (reminder boundaries, workers' comp rule, input checks, email draft) and `tests/ops4-insurance-integration.test.ts` on throwaway Postgres (add/edit/archive, staff refused, To do at each stage, owner's own reminder days, workers' comp raise and clear, certificate record); `e2e/insurance.spec.ts` runs in CI only.
@@ -39,6 +49,9 @@ Branch `ai/claude/ops-5`. When Stripe tells us a customer disputed a payment, th
 ## October 26 — CI maintenance: scoped secret history and rebalanced browser groups (PR #632)
 
 PR #632 changes Gitleaks from all-branch history scanning to new PR/push commits plus the complete main-only nightly history; the full checked-out-file scan remains. Three complete browser specs moved into the previously lightest group, preserving all 85 specs and four runners. The first full CI run (40416591581, head f591596f) passed all 11 jobs: browser a 164.74s, b 142.41s, c 108.31s, d 164.08s against 180s. No automated review appeared and the diff was self-reviewed. The final evidence documentation revision must pass its own exact-head CI before merge; the PR records the current merge state. No security allowlist, test coverage, provider settings or production data changed.
+## October 26 — CMP-1 compliance center (PR #627)
+
+The Compliance center's foundation: every federal and Colorado obligation from the 2026-10-25 research file is in a pure registry with sources and correct 2026–2028 periods; the "checked and not needed" items (FinCEN BOI, Form 2290, rent-to-own license) show their reason and source. Business facts (owner-only) hold the entity type, report month, truck weight and employees; the EIN is stored AES-256-GCM encrypted (`src/lib/field-crypto.ts`), only its last 4 ever shown, never logged — and until Chris sets `COMPLIANCE_ENCRYPTION_KEY` (owner checklist) the EIN box is disabled with the reason. Filings move prepare → approve → submit under the row lock: approval binds the prepared numbers' hash (changed numbers force re-review), submitting happens once only, and prepared numbers refuse a full tax ID. The To do list gains a COMPLIANCE_DUE category driven by the TFA-1 timing rule; the Compliance screen lives at /desk/compliance, reached from the Taxes home page (the guarded four-tab Taxes menu is unchanged), with four sections of its own (Coming up, Needs you, Done, Not needed), a business-facts page, filing pages and a calendar download. The filled-form engine vendors the official 1040-ES booklet, hash-checked against a manifest, with a field map read from the PDF itself (voucher blocks verified by geometry); the SOS periodic report has the first guided preparation. Open CMP questions are filed as DQ-CMP-* in OWNER-INPUTS.md. Next: CMP-3 (1099s) then CMP-2 on this foundation.
 
 ## October 26 — OPS-1: product recalls (PR open, branch `ai/claude/ops-1`)
 
