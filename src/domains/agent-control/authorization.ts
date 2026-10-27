@@ -1,4 +1,4 @@
-import { oauthProviderResourceClient } from "@better-auth/oauth-provider/client-resource";
+import { oauthProviderResourceClient } from "@better-auth/oauth-provider/resource-client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { twoFactorEnrollmentRequired } from "@/domains/security/two-factor";

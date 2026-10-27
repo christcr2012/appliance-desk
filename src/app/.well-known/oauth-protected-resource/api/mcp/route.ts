@@ -1,4 +1,4 @@
-import { oauthProviderResourceClient } from "@better-auth/oauth-provider/client-resource";
+import { oauthProviderResourceClient } from "@better-auth/oauth-provider/resource-client";
 import { getMcpIssuer } from "@/mcp/issuer";
 
 export const dynamic = "force-dynamic";
