@@ -21,7 +21,7 @@ describe("AR-12 How do I guides", () => {
 
   it("matches questions and keywords case-insensitively without changing order", () => {
     expect(searchHelpGuides(HELP_GUIDES, " ReFuNd ").map(guide => guide.id)).toEqual(["refund-payment"]);
-    expect(searchHelpGuides(HELP_GUIDES, "driver").map(guide => guide.id)).toEqual(["schedule-delivery", "schedule-pickup"]);
+    expect(searchHelpGuides(HELP_GUIDES, "driver").map(guide => guide.id)).toEqual(["schedule-delivery", "schedule-pickup", "add-team"]);
     expect(searchHelpGuides(HELP_GUIDES, "??")).toHaveLength(0);
     expect(searchHelpGuides(HELP_GUIDES, "")).toHaveLength(15);
   });
