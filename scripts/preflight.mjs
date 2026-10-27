@@ -30,7 +30,8 @@ export function adjacentRegressions(changed) {
     [/^src\/(?:domains\/system-issues\/|app\/desk\/(?:today|automations)\/)/,
       ['tests/today-role-access.test.ts', 'tests/desk-navigation.test.ts']],
     [/^src\/(?:lib\/desk-navigation|components\/desk\/.*navigation)/,
-      ['tests/desk-navigation.test.ts']],
+      ['tests/desk-navigation.test.ts', 'tests/acc5-job-role-rules.test.ts']],
+    [/^src\/domains\/team\/job-role-rules\./, ['tests/acc5-job-role-rules.test.ts']],
     [/^src\/domains\/backup\//, ['tests/backup-restore-integration.test.ts', 'tests/backup.test.ts']],
     [/^prisma\/schema\.prisma$/, ['tests/schema-health.test.ts', 'tests/backup.test.ts']],
     [/^src\/app\/.*(?:page|layout)\.[jt]sx?$/, ['tests/accessibility-route-inventory.test.ts']],
@@ -48,10 +49,13 @@ export function relatedSources(changed, exists = existsSync) {
 export function commands(options, changed, exists = existsSync) {
   const application = changed.some(p => !p.startsWith('docs/') && !p.endsWith('.md'));
   const behavior = changed.some(p => /^(src|prisma|tests|e2e)\//.test(p));
+  const navigationRisk = changed.some(p => /^src\/(?:lib\/desk-navigation|domains\/team\/job-role-rules)\.[jt]sx?$/.test(p));
+  const jobRoleCheck = ['npx', '--no-install', 'vitest', 'run', 'tests/acc5-job-role-rules.test.ts'];
   const screen = changed.some(p => /^src\/components\//.test(p) || /^src\/app\/.*\.tsx$/.test(p) || /^src\/app\/(?:.*\/)?(page|layout)\.[jt]s$/.test(p) || /^src\/.*\.css$/.test(p) || /^e2e\/.+\.spec\.ts$/.test(p));
   if (options.quick) {
     // The automatic pre-push gate (.githooks/pre-push): cheap checks that caught most red CI runs.
     const quick = [['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check'], ['node', 'scripts/check-route-inventory.mjs'], ['node', 'scripts/check-w18-money.mjs']];
+    if (navigationRisk) quick.push(jobRoleCheck);
     if (application) quick.push(['npm', 'run', 'typecheck'], ['npm', 'run', 'lint']);
     return quick;
   }
@@ -60,9 +64,10 @@ export function commands(options, changed, exists = existsSync) {
   if (!options.inside && screen && !options.browser.length)
     throw new Error('Screen/spec changed: select affected --browser specs before publishing. If local setup is blocked, record the exact blocker and use required CI; do not claim local browser proof.');
   const list = options.inside ? [] : [ ['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check'], ['node', 'scripts/check-route-inventory.mjs'], ['node', 'scripts/check-w18-money.mjs'], ['node', '--test', 'scripts/preflight.test.mjs', 'scripts/probe-db.test.mjs', 'scripts/work-session.test.mjs', 'scripts/preflight-evidence.test.mjs', 'scripts/check-cache.test.mjs', 'scripts/check-secrets.test.mjs', 'scripts/install-worktree.test.mjs'] ];
+  if (!options.inside && navigationRisk) list.push(jobRoleCheck);
   if (!options.inside && application) list.push(['npm', 'run', 'typecheck'], ['npm', 'run', 'lint']);
   const adjacent = options.inside ? [] : adjacentRegressions(changed)
-    .filter(file => !options.unit.includes(file) && !options.db.includes(file) && exists(file));
+    .filter(file => !(navigationRisk && file === 'tests/acc5-job-role-rules.test.ts') && !options.unit.includes(file) && !options.db.includes(file) && exists(file));
   if (!options.inside && (options.db.length || options.browser.length || adjacent.length)) {
     const selections = [...options.unit.map(p => ['--unit', p]), ...[...options.db, ...adjacent].map(p => ['--db', p]), ...options.browser.map(p => ['--browser', p]), ...relatedSources(changed, exists).map(p => ['--related', p])].flat();
     list.push(['bash', 'scripts/local-postgres-test.sh', '--checks', ...(options.fresh ? ['--fresh'] : []), ...selections]);
