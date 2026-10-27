@@ -49,6 +49,7 @@ export function LoginForm() {
 
   const signedOutForTimeout = searchParams.get("reason") === "timeout";
   const deactivated = searchParams.get("deactivated") === "1";
+  const accessEnded = searchParams.get("accessEnded") === "1";
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
@@ -66,6 +67,14 @@ export function LoginForm() {
           className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-900"
         >
           {t("This account no longer has access. If you think that’s a mistake, ask the business owner to check your account.")}
+        </p>
+      )}
+      {accessEnded && (
+        <p
+          role="alert"
+          className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-900"
+        >
+          {t("Your access to Robinson Appliance Rentals ended. Ask Chris for a new link.")}
         </p>
       )}
       <div className="flex flex-col gap-1">

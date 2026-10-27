@@ -5,15 +5,29 @@ import { Button, Checkbox, DataList, EmptyState, Field, Select, StatusPill, type
 import { CAPABILITIES, CAPABILITY_KEYS } from "@/domains/capabilities/labels";
 import {
   assignJobRoleAction, cancelInvitationAction, changeAccessLevelAction, inviteTeamMemberAction, removeTeamMemberAction,
-  resendInvitationAction, resetTeamSignInAction, restoreTeamMemberAction, saveTeamSettingsAction, type TeamActionState,
+  resendInvitationAction, resetTeamSignInAction, restoreTeamMemberAction, saveTeamSettingsAction, setAccountantAccessEndDateAction, type TeamActionState,
 } from "./team-actions";
 import { signOutStaffEverywhereAction } from "./actions";
 import { JobRolesEditor, type JobRoleView } from "./job-roles-editor";
 
-export type TeamMember = { id: string; name: string; email: string; accessLevel: string; active: boolean; twoStepOn: boolean; lastSignIn: string | null; jobRoleId: string | null };
-export type TeamInvitation = { id: string; name: string; email: string; accessLevel: string; state: string; expiresAt: string };
+export type TeamMember = { id: string; name: string; email: string; accessLevel: string; active: boolean; twoStepOn: boolean; lastSignIn: string | null; jobRoleId: string | null; firm: string | null; accessEndsOn: string | null };
+export type TeamInvitation = { id: string; name: string; email: string; accessLevel: string; state: string; expiresAt: string; firm: string | null; accessEndsOn: string | null };
 
-const LEVEL_LABEL: Record<string, string> = { OWNER: "Owner", ADMIN: "Admin", STAFF: "Staff" };
+const LEVEL_LABEL: Record<string, string> = { OWNER: "Owner", ADMIN: "Admin", STAFF: "Staff", ACCOUNTANT: "Accountant" };
+
+/** The invite form's starting end date for an accountant: the next May 1 (after the April tax deadline). */
+function nextMayFirstKey(): string {
+  const key = new Date().toLocaleDateString("en-CA", { timeZone: "America/Denver" });
+  const year = Number(key.slice(0, 4));
+  return key < `${year}-05-01` ? `${year}-05-01` : `${year + 1}-05-01`;
+}
+function formatDay(iso: string | null) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("en-US", { timeZone: "America/Denver", dateStyle: "medium" });
+}
+function denverKey(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Denver" });
+}
 type Msg = { kind: "success" | "error"; text: string };
 
 function formatWhen(iso: string | null) {
@@ -35,6 +49,13 @@ export function TeamSection({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [level, setLevel] = useState("STAFF");
+  const [firm, setFirm] = useState("");
+  const [endDate, setEndDate] = useState(nextMayFirstKey());
+  const [keepOpen, setKeepOpen] = useState(false);
+  const [endEditFor, setEndEditFor] = useState<string | null>(null);
+  const [endEditDate, setEndEditDate] = useState("");
+  const [endEditOpen, setEndEditOpen] = useState(false);
+  const [restoreDates, setRestoreDates] = useState<Record<string, string>>({});
   const [jobRoleId, setJobRoleId] = useState("");
   const [blocked, setBlocked] = useState<string[]>([]);
   const [formMsg, setFormMsg] = useState<Msg | null>(null);
@@ -57,9 +78,9 @@ export function TeamSection({
     event.preventDefault();
     setFormMsg(null);
     start(async () => {
-      const r = await inviteTeamMemberAction({ name, email, phone, accessLevel: level, adminCapabilityLimits: level === "ADMIN" ? blocked : [], jobRoleId: jobRoleId || undefined });
+      const r = await inviteTeamMemberAction({ name, email, phone, accessLevel: level, adminCapabilityLimits: level === "ADMIN" ? blocked : [], jobRoleId: level === "ACCOUNTANT" ? undefined : jobRoleId || undefined, firm: level === "ACCOUNTANT" ? firm : undefined, accessEndDate: level === "ACCOUNTANT" ? (keepOpen ? null : endDate || null) : undefined });
       setFormMsg(show(r));
-      if (r.status === "success") { setName(""); setEmail(""); setPhone(""); setBlocked([]); setJobRoleId(""); }
+      if (r.status === "success") { setName(""); setEmail(""); setPhone(""); setBlocked([]); setJobRoleId(""); setFirm(""); setKeepOpen(false); setEndDate(nextMayFirstKey()); }
     });
   }
 
@@ -73,9 +94,16 @@ export function TeamSection({
     { key: "email", header: "Email", cell: (m) => m.email },
     { key: "level", header: "Access level", cell: (m) => LEVEL_LABEL[m.accessLevel] ?? m.accessLevel },
     {
+      key: "firm", header: "Firm / access ends",
+      cell: (m) => m.accessLevel !== "ACCOUNTANT" ? "—" : (
+        <span>{m.firm ? `${m.firm} · ` : ""}{m.accessEndsOn ? `Access ends ${formatDay(m.accessEndsOn)}` : "No end date"}</span>
+      ),
+    },
+    {
       key: "jobrole", header: "Job role",
       cell: (m) => {
         const current = jobRoles.find((r) => r.id === m.jobRoleId);
+        if (m.accessLevel === "ACCOUNTANT") return "Books, taxes, compliance only";
         if (m.accessLevel === "OWNER") return "Everything";
         if (!isOwner || !m.active) return current ? current.label : "None (access level only)";
         const options = activeRoles.filter((r) => r.accessLevel === m.accessLevel);
@@ -100,7 +128,15 @@ export function TeamSection({
           <div>
             <div className="flex flex-wrap gap-2">
               {canTouch && m.active && <Button type="button" variant="danger" disabled={pending} onClick={() => rowAction(m.id, () => removeTeamMemberAction(m.id))}>Remove access</Button>}
-              {canTouch && !m.active && <Button type="button" variant="secondary" disabled={pending} onClick={() => rowAction(m.id, () => restoreTeamMemberAction(m.id))}>Restore access</Button>}
+              {canTouch && !m.active && m.accessLevel !== "ACCOUNTANT" && <Button type="button" variant="secondary" disabled={pending} onClick={() => rowAction(m.id, () => restoreTeamMemberAction(m.id))}>Restore access</Button>}
+              {isOwner && !self && m.active && m.accessLevel === "ACCOUNTANT" && <Button type="button" variant="secondary" disabled={pending} onClick={() => { setEndEditFor(endEditFor === m.id ? null : m.id); setEndEditDate(m.accessEndsOn ? denverKey(m.accessEndsOn) : nextMayFirstKey()); setEndEditOpen(!m.accessEndsOn); }}>Change end date</Button>}
+              {isOwner && !self && m.active && m.accessLevel === "ACCOUNTANT" && <Button type="button" variant="secondary" disabled={pending} onClick={() => {
+                if (window.confirm(`Replace ${m.name}? Their access is removed now, and a fresh accountant invite is started below with the same end-date setup.`)) {
+                  rowAction(m.id, () => removeTeamMemberAction(m.id));
+                  setName(""); setEmail(""); setFirm(""); setLevel("ACCOUNTANT");
+                  setKeepOpen(!m.accessEndsOn); if (m.accessEndsOn) setEndDate(denverKey(m.accessEndsOn));
+                }
+              }}>Replace</Button>}
               {isOwner && !self && m.active && m.accessLevel === "STAFF" && <Button type="button" variant="secondary" disabled={pending} onClick={() => { setPromoting(m.id); setTicked([]); }}>Make admin</Button>}
               {isOwner && !self && m.active && m.accessLevel === "ADMIN" && <Button type="button" variant="secondary" disabled={pending} onClick={() => rowAction(m.id, () => changeAccessLevelAction(m.id, "STAFF", []))}>Make staff</Button>}
               {isOwner && !self && m.active && m.accessLevel !== "OWNER" && (
@@ -128,6 +164,25 @@ export function TeamSection({
                 </div>
               </fieldset>
             )}
+            {isOwner && m.accessLevel === "ACCOUNTANT" && !m.active && (
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <Field id={`restoreEnd-${m.id}`} label="New access end date" help="Restoring an accountant always needs a new end date." type="date"
+                  value={restoreDates[m.id] ?? nextMayFirstKey()}
+                  onChange={(e) => setRestoreDates((c) => ({ ...c, [m.id]: e.target.value }))} />
+                <Button type="button" variant="secondary" disabled={pending} onClick={() => rowAction(m.id, () => restoreTeamMemberAction(m.id, restoreDates[m.id] ?? nextMayFirstKey()))}>Restore access</Button>
+              </div>
+            )}
+            {endEditFor === m.id && m.accessLevel === "ACCOUNTANT" && (
+              <div className="mt-3 max-w-md space-y-3 rounded border border-line p-3">
+                <Field id={`endDate-${m.id}`} label="Access ends on" type="date" value={endEditDate} disabled={endEditOpen} onChange={(e) => setEndEditDate(e.target.value)} />
+                <Checkbox label="Keep until I remove it (no end date)" checked={endEditOpen} onChange={(e) => setEndEditOpen(e.target.checked)} />
+                <div className="flex gap-2">
+                  <Button type="button" disabled={pending} onClick={() => rowAction(m.id, async () => { const r = await setAccountantAccessEndDateAction(m.id, endEditOpen ? null : endEditDate || null); if (r.status === "success") setEndEditFor(null); return r; })}>Save end date</Button>
+                  <Button type="button" variant="secondary" onClick={() => setEndEditFor(null)}>Cancel</Button>
+                </div>
+                <p className="text-sm text-ink-soft">A date in the past ends their access now and signs them out everywhere.</p>
+              </div>
+            )}
             {rowMsg[m.id] && <p role={rowMsg[m.id].kind === "error" ? "alert" : "status"} className={`mt-2 text-sm font-medium ${rowMsg[m.id].kind === "error" ? "text-danger" : "text-success"}`}>{rowMsg[m.id].text}</p>}
           </div>
         );
@@ -139,6 +194,12 @@ export function TeamSection({
     { key: "name", header: "Name", primary: true, cell: (i) => i.name },
     { key: "email", header: "Email", cell: (i) => i.email },
     { key: "level", header: "Access level", cell: (i) => LEVEL_LABEL[i.accessLevel] ?? i.accessLevel },
+    {
+      key: "firm", header: "Firm / access ends",
+      cell: (i) => i.accessLevel !== "ACCOUNTANT" ? "—" : (
+        <span>{i.firm ? `${i.firm} · ` : ""}{i.accessEndsOn ? `Access ends ${formatDay(i.accessEndsOn)}` : "No end date"}</span>
+      ),
+    },
     { key: "state", header: "Status", cell: (i) => <StatusPill tone={i.state === "INVITED" ? "progress" : "stopped"} label={i.state === "INVITED" ? `Invited · link works until ${formatWhen(i.expiresAt)}` : i.state === "EXPIRED" ? "Expired" : "Cancelled"} /> },
     {
       key: "actions", header: "Actions",
@@ -184,14 +245,24 @@ export function TeamSection({
             <Select id="inviteLevel" label="Access level" value={level} onChange={(e) => { setLevel(e.target.value); setJobRoleId(""); }}>
               <option value="STAFF">Staff</option>
               <option value="ADMIN">Admin</option>
+              <option value="ACCOUNTANT">Accountant (CPA or tax professional)</option>
             </Select>
           ) : (
             <p className="text-sm text-ink-soft">Access level: Staff. Only the owner can invite an admin.</p>
           )}
-          <Select id="inviteJobRole" label="Job role (optional)" value={jobRoleId} onChange={(e) => setJobRoleId(e.target.value)}>
-            <option value="">None (access level only)</option>
-            {activeRoles.filter((r) => r.accessLevel === level).map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-          </Select>
+          {level === "ACCOUNTANT" ? (
+            <>
+              <Field id="inviteFirm" label="Firm (optional)" help="Shown next to their name so you can tell firms apart." type="text" value={firm} onChange={(e) => setFirm(e.target.value)} />
+              <Field id="inviteEndDate" label="Access ends on" help="Starting value: the next May 1, after tax season. They can sign in through that date; after it, sign-in stops until you extend it or remove them." type="date" value={endDate} disabled={keepOpen} onChange={(e) => setEndDate(e.target.value)} />
+              <Checkbox label="Keep until I remove it (no end date)" help="You get a reminder to check this access about every six months." checked={keepOpen} onChange={(e) => setKeepOpen(e.target.checked)} />
+              <p className="text-sm text-ink-soft">An accountant sees only the books, sales tax, compliance filings, the CPA questions in Decisions &amp; reviews, and the business records you share with them. They always need a second sign-in step, and their device is never remembered.</p>
+            </>
+          ) : (
+            <Select id="inviteJobRole" label="Job role (optional)" value={jobRoleId} onChange={(e) => setJobRoleId(e.target.value)}>
+              <option value="">None (access level only)</option>
+              {activeRoles.filter((r) => r.accessLevel === level).map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+            </Select>
+          )}
           {isOwner && level === "ADMIN" && (
             <fieldset className="space-y-2 rounded border border-line p-3">
               <legend className="px-1 text-sm font-semibold text-ink">What this admin may do (untick to switch off)</legend>
