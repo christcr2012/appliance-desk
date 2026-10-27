@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { businessDateFromKey } from "@/lib/business-date";
-import { buildRuleValueFromFields, saveRuleVersion, saveRuleTimingSettings, undoRuleVersion } from "@/domains/rules/changes";
+import { buildRuleValueFromFields, saveRuleVersion, saveRuleTimingSettings, saveWatchOfficialPagesSetting, undoRuleVersion } from "@/domains/rules/changes";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { isRuleKey, ruleDef } from "@/domains/rules/registry";
 
@@ -75,6 +75,32 @@ export async function undoRuleVersionFormAction(form: FormData): Promise<RuleAct
     return errorResult(new Error("That rule change was not found."));
   }
   return undoRuleVersionAction(versionId);
+}
+
+/** The watch form's useActionState shape. */
+export async function saveWatchSettingsFormAction(
+  _state: { error: string; success: string },
+  form: FormData,
+): Promise<{ error: string; success: string }> {
+  const result = await saveWatchSettingsAction(form);
+  return {
+    error: result.status === "error" ? result.message : "",
+    success: result.status === "ok" ? result.message : "",
+  };
+}
+
+/** OWNER-only: the master switch for the official-page watches (TFA-3). */
+export async function saveWatchSettingsAction(form: FormData): Promise<RuleActionResult> {
+  try {
+    const session = await requireRole("OWNER");
+    const enabled = form.get("watchOfficialTaxPages") === "on";
+    const expectedEnabled = form.get("expectedEnabled") === "on";
+    await saveWatchOfficialPagesSetting(session.user.id, { enabled, expectedEnabled });
+    revalidatePath(RULES_PATH);
+    return okResult(enabled ? "Watching is on." : "Watching is off. Nothing will be read until you turn it back on.");
+  } catch (error) {
+    return errorResult(error);
+  }
 }
 
 /** The timing form's useActionState shape. */

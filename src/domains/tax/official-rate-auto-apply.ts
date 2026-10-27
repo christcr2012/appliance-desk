@@ -8,6 +8,8 @@ import {
 } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { isGreeleyJurisdiction } from "@/domains/decisions/tax-cells";
+import { saveRuleVersionInTx } from "@/domains/rules/changes";
 
 import {
   getColoradoRateSource,
@@ -55,6 +57,9 @@ export const OFFICIAL_RATE_REASON = {
   JURISDICTION_NOT_REVIEWED: "JURISDICTION_NOT_REVIEWED",
   NO_CURRENT_RATE: "NO_CURRENT_RATE",
   NO_RATE_CHANGE: "NO_RATE_CHANGE",
+  // TFA-3: Greeley readings always wait for the owner's approval, even
+  // if he turns the general auto-apply setting back on (spec section 14).
+  GREELEY_ALWAYS_REVIEWED: "GREELEY_ALWAYS_REVIEWED",
   RATE_ALREADY_EXISTS: "RATE_ALREADY_EXISTS",
 } as const;
 
@@ -262,11 +267,7 @@ export async function processOfficialRateCandidate(
   }
 
   const effectiveFrom = normalizedBusinessDate(candidate.effectiveFrom);
-  if (isPastBusinessDate(effectiveFrom, now)) {
-    return [
-      { status: "IGNORED", reason: OFFICIAL_RATE_REASON.EFFECTIVE_DATE_IN_PAST },
-    ];
-  }
+  const effectiveInPast = isPastBusinessDate(effectiveFrom, now);
 
   const decision = await prisma.$transaction(async (tx) => {
     await lockJurisdiction(tx, candidate.jurisdictionId);
@@ -276,6 +277,8 @@ export async function processOfficialRateCandidate(
         id: true,
         code: true,
         level: true,
+        name: true,
+        administration: true,
         reviewStatus: true,
       },
     });
@@ -308,6 +311,17 @@ export async function processOfficialRateCandidate(
         reason: OFFICIAL_RATE_REASON.JURISDICTION_IDENTITY_MISMATCH,
       };
     }
+    // A rate first published after its start date is still recorded:
+    // the reading is evidence the owner may act on by hand. Only the
+    // automatic path stops here — nothing is ever auto-applied into
+    // the past.
+    if (effectiveInPast) {
+      return {
+        kind: "IGNORED" as const,
+        reason: OFFICIAL_RATE_REASON.EFFECTIVE_DATE_IN_PAST,
+      };
+    }
+
     const confirmed = await hasTwoDayRateConfirmationInTx(tx, {
       jurisdictionId: jurisdiction.id,
       asOf: effectiveFrom,
@@ -367,6 +381,9 @@ export async function processOfficialRateCandidate(
     }
     if (!settings.autoApplyOfficialRateChanges) {
       reasons.push(OFFICIAL_RATE_REASON.AUTO_APPLY_DISABLED);
+    }
+    if (isGreeleyJurisdiction(jurisdiction)) {
+      reasons.push(OFFICIAL_RATE_REASON.GREELEY_ALWAYS_REVIEWED);
     }
 
     if (reasons.length > 0) {
@@ -573,12 +590,17 @@ export async function listOfficialRateAttention(
       take: 50,
     }),
     prisma.taxRateObservation.findMany({
-      where: { asOf: { gte: today }, observedAt: { lte: now } },
+      // Overdue readings (first published after their start date) are
+      // included: they surface until the owner applies or supersedes
+      // them, instead of vanishing once their date passes.
+      where: { observedAt: { lte: now } },
       include: {
         jurisdiction: {
           select: {
             id: true,
             name: true,
+            level: true,
+            administration: true,
             reviewStatus: true,
           },
         },
@@ -676,6 +698,15 @@ export async function listOfficialRateAttention(
       }),
     ]);
 
+    // An overdue reading that matches the rate already in force for
+    // that period needs no decision.
+    if (
+      latest.asOf.getTime() < today.getTime() &&
+      previous?.rateMilliPercent === latest.rateMilliPercent
+    ) {
+      continue;
+    }
+
     const reasons: string[] = [];
     if (latest.jurisdiction?.reviewStatus !== "REVIEWED") {
       reasons.push(OFFICIAL_RATE_REASON.JURISDICTION_NOT_REVIEWED);
@@ -696,6 +727,9 @@ export async function listOfficialRateAttention(
     }
     if (!settings.autoApplyOfficialRateChanges) {
       reasons.push(OFFICIAL_RATE_REASON.AUTO_APPLY_DISABLED);
+    }
+    if (latest.jurisdiction && isGreeleyJurisdiction(latest.jurisdiction)) {
+      reasons.push(OFFICIAL_RATE_REASON.GREELEY_ALWAYS_REVIEWED);
     }
     if (reasons.length === 0) continue;
 
@@ -821,14 +855,17 @@ export async function manuallyApplyObservedRate(input: {
         id: true,
         code: true,
         level: true,
+        name: true,
+        administration: true,
         reviewStatus: true,
       },
     });
 
     const effectiveFrom = normalizedBusinessDate(observation.asOf);
-    if (isPastBusinessDate(effectiveFrom, now)) {
-      throw new Error("An official rate cannot be applied in the past.");
-    }
+    // No past-date refusal here: this is the owner's own confirmed
+    // apply, and entering a rate from its real start date is exactly
+    // what a late-published rate needs (the Areas manual entry allows
+    // the same). The automatic candidate path keeps its own refusal.
     if (!validRate(observation.rateMilliPercent)) {
       throw new Error("The observed rate is invalid.");
     }
@@ -901,6 +938,20 @@ export async function manuallyApplyObservedRate(input: {
       rateVersionId: version.id,
       reasons,
     });
+
+    // TFA-3 gate G3: the TaxRateVersion above is the operative write for
+    // Greeley (bills read it), and the same approval mirrors the value
+    // into the rule book's greeley.sales_rate version so the Rules
+    // screen agrees with what bills charge.
+    if (isGreeleyJurisdiction(jurisdiction)) {
+      await saveRuleVersionInTx(tx, input.actorUserId, {
+        key: "greeley.sales_rate",
+        value: observation.rateMilliPercent,
+        effectiveFrom,
+        reason: "Approved from the official page watch (Greeley rate)",
+        origin: "OFFICIAL_WATCH",
+      }, now);
+    }
 
     return { rateVersionId: version.id };
   });

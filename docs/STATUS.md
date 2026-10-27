@@ -1,11 +1,9 @@
-## October 26 — AR-11 keyboard navigation and quiet refresh (in progress)
+## October 26 — AR-11 keyboard navigation and quiet refresh (PR #647, in review)
 
-Branch `ai/chatgpt/ar-11-keyboard-freshness` extends merged PR #608. Adds desktop keyboard navigation and
-an on-screen shortcut guide, plus idle/visibility/unsaved-work guarded refresh for Today, Bills and Customers.
-Pure unit, client timer and authenticated browser tests are included. No access or money rules changed.
-Local package tests unavailable without the repo checkout/dependencies: CI at the exact head must prove this.
-Still not a finished AR-11 card: React/view transitions, loading skeleton sweep, touch, state memory and
-bundle budget remain on the card. Next AR-12 after AR-11.
+Branch `ai/chatgpt/ar-11-keyboard-freshness` extends merged PR #608 with desktop keyboard shortcuts
+and idle/visibility/unsaved-work guarded refresh for Today, Bills and Customers. Added unit/browser tests;
+CI at the exact updated head and review still required. Remaining AR-11 work: React transitions, all loading
+skeletons, touch, state memory and bundle budget. AR-12 follows after AR-11.
 
 ## October 26 — TFA-3: official-page watches with strict parsers (in progress)
 

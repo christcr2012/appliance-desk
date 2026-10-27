@@ -38,7 +38,7 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
     await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
   });
 
-  it("defaults official-rate auto apply on with a 1000 milli-percent guardrail", async () => {
+  it("defaults official-rate auto apply off since TFA-3, with a 1000 milli-percent guardrail", async () => {
     const settings = await prisma.businessSettings.findUniqueOrThrow({
       where: { id: "singleton" },
       select: {
@@ -48,7 +48,7 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
     });
 
     expect(settings).toEqual({
-      autoApplyOfficialRateChanges: true,
+      autoApplyOfficialRateChanges: false,
       autoRateChangeMaxMilliPercent: 1000,
     });
   });
@@ -279,7 +279,7 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
     );
   });
 
-  it("seeds the six official sources inactive with unique URLs", async () => {
+  it("seeds the six official sources active since TFA-3 with unique URLs", async () => {
     const expected = [
       {
         label: "Colorado — DR 1002",
@@ -331,7 +331,7 @@ describe.skipIf(!enabled)("T-5b1 official rate metadata (real Postgres)", () => 
     expect(
       rows.every(
         (row) =>
-          row.active === false &&
+          row.active === true &&
           row.lastHash === null &&
           row.lastText === null &&
           row.lastExcerpt === null &&
