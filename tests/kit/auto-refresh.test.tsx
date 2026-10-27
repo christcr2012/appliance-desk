@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  delete (document as Document & { visibilityState?: string }).visibilityState;
+  Reflect.deleteProperty(document, "visibilityState");
   vi.restoreAllMocks();
   vi.useRealTimers();
 });

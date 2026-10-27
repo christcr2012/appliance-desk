@@ -46,6 +46,8 @@ describe("AR-11 desk keyboard access", () => {
     const table = document.createElement("table");
     table.innerHTML = '<tbody><tr data-row-key="a"><td><a href="/desk/a">Alpha</a></td></tr><tr data-row-key="b"><td><a href="/desk/b">Beta</a></td></tr></tbody>';
     document.body.append(table);
+    // jsdom has no layout; make the row anchors discoverable as visible links.
+    vi.spyOn(HTMLAnchorElement.prototype, "getClientRects").mockImplementation(() => ({ length: 1 }) as DOMRectList);
     fireEvent.keyDown(document, { key: "j" });
     expect(document.activeElement).toHaveTextContent("Alpha");
     fireEvent.keyDown(document, { key: "j" });
