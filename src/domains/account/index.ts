@@ -11,7 +11,7 @@ import { roleRequiresTwoFactor, RECOMMENDED_TWO_FACTOR_ROLES } from "@/domains/s
 export type MyAccount = {
   name: string;
   email: string;
-  role: "OWNER" | "ADMIN" | "STAFF";
+  role: "OWNER" | "ADMIN" | "STAFF" | "ACCOUNTANT";
   phone: string | null;
   phoneConfirmed: boolean;
   twoFactorEnabled: boolean;
@@ -34,7 +34,7 @@ export async function getMyAccount(userId: string): Promise<MyAccount> {
     where: { id: userId },
     select: { name: true, email: true, role: true, phone: true, phoneConfirmedAt: true, twoFactorEnabled: true, archivedAt: true },
   });
-  if (!user || user.archivedAt || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF")) {
+  if (!user || user.archivedAt || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF" && user.role !== "ACCOUNTANT")) {
     throw new AccountError("This account no longer has access.");
   }
   return {

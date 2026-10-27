@@ -10,7 +10,9 @@ export type BooksWriter =
 export async function assertBooksWriter(
   tx: Prisma.TransactionClient,
   writer: BooksWriter,
-  roles: Array<"OWNER" | "ADMIN"> = ["OWNER"],
+  // ACCT-1: ACCOUNTANT is nameable here; the default stays OWNER-only, and each
+  // caller lists the role only where the accountant spec allows the change.
+  roles: Array<"OWNER" | "ADMIN" | "ACCOUNTANT"> = ["OWNER"],
 ) {
   if (writer.kind === "automatic") return;
   if (writer.kind === "equipment")
