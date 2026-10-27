@@ -5592,7 +5592,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-5",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5604,7 +5604,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-5-integration.test.ts"
+        "tests/ops5-dispute-rules.test.ts",
+        "tests/ops5-disputes-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-5.md"

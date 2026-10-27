@@ -213,6 +213,9 @@ export const BACKUP_MODEL_POLICY = {
   // BILL-1: "the bank is confirming a payment" flags. Business state (a bill shows "Being confirmed" and gets no late fee while one is open), restored after bills and agreements.
   BankPaymentInFlight: "bankPaymentInFlight",
   PendingCharge: "pendingCharge",
+  // OPS-5: payment disputes (Stripe's record, Chris's answer and the bank-dispute follow-up) are business records.
+  PaymentDispute: "paymentDispute",
+
   // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
   RecallMatch: "recallMatch",
   RecallWatchState: "recallWatchState",

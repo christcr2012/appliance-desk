@@ -192,6 +192,13 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason: "CI seeds no old one-record set; the split itself is covered by tests/rental-package-lines-integration.test.ts.",
   },
   { path: "/desk/inventory", role: "OWNER", fixture: "/desk/inventory" },
+  { path: "/desk/disputes", role: "OWNER", fixture: "/desk/disputes" },
+  {
+    path: "/desk/disputes/[id]",
+    role: "OWNER",
+    fixture: "A payment dispute opened by Stripe",
+    manualOnlyReason: "CI seeds no dispute; the flow is covered by tests/ops5-disputes-integration.test.ts.",
+  },
   { path: "/desk/recalls", role: "OWNER", fixture: "/desk/recalls" },
   {
     path: "/desk/recalls/[recallId]",

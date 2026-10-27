@@ -51,6 +51,9 @@ vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
 vi.mock("@/domains/exceptions/bank-payment-attention", () => ({
   listBankPaymentSlow: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/dispute-attention", () => ({
+  listDisputeAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));

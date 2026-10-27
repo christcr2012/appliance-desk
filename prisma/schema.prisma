@@ -190,6 +190,10 @@ model KnownDevice {
 // ---------------------------------------------------------------------------
 
 model Customer {
+  // OPS-5: set when a bank debit from this customer was disputed. Autopay stays off until the owner clears it.
+  bankDebitBlockedAt DateTime?
+  bankDebitBlockedReason String?
+  paymentDisputes PaymentDispute[]
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
@@ -2561,6 +2565,7 @@ model CreditApplication {
 }
 
 model Invoice {
+  paymentDisputes PaymentDispute[]
   rdfShopRecords RetailDeliveryFeeRecord[] @relation("RdfShopInvoice")
   id          String        @id @default(cuid())
   invoiceNumber Int         @unique @default(autoincrement())
@@ -2729,6 +2734,7 @@ model InvoiceLineItem {
 }
 
 model Payment {
+  disputes PaymentDispute[]
   id          String   @id @default(cuid())
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
@@ -3519,6 +3525,10 @@ model BusinessSettings {
   // COM-L2 additive communication lineage.
   communicationsPolicy Json @default("{}")
   communicationsPolicyVersion Int @default(1)
+
+  // OPS-5: how long after a bank debit a customer can still dispute it (starting value 60 days, from the NACHA rules
+  // via Stripe's documentation). Deposit refunds for bank payments wait this long.
+  achDisputeWindowDays Int @default(60)
 }
 
 model MonthToMonthTermsVersion {
@@ -5672,6 +5682,57 @@ enum FeedbackState {
   CLOSED
 }
 
+// OPS-5: a card or bank dispute raised through Stripe. One row per Stripe dispute; the webhook only records and flags,
+// it never moves money. Chris decides what to send, and sends it once.
+enum DisputeState {
+  NEEDS_RESPONSE
+  UNDER_REVIEW
+  WON
+  LOST
+  CLOSED
+}
+
+model PaymentDispute {
+  id               String       @id @default(cuid())
+  stripeDisputeId  String       @unique
+  stripeChargeId   String?
+  stripePaymentIntentId String?
+  paymentId        String?
+  payment          Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoiceId        String?
+  invoice          Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customerId       String?
+  customer         Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amountCents      Int
+  reason           String
+  stripeStatus     String
+  state            DisputeState @default(NEEDS_RESPONSE)
+  // A bank (ACH) debit dispute is final: it cannot be contested.
+  isBank           Boolean      @default(false)
+  dueBy            DateTime?
+  outcome          String?
+  openedAt         DateTime
+  closedAt         DateTime?
+  // The newest Stripe event applied, so an older event arriving late never undoes a newer one.
+  lastEventAt      DateTime
+  lastEventId      String
+  evidenceSubmittedAt DateTime?
+  evidenceSubmittedByUserId String?
+  evidenceFileId   String?
+  evidencePacketBytes Int?
+  evidenceSummary  Json?
+  // The To do for "collect directly" after a bank dispute, once Chris says it is handled.
+  handledAt        DateTime?
+  handledByUserId  String?
+  handledNote      String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([state])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([paymentId])
+}
 
 // ---------------------------------------------------------------------------
 // OPS-1 (docs/build-specs/engines/OWNER-OPERATIONS.md): product recalls.
