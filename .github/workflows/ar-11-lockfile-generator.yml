@@ -1,0 +1,28 @@
+name: AR-11 lockfile generator (temporary read-only)
+on:
+  push:
+    branches: ['ai/chatgpt/ar-11-react-transitions-20261027']
+    paths:
+      - 'package.json'
+      - '.github/workflows/ar-11-lockfile-generator.yml'
+permissions:
+  contents: read
+jobs:
+  lockfile:
+    name: Generate npm lockfile without manual integrity edits
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Generate only lockfile from public npm registry (no lifecycle scripts)
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Return generated lockfile as text chunks for repository connector
+        shell: bash
+        run: |
+          echo 'AR11_LOCK_BEGIN'
+          base64 -w 1600 package-lock.json | sed 's/^/AR11_LOCK_CHUNK: /'
+          echo 'AR11_LOCK_END'
