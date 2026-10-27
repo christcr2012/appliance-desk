@@ -1,10 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { getMcpIssuer } from "@/mcp/issuer";
 import { MCP_SCOPES, OAUTH_SCOPES } from "@/mcp/scopes";
 
@@ -22,6 +24,13 @@ export async function respondToAssistantConsent(data: FormData): Promise<void> {
   }
   const registered = await prisma.oauthClient.findFirst({ where: { clientId, disabled: { not: true } } });
   if (!registered) throw new Error("The assistant is no longer registered.");
+  // Remember the approval generation BEFORE the provider issues the consent
+  // response. A concurrent Disconnect must invalidate this in-flight Allow.
+  const key = { userId: session.user.id, oauthClientId: clientId };
+  const previous = accepted ? await prisma.mcpConnection.findUnique({
+    where: { userId_oauthClientId: key },
+    select: { id: true, grantVersion: true, revokedAt: true },
+  }) : null;
   // The provider requires a real Request context to bind the signed OAuth
   // query, cookies, PKCE and consent. Calling auth.api.oauth2Consent directly
   // drops that context and the provider correctly rejects the request.
@@ -36,10 +45,36 @@ export async function respondToAssistantConsent(data: FormData): Promise<void> {
     throw new Error("The assistant authorization response was not valid.");
   }
   if (accepted) {
-    await prisma.mcpConnection.upsert({
-      where: { userId_oauthClientId: { userId: session.user.id, oauthClientId: clientId } },
-      create: { userId: session.user.id, oauthClientId: clientId, label: registered.name?.slice(0, 80) || "AI assistant", scopes: requestedScopes.filter((scope) => MCP_SCOPES.includes(scope as typeof MCP_SCOPES[number])) },
-      update: { revokedAt: null, revokedReason: null, label: registered.name?.slice(0, 80) || "AI assistant", scopes: requestedScopes.filter((scope) => MCP_SCOPES.includes(scope as typeof MCP_SCOPES[number])) },
+    const scopes = requestedScopes.filter((scope) => MCP_SCOPES.includes(scope as typeof MCP_SCOPES[number]));
+    const label = registered.name?.slice(0, 80) || "AI assistant";
+    await prisma.$transaction(async (tx) => {
+      // Lock before the actor check and connection update. Disconnect locks the
+      // same rows in the same order; neither write can silently win a race.
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${session.user.id} FOR UPDATE`;
+      await assertActiveTeamActor(tx, session.user.id, ["OWNER", "ADMIN"]);
+      const beforeLock = await tx.mcpConnection.findUnique({
+        where: { userId_oauthClientId: key }, select: { id: true },
+      });
+      if (beforeLock) {
+        await tx.$queryRaw`SELECT "id" FROM "McpConnection" WHERE "id" = ${beforeLock.id} FOR UPDATE`;
+      }
+      const current = await tx.mcpConnection.findUnique({
+        where: { userId_oauthClientId: key },
+        select: { id: true, grantVersion: true, revokedAt: true },
+      });
+      if (current?.id !== previous?.id ||
+        (current && previous && (current.grantVersion !== previous.grantVersion ||
+          current.revokedAt?.getTime() !== previous.revokedAt?.getTime()))) {
+        throw new Error("This approval changed while it was being processed. Start the connection again.");
+      }
+      const grantVersion = randomUUID();
+      if (current) {
+        await tx.mcpConnection.update({ where: { id: current.id }, data: {
+          grantVersion, revokedAt: null, revokedReason: null, label, scopes,
+        } });
+      } else {
+        await tx.mcpConnection.create({ data: { ...key, grantVersion, label, scopes } });
+      }
     });
   }
   if (!result?.url) redirect("/desk/automations");

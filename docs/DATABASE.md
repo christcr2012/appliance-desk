@@ -1,3 +1,7 @@
+## October 27 — MCP-3 safe reconnect generation (additive)
+
+Migration `20261129000000_mcp_reconnect_generation` adds `McpConnection.grantVersion`. Each new owner approval rotates this opaque value; signed MCP access tokens carry its current version, so a disconnected token cannot be resurrected by approving the same client again. Existing connections receive a distinct version during migration; old JWTs cannot regain access. Consent activation and disconnect serialize on user and connection rows. The private backup snapshot continues to omit OAuth grants.
+
 ## October 27 — MCP-3 assistant connections (development, not deployed)
 
 The additive OAuth schema adds Better Auth `jwks`, `oauthClient`, `oauthResource`, `oauthClientResource`, `oauthRefreshToken`, `oauthAccessToken`, `oauthConsent`, and `oauthClientAssertion` plus an app-owned `McpConnection` ledger. The OAuth models, private signing keys, client secrets, grants, access and refresh tokens are explicitly excluded from backup snapshots. Connection labels, scopes, last use and revocation status are retained; restore marks each restored connection revoked, requiring reconnection. The OAuth feature remains disabled unless the host explicitly sets `MCP_ISSUER_URL`. Migration and client-generation validation alone do not establish live-provider proof.

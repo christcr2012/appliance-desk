@@ -4,10 +4,20 @@ import { disconnectAssistant } from "./assistant-actions";
 
 export async function AssistantConnections({ userId, canSeeAll }: { userId: string; canSeeAll: boolean }) {
   const issuer = getMcpIssuer();
-  const records = issuer ? await prisma.mcpConnection.findMany({
-    where: canSeeAll ? {} : { userId }, include: { user: { select: { name: true } } },
-    orderBy: { createdAt: "desc" }, take: 30,
-  }) : [];
+  // Never hide a live assistant behind disconnected history. All active
+  // connections remain reachable for Disconnect; only old history is capped.
+  const filter = canSeeAll ? {} : { userId };
+  const [active, disconnected] = issuer ? await Promise.all([
+    prisma.mcpConnection.findMany({
+      where: { ...filter, revokedAt: null }, include: { user: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.mcpConnection.findMany({
+      where: { ...filter, revokedAt: { not: null } }, include: { user: { select: { name: true } } },
+      orderBy: { createdAt: "desc" }, take: 30,
+    }),
+  ]) : [[], []];
+  const records = [...active, ...disconnected];
   return (
     <section aria-labelledby="assistant-connections-heading" className="mb-6 rounded-card border border-line bg-surface p-4">
       <h2 id="assistant-connections-heading" className="text-base font-bold text-ink">Connect an AI assistant</h2>

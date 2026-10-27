@@ -13,17 +13,21 @@ MCP-3 is the sign-in, consent and disconnect machinery (auth risk, reviewed on i
 MCP-3 ships `appliance_whoami` only, so the full sign-in → call → disconnect path is proven in this PR.
 
 ## Acceptance
-- [ ] An SDK client completes authorize → consent → token → refresh → whoami against a local issuer (test).
-- [ ] Disconnect stops the next call at once; role downgrade or archive stops it (tests).
-- [ ] Wrong audience, other issuer, tampered or expired token, bad redirect, missing PKCE → refused (tests).
-- [ ] Issuer comes only from `MCP_ISSUER_URL`; unset → every route 404.
-- [ ] OAuth tables are left out of backups; restored connections come back disconnected.
+- [x] An SDK client completes authorize → consent → token → refresh → whoami against a local issuer (test).
+- [x] Disconnect stops the next call at once; role downgrade or archive stops it (tests).
+- [x] Wrong audience, other issuer, tampered or expired token, bad redirect, missing PKCE → refused (tests).
+- [x] Issuer comes only from `MCP_ISSUER_URL`; unset → every route 404.
+- [x] OAuth tables are left out of backups; restored connections come back disconnected.
 - [ ] Public sign-up still disabled; existing login, second step and password reset suites unchanged and green.
 - [ ] Consent page and the AI assistants card pass axe, phone/desktop, light/dark, keyboard.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Owner checklist
 "Connect Claude to Appliance Desk" (spec section 9). Never blocks merging.
+
+## October 27 review regression evidence (PR #692)
+
+The locally tested security patch rotates a signed-token connection generation on re-approval and rejects all old JWTs. Disposable-PostgreSQL `tests/mcp-oauth-roundtrip-integration.test.ts` now exercises approval → PKCE → token/refresh → MCP SDK → concurrent Disconnect → refused stale Allow → re-approval → old JWT still refused (1/1 passed); `tests/mcp-revocation-integration.test.ts` passed 3/3 with real database and concurrent revocation. `tests/mcp-oauth-security.test.ts` plus `tests/mcp-assistant-connections.test.tsx` passed 11/11 (including hidden active connection beyond 30 old history items); changed-file ESLint and migration-safety checker passed. The first owner-dispatched CI run on pre-review head failed typechecking because a `vitest it.each` callback inferred an incompatible tuple type; that test definition is corrected in this patch. Full final-head CI, browser/axe, and Reviewgate still pending; no live provider/owner acceptance claimed.
 
 ## Progress
 

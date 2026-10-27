@@ -14,7 +14,9 @@ export async function disconnectAssistant(form: FormData): Promise<void> {
   const id = String(form.get("id") ?? "");
   if (!id || id.length > 100) throw new Error("Choose a connection to disconnect.");
   await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${session.user.id} FOR UPDATE`;
     const actor = await assertActiveTeamActor(tx, session.user.id, ["OWNER", "ADMIN"]);
+    await tx.$queryRaw`SELECT "id" FROM "McpConnection" WHERE "id" = ${id} FOR UPDATE`;
     const connection = await tx.mcpConnection.findFirst({
       where: { id, ...(actor.role === "OWNER" ? {} : { userId: actor.id }) },
       select: { id: true, userId: true, oauthClientId: true, revokedAt: true },

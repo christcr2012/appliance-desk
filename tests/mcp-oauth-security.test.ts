@@ -32,9 +32,9 @@ const request = () => new Request("https://untrusted-caller.example/api/mcp", {
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.MCP_ISSUER_URL = "https://desk.example";
-  fakes.verify.mockResolvedValue({ sub: "user-1", azp: "client-1", scope: "ops:read forbidden:write" });
+  fakes.verify.mockResolvedValue({ sub: "user-1", azp: "client-1", scope: "ops:read forbidden:write", appliance_connection_version: "test-approval-generation" });
   fakes.connection.mockResolvedValue({
-    id: "connection-1", label: "Tester", scopes: ["ops:read", "decisions:read"],
+    id: "connection-1", label: "Tester", grantVersion: "test-approval-generation", scopes: ["ops:read", "decisions:read"],
     revokedAt: null, lastUsedAt: new Date(),
   });
   fakes.user.mockResolvedValue({ name: "Owner", role: "OWNER", archivedAt: null });
@@ -73,16 +73,22 @@ describe("MCP request boundary", () => {
     expect((await authenticateMcpRequest(request()) as Response).status).toBe(401);
   });
   it.each([
-    [{ role: "CUSTOMER", archivedAt: null }, "downgraded role"],
-    [{ role: "OWNER", archivedAt: new Date() }, "archived user"],
-    [null, "deleted user"],
-  ])("revokes access when the current account is invalid (%s, %s)", async (user) => {
+    { user: { role: "CUSTOMER", archivedAt: null }, reason: "downgraded role" },
+    { user: { role: "OWNER", archivedAt: new Date() }, reason: "archived user" },
+    { user: null, reason: "deleted user" },
+  ])("revokes access when the current account is invalid ($reason)", async ({ user }) => {
     fakes.user.mockResolvedValue(user);
     expect((await authenticateMcpRequest(request()) as Response).status).toBe(403);
     expect(fakes.update).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: "connection-1", revokedAt: null }),
       data: expect.objectContaining({ revokedReason: "Account access changed" }),
     }));
+  });
+  it("rejects an old signed access token even if its client was reapproved", async () => {
+    fakes.verify.mockResolvedValue({ sub: "user-1", azp: "client-1", scope: "ops:read", appliance_connection_version: "previous-approval" });
+    expect((await authenticateMcpRequest(request()) as Response).status).toBe(401);
+    fakes.verify.mockResolvedValue({ sub: "user-1", azp: "client-1", scope: "ops:read" });
+    expect((await authenticateMcpRequest(request()) as Response).status).toBe(401);
   });
   it("enforces current two-factor enrollment and quota", async () => {
     fakes.mfaRequired.mockResolvedValue(true);

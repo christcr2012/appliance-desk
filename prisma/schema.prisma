@@ -6828,6 +6828,8 @@ model McpConnection {
   oauthClientId String
   label String @db.VarChar(80)
   scopes String[]
+  // Changes on each new Allow. A disconnected JWT must never revive after reconnect.
+  grantVersion String @default(uuid())
   createdAt DateTime @default(now())
   lastUsedAt DateTime?
   lastToolName String? @db.VarChar(80)

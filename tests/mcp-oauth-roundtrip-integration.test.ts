@@ -173,6 +173,7 @@ describe.skipIf(!enabled)("MCP OAuth local loopback client on disposable Postgre
     const { decodeJwt } = await import("jose");
     const signedClaims = decodeJwt(renewed.access_token);
     expect(signedClaims).toEqual(expect.objectContaining({ sub: expect.any(String), aud: expect.anything() }));
+    expect(signedClaims.appliance_connection_version).toBe(connection.grantVersion);
     const { oauthProviderResourceClient } = await import("@better-auth/oauth-provider/resource-client");
     const verified = await oauthProviderResourceClient().getActions().verifyAccessTokenRequest(
       new Request(origin + "/api/mcp", { method: "POST", headers: { Authorization: "Bearer " + renewed.access_token } }),
@@ -195,15 +196,40 @@ describe.skipIf(!enabled)("MCP OAuth local loopback client on disposable Postgre
       const { disconnectAssistant } = await import("@/app/desk/automations/assistant-actions");
       const data = new FormData();
       data.set("id", connection.id);
-      await disconnectAssistant(data);
+      // Interleave Allow and Disconnect against the REAL database. The signed
+      // consent handler is paused until Disconnect commits, then resumes.
+      const race = vi.spyOn(auth, "handler").mockImplementationOnce(async () => {
+        await disconnectAssistant(data);
+        return Response.json({ url: redirectUri + "?code=synthetic" });
+      });
+      try {
+        await expect(respondToAssistantConsent(consent)).rejects.toThrow(/approval changed/);
+      } finally {
+        race.mockRestore();
+      }
       expect((await prisma.mcpConnection.findUniqueOrThrow({ where: { id: connection.id } })).revokedAt).not.toBeNull();
-      const refused = await fetch(origin + "/api/mcp", {
+      const callOldToken = () => fetch(origin + "/api/mcp", {
         method: "POST",
         headers: { Authorization: "Bearer " + renewed.access_token,
           Accept: "application/json, text/event-stream", "Content-Type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 15 }),
       });
-      expect(refused.status).toBe(401);
+      expect((await callOldToken()).status).toBe(401);
+
+      // A genuine new Allow, started AFTER Disconnect, must rotate the
+      // connection generation. A previously signed JWT remains denied.
+      const reconnect = vi.spyOn(auth, "handler").mockImplementationOnce(async () =>
+        Response.json({ url: redirectUri + "?code=new-approval" }));
+      try {
+        await expect(respondToAssistantConsent(consent)).rejects.toThrow(/TEST_OAUTH_REDIRECT/);
+      } finally {
+        reconnect.mockRestore();
+      }
+      const approvedAgain = await prisma.mcpConnection.findUniqueOrThrow({ where: { id: connection.id } });
+      expect(approvedAgain.revokedAt).toBeNull();
+      expect(approvedAgain.grantVersion).not.toBe(connection.grantVersion);
+      expect((await callOldToken()).status).toBe(401);
+      await disconnectAssistant(data);
     } finally {
       await sdkClient.close();
     }

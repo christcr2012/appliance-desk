@@ -1,3 +1,7 @@
+## October 27 — MCP-3 PR #692 review fixes (in progress, not merged)
+
+GitHub PR #692 was published through the documented sandbox-transfer route with auto-merge enabled. Three reviewer findings are being fixed: disconnected signed tokens must stay invalid after reconnect, consent/disconnect must serialize, and older active assistants must remain visible to disconnect. The owner-triggered GitHub CI run and `review-gate` must pass at the final head; no deployment settings were changed.
+
 ## October 27 — MCP-3 AI assistant OAuth (PR #692 open)
 
 Secure assistant OAuth implementation has been published as PR #692 with automatic merge enabled. Disposable-PostgreSQL roundtrip and 17 focused security/scope checks passed; the sandbox full TypeScript quick gate exhausted its memory. GitHub exact-head CI and Reviewgate are required for merge. No production provider settings or real data were changed.

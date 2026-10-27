@@ -122,6 +122,23 @@ export const auth = betterAuth({
         clientRegistrationDefaultResources: [`${getMcpIssuer()}/api/mcp`],
         clientRegistrationAllowedResources: [`${getMcpIssuer()}/api/mcp`],
         validateRedirectUri: validateMcpRedirectUri,
+        // Signed JWTs are stateless. Bind each one to this person's CURRENT
+        // approval of this particular OAuth client, so reconnect never revives
+        // an older JWT issued before Disconnect.
+        extensions: [{
+          claims: {
+            accessToken: async ({ user, client }) => {
+              if (!user) return {};
+              const connection = await prisma.mcpConnection.findUnique({
+                where: { userId_oauthClientId: { userId: user.id, oauthClientId: client.clientId } },
+                select: { grantVersion: true, revokedAt: true },
+              });
+              return connection && !connection.revokedAt
+                ? { appliance_connection_version: connection.grantVersion }
+                : {};
+            },
+          },
+        }],
         accessTokenExpiresIn: 600,
         refreshTokenExpiresIn: 60 * 60 * 24 * 30,
         // Existing emailAndPassword.disableSignUp keeps invitation-only accounts.
