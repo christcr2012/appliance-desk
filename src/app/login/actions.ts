@@ -11,6 +11,8 @@ const ROLE_LANDING_PAGE: Record<Role, string> = {
   ADMIN: "/desk/today",
   STAFF: "/desk/today",
   CUSTOMER: "/account",
+  // ACCT-1: an accountant lands on the Books home — the top of their allowed area.
+  ACCOUNTANT: "/desk/books",
 };
 
 /**
