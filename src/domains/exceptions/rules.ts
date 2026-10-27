@@ -55,6 +55,7 @@ export type ExceptionCategory =
   | "NEW_LEAD_CONTACT"
   | "LEAD_FOLLOW_UP"
   | "COMPLIANCE_DUE"
+  | "SUPPLIER_TAX_ID"
   | "APPROVED_QUOTE"
   | "SIGNING_PAYMENT_DUE"
   | "UNSIGNED_AGREEMENT"
