@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/money-ui";
 import { allocateAssetNumbers } from "@/domains/inventory/asset-numbers";
 import { assetNumberPrefix } from "@/domains/inventory";
 import { recordApplianceAcquisitionTaxInTx } from "@/domains/tax/acquisition";
+import { classifyPurchaseInTx } from "@/domains/taxben/classification";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { loadApplianceTaxSteps, type PurchaseTaxStep } from "@/domains/tax/next-step";
 import { reconcilePurchase, splitSellerTax, type TaxSplitBasis } from "./purchase-math";
@@ -54,6 +55,8 @@ export type RecordPurchaseInput = {
   /** Required for another state's tax. */
   otherState?: string | null;
   otherChargesCents: number;
+  /** TAXBEN-1: bought from a relative or the owner's other business? Null = not asked. */
+  boughtFromRelatedParty?: boolean | null;
   /** Optional cross-checks typed from the receipt itself. */
   receiptSubtotalCents?: number | null;
   receiptTotalCents?: number | null;
@@ -77,6 +80,9 @@ export type RecordedPurchaseAppliance = {
   taxShareCents: number;
   taxStatus: AcquisitionTaxStatus;
   step: PurchaseTaxStep;
+  /** TAXBEN-1: the recorded capital-vs-expense decision and its reason, once decided. */
+  capDecision: string | null;
+  capReason: string | null;
 };
 
 export type RecordedPurchase = {
@@ -128,6 +134,10 @@ export function normalizePurchase(input: RecordPurchaseInput) {
   const taxed = input.taxAnswer === "YES_COLORADO" || input.taxAnswer === "YES_OTHER_STATE";
   if (taxed && input.sellerTaxCents <= 0) throw new Error("Enter the tax printed on the receipt.");
   if (!taxed && input.sellerTaxCents !== 0) throw new Error("Seller tax can only be entered when the seller charged tax.");
+  const boughtFromRelatedParty = input.boughtFromRelatedParty ?? null;
+  if (boughtFromRelatedParty !== null && typeof boughtFromRelatedParty !== "boolean") {
+    throw new Error("Answer whether this was bought from a relative or your own other business, or leave it unanswered.");
+  }
 
   const rows = input.appliances.map((row, index) => {
     const label = `Appliance ${index + 1}`;
@@ -164,6 +174,7 @@ export function normalizePurchase(input: RecordPurchaseInput) {
     purchasedOn: input.purchasedOn, reference: clean(input.reference, 100, "Receipt number"),
     taxAnswer: input.taxAnswer, sellerTaxCents: input.sellerTaxCents, otherState,
     otherChargesCents: input.otherChargesCents, notes: clean(input.notes, 2000, "Notes"),
+    boughtFromRelatedParty,
     documents, rows, math,
   };
 }
@@ -172,6 +183,7 @@ function hashOf(n: NormalizedPurchase): string {
   const canonical = JSON.stringify({
     s: n.supplierId, n: n.sellerName, d: businessDateKey(n.purchasedOn), r: n.reference,
     a: n.taxAnswer, t: n.sellerTaxCents, o: n.otherState, c: n.otherChargesCents, x: n.notes,
+    rp: n.boughtFromRelatedParty,
     docs: n.documents.map((doc) => [doc.url, doc.kind, doc.altText]),
     rows: n.rows.map((row) => [row.applianceTypeId, row.manufacturer, row.model, row.serialNumber,
       row.priceCents, row.condition, row.color]),
@@ -228,6 +240,7 @@ async function readRecorded(tx: Prisma.TransactionClient, purchaseId: string, re
       appliances: {
         orderBy: [{ createdAt: "asc" }, { assetNumber: "asc" }],
         select: { id: true, assetNumber: true, acquisitionCostCents: true, acquisitionTaxStatus: true,
+          capDecision: true, capReason: true,
           applianceType: { select: { name: true } } },
       },
     },
@@ -247,6 +260,7 @@ async function readRecorded(tx: Prisma.TransactionClient, purchaseId: string, re
       id: a.id, assetNumber: a.assetNumber, typeName: a.applianceType.name,
       priceCents: a.acquisitionCostCents ?? 0, taxShareCents: split.shares[i] ?? 0,
       taxStatus: a.acquisitionTaxStatus, step: steps.get(a.id)!,
+      capDecision: a.capDecision, capReason: a.capReason,
     })),
   };
 }
@@ -288,6 +302,7 @@ export async function recordPurchase(actorId: string, input: RecordPurchaseInput
         subtotalCents: n.math.subtotalCents, sellerTaxCents: n.sellerTaxCents,
         sellerTaxKind: kind, sellerTaxState: n.otherState,
         otherChargesCents: n.otherChargesCents, notes: n.notes,
+        boughtFromRelatedParty: n.boughtFromRelatedParty,
         createdByUserId: actorId, taxRevisionAt: new Date(Math.max(Date.now(), now.getTime())),
       },
     });
@@ -342,6 +357,9 @@ export async function recordPurchase(actorId: string, input: RecordPurchaseInput
       });
     }
 
+    // TAXBEN-1: record each unit's capital-vs-expense decision with its reason.
+    await classifyPurchaseInTx(tx, purchase.id, actorId, now);
+
     await tx.auditLog.create({
       data: {
         userId: actorId, action: "purchase.record", entityType: "Purchase", entityId: purchase.id,
@@ -390,6 +408,7 @@ export async function getPurchaseDetail(id: string, now = new Date()) {
         select: {
           id: true, assetNumber: true, manufacturer: true, model: true, serialNumber: true, condition: true,
           color: true, acquisitionCostCents: true, acquisitionTaxStatus: true, acquisitionTaxPaidCents: true,
+          capDecision: true, capReason: true, capLineCents: true, capPlacedInServiceOn: true,
           applianceType: { select: { name: true } },
         },
       },

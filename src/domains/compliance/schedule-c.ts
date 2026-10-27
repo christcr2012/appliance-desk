@@ -227,6 +227,22 @@ export function packetCsv(packet: PacketData): string {
       ]),
     ),
   );
+  if (w.startup) {
+    sections.push(
+      csvSection(
+        "Start-up costs — Section 195, Form 4562 Part VI (amounts in cents)",
+        ["Item", "Amount cents"],
+        [
+          ["Business began", w.startup.beganOn],
+          ["Began date confirmed by owner/CPA", w.startup.beganStored ? "yes" : "no — starting value, CPA confirms"],
+          ["Start-up costs before the business began", w.startup.totalCents],
+          ["First-year deduction (Section 195)", w.startup.firstYearCents],
+          [`Amortization for ${packet.year}`, w.startup.amortizationCents],
+          ["Still to amortize after this year", w.startup.remainingCents],
+        ],
+      ),
+    );
+  }
   const s = packet.worksheet4797;
   sections.push(
     csvSection(
@@ -286,6 +302,10 @@ export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
   }
   if (packet.worksheet4562.bonusPercent !== null) {
     push(`Bonus depreciation for the year (rule book): ${packet.worksheet4562.bonusPercent}% for property acquired after ${packet.worksheet4562.bonusAcquiredAfter}.`);
+  }
+  if (packet.worksheet4562.startup) {
+    const st = packet.worksheet4562.startup;
+    push(`Start-up costs (Section 195, Form 4562 Part VI): the business began ${st.beganOn}${st.beganStored ? "" : " (starting value — CPA confirms)"}; start-up costs ${money(st.totalCents)}; first-year deduction ${money(st.firstYearCents)}; amortization this year ${money(st.amortizationCents)}; still to amortize ${money(st.remainingCents)}.`);
   }
   push("");
   push("Form 4797 worksheet — estimate, your CPA confirms", true);
