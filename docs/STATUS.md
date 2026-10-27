@@ -1,3 +1,39 @@
+## October 27 — CMP-5: Hiring readiness (in build)
+
+Branch `ai/vivienne/cmp-5` (owner decision 2026-10-27: build now, ahead of the first hire — the
+dormant-until-employees condition is lifted). The six payroll obligations CMP-1 registered (Form 941,
+Form 940, W-2s, Colorado withholding, UI, FAMLI) already wake from the Business facts **employees**
+count; CMP-5 adds what was missing. New fact `firstHireDate` and a seventh payroll obligation,
+**co.payroll.new_hire** (Colorado new-hire report, due the first employee's start date + 20 days,
+GUIDED_WEB to the Colorado Child Support Services page — verified 2026-10-27; without the date it
+stays unscheduled with the reason printed). The Compliance screen gains a **Hiring checklist** when
+employees > 0 (EIN, W-4, I-9, new hire report, withholding account, UI account, FAMLI, workers'
+comp, posters, paid sick leave) whose state derives from facts and filings — no stored tick boxes.
+**DQ-CMP-PAYROLL-HOW** filed (starting value: payroll service). The provider's summary CSV imports
+each pay run into the books through `writeJournal` as source type **PAYROLL** (Dr wages, Dr employer
+payroll taxes, Cr bank) against two new system accounts — `WAGES` (Schedule C line 26, newly added
+to the worksheet's line list) and `EMPLOYER_PAYROLL_TAXES` (line 23) — with strict balance
+validation (the one withdrawal equals gross + employer taxes; the employee share rides inside the
+gross), whole-file duplicate protection via a unique (fileHash, rowIndex) `PayrollImport` record,
+and plain-word refusals (books not started, pay date before the books start, customer actor).
+Nothing is filed or calculated; payroll stays with the service. Proof: `tests/hiring-readiness.test.ts`
+(schedule incl. leap/December crossings, checklist derivation, CSV parser, balance rules),
+`tests/compliance-registry.test.ts` (23 obligations), `tests/payroll-import-integration.test.ts`
+(real Postgres on the lane's own cluster: wake + 20-day deadline, balanced journals, duplicate and
+gate refusals). With CMP-5 merged, Lane 5's compliance line (CMP-1…CMP-5) is complete.
+||||||| c28cc9ff
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
+
+
+
 ## October 27 — VAULT-2: Logins vault and emergency access (in build)
 
 Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets

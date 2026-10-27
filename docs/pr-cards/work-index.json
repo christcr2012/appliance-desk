@@ -4715,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652; swipe PR #662 CI green and awaiting close-out, React/transitions, snooze, bundle pending",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662; Snooze PR #663 exact-head green, React/transitions PR #665 and JS budget still pending",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -5381,7 +5381,7 @@
         "CMP-1"
       ],
       "status": "APPROVED — Chris 2026-10-25",
-      "migration": "none",
+      "migration": "20261112000000_cmp5_hiring (ComplianceProfile.firstHireDate, PAYROLL journal source, PayrollImport, WAGES + EMPLOYER_PAYROLL_TAXES accounts)",
       "budget": 200,
       "units": [
         "CMP-5"
@@ -6077,6 +6077,10 @@
     {
       "id": "CMP-4",
       "path": "docs/pr-cards/execution/CMP-4.json"
+    },
+    {
+      "id": "CMP-5",
+      "path": "docs/pr-cards/execution/CMP-5.json"
     },
     {
       "id": "TFA-2",

@@ -1,3 +1,10 @@
+## November 12 — Hiring readiness (CMP-5, additive)
+
+Migration `20261112000000_cmp5_hiring`.
+- `ComplianceProfile` gains `firstHireDate` (nullable): the first employee's start date. Colorado's new-hire report is due 20 days after it, so the date is the one fact the `co.payroll.new_hire` obligation schedules from; with employees recorded but no date, the obligation shows as unscheduled with the reason, never an invented deadline.
+- `JournalSourceType` gains `PAYROLL`, and `PayrollImport` keeps one row per imported pay run from the payroll provider's summary CSV: `payDate`, `grossWagesCents`, `employerTaxesCents`, `employeeTaxesCents` (nullable, informational — the employee share rides inside the gross), `withdrawnCents`, `providerName`, `sourceFileName`, `importedById`. The row's id is the books journal's sourceId, `(fileHash, rowIndex)` is unique so the same file can never post twice, and no employee-level data is stored. Registered in the backup manifest.
+- Two system accounts join the chart (and are inserted for existing installs, guarded by role): `WAGES` (Schedule C line 26) and `EMPLOYER_PAYROLL_TAXES` (line 23). Schedule C's line list gains line 26 ("Wages less employment credits").
+
 ## November 11 — Colorado and local filings (CMP-4, additive)
 
 Migration `20261111000000_cmp4_colorado_local`.

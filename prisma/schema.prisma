@@ -870,6 +870,29 @@ model Supplier {
   updatedAt DateTime @updatedAt
 }
 
+// CMP-5: one pay run imported from the payroll provider's summary CSV.
+// Provider totals only — no employee-level data is ever stored here. The
+// row's id is the books journal's sourceId (sourceType PAYROLL), and the
+// (fileHash, rowIndex) uniqueness is what stops the same file from ever
+// posting a pay run twice.
+model PayrollImport {
+  id                 String   @id @default(cuid())
+  fileHash           String
+  rowIndex           Int
+  payDate            DateTime @db.Date
+  grossWagesCents    Int
+  employerTaxesCents Int
+  employeeTaxesCents Int?
+  withdrawnCents     Int
+  providerName       String?
+  sourceFileName     String?
+  importedById       String
+  createdAt          DateTime @default(now())
+
+  @@unique([fileHash, rowIndex])
+  @@index([payDate])
+}
+
 // CMP-3: a one-time W-9 request link for a supplier. Only the token's
 // SHA-256 hash is stored; the link works once and expires after 14 days.
 model W9Request {
@@ -3755,6 +3778,11 @@ model ComplianceProfile {
   usdotNumber            String?
   truckRegistrationMonth Int?
   greeleyLicenseDate     DateTime?
+  // CMP-5: the first employee's start date. The Colorado new-hire report
+  // is due 20 days after it; the payroll obligations wake from the
+  // employees count above, and this date schedules the one deadline that
+  // hangs off the first hire itself.
+  firstHireDate          DateTime?
   registeredAgentName    String?
   registeredAgentAddress String?
   registeredAgentCity    String?
@@ -5091,6 +5119,7 @@ enum JournalSourceType {
   USE_TAX
   TAX_FILING
   CASH_EVENT
+  PAYROLL
 }
 
 enum AccountingPeriodStatus {
