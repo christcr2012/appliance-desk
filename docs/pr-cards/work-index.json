@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "MERGED — PR #613, CI green 40357496526",
+      "status": "MERGED — PR #613, exact-head CI green 40357496521",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4075,7 +4075,7 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "MERGED — PR #624, full CI 40441051070 green at reconciled implementation head (docs-only exact-head gate follows)",
+      "status": "MERGED — PR #624, exact-head CI green 40444991438 at eb2a99c7",
       "migration": "month_review",
       "budget": 480,
       "units": [

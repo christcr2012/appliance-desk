@@ -1,4 +1,13 @@
 ## October 26 — OPS-7: privacy and security duties (built, PR pending)
+## October 26 — Lane 3 complete: automatic Books, setup and monthly review
+
+BA-1 PR #610, BA-2 PR #613 and BA-3 PR #624 are merged into main. The final PR heads passed CI:
+BA-1 e85e4358 (run 40317413250), BA-2 6337a754 (run 40357496521) and BA-3 eb2a99c7
+(run 40444991438). BA-3 has no unresolved review threads. The nightly records, first-time setup,
+and month-end checks are built; accountant emailing requires a separate owner action. No live
+provider setting, customer message, production records or payments were changed. Lane 3 has no
+remaining implementation cards. Real-business acceptance and release status are separate from CI.
+## October 26 — AR-11 desk-wide loading screens (in review)
 
 Branch `ai/claude/ops-7` (stacked on OPS-6). New **Privacy and security** screen (More menu, owner and admin). **Something may have leaked**: you record the date you found out, then the date you decided information was really exposed and how many Colorado residents; the app works out the deadline (30 days, starting value from the dated rule book, not confirmed), also needs the Attorney General at 500 or more people and the credit bureaus above 1,000, fills in a printable notice letter, and puts each step on your To do list. It sends nothing; the date can only move earlier, and the incident cannot be closed while a notice is still owed. **Service providers** (Vercel, Neon, Stripe, Google, Twilio, Resend) each get a yearly "security terms reviewed" check that returns to your To do list. **Legal hold** on a customer stops the nightly clean-up and blocks their privacy deletion. **Keep for** years are settings (agreements 7, tax 7, refrigerant 6, enquiries 2, messages 3); the nightly **clean-up of old enquiries ships OFF**, removes at most 200 a night, never signed or billed history, and logs every run. **Face-match ID** stays off. **Marketing texts** are held outside 8 am–9 pm Denver time (setting). **Accessibility complaints** get a 30-day fix date on your To do list. A public page "How we handle your information" shows the disposal policy.
 Migration `20261105000000_privacy_security` (additive). Proof: pure tests (`tests/ops7-privacy-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops7-privacy-integration.test.ts`), including a bug the test caught (old enquiries with no stored phone key would never have been cleaned up). Browser check `e2e/privacy-security.spec.ts` runs only in CI.
