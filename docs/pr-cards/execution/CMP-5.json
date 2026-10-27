@@ -60,7 +60,8 @@
     "tests/compliance-registry.test.ts",
     "tests/hiring-readiness.test.ts",
     "tests/local-filings.test.ts",
-    "tests/payroll-import-integration.test.ts"
+    "tests/payroll-import-integration.test.ts",
+    "vitest.config.mts"
   ],
   "references": [
     {
