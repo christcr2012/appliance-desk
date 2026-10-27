@@ -79,7 +79,7 @@ export default async function CompliancePage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const params = await searchParams;
   const tab: TabKey = TABS.some((t) => t.key === params.tab) ? (params.tab as TabKey) : "coming";
 

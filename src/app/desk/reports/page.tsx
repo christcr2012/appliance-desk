@@ -32,7 +32,7 @@ type LeadSourceRow = Awaited<
 >[number];
 
 export default async function ReportsPage() {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const [earnings, missingCostJobs, leadSources] = await Promise.all([
     getEarningsReport(),
     getJobsMissingRepairCost(),

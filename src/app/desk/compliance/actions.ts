@@ -8,6 +8,7 @@ import {
   markFilingDoneElsewhere,
   markFilingNotApplicable,
   prepareFiling,
+  markFilingReviewed,
   resolveFiling,
   submitFiling,
 } from "@/domains/compliance/filings";
@@ -128,7 +129,7 @@ export async function saveTaxYearFactsAction(
 
 export async function prepareGuidedAction(filingId: string): Promise<ComplianceActionState> {
   try {
-    const { user } = await requireRole("OWNER", "ADMIN");
+    const { user } = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
     await requireTaxesScreen(user);
     const { prisma } = await import("@/lib/prisma");
     const filing = await prisma.complianceFiling.findUnique({ where: { id: filingId } });
@@ -322,6 +323,19 @@ export async function prepareGuidedAction(filingId: string): Promise<ComplianceA
         ? { stillNeeded: `Add ${stillNeeded.join(", ")} in Business facts so they show here.` }
         : {}),
     });
+    revalidatePath(`/desk/compliance/${filingId}`);
+    revalidatePath("/desk/compliance");
+    return { ok: true };
+  } catch (error) {
+    return { error: message(error) };
+  }
+}
+
+export async function markReviewedAction(filingId: string): Promise<ComplianceActionState> {
+  try {
+    const { user } = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
+    await requireTaxesScreen(user);
+    await markFilingReviewed(user.id, filingId);
     revalidatePath(`/desk/compliance/${filingId}`);
     revalidatePath("/desk/compliance");
     return { ok: true };
