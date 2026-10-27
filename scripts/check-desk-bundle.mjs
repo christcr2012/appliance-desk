@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // AR-11: CI regression limit for JS actually requested by each desk App Router page.
 // Source: Next.js 16.4 .next/app-build-manifest.json + optional root JS from build-manifest.json.
-import { readFileSync, existsSync, writeFileSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
+import { resolve, join, relative } from "node:path";
+import { runInNewContext } from "node:vm";
 import { gzipSync } from "node:zlib";
 
 export const TEN_KB = 10;
@@ -43,6 +44,50 @@ export function pathsByRoute(manifest, bootstrap = []) {
   }
   if (routes.size === 0) throw new Error("No /desk pages found: Next manifest format changed");
   return Object.fromEntries([...routes].map(([route, files]) => [route, [...files].sort()]));
+}
+
+// Next 16.4.2 Turbopack puts one client-reference manifest beside every compiled App Router page,
+// not a root app-build-manifest.json. Discover those real files rather than assume the old location.
+export function pathsFromClientReferences(buildDir, bootstrap = []) {
+  const appDir = join(buildDir, "server/app");
+  const manifests = [];
+  function visit(dir) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const file = join(dir, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else if (entry.name === "page_client-reference-manifest.js") manifests.push(file);
+    }
+  }
+  if (!existsSync(appDir)) throw new Error("Next server/app client manifests are missing");
+  visit(appDir);
+  const routes = new Map();
+  for (const file of manifests.sort()) {
+    const source = "/" + relative(appDir, file).replace(/_client-reference-manifest\\.js$/, "");
+    const route = routeForEntry(source);
+    if (route !== "/desk" && !route.startsWith("/desk/")) continue;
+    const sandbox = { __RSC_MANIFEST: {} };
+    sandbox.globalThis = sandbox;
+    runInNewContext(readFileSync(file, "utf8"), sandbox, { timeout: 1500, filename: file });
+    const records = Object.values(sandbox.__RSC_MANIFEST);
+    if (!records.length) throw new Error("No RSC client manifest exported by " + file);
+    const chunks = routes.get(route) ?? new Set(bootstrap.filter(v => typeof v === "string" && v.endsWith(".js")));
+    const collect = (value) => {
+      if (typeof value === "string" && value.endsWith(".js")) {
+        let chunk = value.replace(/^\\/?_next\\//, "").replace(/^\\//, "");
+        if (chunk.startsWith("static/")) chunks.add(chunk);
+      } else if (Array.isArray(value)) {
+        for (const nested of value) collect(nested);
+      }
+    };
+    for (const record of records) {
+      for (const module of Object.values(record.clientModules ?? {})) collect(module.chunks);
+      collect(record.entryJSFiles);
+    }
+    routes.set(route, chunks);
+  }
+  if (!routes.size) throw new Error("No /desk pages found in Next 16.4 client-reference manifests");
+  return Object.fromEntries([...routes].sort(([a],[b])=>a.localeCompare(b))
+    .map(([route, files]) => [route, [...files].sort()]));
 }
 
 export function measureGzipKb(routes, buildDir) {
@@ -92,11 +137,13 @@ function readJson(path) { return JSON.parse(readFileSync(path, "utf8")); }
 function run() {
   const buildDir = resolve(process.env.NEXT_BUILD_DIR ?? ".next");
   const appPath = join(buildDir, "app-build-manifest.json");
-  if (!existsSync(appPath)) throw new Error("Next client manifest not found at " + appPath);
   const buildManifestPath = join(buildDir, "build-manifest.json");
   const bootstrap = existsSync(buildManifestPath)
     ? readJson(buildManifestPath).rootMainFiles ?? [] : [];
-  const sizeByRoute = measureGzipKb(pathsByRoute(readJson(appPath), bootstrap), buildDir);
+  const routes = existsSync(appPath)
+    ? pathsByRoute(readJson(appPath), bootstrap)
+    : pathsFromClientReferences(buildDir, bootstrap);
+  const sizeByRoute = measureGzipKb(routes, buildDir);
   const budgetPath = resolve("scripts/desk-bundle-budget.json");
   if (process.argv.includes("--baseline")) {
     const rounded = baselines(sizeByRoute);
