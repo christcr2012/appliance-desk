@@ -5252,7 +5252,10 @@
       ],
       "tests": [
         "tests/rules-parsers.test.ts",
-        "tests/rules-observation-integration.test.ts"
+        "tests/rules-observation-integration.test.ts",
+        "tests/tax-official-source-watch-integration.test.ts",
+        "tests/tax-official-rate-auto-apply-integration.test.ts",
+        "tests/today-role-access.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/TFA-3.md"

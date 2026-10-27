@@ -108,6 +108,8 @@ export const BACKUP_MODEL_POLICY = {
   // TFA-2 §8: filing-frequency advice rows are tax-filing evidence.
   FilingFrequencyAdvice: "filingFrequencyAdvice",
   OfficialSourceWatch: "officialSourceWatch",
+  // TFA-3: stored official-page readings and their approval trail.
+  LegalRuleObservation: "legalRuleObservation",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
   TaxabilityRuleVersion: "taxabilityRuleVersion",

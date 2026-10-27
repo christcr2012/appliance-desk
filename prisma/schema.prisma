@@ -2925,6 +2925,9 @@ model OfficialSourceWatch {
   label               String
   url                 String   @unique
   active              Boolean  @default(true)
+  // TFA-3: which strict parser reads this page (RDF_RATES, GREELEY_RATE,
+  // IRS_1099_THRESHOLD, CO_INTEREST); null means hash-only watching.
+  parserKey           String?
   lastHash            String?
   lastText            String?
   lastExcerpt         String?
@@ -2935,6 +2938,31 @@ model OfficialSourceWatch {
   reviewedAt          DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  ruleObservations LegalRuleObservation[]
+}
+
+// TFA-3: one stored reading from a strict parser over an official page
+// (same pattern as TaxRateObservation). A reading is never applied on its
+// own: the owner approves it on To do (approvedVersionId links the rule
+// version it created) or dismisses it (dismissedAt), and a dismissed or
+// approved reading never asks again.
+model LegalRuleObservation {
+  id                String              @id @default(cuid())
+  ruleKey           String              @db.VarChar(80)
+  value             Json
+  effectiveFrom     DateTime?
+  watchId           String
+  watch             OfficialSourceWatch @relation(fields: [watchId], references: [id])
+  evidence          String              @db.VarChar(1000)
+  observedAt        DateTime            @default(now())
+  dismissedAt       DateTime?
+  dismissNote       String?             @db.VarChar(500)
+  dismissedByUserId String?
+  approvedVersionId String?
+
+  @@index([ruleKey, effectiveFrom])
+  @@index([observedAt])
 }
 
 model TaxabilityRule {
@@ -3472,7 +3500,13 @@ model BusinessSettings {
   rdfCpaConfirmedOn               DateTime?
   rdfThresholdCrossedOn           DateTime?
   businessTaxAddress              Json                   @default("{}")
-  autoApplyOfficialRateChanges    Boolean                @default(true)
+  // TFA-3: starting value false (Chris's answer, recorded in DECISIONS):
+  // every new rate waits for his approval on To do. The auto-apply code
+  // path stays, but only runs if he turns this on himself.
+  autoApplyOfficialRateChanges    Boolean                @default(false)
+  // TFA-3: master switch for the official-page watches (Taxes > Rules,
+  // owner only). Starting value on; the per-watch active flags stay data.
+  watchOfficialTaxPages           Boolean                @default(true)
   autoRateChangeMaxMilliPercent   Int                    @default(1000)
   // TFA-1: timing for changes that cost the business or do not help to do
   // early (paying a return, filing 1099s, renewing a license). The desk
