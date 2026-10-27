@@ -37,14 +37,22 @@ export function ConvertEstimatePanel({
   );
   const [serviceAddressId, setServiceAddressId] = useState(serviceAddresses[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
+  // FEETAX-2: the owner's one-order override reason, used only when the
+  // delivery-area check refuses a conversion over undecided tax rules.
+  const [overrideReason, setOverrideReason] = useState("");
 
   const perPropertyDisabled = hasUnassignedLines;
 
   function handleConvert() {
     setError(null);
     startTransition(async () => {
+      const override = overrideReason.trim()
+        ? { overrideReason: overrideReason.trim() }
+        : {};
       const raw =
-        mode === "single" ? { mode: "single" as const, serviceAddressId } : { mode: "per-property" as const };
+        mode === "single"
+          ? { mode: "single" as const, serviceAddressId, ...override }
+          : { mode: "per-property" as const, ...override };
       const result = await convertEstimateAction(estimateId, raw);
       if (result.status === "error") {
         setError(result.message);
@@ -139,6 +147,25 @@ export function ConvertEstimatePanel({
           first.
         </p>
       )}
+
+      <div className="mt-4">
+        <label htmlFor="convert-override-reason" className="block text-xs font-medium text-ink-soft">
+          Delivery-area override reason (owner only, rarely needed)
+        </label>
+        <input
+          id="convert-override-reason"
+          type="text"
+          maxLength={500}
+          value={overrideReason}
+          onChange={(e) => setOverrideReason(e.target.value)}
+          disabled={isPending}
+          placeholder="Only if conversion is refused because a place's tax rules aren't decided yet"
+          className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm disabled:opacity-50"
+        />
+        <p className="mt-1 text-xs text-ink-faint">
+          A missing city license can never be overridden.
+        </p>
+      </div>
 
       <button
         type="button"
