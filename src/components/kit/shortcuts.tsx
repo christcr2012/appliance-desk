@@ -73,7 +73,14 @@ export function DeskShortcuts({ role }: { role: string }) {
         goAt.current = Date.now();
         return;
       }
-      if (key === "/") {
+      // Shift+/ often arrives as key="/" with shiftKey=true. Help must take
+      // priority over the unshifted "/" search shortcut.
+      if (key === "?" || (key === "/" && event.shiftKey)) {
+        event.preventDefault();
+        setHelpOpen(true);
+        return;
+      }
+      if (key === "/" && !event.shiftKey) {
         const search = [...document.querySelectorAll<HTMLInputElement>("[data-kit-search]")].find(
           (input) => input.getClientRects().length > 0 && !input.disabled,
         );
@@ -81,11 +88,6 @@ export function DeskShortcuts({ role }: { role: string }) {
           event.preventDefault();
           search.focus();
         }
-        return;
-      }
-      if (key === "?" || (key === "/" && event.shiftKey)) {
-        event.preventDefault();
-        setHelpOpen(true);
         return;
       }
       if (key === "escape") {
