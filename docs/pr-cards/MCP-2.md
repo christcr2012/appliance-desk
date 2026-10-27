@@ -27,6 +27,15 @@ One row: confirm which private storage the live app's backups use (System health
 
 ## Progress
 
+October 27 — PR #611 remains open while latest-main reconciliation is verified. The original PR head
+`63a109676f23b24ffca8ed50bee269c24ea35d78` passed all 12 CI checks (run 40444106710),
+with both Codex findings fixed and review threads resolved. The branch now merges the newer main
+history, keeping VAULT-1 business-record file recovery and MCP-10a feedback-photo recovery in
+the MCP-2 media domain. Focused backup/media tests passed: 28/28, including the new business-record
+copy regression. New exact-head CI/review and the real private-store confirmation remain pending.
+The private preview-storage prerequisite was merged in PR #609. No production restore was attempted.
+
+
 - Security prerequisite merged as PR #609. Recovery implementation on branch ai/chatgpt/mcp-2-backup-reliability.
 - Verified locally: isolated npm install with synthetic Prisma settings; schema validation; all 26 focused backup/media unit tests; npm run check:quick (secret scan, migration/route consistency, typecheck, lint and words).
 - Code covers staged SHA-256 readback and private credentials, a ledger-linked full media pair, privacy-deletion checks, safe pruning and old-object pagination, owner-only serialized retry and retention settings, a plain-language System health screen and a user guide.

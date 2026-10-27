@@ -342,6 +342,7 @@ describe("Batch F private-media recovery", () => {
     seed(PRIVATE_TOKEN, doc, "ein letter", "application/pdf");
     state.recordFiles.push({ id: "file-1", pathname: doc });
     const result = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-3.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-3.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
