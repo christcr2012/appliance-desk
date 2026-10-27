@@ -1,3 +1,12 @@
+## October 26 — Lane 3 complete: automatic Books, setup and monthly review
+
+BA-1 PR #610, BA-2 PR #613 and BA-3 PR #624 are merged into main. The final PR heads passed CI:
+BA-1 e85e4358 (run 40317413250), BA-2 6337a754 (run 40357496521) and BA-3 eb2a99c7
+(run 40444991438). BA-3 has no unresolved review threads. The nightly records, first-time setup,
+and month-end checks are built; accountant emailing requires a separate owner action. No live
+provider setting, customer message, production records or payments were changed. Lane 3 has no
+remaining implementation cards. Real-business acceptance and release status are separate from CI.
+
 ## October 26 — AR-11 desk-wide loading screens (in review)
 
 Branch `ai/chatgpt/ar-11-loading-skeletons` makes every top-level desk page area show a kit list or record skeleton while
