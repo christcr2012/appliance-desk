@@ -135,6 +135,7 @@ export const BACKUP_MODEL_POLICY = {
   ComplianceProfile: "complianceProfile",
   ComplianceFiling: "complianceFiling",
   W9Request: "w9Request",
+  TaxYearFacts: "taxYearFacts",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",
