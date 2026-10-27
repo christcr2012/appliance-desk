@@ -3,8 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import type { ExceptionItem } from "@/domains/exceptions/rules";
+import { encryptField, hasFieldCryptoKey } from "@/lib/field-crypto";
 import { PAPERWORK_TEMPLATES } from "./templates";
-import { nextDueAfterRenewal, reminderState, type PaperworkStatusValue } from "./rules";
+import {
+  effectiveRecordDate,
+  nextDueAfterRenewal,
+  reminderState,
+  type PaperworkStatusValue,
+} from "./rules";
 import type { PaperworkInput } from "./schema";
 
 /** Owner-only everywhere: the numbers (EIN, license numbers) never reach staff. */
@@ -52,6 +58,9 @@ export async function addStarterChecklist(userId: string): Promise<{ added: numb
         officialUrl: t.officialUrl ?? null,
         remindDaysBefore: t.remindDaysBefore ?? 30,
         repeatEveryMonths: t.repeatEveryMonths ?? null,
+        kind: t.kind ?? "TASK",
+        numberLabel: t.numberLabel ?? null,
+        linkedObligationKeys: t.linkedObligationKeys ?? [],
         sortOrder: index * 10,
         createdByUserId: userId,
       })),
@@ -65,34 +74,74 @@ export async function addStarterChecklist(userId: string): Promise<{ added: numb
 function toData(input: PaperworkInput) {
   const startedOn = input.startedOn ? businessDateFromKey(input.startedOn) : null;
   const dueOn = input.dueOn ? businessDateFromKey(input.dueOn) : null;
+  const issuedOn = input.issuedOn ? businessDateFromKey(input.issuedOn) : null;
+  const expiresOn = input.expiresOn ? businessDateFromKey(input.expiresOn) : null;
   if (input.startedOn && !startedOn) throw new Error("That start date isn't a real date.");
   if (input.dueOn && !dueOn) throw new Error("That due date isn't a real date.");
+  if (input.issuedOn && !issuedOn) throw new Error("That issued date isn't a real date.");
+  if (input.expiresOn && !expiresOn) throw new Error("That expiry date isn't a real date.");
+  const costCents =
+    input.costDollars == null
+      ? null
+      : Math.round(Number(input.costDollars) * 100);
+  // The number itself: encrypted here, never stored or logged in plain text, and
+  // only its last four characters are kept for masked display (a number shorter
+  // than five characters keeps no last-4, so it can never be shown in full).
+  let numberUpdate: { numberEncrypted: string; numberLast4: string | null } | null = null;
+  if (input.numberValue) {
+    if (!hasFieldCryptoKey()) {
+      throw new Error(
+        "The encryption key isn't set yet, so this number can't be stored safely. Add the key first (it's on your checklist), then try again.",
+      );
+    }
+    const value = input.numberValue.trim();
+    numberUpdate = {
+      numberEncrypted: encryptField(value),
+      numberLast4: value.length >= 5 ? value.slice(-4) : null,
+    };
+  }
   return {
-    title: input.title,
-    groupName: input.groupName,
-    status: input.status,
-    whatItIs: input.whatItIs ?? null,
-    agency: input.agency ?? null,
-    officialUrl: input.officialUrl ?? null,
-    referenceNumber: input.referenceNumber ?? null,
-    startedOn,
-    dueOn,
-    remindDaysBefore: input.remindDaysBefore,
-    repeatEveryMonths: input.repeatEveryMonths ?? null,
-    notes: input.notes ?? null,
+    data: {
+      title: input.title,
+      groupName: input.groupName,
+      status: input.status,
+      whatItIs: input.whatItIs ?? null,
+      agency: input.agency ?? null,
+      officialUrl: input.officialUrl ?? null,
+      referenceNumber: input.referenceNumber ?? null,
+      startedOn,
+      dueOn,
+      remindDaysBefore: input.remindDaysBefore,
+      repeatEveryMonths: input.repeatEveryMonths ?? null,
+      notes: input.notes ?? null,
+      kind: input.kind,
+      issuedOn,
+      expiresOn,
+      numberLabel: input.numberLabel ?? null,
+      portalUrl: input.portalUrl ?? null,
+      costCents,
+      linkedObligationKeys: input.linkedObligationKeys,
+    },
+    numberUpdate,
   };
 }
 
 export async function createPaperwork(userId: string, input: PaperworkInput): Promise<string> {
-  const data = toData(input);
+  const { data, numberUpdate } = toData(input);
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const last = await tx.businessPaperwork.aggregate({ _max: { sortOrder: true } });
     const row = await tx.businessPaperwork.create({
-      data: { ...data, sortOrder: (last._max.sortOrder ?? 0) + 10, createdByUserId: userId, updatedByUserId: userId },
+      data: {
+        ...data,
+        ...(numberUpdate ?? {}),
+        sortOrder: (last._max.sortOrder ?? 0) + 10,
+        createdByUserId: userId,
+        updatedByUserId: userId,
+      },
       select: { id: true },
     });
-    await audit(tx, userId, "paperwork.created", row.id);
+    await audit(tx, userId, "paperwork.created", row.id, numberUpdate ? ["number"] : undefined);
     return row.id;
   });
 }
@@ -103,7 +152,7 @@ export async function updatePaperwork(
   input: PaperworkInput,
   expectedVersion: number,
 ): Promise<void> {
-  const data = toData(input);
+  const { data, numberUpdate } = toData(input);
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const rows = await tx.$queryRaw<{ version: number }[]>`
@@ -117,12 +166,16 @@ export async function updatePaperwork(
       where: { id },
       data: {
         ...data,
+        ...(numberUpdate ?? {}),
         ...(finishing ? { lastDoneOn: new Date() } : {}),
         updatedByUserId: userId,
         version: { increment: 1 },
       },
     });
-    await audit(tx, userId, "paperwork.updated", id, Object.keys(data));
+    await audit(tx, userId, "paperwork.updated", id, [
+      ...Object.keys(data),
+      ...(numberUpdate ? ["number"] : []),
+    ]);
   });
 }
 
@@ -134,23 +187,33 @@ export async function markPaperworkDone(userId: string, id: string, expectedVers
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const rows = await tx.$queryRaw<
-      { dueOn: Date | null; repeatEveryMonths: number | null; version: number }[]
-    >`SELECT "dueOn", "repeatEveryMonths", "version" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
+      { dueOn: Date | null; expiresOn: Date | null; repeatEveryMonths: number | null; version: number }[]
+    >`SELECT "dueOn", "expiresOn", "repeatEveryMonths", "version" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
     const row = rows[0];
     if (!row) throw new Error("That item no longer exists.");
     if (row.version !== expectedVersion) throw new Error(PAPERWORK_STALE_MESSAGE);
-    // A repeating item moves to its next date. A one-time item is simply finished, so its date is cleared
-    // and it stops reminding. (For a license that expires, change the date on the item instead.)
-    const nextDue =
-      row.repeatEveryMonths && row.dueOn
-        ? nextDueAfterRenewal(row.dueOn, row.repeatEveryMonths, now)
-        : null;
+    // VAULT-1: reminders key off the earlier of the action date and the expiry
+    // date, so mark-done must move BOTH. A repeating item advances each date
+    // it has by its repeat length; a one-time item is simply finished, so
+    // both dates are cleared and it stops reminding.
+    const repeating = Boolean(row.repeatEveryMonths);
+    const nextDue = repeating
+      ? row.dueOn
+        ? nextDueAfterRenewal(row.dueOn, row.repeatEveryMonths!, now)
+        : null
+      : null;
+    const nextExpires = repeating
+      ? row.expiresOn
+        ? nextDueAfterRenewal(row.expiresOn, row.repeatEveryMonths!, now)
+        : null
+      : null;
     await tx.businessPaperwork.update({
       where: { id },
       data: {
         status: "DONE",
         lastDoneOn: now,
         dueOn: nextDue,
+        expiresOn: nextExpires,
         updatedByUserId: userId,
         version: { increment: 1 },
       },
@@ -165,6 +228,12 @@ export async function deletePaperwork(userId: string, id: string): Promise<void>
     const row = await tx.businessPaperwork.findUnique({ where: { id }, select: { templateKey: true } });
     if (!row) return;
     if (row.templateKey) throw new Error("Starter items can't be deleted. Mark it 'Not needed' instead.");
+    // VAULT-1: file rows point at the record (deleting is restricted while they
+    // exist), so refuse in plain words instead of failing on the constraint.
+    const fileCount = await tx.businessRecordFile.count({ where: { recordId: id } });
+    if (fileCount > 0) {
+      throw new Error("This record has files attached. Archive it instead, or remove its files first.");
+    }
     await tx.businessPaperwork.delete({ where: { id } });
     await audit(tx, userId, "paperwork.deleted", id);
   });
@@ -179,35 +248,42 @@ export async function listPaperworkAttention(now = new Date()): Promise<Exceptio
   });
   const items: ExceptionItem[] = [];
   for (const row of rows) {
+    // VAULT-1: a record's own expiry counts too — the reminder keys off the earlier date.
+    const effective = effectiveRecordDate(row);
     const state = reminderState(
-      { status: row.status as PaperworkStatusValue, dueOn: row.dueOn, remindDaysBefore: row.remindDaysBefore },
+      { status: row.status as PaperworkStatusValue, dueOn: effective, remindDaysBefore: row.remindDaysBefore },
       now,
     );
-    if (state.kind === "none" || state.kind === "upcoming" || !row.dueOn) continue;
+    if (state.kind === "none" || state.kind === "upcoming" || !effective) continue;
     const overdue = state.kind === "overdue";
+    const isExpiry = row.expiresOn != null && effective.getTime() === row.expiresOn.getTime() && row.dueOn?.getTime() !== row.expiresOn.getTime();
     items.push({
       category: "BUSINESS_PAPERWORK",
       severity: overdue || state.daysLeft <= 7 ? "high" : "medium",
       title: `${row.title} — ${overdue ? "overdue" : "coming up"}`,
       detail:
-        `Due ${businessDateKey(row.dueOn)}.` +
+        `${isExpiry ? "Expires" : "Due"} ${businessDateKey(effective)}.` +
         (row.agency ? ` Agency: ${row.agency}.` : "") +
         " Open it to renew or update it, then press 'Mark done'.",
       href: `/desk/paperwork/${row.id}`,
-      dueOn: row.dueOn,
+      dueOn: effective,
       dueDateOnly: true,
-      since: row.dueOn,
+      since: effective,
     });
   }
   const setupLeft = rows.filter(
-    (row) => !row.dueOn && (row.status === "TO_DO" || row.status === "IN_PROGRESS") && row.templateKey !== null,
+    (row) =>
+      !row.dueOn &&
+      !row.expiresOn &&
+      (row.status === "TO_DO" || row.status === "IN_PROGRESS") &&
+      row.templateKey !== null,
   );
   if (setupLeft.length > 0) {
     items.push({
       category: "BUSINESS_PAPERWORK",
       severity: "medium",
       title: `Business setup: ${setupLeft.length} ${setupLeft.length === 1 ? "step" : "steps"} still to do`,
-      detail: "Your LLC, EIN, licenses and insurance. Open Business paperwork to see what's next, or mark steps you don't need.",
+      detail: "Your LLC, EIN, licenses and insurance. Open Business records to see what's next, or mark steps you don't need.",
       href: "/desk/paperwork",
       since: setupLeft.reduce((oldest, row) => (row.createdAt < oldest ? row.createdAt : oldest), setupLeft[0].createdAt),
     });
