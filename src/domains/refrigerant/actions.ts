@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
+import { getRecord } from "@/domains/paperwork/records";
 import { checkRefrigerantInput, keepUntil, refrigerantRecordRequired, type RefrigerantInput } from "./rules";
 import type { StatementFacts } from "./statement";
 
@@ -48,7 +49,37 @@ export async function saveRefrigerantRecord(actorUserId: string, applianceId: st
   });
 }
 
-export async function loadRefrigerantPanel(applianceId: string, now: Date) {
+/**
+ * OPS-2 + VAULT-1: keep the recycler's receipt (photo or PDF) on one business record, so it gets the vault's private
+ * files, magic-byte checks and export pack. Owner only (the vault's rule for uploads). Idempotent: pressing it twice, or
+ * two people at once, finds the record already linked and creates nothing. Needs the signed record to exist first.
+ */
+export async function keepReceiptOnRecord(actorUserId: string, applianceId: string): Promise<{ recordId: string; created: boolean }> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+    const record = await tx.refrigerantRecord.findUnique({ where: { applianceId } });
+    if (!record) throw new RefrigerantError("Sign the refrigerant record first, then keep the receipt with it.");
+    if (record.receiptRecordId) return { recordId: record.receiptRecordId, created: false };
+    const years = (await ruleAsOf<number>("records.refrigerant_keep_years", new Date())).value;
+    const last = await tx.businessPaperwork.aggregate({ _max: { sortOrder: true } });
+    const made = await tx.businessPaperwork.create({
+      data: {
+        title: `Refrigerant disposal receipt — ${record.assetNumberSnapshot}`, groupName: "Refrigerant disposal", kind: "DOCUMENT", status: "DONE",
+        agency: record.recyclerName, referenceNumber: record.receiptReference, issuedOn: record.recoveredOn, remindDaysBefore: 0,
+        notes: `Keep until ${businessDateKey(keepUntil(record.recoveredOn, years))} (${years} years from the recovery date; starting value, not confirmed).`,
+        sortOrder: (last._max.sortOrder ?? 0) + 10, createdByUserId: actorUserId, updatedByUserId: actorUserId,
+      },
+      select: { id: true },
+    });
+    await tx.refrigerantRecord.update({ where: { applianceId }, data: { receiptRecordId: made.id } });
+    await tx.auditLog.create({ data: { userId: actorUserId, action: "appliance.refrigerant_receipt_record_created", entityType: "Appliance", entityId: applianceId, newValue: { recordId: made.id } } });
+    return { recordId: made.id, created: true };
+  });
+}
+
+/** `role` is the viewer's: the receipt record is shown only when the vault would show it to them. */
+export async function loadRefrigerantPanel(applianceId: string, now: Date, role: string | undefined) {
   const appliance = await prisma.appliance.findUnique({
     where: { id: applianceId },
     select: { applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true } }, refrigerantRecord: true },
@@ -57,7 +88,8 @@ export async function loadRefrigerantPanel(applianceId: string, now: Date) {
   if (!refrigerantRecordRequired(true, appliance.retiredPlan)) return null;
   const years = (await ruleAsOf<number>("records.refrigerant_keep_years", now)).value;
   const record = appliance.refrigerantRecord;
-  return { record, locked: appliance.retiredPlan.doneOn !== null, years, keepUntil: record ? keepUntil(record.recoveredOn, years) : null };
+  const receiptRecord = record?.receiptRecordId ? await getRecord(role, record.receiptRecordId) : null;
+  return { receiptRecord: receiptRecord ? { id: receiptRecord.id, fileCount: receiptRecord.files.length } : null, record, locked: appliance.retiredPlan.doneOn !== null, years, keepUntil: record ? keepUntil(record.recoveredOn, years) : null };
 }
 
 export async function loadStatementFacts(applianceId: string): Promise<StatementFacts | null> {

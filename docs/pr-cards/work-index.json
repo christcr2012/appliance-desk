@@ -4742,7 +4742,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "IN PROGRESS — first AR-12 selection controls and Bills/Customers saved views PR in CI; remaining outcomes pending",
       "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [

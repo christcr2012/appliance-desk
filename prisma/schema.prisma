@@ -5955,6 +5955,7 @@ model BusinessPaperwork {
   recordFiles     BusinessRecordFile[]
   readinessLicenses JurisdictionReadiness[] @relation("ReadinessLicenseRecord")
   insurancePolicy OwnerInsurancePolicy? @relation("InsurancePolicyRecord")
+  refrigerantReceipt RefrigerantRecord? @relation("RefrigerantReceiptRecord")
 
   @@index([status, dueOn])
 }
@@ -6572,6 +6573,9 @@ model RefrigerantRecord {
   assetNumberSnapshot String
   applianceDescriptionSnapshot String
   serialNumberSnapshot String?
+  /// OPS-2 + VAULT-1: the business record that holds the recycler's receipt photo or PDF (cleared if that record is ever deleted).
+  receiptRecordId  String?  @unique
+  receiptRecord    BusinessPaperwork? @relation("RefrigerantReceiptRecord", fields: [receiptRecordId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

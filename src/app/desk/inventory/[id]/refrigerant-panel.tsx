@@ -1,6 +1,7 @@
 "use client";
 import { useActionState } from "react";
-import { saveRefrigerantAction, type RefrigerantActionState } from "./refrigerant-actions";
+import Link from "next/link";
+import { keepReceiptAction, saveRefrigerantAction, type RefrigerantActionState } from "./refrigerant-actions";
 import { OUTCOME_LABELS, REFRIGERANT_TYPES } from "@/domains/refrigerant/rules";
 
 export type RefrigerantPanelProps = {
@@ -9,6 +10,8 @@ export type RefrigerantPanelProps = {
   locked: boolean;
   keepYears: number;
   keepUntilText: string | null;
+  isOwner: boolean;
+  receiptRecord: null | { id: string; fileCount: number };
   record: null | {
     refrigerantType: string; outcome: "RECOVERED" | "LEAKED_BEFORE"; recoveredByName: string; recoveredByAddress: string;
     certificationNumber: string | null; equipmentUsed: string | null; recoveredOn: string; recyclerName: string | null; receiptReference: string | null;
@@ -25,9 +28,10 @@ function Input({ label, name, defaultValue, required = false, type = "text", max
 }
 
 /** "Refrigerant record" for a retired fridge or freezer that is being scrapped or thrown away. */
-export function RefrigerantPanel({ applianceId, today, locked, keepYears, keepUntilText, record }: RefrigerantPanelProps) {
+export function RefrigerantPanel({ applianceId, today, locked, keepYears, keepUntilText, isOwner, receiptRecord, record }: RefrigerantPanelProps) {
   const [state, action, pending] = useActionState(saveRefrigerantAction.bind(null, applianceId), { status: "idle" } as RefrigerantActionState);
   const saved = record !== null;
+  const [receiptState, receiptAction, receiptPending] = useActionState(keepReceiptAction.bind(null, applianceId), { status: "idle" } as RefrigerantActionState);
   return (
     <section className="rounded-card border border-line bg-surface p-5" aria-labelledby="refrigerant-heading">
       <h2 id="refrigerant-heading" className="text-lg font-semibold">Refrigerant record</h2>
@@ -40,6 +44,15 @@ export function RefrigerantPanel({ applianceId, today, locked, keepYears, keepUn
           <p className="font-semibold">Signed. {record.refrigerantType} — {record.outcome === "RECOVERED" ? `recovered by ${record.recoveredByName}` : "had already leaked"} on {record.recoveredOn}.</p>
           {keepUntilText ? <p className="text-ink-soft">Keep until {keepUntilText}.</p> : null}
           <a className="inline-block min-h-11 font-semibold underline" href={`/desk/inventory/${applianceId}/refrigerant-statement`} target="_blank" rel="noopener noreferrer">Print the statement for the scrap yard (PDF)</a>
+          {receiptRecord ? (
+            <p>Recycler&apos;s receipt: {receiptRecord.fileCount > 0 ? `${receiptRecord.fileCount} file${receiptRecord.fileCount === 1 ? "" : "s"} kept privately` : "no file uploaded yet"}. <Link className="underline" href={`/desk/paperwork/${receiptRecord.id}`}>Open the receipt record</Link> to {receiptRecord.fileCount > 0 ? "add another file" : "upload the photo or PDF"}.</p>
+          ) : isOwner ? (
+            <form action={receiptAction}>
+              <button type="submit" disabled={receiptPending} className="min-h-11 rounded-control border border-line px-4 font-medium disabled:opacity-60">{receiptPending ? "Working…" : "Keep the recycler's receipt photo with my business records"}</button>
+              {receiptState.status === "error" ? <p role="alert" className="text-sm text-danger">{receiptState.message}</p> : null}
+              {receiptState.status === "success" ? <p role="status" className="text-sm text-ink">{receiptState.message}</p> : null}
+            </form>
+          ) : null}
         </div>
       ) : null}
       {!locked ? (

@@ -1,3 +1,23 @@
+## October 27 — OPS-2: recycler receipt photo on a record (branch `ai/claude/ops2-receipt-photo`)
+
+After a refrigerant record is signed, the owner can keep the recycler's receipt photo or PDF with the business
+records (private files, same pattern as the insurance certificate). Tests on real Postgres pass. Still open on OPS-2:
+the sealed-system repair gate (needs a technician-certification record). Vehicle-insurance link is PR #689 (auto-merge on).
+## October 27 — Lane 1 AR-12 review fixes (PR #693)
+Addressed three Codex findings: searched record results cannot be selected for a different query, native segmented radios work without callbacks, and changing list search/filters resets page numbers. Fixed picker lint and Bills workspace test fake; added regression coverage. Fresh exact-head CI/review still required; an unrelated compliance lock-test failure in the prior CI is being checked separately.
+
+## October 27 — Lane 1 AR-12 controls and saved views (PR incoming)
+Built five accessible kit choice controls, mobile/desktop record lookup, built-in Bills/Customers views, honest pending flags on filters not yet supported, real customer search/rental/property-manager filtering, and owner/admin-only saved views with the existing locked workspace store. Tests now cover controls, view registry, customer predicates, and strict saved filter values. CI and review remain pending; no money logic or production settings changed. Remaining AR-12 wording, status explanation, feature settings, help and practice outcomes follow separately.
+
+## October 27 — Lane 1 AR-12: accessible selection controls and useful views (plan)
+Plan committed before implementation on `ai/chatgpt/ar12-controls-views-20261027`: five accessible kit selectors, starter list views, and supported saved Bills and Customers filters. Tests and exact-head CI will be required before merge; no owner confirmation is assumed.
+
+## October 27 — Fix: closing the emergency link works in the same millisecond (branch `ai/claude/pause-window-edge`)
+
+CI caught a rare edge from the successor-pause work (#672): if "Close this link now" and the contact's Pause press landed in
+the very same millisecond, the pause still went through. The window is now strictly before its end. A test checks the exact
+closing instant. Nothing else changes.
+
 ## October 27 — OPS-3: vehicle-to-insurance link (branch `ai/claude/ops3-vehicle-insurance`)
 
 Each delivery vehicle can now be linked to the insurance policy that covers it. The vehicle page says "Insured by …,

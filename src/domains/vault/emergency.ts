@@ -260,7 +260,7 @@ async function findByToken(token: string) {
 
 /** The contact may pause charges while the 24-hour window after the code is open, even after the one download. */
 function pauseWindowOpen(row: { status: string; exportExpiresAt: Date | null }, now: Date): boolean {
-  return (row.status === "VERIFIED" || row.status === "CONSUMED") && row.exportExpiresAt !== null && now <= row.exportExpiresAt;
+  return (row.status === "VERIFIED" || row.status === "CONSUMED") && row.exportExpiresAt !== null && now < row.exportExpiresAt; // strictly before: closing a link stamps "now", and the same millisecond must already count as closed
 }
 
 function publicState(row: RequestRow, settings: EmergencySettings, now: Date, chargesPaused = false): PublicEmergencyState {
