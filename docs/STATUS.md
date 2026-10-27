@@ -6,6 +6,8 @@ live policies can be picked; deleting a policy just clears the link. Additive mi
 Merged earlier today: review check (#685), insurance certificate on a record (#687, #688). GitHub rule: the
 up-to-date requirement is off; `review-gate` still needs to be saved as a required check (OWNER-CHECKLIST section A).
 NEXT: OPS-2 leftovers (sealed-system technician check, receipt photo).
+## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
+React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 
 ## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
 

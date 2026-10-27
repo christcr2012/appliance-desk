@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ViewTransition, useEffect, useRef, useState, type ReactNode } from "react";
 import { GlobalSearchBox } from "@/components/global-search-box";
 import {
   ApplianceServiceIcon,
@@ -258,7 +258,9 @@ export function AppShell({
           tabIndex={-1}
           className="mx-auto min-w-0 max-w-screen-2xl overscroll-y-contain p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-6 lg:p-8 lg:pb-8 print:max-w-none print:p-0"
         >
-          {children}
+          <ViewTransition key={pathname?.split("/")[2] ?? "desk"} default="none" enter="desk-area-enter" exit="desk-area-exit">
+            <div>{children}</div>
+          </ViewTransition>
         </main>
       </div>
 
