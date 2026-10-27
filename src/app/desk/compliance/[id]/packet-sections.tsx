@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/money-ui";
 import type { PacketData } from "@/domains/compliance/schedule-c";
 import type { Worksheet4562, Worksheet4797 } from "@/domains/compliance/worksheets";
+import type { BppSnapshot } from "@/domains/compliance/bpp";
 
 /**
  * CMP-2: the filing-page sections for the income-tax filings — Schedule C
@@ -179,6 +180,132 @@ export function ScheduleCPacketSection({
             <li>
               <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=packet-csv`}>
                 Accountant packet (CSV)
+              </a>
+            </li>
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * CMP-4: the Weld property declaration section — the January 1 snapshot,
+ * the exemption verdict, the extension choice and the downloads. All of
+ * it comes from the filing's prepared snapshot, never a live recompute.
+ */
+export function BppSection({
+  filingId,
+  snapshot,
+  outputsReady,
+}: {
+  filingId: string;
+  snapshot: BppSnapshot;
+  outputsReady: boolean;
+}) {
+  const renters = new Set(snapshot.items.filter((i) => i.rentedOut).map((i) => i.userName).filter(Boolean));
+  return (
+    <div className="space-y-5">
+      <section className="max-w-3xl space-y-2">
+        <h3 className="font-semibold text-ink">
+          January 1, {snapshot.year} snapshot — {snapshot.items.length} item
+          {snapshot.items.length === 1 ? "" : "s"}, {formatMoney(snapshot.totalCostCents)} in original cost
+        </h3>
+        {snapshot.verdict === "UNDER" && snapshot.thresholdCents !== null ? (
+          <p className="text-sm text-ink-soft">
+            <span className="font-semibold text-ink">No declaration needed.</span> The total is at or under the{" "}
+            {formatMoney(snapshot.thresholdCents)} exemption for {snapshot.year}, so this filing has been closed as
+            not needed with these numbers kept — you can show the working if the assessor ever asks.
+          </p>
+        ) : snapshot.verdict === "OVER" && snapshot.thresholdCents !== null ? (
+          <p className="text-sm text-ink-soft">
+            Over the {formatMoney(snapshot.thresholdCents)} exemption for {snapshot.year} — the declaration is due
+            April 15. File the filled forms or the spreadsheet with the Weld County Assessor.
+          </p>
+        ) : (
+          <p className="text-sm text-ink-soft">
+            The rule book has no exemption amount on file, so no exemption verdict is offered — the snapshot is
+            ready, and the assessor or your CPA can confirm whether a declaration is due.
+          </p>
+        )}
+        <p className="text-sm text-ink-soft">
+          Totals use original cost: the assessor works out the actual value from the cost and the year acquired on
+          their own schedules. If your total is anywhere near the exemption line, check with the assessor or your
+          CPA before relying on the verdict.
+        </p>
+        {snapshot.items.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="py-2 pr-4 font-medium text-ink">Asset</th>
+                <th className="py-2 pr-4 font-medium text-ink">Description</th>
+                <th className="py-2 pr-4 font-medium text-ink">Year</th>
+                <th className="py-2 pr-4 font-medium text-ink">Cost</th>
+                <th className="py-2 font-medium text-ink">On January 1</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snapshot.items.map((item) => (
+                <tr key={item.assetNumber} className="border-b border-border">
+                  <td className="py-2 pr-4">{item.assetNumber}</td>
+                  <td className="py-2 pr-4">
+                    {item.description}
+                    {item.serialNumber ? ` — serial ${item.serialNumber}` : ""}
+                  </td>
+                  <td className="py-2 pr-4">{item.yearAcquired}</td>
+                  <td className="py-2 pr-4">{formatMoney(item.costCents)}</td>
+                  <td className="py-2">{item.rentedOut ? `Rented to ${item.userName ?? "a customer"}` : "On hand"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-sm text-ink-soft">No business property was on the records for January 1.</p>
+        )}
+        {snapshot.firstTimeFiler ? (
+          <p className="text-sm text-ink-soft">
+            First-time filer: items over $350 are listed one by one ({snapshot.over350Count} of them), and the
+            &ldquo;new business&rdquo; box is ticked on the DS 056.
+          </p>
+        ) : null}
+        {snapshot.extension ? (
+          <p className="text-sm text-ink-soft">
+            Need more time? You can ask the assessor for an extension — the request must be in by April 15 and
+            costs {formatMoney(snapshot.extension.tenDayFeeCents)} for 10 more days or{" "}
+            {formatMoney(snapshot.extension.twentyDayFeeCents)} for 20.
+          </p>
+        ) : null}
+        <p className="text-sm text-ink-soft">
+          This snapshot covers the appliances the app tracks. Tools, office equipment and anything else the
+          business owns are not in these records — add them by hand on the form before you file.
+        </p>
+      </section>
+
+      {outputsReady ? (
+        <section className="max-w-3xl space-y-2">
+          <h3 className="font-semibold text-ink">Declaration files</h3>
+          <p className="text-sm text-ink-soft">
+            Built from the approved snapshot above. The DS 056 prints the first 5 items and the DS 060 the first 4
+            rented-out units; the spreadsheet lists every item and is the itemized listing the form asks you to
+            attach.
+            {renters.size > 1
+              ? " The DS 060's renter column can print only one name, so it is left blank when units are with different renters — each unit's renter is in the spreadsheet."
+              : ""}
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-sm">
+            <li>
+              <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=ds056`}>
+                DS 056 — declaration schedule (PDF)
+              </a>
+            </li>
+            <li>
+              <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=ds060`}>
+                DS 060 — lessor schedule (PDF)
+              </a>
+            </li>
+            <li>
+              <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=bpp-csv`}>
+                Itemized listing spreadsheet (CSV)
               </a>
             </li>
           </ul>

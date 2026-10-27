@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getComplianceFiling } from "@/domains/compliance/filings";
 import { build1099Outputs, payerIdentity, type Prepared1099Row } from "@/domains/compliance/information-returns";
 import { dollars } from "@/domains/compliance/iris-csv";
-import { fillDr0104EpVoucher, fillEstimatedTaxVoucher, fillForm8300, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
+import { fillDr0104EpVoucher, fillDs056, fillDs060, fillEstimatedTaxVoucher, fillForm8300, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
+import { bppBusinessFromPrepared, bppSnapshotFromPrepared, bppSpreadsheetCsv } from "@/domains/compliance/bpp";
 import { packetCsv, packetPdf, type PacketData } from "@/domains/compliance/schedule-c";
 import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
 
@@ -73,6 +74,82 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         headers: {
           "Content-Type": "application/pdf",
           "Content-Disposition": `attachment; filename="accountant-packet-${packet.year}.pdf"`,
+        },
+      });
+    }
+
+    if (filing.obligationKey === "co.bpp.weld_declaration" && ["bpp-csv", "ds056", "ds060"].includes(kind ?? "")) {
+      if (!["APPROVED", "SUBMITTED", "ACCEPTED"].includes(filing.state)) {
+        return new Response("Approve the filing first — the files are built from the approved snapshot.", { status: 409 });
+      }
+      const snapshot = bppSnapshotFromPrepared(filing.preparedData);
+      if (!snapshot) return new Response("That snapshot is not part of this filing.", { status: 404 });
+      if (kind === "bpp-csv") {
+        return new Response(bppSpreadsheetCsv(snapshot), {
+          headers: {
+            "Content-Type": "text/csv",
+            "Content-Disposition": `attachment; filename="weld-declaration-${snapshot.year}.csv"`,
+          },
+        });
+      }
+      const business = bppBusinessFromPrepared(filing.preparedData);
+      const cityLine =
+        [business?.city, business?.state].filter(Boolean).join(", ") + (business?.zip ? ` ${business.zip}` : "");
+      const identity = {
+        mailing: [business?.legalName ?? undefined, business?.address ?? undefined, cityLine || undefined]
+          .filter(Boolean)
+          .join("\n"),
+        propertyLocation: [business?.legalName ?? undefined, "Greeley, CO"].filter(Boolean).join(" — "),
+        productOrService: "Appliance rental",
+        county: "Weld",
+        ownerName: business?.legalName ?? undefined,
+        phone: business?.phone ?? undefined,
+      };
+      const describe = (item: (typeof snapshot.items)[number]) =>
+        item.serialNumber ? `${item.description} — serial ${item.serialNumber}` : item.description;
+      if (kind === "ds056") {
+        const bytes = await fillDs056({
+          identity,
+          newBusiness: snapshot.firstTimeFiler,
+          rows: snapshot.items.slice(0, 5).map((item) => ({
+            itemId: item.assetNumber,
+            quantity: "1",
+            description: describe(item),
+            yearAcquired: String(item.yearAcquired),
+            originalCost: dollars(item.costCents),
+            placedInService: item.placedInService,
+          })),
+        });
+        return new Response(Buffer.from(bytes), {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="ds-056-weld-${snapshot.year}.pdf"`,
+          },
+        });
+      }
+      const rented = snapshot.items.filter((item) => item.rentedOut);
+      const renters = new Set(rented.map((item) => item.userName).filter(Boolean));
+      const firstRented = rented[0];
+      const bytes = await fillDs060({
+        identity,
+        singleRenter:
+          renters.size === 1 && firstRented?.userName
+            ? `${firstRented.userName}\n${firstRented.userAddress ?? ""}`
+            : undefined,
+        rows: rented.slice(0, 4).map((item) => ({
+          quantity: "1",
+          description: describe(item),
+          leaseTerm: "",
+          monthlyRent: item.monthlyRentCents !== null ? dollars(item.monthlyRentCents) : "",
+          yearAcquired: String(item.yearAcquired),
+          originalCost: dollars(item.costCents),
+          placedInService: item.placedInService,
+        })),
+      });
+      return new Response(Buffer.from(bytes), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="ds-060-weld-${snapshot.year}.pdf"`,
         },
       });
     }

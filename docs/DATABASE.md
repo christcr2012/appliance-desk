@@ -1,3 +1,9 @@
+## November 11 — Colorado and local filings (CMP-4, additive)
+
+Migration `20261111000000_cmp4_colorado_local`.
+- `ComplianceProfile` gains the local-filing facts: `tradeName` (the name the business trades under, if any — an LLC's statement of trade name never renews, C.R.S. § 7-71-104, so it carries no dates), `usdotNumber` (digits only; the FMCSA biennial update month and odd/even years are read off its last two digits), `truckRegistrationMonth` (1–12), `greeleyLicenseDate` (the date on the city's license; renewals fall every two years on that date), and the Secretary of State registered-agent block (`registeredAgentName`, `registeredAgentAddress`, `registeredAgentCity`, `registeredAgentState`, `registeredAgentZip`) printed as exact values to type on the SOS periodic report. All nullable: a missing fact means the obligation shows without dates, never an invented deadline.
+- Two dated rules are seeded as RESEARCHED `LegalRuleVersion` rows by the migration: `co.bpp.exemption_threshold` (5,600,000 cents — the $56,000 Weld County total-actual-value exemption for 2026, compared against the fleet's total original cost, the figure the assessor's actual value derives from) and `co.bpp.extension` (the declaration extension fees, $20 for 10 days / $40 for 20 days). The Weld forms DS 056 and DS 060 are vendored as fillable PDFs under `src/domains/compliance/forms/co/` and pinned in the forms manifest; the forms are never pre-filled with the owner's tax ID or a signature.
+
 ## November 10 — Income tax helpers (CMP-2, additive)
 
 Migration `20261110000000_cmp2_income_tax`.
