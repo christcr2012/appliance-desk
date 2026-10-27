@@ -47,6 +47,18 @@
       "sha256": "2b4e33fe2bdc4f5e3b324687f11ef7a0b22698673341a7a8b07764203946b12c",
       "source": "https://tax.colorado.gov/sites/tax/files/documents/DR_0104EP_2026.pdf",
       "title": "DR 0104EP, Colorado Estimated Income Tax Payment Form (2026; worksheet page index 2, fillable payment voucher page index 4)"
+    },
+    "co/ds056.pdf": {
+      "retrievedOn": "2026-10-27",
+      "sha256": "15575c69dfd98232c2a5569da98a84254fcb7f9fccdfe4bcc5d7e76418d1d5ce",
+      "source": "https://www.weld.gov/files/sharedassets/public/departments/assessor/documents/personal-property-ds056-declaration-and-instructions_1.pdf",
+      "title": "DS 056, Personal Property Declaration Schedule (Weld County Assessor; instructions pages 0-1, form pages 2-3)"
+    },
+    "co/ds060.pdf": {
+      "retrievedOn": "2026-10-27",
+      "sha256": "1b126326757d97c04fd9546d00ee8940803c73bb01cf49d87015017307ca8bc3",
+      "source": "https://www.weld.gov/files/sharedassets/public/departments/assessor/documents/personal-property-ds060-leasing-declaration-and-instructions_1.pdf",
+      "title": "DS 060, Lessor's Personal Property Declaration Schedule (Weld County Assessor; instructions pages 0-1, form pages 2-3)"
     }
   }
 }

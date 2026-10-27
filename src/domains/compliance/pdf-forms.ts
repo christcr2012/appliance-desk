@@ -110,13 +110,12 @@ import { MISC_COPY_B_FIELDS } from "./forms/f1099msc.fields";
 import { W9_FIELDS } from "./forms/fw9.fields";
 import { F8300_FIELDS } from "./forms/f8300.fields";
 
-/** Shared fill: verify the vendored file's hash, check every mapped field exists, then set the given values. */
-async function fillMappedForm(
+/** Loads a vendored form after verifying its manifest hash; every mapped field name must exist. */
+async function loadVerifiedForm(
   file: string,
-  fieldMap: Record<string, string>,
-  values: Record<string, string | undefined>,
+  fieldNames: string[],
   dir = COMPLIANCE_FORMS_DIR,
-): Promise<Uint8Array> {
+): Promise<{ pdf: PDFDocument; form: ReturnType<PDFDocument["getForm"]> }> {
   const entry = formManifest().forms[file];
   if (!entry) throw new FormLayoutError(`The form ${file} is not in the manifest.`);
   const bytes = fs.readFileSync(path.join(dir, file));
@@ -127,13 +126,24 @@ async function fillMappedForm(
   const pdf = await PDFDocument.load(bytes);
   const form = pdf.getForm();
   const names = new Set(form.getFields().map((f) => f.getName()));
-  for (const fieldName of Object.values(fieldMap)) {
+  for (const fieldName of fieldNames) {
     if (!names.has(fieldName)) {
       throw new FormLayoutError(
         `The official form ${file} no longer has the field ${fieldName} — the form was re-issued; update the field map.`,
       );
     }
   }
+  return { pdf, form };
+}
+
+/** Shared fill: verify the vendored file's hash, check every mapped field exists, then set the given values. */
+async function fillMappedForm(
+  file: string,
+  fieldMap: Record<string, string>,
+  values: Record<string, string | undefined>,
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  const { pdf, form } = await loadVerifiedForm(file, Object.values(fieldMap), dir);
   for (const [key, fieldName] of Object.entries(fieldMap)) {
     const value = values[key];
     if (value !== undefined && value !== "") form.getTextField(fieldName).setText(value);
@@ -293,4 +303,116 @@ export async function fillDr0104EpVoucher(
     },
     dir,
   );
+}
+
+import { DS056_FIELDS, DS056_ROW_FIELDS } from "./forms/ds056.fields";
+import { DS060_FIELDS, DS060_ROW_FIELDS } from "./forms/ds060.fields";
+
+/** The business identity both Weld declaration schedules print. */
+export interface DsIdentity {
+  /** Legal name + mailing address, lines joined with \n. */
+  mailing?: string;
+  /** Business name + where the property sits. */
+  propertyLocation?: string;
+  productOrService?: string;
+  county?: string;
+  ownerName?: string;
+  phone?: string;
+}
+
+export interface Ds056Row {
+  itemId: string;
+  quantity: string;
+  description: string;
+  yearAcquired: string;
+  originalCost: string;
+  placedInService: string;
+}
+
+/**
+ * CMP-4: fills the DS 056 declaration schedule — the business identity,
+ * the "new business" box for a first-time filer, and up to five item
+ * rows (the form's Section D additions table). The FEIN/SSN field and
+ * the signature are never filled: the owner writes and signs at filing.
+ */
+export async function fillDs056(
+  input: { identity: DsIdentity; newBusiness: boolean; rows: Ds056Row[] },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  const rowFields = DS056_ROW_FIELDS.slice(0, input.rows.length);
+  const names = [
+    ...Object.values(DS056_FIELDS),
+    ...rowFields.flatMap((row) => Object.values(row)),
+  ];
+  const { pdf, form } = await loadVerifiedForm("co/ds056.pdf", names, dir);
+  const set = (fieldName: string, value: string | undefined) => {
+    if (value !== undefined && value !== "") form.getTextField(fieldName).setText(value);
+  };
+  set(DS056_FIELDS.mailing, input.identity.mailing);
+  set(DS056_FIELDS.propertyLocation, input.identity.propertyLocation);
+  set(DS056_FIELDS.productOrService, input.identity.productOrService);
+  set(DS056_FIELDS.county, input.identity.county);
+  set(DS056_FIELDS.ownerName, input.identity.ownerName);
+  set(DS056_FIELDS.phone, input.identity.phone);
+  if (input.newBusiness) form.getCheckBox(DS056_FIELDS.newBusiness).check();
+  input.rows.forEach((row, index) => {
+    const fields = rowFields[index];
+    set(fields.itemId, row.itemId);
+    set(fields.quantity, row.quantity);
+    set(fields.description, row.description);
+    set(fields.yearAcquired, row.yearAcquired);
+    set(fields.originalCost, row.originalCost);
+    set(fields.placedInService, row.placedInService);
+  });
+  return pdf.save();
+}
+
+export interface Ds060Row {
+  quantity: string;
+  description: string;
+  leaseTerm: string;
+  monthlyRent: string;
+  yearAcquired: string;
+  originalCost: string;
+  placedInService: string;
+}
+
+/**
+ * CMP-4: fills the DS 060 lessor schedule — the business identity and
+ * up to four rented-out rows. `singleRenter` fills the form's shared
+ * user field only when every rented unit shares that one renter (see
+ * the field map for why); the lease term column stays blank because the
+ * rentals are month-to-month and the form asks for a from-to range.
+ */
+export async function fillDs060(
+  input: { identity: DsIdentity; singleRenter?: string; rows: Ds060Row[] },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  const rowFields = DS060_ROW_FIELDS.slice(0, input.rows.length);
+  const names = [
+    ...Object.values(DS060_FIELDS),
+    ...rowFields.flatMap((row) => Object.values(row)),
+  ];
+  const { pdf, form } = await loadVerifiedForm("co/ds060.pdf", names, dir);
+  const set = (fieldName: string, value: string | undefined) => {
+    if (value !== undefined && value !== "") form.getTextField(fieldName).setText(value);
+  };
+  set(DS060_FIELDS.mailing, input.identity.mailing);
+  set(DS060_FIELDS.propertyLocation, input.identity.propertyLocation);
+  set(DS060_FIELDS.productOrService, input.identity.productOrService);
+  set(DS060_FIELDS.county, input.identity.county);
+  set(DS060_FIELDS.ownerName, input.identity.ownerName);
+  set(DS060_FIELDS.phone, input.identity.phone);
+  set(DS060_FIELDS.userShared, input.singleRenter);
+  input.rows.forEach((row, index) => {
+    const fields = rowFields[index];
+    set(fields.quantity, row.quantity);
+    set(fields.description, row.description);
+    set(fields.leaseTerm, row.leaseTerm);
+    set(fields.monthlyRent, row.monthlyRent);
+    set(fields.yearAcquired, row.yearAcquired);
+    set(fields.originalCost, row.originalCost);
+    set(fields.placedInService, row.placedInService);
+  });
+  return pdf.save();
 }
