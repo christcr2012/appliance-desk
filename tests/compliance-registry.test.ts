@@ -26,6 +26,7 @@ const base: ComplianceContext = {
   usdotNumber: null,
   truckRegistrationMonth: null,
   greeleyLicenseDate: null,
+  firstHireDate: null,
 };
 const ctx = (patch: Partial<ComplianceContext>): ComplianceContext => ({ ...base, ...patch });
 const key = (d: Date) => businessDateKey(d);
@@ -54,6 +55,7 @@ describe("compliance registry completeness", () => {
         "co.bpp.weld_declaration",
         "co.income.dr0104ep",
         "co.payroll.famli",
+        "co.payroll.new_hire",
         "co.payroll.ui",
         "co.payroll.withholding",
         "co.sos.periodic_report",
@@ -161,7 +163,7 @@ describe("period dates", () => {
 
 describe("applies branches", () => {
   it("payroll stays dormant with no employees and wakes up with them", () => {
-    for (const k of ["fed.payroll.941", "fed.payroll.940", "fed.payroll.w2", "co.payroll.withholding", "co.payroll.ui", "co.payroll.famli"]) {
+    for (const k of ["fed.payroll.941", "fed.payroll.940", "fed.payroll.w2", "co.payroll.withholding", "co.payroll.ui", "co.payroll.famli", "co.payroll.new_hire"]) {
       expect(obligationByKey(k)!.applies(base).applies, k).toBe(false);
       expect(obligationByKey(k)!.applies(ctx({ employees: 2 })).applies, k).toBe(true);
     }

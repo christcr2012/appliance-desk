@@ -42,6 +42,8 @@ export const SCHEDULE_C_LINES: ScheduleCLineInfo[] = [
   { line: "22", label: "Supplies", kind: "expense" },
   { line: "23", label: "Taxes and licenses", kind: "expense" },
   { line: "25", label: "Utilities", kind: "expense" },
+  // CMP-5: wages join the worksheet with the first payroll import.
+  { line: "26", label: "Wages less employment credits", kind: "expense" },
   { line: "27a", label: "Other expenses", kind: "expense" },
 ];
 
