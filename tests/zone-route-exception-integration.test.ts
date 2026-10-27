@@ -9,15 +9,19 @@ import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote"
 import { sendEstimate, approveEstimate, convertEstimateToAgreements } from "@/domains/estimates";
 import { recordSigningBusinessReview } from "@/domains/billing/signing-business-review";
 import { sendForSignature, signAgreement } from "@/domains/agreements";
-import { recordDeliveryRouteEvidence, setVerifiedDrivingOrigin } from "@/domains/orders/route-evidence";
+import { customerDeliveryChargesForEstimate, recordDeliveryRouteEvidence, setVerifiedDrivingOrigin } from "@/domains/orders/route-evidence";
+import { currentLocations } from "@/domains/delivery/snapshot";
 import { buildZoneLocation } from "@/domains/delivery/snapshot";
 import { startingZoneSettings, STARTING_CENTER } from "@/domains/delivery/zone";
+import { renderToStaticMarkup } from "react-dom/server";
+import { EstimateDeliveryChoice } from "@/app/estimate/[id]/delivery-choice";
 
 let owner = "";
 vi.mock("@/lib/auth", () => ({ auth: { api: { getSession: async () => ({ user: { id: owner, role: "OWNER", archivedAt: null } }) } } }));
 vi.mock("@/domains/security/two-factor", () => ({ twoFactorEnrollmentRequired: async () => false }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/email", () => ({ sendEmail: async () => ({ sent: true }) }));
+vi.mock("@/app/estimate/[id]/zone-actions", () => ({ chooseDeliveryAction: async () => undefined }));
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && url.pathname === "/appliance_desk_test" && ["localhost", "127.0.0.1"].includes(url.hostname);
@@ -27,6 +31,16 @@ const NEARBY_CENTS = settings.zones[1]!.deliveryCents;
 const approver = { approverName: "Synthetic Customer", approverEmail: "zone-route@test.invalid", ipAddress: null };
 
 type Fixture = Awaited<ReturnType<typeof createSyntheticW22V2Order>>;
+/** What the customer's estimate page shows for each address (the same charge approval and signing require). */
+async function shownCharges(fixture: Fixture) {
+  const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id: fixture.estimateId },
+    select: { status: true, deliveryZoneSnapshot: true, lineItems: { select: { serviceAddressId: true } } } });
+  const ids = estimate.lineItems.map((line) => line.serviceAddressId);
+  const charges = await customerDeliveryChargesForEstimate(fixture.estimateId, currentLocations(estimate.deliveryZoneSnapshot, ids));
+  const html = renderToStaticMarkup(EstimateDeliveryChoice({ estimateId: fixture.estimateId, status: "SENT",
+    snapshot: estimate.deliveryZoneSnapshot, addresses: [...new Set(ids)].flatMap((id) => id ? [{ id, label: "Synthetic address" }] : []), charges }));
+  return { charges, html };
+}
 /** Both addresses 12 straight-line miles north of the zone center: the Local (free) zone. */
 async function freezeLocalZones(fixture: Fixture) {
   const agreements = await prisma.rentalAgreement.findMany({ where: { id: { in: fixture.ids } }, select: { serviceAddressId: true } });
@@ -93,6 +107,9 @@ describe.skipIf(!enabled)("ZONE-1 12 straight-line miles / 20 road miles, end to
     const free = await createSyntheticW22V2Order({ firstDeliveryCents: 0 });
     cleanups.push(free.cleanup);
     await freezeLocalZones(free);
+    const noException = await shownCharges(free);
+    expect(Object.values(noException.charges).every((row) => row.deliverCents === 0 && !row.routeException)).toBe(true);
+    expect(noException.html).not.toContain("driving route");
     await recordSigningBusinessReview(free.owner, review(free));
     await approveConvertAndSign(free);
     const signed = await prisma.rentalAgreement.findMany({ where: { id: { in: free.ids } }, select: { deliveryZoneSnapshot: true } });
@@ -111,6 +128,12 @@ describe.skipIf(!enabled)("ZONE-1 12 straight-line miles / 20 road miles, end to
       miles: 20, source: "OWNER_MANUAL_DRIVING_ROUTE", sourceReference: "Synthetic owner-recorded road route",
       measuredAt: new Date().toISOString(), origin: ORIGIN });
     expect(fee.amountCents).toBe(NEARBY_CENTS);
+    // The customer page shows the exception's price for that address, never "free delivery" above a $75 quote.
+    const firstAddress = (await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: fixture.ids[0] }, select: { serviceAddressId: true } })).serviceAddressId;
+    const shown = await shownCharges(fixture);
+    expect(shown.charges[firstAddress]).toEqual({ deliverCents: NEARBY_CENTS, routeException: true });
+    expect(shown.html).toContain("but because of the driving route to your address, delivery is $75");
+    expect(shown.html).not.toContain("You chose delivery (Free)");
     expect(NEARBY_CENTS).toBe(7500); // the fixture's reviewed delivery charge for the first address
     // An estimate-level exception can't say which of two addresses it is for.
     await expect(recordDeliveryRouteEvidence(fixture.owner, { estimateId: fixture.estimateId }, {

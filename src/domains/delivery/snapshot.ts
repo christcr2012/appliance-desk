@@ -176,6 +176,14 @@ export function zoneSentence(location: ZoneSnapshotLocation): string {
   return `Your address is in our ${location.name} zone${miles}: ${price}.`;
 }
 
+/** The zone line when an owner-recorded driving-route exception sets a different delivery price than the zone's. */
+export function routeExceptionSentence(location: ZoneSnapshotLocation, deliverCents: number | null): string {
+  const miles = location.miles === null ? "" : ` (${formatMiles(location.miles)})`;
+  const price = deliverCents === null ? "to be confirmed" : zonePriceWords(deliverCents);
+  // "but" because the zone's own name may promise a price (the starting name is "Local — free delivery").
+  return `Your address is in our ${location.name} zone${miles}, but because of the driving route to your address, delivery is ${price}.`;
+}
+
 export function formatMiles(miles: number): string {
   const rounded = Math.round(miles * 10) / 10;
   return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)} ${rounded === 1 ? "mile" : "miles"}`;

@@ -134,3 +134,32 @@ export async function assertFrozenV2DeliveryOrderInTx(tx:Prisma.TransactionClien
   if(target.v2Extension.components.filter(x=>x.category==="DELIVERY").length!==1)
     throw new Error("Frozen delivery fee component is missing.");
 }
+
+export type CustomerDeliveryCharge = {
+  /** What delivery costs this address if the customer chooses it (cents); null = to be confirmed. */
+  deliverCents: number | null;
+  /** True when an owner-recorded driving-route exception sets that price instead of the zone price. */
+  routeException: boolean;
+};
+
+/**
+ * ZONE-1 (Codex finding on PR #604): the customer's estimate page shows the SAME delivery charge that quote preparation,
+ * approval and signing require, so a route exception never shows "free" above a quote that charges for delivery.
+ * Read-only; a problem the owner must sort out (e.g. two different exceptions) shows "price to be confirmed".
+ */
+export async function customerDeliveryChargesForEstimate(estimateId: string,
+  locations: ZoneSnapshotLocation[]): Promise<Record<string, CustomerDeliveryCharge>> {
+  const out: Record<string, CustomerDeliveryCharge> = {};
+  await prisma.$transaction(async (tx) => {
+    for (const location of locations) {
+      try {
+        const routeProof = await routeExceptionForAddressInTx(tx, { estimateId, serviceAddressId: location.serviceAddressId });
+        const deliverCents = expectedDeliveryFeeCents({ zone: { ...location, choice: "DELIVER" }, routeProof });
+        out[location.serviceAddressId] = { deliverCents, routeException: Boolean(routeProof) };
+      } catch {
+        out[location.serviceAddressId] = { deliverCents: null, routeException: false };
+      }
+    }
+  });
+  return out;
+}

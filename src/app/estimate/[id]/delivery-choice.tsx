@@ -1,6 +1,7 @@
-import { currentLocations, zoneSentence } from "@/domains/delivery/snapshot";
+import { currentLocations, routeExceptionSentence, zoneSentence } from "@/domains/delivery/snapshot";
 import { zonePriceWords } from "@/domains/delivery/zone";
 import { chooseDeliveryAction } from "./zone-actions";
+import type { CustomerDeliveryCharge } from "@/domains/orders/route-evidence";
 
 const WAITING = new Set(["SENT", "VIEWED"]);
 const RESULT_WORDS: Record<string, string> = {
@@ -13,8 +14,10 @@ const RESULT_WORDS: Record<string, string> = {
  * ZONE-1 on the customer's estimate page: the zone for each delivery address and the choice between delivery and
  * "I'll pick it up". Shows only zone names, miles and prices from the frozen zone (never a map position). Plain forms.
  */
-export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addresses, result }: {
+export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addresses, result, charges = {} }: {
   estimateId: string; status: string; snapshot: unknown; addresses: { id: string; label: string }[]; result?: string;
+  /** The delivery charge the quote must carry per address (route exceptions included); see customerDeliveryChargesForEstimate. */
+  charges?: Record<string, CustomerDeliveryCharge>;
 }) {
   // Only addresses still on the estimate (a removed line's address is never shown or offered).
   const locations = currentLocations(raw, addresses.map((row) => row.id));
@@ -26,13 +29,18 @@ export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addr
       <h2 id="delivery-choice-heading" className="font-semibold">Delivery or pickup</h2>
       {result && RESULT_WORDS[result] && <p role="status" className="mt-2 font-semibold">{RESULT_WORDS[result]}</p>}
       <ul className="mt-3 space-y-4">
-        {locations.map((location) => (
+        {locations.map((location) => {
+          const charge = charges[location.serviceAddressId];
+          // The price shown is the one approval and signing will require: a route exception overrides the zone price.
+          const deliverCents = charge ? charge.deliverCents : location.priceCents;
+          const exception = Boolean(charge?.routeException) && deliverCents !== location.priceCents;
+          return (
           <li key={location.serviceAddressId}>
             <p className="text-ink-faint">{labels.get(location.serviceAddressId) ?? ""}</p>
-            <p className="mt-1">{zoneSentence(location)}</p>
+            <p className="mt-1">{charge && deliverCents === null && location.zone !== "OUTSIDE" ? "We'll confirm your delivery price." : exception ? routeExceptionSentence(location, deliverCents) : zoneSentence(location)}</p>
             <p className="mt-1 font-semibold">
               {location.choice === "DELIVER"
-                ? `You chose delivery${location.priceCents !== null ? ` (${zonePriceWords(location.priceCents)})` : " (price to be confirmed)"}.`
+                ? `You chose delivery${deliverCents !== null ? ` (${zonePriceWords(deliverCents)})` : " (price to be confirmed)"}.`
                 : "You chose to pick it up ($0). We'll arrange a time and place with you."}
             </p>
             {location.choice === "CUSTOMER_PICKUP" && (
@@ -54,7 +62,7 @@ export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addr
                     <input type="hidden" name="serviceAddressId" value={location.serviceAddressId} />
                     <input type="hidden" name="choice" value="DELIVER" />
                     <button className="min-h-11 rounded border border-line px-3 font-medium">
-                      Deliver it{location.priceCents !== null ? ` (${zonePriceWords(location.priceCents)})` : ""}
+                      Deliver it{deliverCents !== null ? ` (${zonePriceWords(deliverCents)})` : ""}
                     </button>
                   </form>
                 )}
@@ -71,7 +79,8 @@ export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addr
               </div>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );

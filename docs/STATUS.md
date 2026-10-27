@@ -5,7 +5,8 @@ with the U.S. Census Bureau (server only, 5 s, saved per address in its own tabl
 lookup trouble → "We'll confirm" + a To do. Delivery or "I'll pick it up" ($0) on desk and customer estimate pages;
 frozen once sent, copied to the agreement. `/service-area` is our own SVG map + town list + checker; `/rent/{town}`
 from the town list. One rule sets each address's delivery charge for the fee review, quote, approval and signing:
-pickup $0, else an owner-recorded driving-route exception's frozen price, else the zone price. Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
+pickup $0, else an owner-recorded driving-route exception's frozen price, else the zone price — and the desk and
+customer estimate pages show that same price (an exception says so in plain words). Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
 Proof: unit tests and the zone DB tests run here on a throwaway Postgres; browser tests in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
 
 ## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)

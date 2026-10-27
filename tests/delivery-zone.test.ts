@@ -7,7 +7,7 @@ import { TOWNS, townBySlug, townByName, townsWithZones } from "@/domains/deliver
 import { frozenRouteZones, mileageBand, reviewedDrivingFee } from "@/domains/orders/delivery";
 import {
   buildZoneLocation, choiceAllowed, chosenDeliveryCents, confirmZoneByMiles, currentLocations, isPickupOnly,
-  readZoneSnapshot, unresolvedDeliveryAddresses, zoneQuoteIdentity, zoneSentence,
+  readZoneSnapshot, routeExceptionSentence, unresolvedDeliveryAddresses, zoneQuoteIdentity, zoneSentence,
 } from "@/domains/delivery/snapshot";
 import { expectedDeliveryFeeCents } from "@/domains/orders/route-evidence";
 import { deliveryWindowStep, isPickupAddress } from "@/domains/delivery/pickup-guard";
@@ -200,6 +200,9 @@ describe("ZONE-1 estimate snapshot (pure)", () => {
       pickupPriceCents: 7500, choice: "DELIVER", checkedAt: now.toISOString() });
     expect(row.miles).toBeCloseTo(19.3, 0);
     expect(zoneSentence(row)).toMatch(/^Your address is in our Nearby zone \(19\.\d miles\): delivery \$75\.$/);
+    // An owner-recorded driving-route exception: the zone stays, the price shown is the exception's.
+    expect(routeExceptionSentence(row, 12500)).toMatch(/^Your address is in our Nearby zone \(19\.\d miles\), but because of the driving route to your address, delivery is \$125\.$/);
+    expect(routeExceptionSentence({ ...row, miles: null }, null)).toBe("Your address is in our Nearby zone, but because of the driving route to your address, delivery is to be confirmed.");
     expect(chosenDeliveryCents(row)).toBe(7500);
     expect(chosenDeliveryCents({ ...row, choice: "CUSTOMER_PICKUP" })).toBe(0);
   });

@@ -1,4 +1,5 @@
-import { readZoneSnapshot, zoneSentence, formatMiles, chosenDeliveryCents } from "@/domains/delivery/snapshot";
+import { readZoneSnapshot, zoneSentence, formatMiles, chosenDeliveryCents, routeExceptionSentence } from "@/domains/delivery/snapshot";
+import type { CustomerDeliveryCharge } from "@/domains/orders/route-evidence";
 import { zonePriceWords } from "@/domains/delivery/zone";
 import { checkZoneAction, confirmZoneMilesAction, pickupArrangedAction, setZoneChoiceAction } from "./zone-actions";
 
@@ -13,10 +14,12 @@ const METHOD_WORDS = { STRAIGHT_LINE: "straight line from the center", DRIVING: 
  * ZONE-1 on the desk estimate page: the zone found for each delivery address, its price, the delivery or pickup choice,
  * and the fixes for an unknown zone. Plain forms: works without JavaScript.
  */
-export function DeliveryZonePanel({ estimate, addresses, note, error }: {
+export function DeliveryZonePanel({ estimate, addresses, note, error, charges = {} }: {
   estimate: { id: string; status: string; deliveryZoneSnapshot: unknown; deliveryZoneSnapshotAt: Date | null };
   addresses: { id: string; label: string }[];
   note?: string; error?: string;
+  /** The delivery charge the quote must carry per address (route exceptions included). */
+  charges?: Record<string, CustomerDeliveryCharge>;
 }) {
   const snapshot = readZoneSnapshot(estimate.deliveryZoneSnapshot);
   const canCheck = CHECKABLE.has(estimate.status);
@@ -36,11 +39,21 @@ export function DeliveryZonePanel({ estimate, addresses, note, error }: {
           if (!location) return (
             <li key={address.id} className="text-sm"><p className="font-semibold">{address.label}</p><p className="text-ink-soft">Not checked yet.</p></li>
           );
-          const chosen = chosenDeliveryCents(location);
+          const charge = charges[address.id];
+          // Same rule as approval and signing: an owner-recorded driving-route exception overrides the zone price.
+          const deliverCents = charge ? charge.deliverCents : location.priceCents;
+          const exception = Boolean(charge?.routeException) && deliverCents !== location.priceCents;
+          const chosen = location.choice === "DELIVER" && charge ? deliverCents : chosenDeliveryCents(location);
           return (
             <li key={address.id} className="rounded-card border border-line p-3 text-sm">
               <p className="font-semibold">{address.label}</p>
-              <p className="mt-1">{zoneSentence(location)}</p>
+              <p className="mt-1">{charge && deliverCents === null && location.zone !== "OUTSIDE" ? "We'll confirm your delivery price." : exception ? routeExceptionSentence(location, deliverCents) : zoneSentence(location)}</p>
+              {exception && (
+                <p className="mt-1 text-ink-soft">
+                  Driving-route exception recorded: it replaces the zone price
+                  ({location.priceCents === null ? "not set" : zonePriceWords(location.priceCents)}) on the quote, approval and signing.
+                </p>
+              )}
               <p className="mt-1 text-ink-soft">
                 {location.miles !== null ? `${formatMiles(location.miles)}, ${METHOD_WORDS[location.method]}. ` : ""}
                 {location.pickupPriceCents !== null ? `Our pickup at the end of the rental: ${zonePriceWords(location.pickupPriceCents)}. ` : ""}
@@ -70,7 +83,7 @@ export function DeliveryZonePanel({ estimate, addresses, note, error }: {
                       <input type="hidden" name="estimateId" value={estimate.id} />
                       <input type="hidden" name="serviceAddressId" value={address.id} />
                       <input type="hidden" name="choice" value="DELIVER" />
-                      <button className={button}>Deliver it{location.priceCents !== null ? ` (${zonePriceWords(location.priceCents)})` : ""}</button>
+                      <button className={button}>Deliver it{deliverCents !== null ? ` (${zonePriceWords(deliverCents)})` : ""}</button>
                     </form>
                   )}
                   {location.choice !== "CUSTOMER_PICKUP" && (
