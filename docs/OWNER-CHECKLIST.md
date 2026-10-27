@@ -70,8 +70,9 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   More › If something happens to me and type who to call, who would keep the business running, your CPA and attorney, and
   where records are kept (never passwords). Then ask your attorney whether your LLC agreement names a successor member
   (a Colorado LLC with no members dissolves 91 days later, C.R.S. 7-80-801; Decisions question DQ-OPS8-1). Ready when
-  OPS-8 is live. Worked when the page's "Still missing" note is gone. The page's pause switch works for you today;
-  letting your successor press it needs the records vault (VAULT-1), which is not built yet.
+  OPS-8 is live. Worked when the page's "Still missing" note is gone. The page's pause switch works for you today,
+  and your emergency contact can press it too from their emergency-access link (after the waiting period and a code sent to
+  their saved phone or email); emergency access ships switched off, see More › Logins vault.
 - [ ] **If you have no employees: send the workers' comp rejection form (Colorado).** As an LLC member you may reject
   coverage by sending the state's form by certified mail (C.R.S. 8-41-202). The Insurance screen (OPS-4) will hold the
   date and the certified-mail number. Worked when the Division or your insurer confirms.

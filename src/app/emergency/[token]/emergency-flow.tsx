@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Button, Field } from "@/components/ui";
 import {
   confirmCodeAction,
+  pauseChargesAction,
   requestAccessAction,
   sendCodeAction,
   type EmergencyFlowState,
@@ -45,6 +46,29 @@ export function EmergencyFlow({ token, state }: { token: string; state: PublicEm
   const [requestState, requestAction, requestPending] = useActionState(requestAccessAction.bind(null, token), initial);
   const [sendState, sendAction, sendPending] = useActionState(sendCodeAction.bind(null, token), initial);
   const [confirmState, confirmAction, confirmPending] = useActionState(confirmCodeAction.bind(null, token), initial);
+  const [pauseState, pauseAction, pausePending] = useActionState(pauseChargesAction.bind(null, token), initial);
+
+  const pauseSection = (chargesPaused: boolean) => (
+    <section aria-labelledby="pause-heading" className="space-y-3 rounded-control border border-line p-4">
+      <h2 id="pause-heading" className="text-base font-semibold">Pause automatic charges</h2>
+      <p>
+        This stops the business from starting new charges, adding late fees or sending past-due and reminder
+        messages until the owner turns them back on. It does not refund, cancel or change anything already billed or
+        signed, and customers can still pay on their own. Only the owner can turn charges back on. The owner is told
+        right away.
+      </p>
+      {chargesPaused || pauseState.status === "done" ? (
+        <p role="status" className="text-sm font-semibold">Automatic charges are paused.</p>
+      ) : (
+        <form action={pauseAction}>
+          <Button type="submit" variant="secondary" disabled={pausePending}>
+            {pausePending ? "Pausing…" : "Pause all automatic charges"}
+          </Button>
+        </form>
+      )}
+      <FlowMessages state={pauseState} />
+    </section>
+  );
 
   switch (state.state) {
     case "inactive":
@@ -140,10 +164,16 @@ export function EmergencyFlow({ token, state }: { token: string; state: PublicEm
             </a>
           </p>
           <p className="text-sm text-ink-soft">The download is recorded in the app&apos;s activity log.</p>
+          {pauseSection(state.chargesPaused)}
         </div>
       );
     case "consumed":
-      return <p>This link has already been used for its one download, so it&apos;s finished. If you need anything else, contact the owner.</p>;
+      return (
+        <div className="space-y-4">
+          <p>This link has already been used for its one download, so it&apos;s finished. If you need anything else, contact the owner.</p>
+          {state.canPause ? pauseSection(state.chargesPaused) : null}
+        </div>
+      );
     case "expired":
       return <p>The download window for this link has closed. If you still need the export, the owner can start again.</p>;
   }

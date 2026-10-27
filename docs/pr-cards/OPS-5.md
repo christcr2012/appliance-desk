@@ -6,9 +6,9 @@ TFA-1 (dated rules) and VAULT-1 where the spec says. Risk: see the spec section.
 
 ## Acceptance
 - [ ] Everything listed in the spec section is built, with the tests named there.
-- [ ] Anything that changes money, customers or filings waits for Chris's Approve on To do.
-- [ ] Unverified rules run on the careful starting value with their Decisions question filed.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Anything that changes money, customers or filings waits for Chris's Approve on To do.
+- [x] Unverified rules run on the careful starting value with their Decisions question filed.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 Built on branch `ai/claude/ops-5` (PR open; see STATUS). Evidence (throwaway Postgres or pure tests):
@@ -17,3 +17,5 @@ Built on branch `ai/claude/ops-5` (PR open; see STATUS). Evidence (throwaway Pos
 - Page accessibility: `e2e/disputes.spec.ts` (CI only).
 Not built, and why: the 7-day customer notice before a debit date changes. No screen or job lets anyone change a customer's debit date today (only the nightly cycle advance moves it), so there is nothing to attach the notice to; add it with whatever future card adds a "change my billing day" action. The refund-on-dispute warning blocks the refund; the acknowledged override exists in code (`acknowledgeDispute`) but has no button yet.
 Filed: DQ-OPS5-1, DQ-OPS5-2; owner row for the three Stripe webhook events. Tick the acceptance boxes only after CI at the exact head.
+
+**Merged (re-checked 2026-10-27):** PR #631, `ci` green at the exact head `6f6460bc` (check-run read from GitHub). All OPS-1 to OPS-8 test files re-run together on a fresh throwaway Postgres: 20 files, 164 tests, all passing. Acceptance 2 to 4 ticked on that evidence. Acceptance 1 stays open only for the "Not built" items named above.
