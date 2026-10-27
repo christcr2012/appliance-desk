@@ -12,6 +12,7 @@ import {
   type PaperworkStatusValue,
 } from "./rules";
 import type { PaperworkInput } from "./schema";
+import { isCapitalizationPolicyTemplateKey } from "@/domains/taxben/policy";
 
 /** Owner-only everywhere: the numbers (EIN, license numbers) never reach staff. */
 function requireOwnerRole(role: string | undefined) {
@@ -183,11 +184,16 @@ export async function updatePaperwork(
   const { data, numberUpdate } = toData(input);
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
-    const rows = await tx.$queryRaw<{ version: number }[]>`
-      SELECT "version" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
+    const rows = await tx.$queryRaw<{ version: number; templateKey: string | null }[]>`
+      SELECT "version", "templateKey" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
     if (!rows[0]) throw new Error("That item no longer exists.");
     if (rows[0].version !== expectedVersion) {
       throw new Error(PAPERWORK_STALE_MESSAGE);
+    }
+    // A signed capitalization policy is a signed document: the general
+    // record editor must never rewrite its text or dates (TAXBEN-1).
+    if (isCapitalizationPolicyTemplateKey(rows[0].templateKey)) {
+      throw new Error("That record is a signed capitalization policy, so it can't be edited. Signed policies stay exactly as signed — see Taxes > Tax benefits.");
     }
     const finishing = input.status === "DONE";
     await tx.businessPaperwork.update({

@@ -7,6 +7,8 @@ import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-appl
 import { listPendingRdfSwitches } from "@/domains/tax/rdf-switches";
 import { listRuleChangeAttention } from "@/domains/rules/observations";
 import { listDeliveryReadinessAttention } from "@/domains/tax/delivery-readiness";
+import { listPolicyAttention } from "@/domains/taxben/policy";
+import { listBenefitsAttention } from "@/domains/taxben/benefits";
 import { ruleDef } from "@/domains/rules/registry";
 import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
@@ -64,6 +66,11 @@ import {
   officialRateScheduledException,
   ruleChangeReviewException,
   deliveryReadinessException,
+  capitalizationPolicyException,
+  midQuarterWarningException,
+  retirementComparisonException,
+  enterpriseZonePrecertifyException,
+  businessUsePercentException,
   rdfSwitchException,
   taxSourceChangedException,
   taxSourceUnreachableException,
@@ -403,6 +410,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     rdfSwitchesPending,
     ruleChangeAttention,
     deliveryReadinessAttention,
+    taxbenPolicyAttention,
+    taxbenBenefitsAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -562,6 +571,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     canViewFinance ? listPendingRdfSwitches(now) : Promise.resolve([]),
     canViewFinance ? listRuleChangeAttention(now) : Promise.resolve([]),
     canViewFinance ? listDeliveryReadinessAttention(now) : Promise.resolve([]),
+    canViewFinance ? listPolicyAttention(now) : Promise.resolve([]),
+    canViewFinance ? listBenefitsAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -1020,6 +1031,26 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         since: item.since,
       }),
     ),
+    ...taxbenPolicyAttention.map((item) =>
+      capitalizationPolicyException({
+        year: item.year,
+        renewal: item.renewal,
+        since: item.since,
+      }),
+    ),
+    ...taxbenBenefitsAttention.map((item) =>
+      item.kind === "MID_QUARTER"
+        ? midQuarterWarningException({
+            year: item.year,
+            sharePercent: item.sharePercent ?? 0,
+            since: item.since,
+          })
+        : item.kind === "RETIREMENT"
+          ? retirementComparisonException({ year: item.year, since: item.since })
+          : item.kind === "BUSINESS_USE"
+            ? businessUsePercentException({ year: item.year, since: item.since })
+            : enterpriseZonePrecertifyException({ year: item.year, since: item.since }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -1266,6 +1297,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           rdfSwitchesPending.length +
           ruleChangeAttention.length +
           deliveryReadinessAttention.length +
+          taxbenPolicyAttention.length +
+          taxbenBenefitsAttention.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))
