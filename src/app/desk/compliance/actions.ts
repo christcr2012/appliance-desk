@@ -12,6 +12,7 @@ import {
   submitFiling,
 } from "@/domains/compliance/filings";
 import { saveBusinessFacts, ENTITY_TYPES, type EntityType } from "@/domains/compliance/profile";
+import { importPayrollCsv } from "@/domains/compliance/payroll-import";
 import { saveTaxYearFacts } from "@/domains/compliance/tax-facts";
 import { dollarsToCents } from "@/domains/pricing/money";
 import { obligationByKey } from "@/domains/compliance/registry";
@@ -24,7 +25,33 @@ import { formatMoney } from "@/lib/money-ui";
 // Taxes screen (compliance rides the sales-tax screen), checked explicitly
 // here like the Leads actions — a server action can be posted from anywhere.
 
-export type ComplianceActionState = { error?: string; ok?: boolean };
+export type ComplianceActionState = { error?: string; ok?: boolean; message?: string };
+
+/** CMP-5: import the payroll provider's summary CSV into the books. */
+export async function importPayrollAction(
+  _prev: ComplianceActionState,
+  formData: FormData,
+): Promise<ComplianceActionState> {
+  try {
+    const { user } = await requireRole("OWNER", "ADMIN");
+    await requireTaxesScreen(user);
+    const file = formData.get("payrollCsv");
+    if (!(file instanceof File) || file.size === 0) {
+      return { error: "Choose the payroll summary CSV from your provider first." };
+    }
+    if (file.size > 1_000_000) {
+      return { error: "That file is too large for a payroll summary — check you picked the right export." };
+    }
+    const { imported } = await importPayrollCsv(user.id, await file.text(), file.name || null);
+    revalidatePath("/desk/compliance");
+    return {
+      ok: true,
+      message: imported === 1 ? "1 pay run posted to the books." : `${imported} pay runs posted to the books.`,
+    };
+  } catch (error) {
+    return { error: message(error) };
+  }
+}
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Something went wrong. Try again.";
@@ -62,6 +89,9 @@ export async function saveFactsAction(
       truckGvwrLbs: gvwr === "" ? null : Number(gvwr),
       employees: Number(String(formData.get("employees") ?? "0")) || 0,
       hasHomeOffice: formData.get("hasHomeOffice") === "on",
+      hiring: {
+        firstHireDate: String(formData.get("firstHireDate") ?? "").trim() || null,
+      },
       payer: {
         businessLegalName: String(formData.get("businessLegalName") ?? "").trim() || null,
         businessAddress: String(formData.get("businessAddress") ?? "").trim() || null,
