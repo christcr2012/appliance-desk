@@ -1,3 +1,6 @@
+## October 27 — Lane 1 AR-11 measured desk bundle check (PR pending)
+Branch `ai/chatgpt/ar11-bundle-ci-20261027`: adds a production-build gate for per-page initial desk JavaScript, measured from real Next 16 client manifests; five regressions and 147-page baseline from isolated GitHub Actions run 40497979388 (largest `/desk/settings` 411.23 KB gzip). Fresh CI must verify newer routes and dependency changes before any merge; all AR-11 overall acceptance stays open until proven.
+
 ## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
 
 MERGED earlier: the review check (#685) and OPS-4 "Keep certificate on record" (#687, squash `ffac3c8`). #687 merged

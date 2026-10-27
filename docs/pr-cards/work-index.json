@@ -4715,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662; Snooze PR #663 exact-head green, React/transitions PR #665 and JS budget still pending",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662/#663; React 19.3 PR #665 and measured JS budget PR under review",
       "migration": "none",
       "budget": 480,
       "units": [
