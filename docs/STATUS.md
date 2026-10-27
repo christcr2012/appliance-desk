@@ -1,4 +1,5 @@
 ## October 26 — OPS-4: insurance (built, PR pending)
+## October 26 — OPS-7: privacy and security duties (built, PR pending)
 ## October 26 — AR-11 remembers desk list filters and scroll (in progress)
 
 Branch ai/chatgpt/ar-11-remember-lists stores only a tab-scoped list query and scroll number
@@ -22,6 +23,10 @@ provider setting, customer message, production records or payments were changed.
 remaining implementation cards. Real-business acceptance and release status are separate from CI.
 ## October 26 — AR-11 desk-wide loading screens (in review)
 
+Branch `ai/claude/ops-7` (stacked on OPS-6). New **Privacy and security** screen (More menu, owner and admin). **Something may have leaked**: you record the date you found out, then the date you decided information was really exposed and how many Colorado residents; the app works out the deadline (30 days, starting value from the dated rule book, not confirmed), also needs the Attorney General at 500 or more people and the credit bureaus above 1,000, fills in a printable notice letter, and puts each step on your To do list. It sends nothing; the date can only move earlier, and the incident cannot be closed while a notice is still owed. **Service providers** (Vercel, Neon, Stripe, Google, Twilio, Resend) each get a yearly "security terms reviewed" check that returns to your To do list. **Legal hold** on a customer stops the nightly clean-up and blocks their privacy deletion. **Keep for** years are settings (agreements 7, tax 7, refrigerant 6, enquiries 2, messages 3); the nightly **clean-up of old enquiries ships OFF**, removes at most 200 a night, never signed or billed history, and logs every run. **Face-match ID** stays off. **Marketing texts** are held outside 8 am–9 pm Denver time (setting). **Accessibility complaints** get a 30-day fix date on your To do list. A public page "How we handle your information" shows the disposal policy.
+Migration `20261105000000_privacy_security` (additive). Proof: pure tests (`tests/ops7-privacy-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops7-privacy-integration.test.ts`), including a bug the test caught (old enquiries with no stored phone key would never have been cleaned up). Browser check `e2e/privacy-security.spec.ts` runs only in CI.
+Not done: the 6-1-713 text and the breach rules were summarized from secondary sources (the statute site was not reachable from the build machine), so the rule-book rows say "summary" and the questions are filed as DQ-OPS7-1/2/3. No ID-image storage exists in the app yet, so there was nothing to purge there. Messages older than the setting are not purged (they are tied to legal records).
+## October 26 — AR-11 desk-wide loading screens (in review)
 Branch `ai/chatgpt/ar-11-loading-skeletons` makes every top-level desk page area show a kit list or record skeleton while
 its server content loads; the root fallback also uses the kit. A filesystem inventory test protects
 future screens, and an authenticated browser test checks Today → Customers under a slow response.
