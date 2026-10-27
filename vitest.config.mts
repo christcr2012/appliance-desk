@@ -70,6 +70,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-prepaid-invoice-integration.test.ts",
   "tests/tax-rate-change-integration.test.ts",
   "tests/rules-as-of-integration.test.ts", // TFA-1 changes and restores the shared timing settings; its rule versions are test-scoped.
+  "tests/rules-observation-integration.test.ts", // TFA-3 approves and dismisses rule readings; its versions are test-scoped and removed after.
   "tests/tax-refund-evidence-integration.test.ts",
   "tests/tax-stripe-invoice-mirror-integration.test.ts",
   "tests/agreements-term-integration.test.ts",
@@ -127,6 +128,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-filing-reminders-integration.test.ts",
   "tests/tax-invoice-lines-integration.test.ts",
   "tests/tax-official-rate-auto-apply-integration.test.ts",
+  "tests/tax-official-source-watch-integration.test.ts", // TFA-3 toggles the shared watch switch and the seeded watches' active flags while it runs.
   "tests/tax-overview.test.ts",
   "tests/tax-return-actions-integration.test.ts",
   "tests/tax-setup-actions-integration.test.ts",

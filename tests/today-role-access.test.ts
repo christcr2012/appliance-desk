@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
   taxExemption: vi.fn(),
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
+  legalRuleObservation: vi.fn(),
+  legalRuleVersion: vi.fn(),
   outOfService: vi.fn(),
   systemIssues: vi.fn(),
   systemIssueCount: vi.fn(),
@@ -132,6 +134,9 @@ vi.mock("@/lib/prisma", () => ({
     },
     // TFA-2: the RDF approval switches read on Today.
     retailDeliveryFeeSwitch: { findMany: mocks.rdfSwitches },
+    // TFA-3: stored official-page rule readings read on Today.
+    legalRuleObservation: { findMany: mocks.legalRuleObservation },
+    legalRuleVersion: { findMany: mocks.legalRuleVersion },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
     $queryRaw: mocks.raw,
   },
@@ -161,6 +166,8 @@ beforeEach(() => {
     mocks.taxExemption,
     mocks.taxAddressLocation,
     mocks.officialSourceWatch,
+    mocks.legalRuleObservation,
+    mocks.legalRuleVersion,
     mocks.systemIssues,
     mocks.officialRateAttention,
     mocks.rdfRefundAttention,
@@ -258,6 +265,30 @@ describe("Today server-side visibility", () => {
     expect(item).toBeTruthy();
     expect(item?.action).toEqual(
       expect.objectContaining({ type: "APPROVE_RDF_SWITCH" }),
+    );
+  });
+
+  it("TFA-3 §14: a differing rule reading appears on Today with its approve action", async () => {
+    mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
+    mocks.legalRuleObservation.mockImplementation(async (args: { where?: { OR?: unknown } }) => {
+      if (args?.where?.OR) return [];
+      return [{
+        id: "obs-1",
+        ruleKey: "co.rdf.amount",
+        value: 33,
+        effectiveFrom: new Date("2027-07-01T00:00:00.000Z"),
+        evidence: "Total Retail Delivery Fee $0.33",
+        observedAt: new Date(),
+        watchId: "watch-1",
+      }];
+    });
+    const result = await getExceptions();
+    const item = result.find(
+      (x) => x.category === "SALES_TAX" && x.title.startsWith("Colorado retail delivery fee: the official page now says"),
+    );
+    expect(item).toBeTruthy();
+    expect(item?.action).toEqual(
+      expect.objectContaining({ type: "APPROVE_RULE_CHANGE" }),
     );
   });
 
