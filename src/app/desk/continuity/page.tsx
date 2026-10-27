@@ -44,7 +44,7 @@ export default async function ContinuityPage() {
       <Card title="Pause all automatic charges">
         <p className="mb-3 text-sm">
           One switch for an emergency. While it is on, the nightly jobs that start new charges, add late fees, send past-due notices or email customers reminders do not run ({CHARGE_PAUSE_RULE_KEYS.length} jobs).
-          It never refunds, cancels or changes a bill, and a customer can still pay on their own. Backups and payment checking keep running. Only the owner can use it, and each press is written to the Activity log.
+          It never refunds, cancels or changes a bill, and a customer can still pay on their own. Backups and payment checking keep running. Only you can turn it back on. If you set up emergency access (More › Logins vault), your emergency contact can also press it after they confirm their code; you are told right away. Each press is written to the Activity log.
         </p>
         {c.paused ? (
           <div className="space-y-3">

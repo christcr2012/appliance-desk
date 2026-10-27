@@ -5505,7 +5505,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "IN PROGRESS — PR open on ai/claude/ops-1",
+      "status": "MERGED — PR #623, exact-head ci green (f7db1c05)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5530,7 +5530,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "BUILT — PR open (OPS-2)",
+      "status": "MERGED — PR #640, exact-head ci green (5d88b75e)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5556,7 +5556,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "BUILT — PR open (OPS-3)",
+      "status": "MERGED — PR #648, exact-head ci green (b3e6d017)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5582,7 +5582,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "BUILT — PR open (OPS-4)",
+      "status": "MERGED — PR #641, exact-head ci green (7db1a3e4)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5607,7 +5607,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "IN PROGRESS — PR open on ai/claude/ops-5",
+      "status": "MERGED — PR #631, exact-head ci green (6f6460bc)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5632,7 +5632,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "IN PROGRESS — PR open on ai/claude/ops-6",
+      "status": "MERGED — PR #636, exact-head ci green (b1b9b5cf)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5658,7 +5658,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "IN PROGRESS — PR open on ai/claude/ops-7",
+      "status": "MERGED — PR #637, exact-head ci green (2bf9c5bd)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5684,7 +5684,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "BUILT — PR open (OPS-8)",
+      "status": "MERGED — PR #653, exact-head ci green (a90b2329)",
       "migration": "additive",
       "budget": 400,
       "units": [
