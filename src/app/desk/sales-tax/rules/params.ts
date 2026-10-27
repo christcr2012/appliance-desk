@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { isRuleKey, type RuleArea, type RuleKey } from "@/domains/rules/registry";
 
-const AREAS: RuleArea[] = ["SALES_TAX", "USE_TAX", "RDF", "FEDERAL", "RECORDS", "LEASES"];
+const AREAS: RuleArea[] = ["SALES_TAX", "USE_TAX", "RDF", "FEDERAL", "RECORDS", "LEASES", "PROPERTY_TAX"];
 
 const Params = z.object({
   q: z.string().trim().optional(),
@@ -42,4 +42,5 @@ export const RULE_AREA_OPTIONS = [
   { value: "FEDERAL", label: "Federal" },
   { value: "RECORDS", label: "Records" },
   { value: "LEASES", label: "Leases" },
+  { value: "PROPERTY_TAX", label: "Property tax" },
 ] as const;
