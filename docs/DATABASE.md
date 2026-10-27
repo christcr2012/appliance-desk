@@ -17,7 +17,7 @@ was put on, `providerOperationId`, `waivedAt` / `waivedReason` / `waivedByUserId
 to once per overdue bill. New enums `LateFeeClass` (CONSUMER_LEASE, CONSUMER_SHORT, BUSINESS) and `PendingChargeKind`; provider
 operation kind `LATE_FEE_INVOICE_ITEM`. `Invoice.lateNoticeDeliveryId`, `lateNoticeCount`, `lateFeeDate`, `lateFeeToldOn`,
 `lateFeeToldByUserId`. `RentalAgreement.lateFeeClass` (set when sent for signature). `Customer.activeMilitary`.
-`BusinessSettings.lateFeeNoticeDaysBefore` (default 2, CHECK 1–5), `ucccNotificationFiledOn`; the late-fee grace days now default to 10
+`BusinessSettings.decisionsReviewedAt` (nullable; DEC-2: when the owner last marked the researched starting values reviewed — the To do item counts `STARTING_VALUE_APPLIED` records made through `MIGRATION` after it; migration `20261103000000_starting_values_reviewed`), `BusinessSettings.lateFeeNoticeDaysBefore` (default 2, CHECK 1–5), `ucccNotificationFiledOn`; the late-fee grace days now default to 10
 (CHECK at least 10 on the settings row) and the flat fee is at most 1500 cents (CHECK). The migration moves an older settings row
 below those limits up to them; signed agreements and billed history are not rewritten. Covered by backups (`PendingCharge`). `PendingCharge` also keeps the autopay notice (`autopayNoticeDeliveryId`, `autopayNoticedAt`, `autopayChargeOn`): a fee only joins an automatic charge after a delivered notice naming that charge date.
 

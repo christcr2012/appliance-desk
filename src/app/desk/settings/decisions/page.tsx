@@ -14,7 +14,8 @@ import {
   type FilterDef,
   type Tone,
 } from "@/components/kit";
-import { askProfessionalAction, changeDecisionAction, keepDecisionAction, reopenDecisionAction } from "./actions";
+import { countUnreviewedStartingValues } from "@/domains/decisions/attention";
+import { askProfessionalAction, changeDecisionAction, keepDecisionAction, markStartingValuesReviewedAction, reopenDecisionAction } from "./actions";
 import { DecisionActions } from "./decision-actions";
 import { decisionsParams, TABS, type DecisionsTab } from "./params";
 
@@ -81,6 +82,7 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
   const today = businessDateKey(now);
   const all = await listDecisions(session.user.id);
   const open = all.filter((card) => card.state !== "CONFIRMED");
+  const unreviewedStarting = isOwner ? await countUnreviewedStartingValues() : 0;
   const count = (tab: DecisionsTab) => tab === "ANSWERED"
     ? all.length - open.length : open.filter((card) => card.audience === tab).length;
   const inTab = params.tab === "ANSWERED"
@@ -101,6 +103,15 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
         back={{ href: "/desk/settings", label: "Back to settings" }}
         overflow={isOwner ? [{ kind: "link", label: "Import a completed form", href: "/desk/settings/decisions/import" }] : undefined}
       />
+      {isOwner && unreviewedStarting > 0 ? (
+        <form action={markStartingValuesReviewedAction} className="mt-3 flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface px-4 py-3">
+          <p className="min-w-0 flex-1 text-sm text-ink">
+            {unreviewedStarting} starting value{unreviewedStarting === 1 ? " is" : "s are"} running the app, not confirmed yet.
+            Each says why and where it came from. Keep or change the ones for you; send the tax ones to your CPA.
+          </p>
+          <button type="submit" className={DOWNLOAD_BUTTON}>Mark as reviewed</button>
+        </form>
+      ) : null}
       <StatusTabs
         label="Who answers"
         param="for"

@@ -2,6 +2,21 @@
 
 Branch `ai/claude/ops-6` (stacked on OPS-5). A nightly pass now watches bills that are past due and prepares the next step for you — a **second notice** on day 10, a **final notice** on day 20 (email text plus a printable letter), and a **decision** on day 30 (payment plan, pick up the appliance, or small claims). All three days are your settings. Nothing is sent, nothing is picked up and no money moves until you press the button; sending still goes through the normal message path, so it stays off while live email is off. Every message is written in "Robinson Appliance Rentals"'s own name. A **pickup** can be made only after you record that the customer agreed (or a court order), and never for a customer marked on active military duty without a recorded court order; "Customer objected" ends the visit with nothing taken and brings up small claims. The **small-claims packet** (PDF) gathers the bills and payments, notices sent, the appliance cost and the claim amount; it checks the $7,500 limit, the filing fee ($31 up to $500, otherwise $55) and the court's 2-a-month / 18-a-year limits from the rule book. You file it yourself. A test now fails if any agreement, quote or notice wording offers ownership or a purchase option. Proved so far: 24 new tests (pure rules and wording, ownership-wording scan, and 9 on a throwaway database); CI still to run. Not built: the court's own claim form is not copied into the app — the packet tells you to fill in JDF 250 from the Colorado Judicial Branch site so it is always the current one.
 
+## October 26 — DEC-2: researched starting values in the live app (PR #635, merged after green checks)
+
+Branch `ai/claude/dec-2-starting-values`. DEC-1b (PR #603) is merged. Codex found two real problems, both fixed before merge: the overnight values were being cancelled on their start day (nobody was named to carry them out), and the nightly save now re-checks under its lock that nobody answered meanwhile.
+Coded: every question in Decisions & reviews has a researched value with sources (tax-by-charge, Greeley careful choices,
+filing basis, delivery fee, bad debt, setup fee, record years, remembered-device days, and the "as built" wording
+answers); new questions for Greeley's measure 2F city rate and the late fee amount. The nightly run (inside the existing
+books-nightly cron, before the Books check) applies each value once, from the next Denver day, only over untouched
+settings, as the one active owner, with a record that names no person; questions Chris already answered are recorded as
+confirmed. One To do item ("N starting values are now in use") until the owner presses Mark as reviewed (or keeps/changes any
+question). New rental agreements and quote conversions take the late fee from Settings; the form pre-fills it; renewals keep old terms.
+Proof: unit tests here (registry, defaults, day 11 with the clock changes, screens) and `tests/starting-values-integration.test.ts`
+on throwaway Postgres; the waiver browser spec `e2e/late-fee-waiver.spec.ts` runs in CI only. Not done on purpose: the
+`Invoice.lateFeeWaivedAt` field from the old spec (FEE-1's waiver on the pending charge replaced it).
+Needs Chris: nothing new on the checklist; the starting values show on his For you / For your CPA tabs.
+
 ## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review, merged with latest main)
 
 Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,

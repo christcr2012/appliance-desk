@@ -28,6 +28,7 @@ const ACTION_LABEL: Record<string, string> = {
   PAYMENT_DISPUTE: "Answer dispute",
   COLLECTION_STEP: "Open collections",
   LATE_FEE_REVIEW: "Open the bill",
+  DECISIONS_STARTING_VALUES: "Review",
   HELD_PAYMENT_DECISION: "Decide",
   DEPOSIT_DECISION: "Decide",
   NEW_LEAD_CONTACT: "Contact lead",
