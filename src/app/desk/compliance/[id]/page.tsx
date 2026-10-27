@@ -8,6 +8,13 @@ import { obligationByKey } from "@/domains/compliance/registry";
 import { IRIS_MAX_ROWS_PER_FILE } from "@/domains/compliance/iris-csv";
 import { FilingActions } from "./filing-actions";
 import { ClassifyControls } from "./classify-controls";
+import { ScheduleCPacketSection, Worksheet4562Section, Worksheet4797Section } from "./packet-sections";
+import { VoucherForm } from "./voucher-form";
+import { getComplianceProfile } from "@/domains/compliance/profile";
+import { VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
+import type { PacketData } from "@/domains/compliance/schedule-c";
+import type { Worksheet4562, Worksheet4797 } from "@/domains/compliance/worksheets";
+import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
 
 export const metadata = { title: "Filing", robots: { index: false, follow: false } };
 
@@ -42,6 +49,21 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
   if (!filing) notFound();
   const obligation = obligationByKey(filing.obligationKey);
   const is1099 = filing.obligationKey === "fed.1099_nec" || filing.obligationKey === "fed.1099_misc";
+  const isCmp2 = ["fed.income.schedule_c", "fed.4562", "fed.4797", "fed.estimated_tax", "co.income.dr0104ep"].includes(
+    filing.obligationKey,
+  );
+  const isEstimate = filing.obligationKey === "fed.estimated_tax" || filing.obligationKey === "co.income.dr0104ep";
+  const packet = filing.obligationKey === "fed.income.schedule_c" ? (filing.preparedData as PacketData | null) : null;
+  const worksheet4562 =
+    filing.obligationKey === "fed.4562"
+      ? ((filing.preparedData as { worksheet4562?: Worksheet4562 } | null)?.worksheet4562 ?? null)
+      : null;
+  const worksheet4797 =
+    filing.obligationKey === "fed.4797"
+      ? ((filing.preparedData as { worksheet4797?: Worksheet4797 } | null)?.worksheet4797 ?? null)
+      : null;
+  const estimate = isEstimate ? (filing.preparedData as (QuarterlyEstimate & { payUrl?: string; payLabel?: string }) | null) : null;
+  const profile = isEstimate ? await getComplianceProfile() : null;
   const prepared = (filing.preparedData ?? {}) as {
     recipients?: { supplierId: string; name: string; tinLast4: string | null; hasW9: boolean; necCents: number; misc1Cents: number; misc3Cents: number }[];
     unclassifiedCategories?: { categoryId: string; name: string; cents: number }[];
@@ -110,7 +132,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
         ) : null}
       </dl>
 
-      {rows.length && !is1099 ? (
+      {rows.length && !is1099 && !isCmp2 ? (
         <section className="max-w-3xl space-y-2">
           <h3 className="font-semibold text-ink">Prepared numbers</h3>
           <table className="w-full text-sm">
@@ -140,7 +162,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
             : "Nothing prepared yet."}
         </p>
       ) : null}
-      {is1099 && filing.preparedHash ? (
+      {(is1099 || isCmp2) && filing.preparedHash ? (
         <p className="max-w-3xl text-sm text-ink-soft">
           Fingerprint of the prepared numbers: {filing.preparedHash.slice(0, 12)}… Approving uses exactly these
           numbers; if anything changes, you&apos;ll be asked to review again.
@@ -219,14 +241,81 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
         </section>
       ) : null}
 
+      {packet && packet.scheduleC ? (
+        <ScheduleCPacketSection filingId={filing.id} packet={packet} outputsReady={outputsReady} />
+      ) : null}
+      {worksheet4562 ? <Worksheet4562Section worksheet={worksheet4562} /> : null}
+      {worksheet4797 ? <Worksheet4797Section worksheet={worksheet4797} /> : null}
+
+      {isEstimate && estimate ? (
+        <section className="max-w-3xl space-y-3">
+          <h3 className="font-semibold text-ink">This quarter&apos;s estimate</h3>
+          {estimate.status === "OK" ? (
+            <>
+              <p className="text-sm text-ink-soft">
+                Pay <span className="font-semibold text-ink">{formatMoney(estimate.quarterCents)}</span> for quarter{" "}
+                {estimate.quarter}. Worked out by the safe-harbor method: {estimate.ratePercent}% of{" "}
+                {estimate.priorYear}&apos;s tax ({formatMoney(estimate.priorTaxCents)}) is{" "}
+                {formatMoney(estimate.annualCents)} for the year, divided by four. An estimate — your CPA confirms.
+              </p>
+              <p className="text-sm text-ink-soft">
+                Pay online at{" "}
+                <a className="underline" href={estimate.payUrl} target="_blank" rel="noreferrer">
+                  {estimate.payLabel}
+                </a>{" "}
+                — the app never pays for you — or fill the paper voucher:
+              </p>
+              {formReady && estimate.year === VOUCHER_BOOKLET_YEAR ? (
+                <VoucherForm
+                  filingId={filing.id}
+                  quarter={estimate.quarter}
+                  jurisdiction={estimate.jurisdiction}
+                  defaultAddress={{
+                    address: profile?.businessAddress ?? "",
+                    city: profile?.businessCity ?? "",
+                    state: profile?.businessState ?? "",
+                    zip: profile?.businessZip ?? "",
+                  }}
+                />
+              ) : formReady ? (
+                <p className="text-sm text-ink-soft">
+                  The filled voucher booklet on file is for {VOUCHER_BOOKLET_YEAR}; for {estimate.year}, pay online
+                  or use that year&apos;s paper voucher.
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="rounded-card bg-surface px-4 py-3 text-sm text-ink-soft">
+              There is no prior-year tax figure to work from yet, so no amount is shown — an estimate is never
+              invented. Add last year&apos;s tax in Business facts (that year&apos;s figures) and prepare again, or
+              enter an estimate from your CPA and pay it at{" "}
+              <a className="underline" href={estimate.payUrl} target="_blank" rel="noreferrer">
+                {estimate.payLabel}
+              </a>
+              , then mark this filing submitted.
+            </p>
+          )}
+        </section>
+      ) : null}
+
       <FilingActions
         filingId={filing.id}
         state={filing.state}
         preparedHash={filing.preparedHash}
         channel={obligation?.channel ?? "GUIDED_WEB"}
-        canPrepareGuided={["co.sos.periodic_report", "fed.1099_nec", "fed.1099_misc", "fed.8300"].includes(filing.obligationKey)}
+        canPrepareGuided={[
+          "co.sos.periodic_report",
+          "fed.1099_nec",
+          "fed.1099_misc",
+          "fed.8300",
+          "fed.income.schedule_c",
+          "fed.4562",
+          "fed.4797",
+          "fed.estimated_tax",
+          "co.income.dr0104ep",
+        ].includes(filing.obligationKey)}
         isOwner={user.role === "OWNER"}
-        separateSubmission={(obligation?.channel ?? "") === "UPLOAD_FILE" || filing.obligationKey === "fed.8300"}
+        separateSubmission={["UPLOAD_FILE", "ACCOUNTANT_PACKET", "FILLED_FORM"].includes(obligation?.channel ?? "")}
       />
     </div>
   );

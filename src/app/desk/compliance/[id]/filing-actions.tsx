@@ -97,6 +97,23 @@ export function FilingActions({ filingId, state, preparedHash, channel, canPrepa
         </div>
       ) : null}
 
+      {state === "READY_FOR_REVIEW" && canPrepareGuided ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={btn}
+            disabled={pending}
+            onClick={() => run(() => prepareGuidedAction(filingId))}
+          >
+            Prepare again with the latest numbers
+          </button>
+          <span className="text-sm text-ink-soft">
+            If the facts behind these numbers changed — for example you just added last year&apos;s tax figures —
+            prepare again before approving.
+          </span>
+        </div>
+      ) : null}
+
       {state === "APPROVED" && isOwner ? (
         <div className="flex flex-wrap items-end gap-2">
           <label className="block text-sm">

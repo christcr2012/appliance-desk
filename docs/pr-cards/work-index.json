@@ -5323,7 +5323,7 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "BUILT — PR pending (2026-10-26)",
+      "status": "MERGED — PR #656, f103c7fc (2026-10-27)",
       "migration": "20261107000000_supplier_tin_w9 + 20261107010000_filing_period_key_widen (Supplier TIN fields, W9Request, ExpenseCategory.form1099Box, ComplianceProfile payer block, ComplianceFiling.periodKey 20→40)",
       "budget": 600,
       "units": [
@@ -6066,6 +6066,10 @@
     {
       "id": "CMP-3",
       "path": "docs/pr-cards/execution/CMP-3.json"
+    },
+    {
+      "id": "CMP-2",
+      "path": "docs/pr-cards/execution/CMP-2.json"
     },
     {
       "id": "TFA-2",

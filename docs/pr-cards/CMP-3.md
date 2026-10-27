@@ -77,3 +77,7 @@ Built 2026-10-26 (Lane 5, Vivienne). What shipped:
   transcribed tax ID and address until the new form is transcribed, so output building can never mix
   an old TIN/address with a new form; (3) the 8300 deadline adds 15 Denver calendar days to the
   business-date key instead of 15 UTC days to the instant (DST-safe).
+- **MERGED 2026-10-27 (PR #656, squash f103c7fc)** at head 0d6412f4 after CI run 40459194129 completed green
+  at that exact head; formal COMMENT self-review 5662984400; 0 unresolved threads. The PR chain was #654 →
+  #655 → #656 (each successor rebuilt on the moved main with the prior round's fixes); ten Codex findings in
+  total across the three PRs, every one real, every one fixed with regression tests in the next round.

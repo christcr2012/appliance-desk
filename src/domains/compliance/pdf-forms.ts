@@ -22,6 +22,15 @@ type Manifest = {
   forms: Record<string, { sha256: string; source: string; title: string; retrievedOn: string }>;
 };
 
+/**
+ * The tax year of the vendored estimated-tax voucher booklets
+ * (irs/f1040es_2026.pdf and co/dr0104ep_2026.pdf). CMP-2 review: a
+ * filled voucher must never be produced for a different filing year —
+ * callers refuse and point at the online payment routes instead. Bump
+ * this when a new year's booklets are vendored.
+ */
+export const VOUCHER_BOOKLET_YEAR = 2026;
+
 export function formManifest(): Manifest {
   return manifest as Manifest;
 }
@@ -253,6 +262,35 @@ export async function fillForm8300(
     "irs/f8300.pdf",
     F8300_FIELDS as unknown as Record<string, string>,
     { ...input, dateReceived, totalCash: input.totalCashDollars },
+    dir,
+  );
+}
+
+import { DR0104EP_VOUCHER_FIELDS } from "./forms/dr0104ep.fields";
+
+/**
+ * CMP-2: fills the DR 0104EP payment voucher (page index 4 of the
+ * vendored 2026 booklet). The identity values are the owner's, typed at
+ * download time — nothing here stores them.
+ */
+export async function fillDr0104EpVoucher(
+  values: VoucherValues & { middleInitial?: string },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  return fillMappedForm(
+    "co/dr0104ep_2026.pdf",
+    DR0104EP_VOUCHER_FIELDS as unknown as Record<string, string>,
+    {
+      lastName: values.lastName,
+      firstName: values.firstName,
+      middleInitial: values.middleInitial,
+      ssn: values.ssn,
+      address: values.address,
+      city: values.city,
+      state: values.state,
+      zip: values.zip,
+      amount: values.amountDollars,
+    },
     dir,
   );
 }

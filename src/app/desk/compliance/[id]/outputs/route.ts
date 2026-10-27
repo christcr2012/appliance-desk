@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getComplianceFiling } from "@/domains/compliance/filings";
 import { build1099Outputs, payerIdentity, type Prepared1099Row } from "@/domains/compliance/information-returns";
 import { dollars } from "@/domains/compliance/iris-csv";
-import { fillForm8300 } from "@/domains/compliance/pdf-forms";
+import { fillDr0104EpVoucher, fillEstimatedTaxVoucher, fillForm8300, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
+import { packetCsv, packetPdf, type PacketData } from "@/domains/compliance/schedule-c";
+import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
 
 /**
  * CMP-3: the filing files for an approved filing — the IRIS portal CSV
@@ -52,6 +54,29 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       });
     }
 
+    if (filing.obligationKey === "fed.income.schedule_c" && (kind === "packet-csv" || kind === "packet-pdf")) {
+      if (!["APPROVED", "SUBMITTED", "ACCEPTED"].includes(filing.state)) {
+        return new Response("Approve the filing first — the packet is built from the approved numbers.", { status: 409 });
+      }
+      const packet = (filing.preparedData ?? null) as PacketData | null;
+      if (!packet || !packet.scheduleC) return new Response("That packet is not part of this filing.", { status: 404 });
+      if (kind === "packet-csv") {
+        return new Response(packetCsv(packet), {
+          headers: {
+            "Content-Type": "text/csv",
+            "Content-Disposition": `attachment; filename="accountant-packet-${packet.year}.csv"`,
+          },
+        });
+      }
+      const bytes = await packetPdf(packet);
+      return new Response(Buffer.from(bytes), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="accountant-packet-${packet.year}.pdf"`,
+        },
+      });
+    }
+
     if (filing.obligationKey === "fed.8300" && kind === "form8300") {
       if (!["READY_FOR_REVIEW", "APPROVED", "SUBMITTED", "ACCEPTED"].includes(filing.state)) {
         return new Response("Prepare the filing first — the form is filled from the prepared numbers.", { status: 409 });
@@ -89,4 +114,70 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response(error instanceof Error ? error.message : "The file could not be built.", { status: 400 });
   }
   return new Response("That file is not available for this filing.", { status: 404 });
+}
+
+/**
+ * CMP-2: the filled estimated-tax voucher. The owner's name and Social
+ * Security number arrive with this request only and are used to fill
+ * the PDF — they are never stored, logged or audited. The amount comes
+ * from the filing's prepared numbers, never from the form.
+ */
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  await requireRole("OWNER", "ADMIN");
+  const { id } = await params;
+  const filing = await getComplianceFiling(id);
+  if (!filing) return new Response("That filing no longer exists.", { status: 404 });
+  const url = new URL(request.url);
+  if (url.searchParams.get("kind") !== "voucher") {
+    return new Response("That file is not available for this filing.", { status: 404 });
+  }
+  if (filing.obligationKey !== "fed.estimated_tax" && filing.obligationKey !== "co.income.dr0104ep") {
+    return new Response("That file is not available for this filing.", { status: 404 });
+  }
+  if (!["READY_FOR_REVIEW", "APPROVED", "SUBMITTED", "ACCEPTED"].includes(filing.state)) {
+    return new Response("Prepare the filing first — the voucher is filled from the prepared amount.", { status: 409 });
+  }
+  const estimate = (filing.preparedData ?? null) as QuarterlyEstimate | null;
+  if (!estimate || estimate.status !== "OK") {
+    return new Response("There is no worked-out amount to put on a voucher for this filing.", { status: 409 });
+  }
+  if (estimate.year !== VOUCHER_BOOKLET_YEAR) {
+    return new Response(
+      `A filled voucher is only available for ${VOUCHER_BOOKLET_YEAR} — the official booklet on file is that year's. For ${estimate.year}, pay online or use that year's paper voucher.`,
+      { status: 400 },
+    );
+  }
+  const form = await request.formData();
+  const field = (name: string) => String(form.get(name) ?? "").trim();
+  const ssn = field("ssn").replace(/[^0-9]/g, "");
+  if (ssn.length !== 9) return new Response("Enter the 9-digit Social Security number for the voucher.", { status: 400 });
+  const values = {
+    firstName: field("firstName"),
+    lastName: field("lastName"),
+    middleInitial: field("middleInitial"),
+    ssn,
+    address: field("address"),
+    city: field("city"),
+    state: field("state"),
+    zip: field("zip"),
+    amountDollars: dollars(estimate.quarterCents),
+  };
+  if (!values.firstName || !values.lastName) {
+    return new Response("Enter the name for the voucher.", { status: 400 });
+  }
+  try {
+    const bytes =
+      filing.obligationKey === "fed.estimated_tax"
+        ? await fillEstimatedTaxVoucher(estimate.quarter as 1 | 2 | 3 | 4, values)
+        : await fillDr0104EpVoucher(values);
+    return new Response(Buffer.from(bytes), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="estimated-tax-voucher-q${estimate.quarter}.pdf"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (error) {
+    return new Response(error instanceof Error ? error.message : "The voucher could not be built.", { status: 400 });
+  }
 }

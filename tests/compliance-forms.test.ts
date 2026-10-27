@@ -3,10 +3,12 @@ import { PDFDocument } from "pdf-lib";
 import {
   fill1099MiscCopyB,
   fill1099NecCopyB,
+  fillDr0104EpVoucher,
   fillEstimatedTaxVoucher,
   fillForm8300,
   fillW9,
   formManifest,
+  VOUCHER_BOOKLET_YEAR,
   verifyFormManifest,
 } from "@/domains/compliance/pdf-forms";
 import { F1040ES_VOUCHER_FIELDS } from "@/domains/compliance/forms/f1040es.fields";
@@ -122,5 +124,33 @@ describe("compliance forms", () => {
     expect(read(F8300_FIELDS.lastName)).toBe("Buyer");
     expect(read(F8300_FIELDS.totalCash)).toBe("10500.00");
     expect(read(F8300_FIELDS.businessName)).toBe("Robinson Appliance Rentals LLC");
+  });
+});
+
+describe("DR 0104EP voucher (CMP-2)", () => {
+  it("the manifest lists the vendored DR 0104EP 2026 with its Colorado source", () => {
+    const entry = formManifest().forms["co/dr0104ep_2026.pdf"];
+    expect(entry).toBeTruthy();
+    expect(entry!.source).toBe("https://tax.colorado.gov/sites/tax/files/documents/DR_0104EP_2026.pdf");
+    expect(entry!.sha256).toBe("2b4e33fe2bdc4f5e3b324687f11ef7a0b22698673341a7a8b07764203946b12c");
+  });
+
+  it("fills the voucher identity and amount, readable back from the official fields", async () => {
+    const bytes = await fillDr0104EpVoucher({ ...SAMPLE, middleInitial: "Q" });
+    const pdf = await PDFDocument.load(bytes);
+    const form = pdf.getForm();
+    expect(form.getTextField("Last Name").getText()).toBe("Example");
+    expect(form.getTextField("First Name").getText()).toBe("Casey");
+    expect(form.getTextField("SSN or ITIN").getText()).toBe("000-00-1234");
+    expect(form.getTextField("Amount of Payment").getText()).toBe("1250");
+    expect(form.getTextField("ZIP Code").getText()).toBe("80631");
+  });
+});
+
+describe("voucher booklet year (CMP-2 review)", () => {
+  it("matches the vendored estimated-tax booklets", () => {
+    const forms = formManifest().forms;
+    expect(forms[`irs/f1040es_${VOUCHER_BOOKLET_YEAR}.pdf`]).toBeTruthy();
+    expect(forms[`co/dr0104ep_${VOUCHER_BOOKLET_YEAR}.pdf`]).toBeTruthy();
   });
 });

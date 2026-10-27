@@ -12,6 +12,8 @@ import {
   submitFiling,
 } from "@/domains/compliance/filings";
 import { saveBusinessFacts, ENTITY_TYPES, type EntityType } from "@/domains/compliance/profile";
+import { saveTaxYearFacts } from "@/domains/compliance/tax-facts";
+import { dollarsToCents } from "@/domains/pricing/money";
 import { obligationByKey } from "@/domains/compliance/registry";
 import { getComplianceProfile } from "@/domains/compliance/profile";
 import { businessDateKey } from "@/lib/business-date";
@@ -82,6 +84,34 @@ export async function saveFactsAction(
 }
 
 /** The SOS periodic report's guided preparation: the exact values to type. */
+/** CMP-2: save one finished year's tax figures (Business facts). */
+export async function saveTaxYearFactsAction(
+  _prev: ComplianceActionState,
+  formData: FormData,
+): Promise<ComplianceActionState> {
+  try {
+    const { user } = await requireRole("OWNER");
+    const year = Number(String(formData.get("taxYear") ?? ""));
+    const money = (name: string): number | null => {
+      const raw = String(formData.get(name) ?? "").replace(/[$,]/g, "").trim();
+      if (raw === "") return null;
+      if (!/^\d+(\.\d{1,2})?$/.test(raw)) throw new Error("Enter amounts as dollars, like 4200 or 4200.50.");
+      return dollarsToCents(Number(raw));
+    };
+    await saveTaxYearFacts(user.id, year, {
+      federalTaxCents: money("federalTax"),
+      federalAgiCents: money("federalAgi"),
+      coloradoTaxCents: money("coloradoTax"),
+      form1099KGrossCents: money("form1099KGross"),
+    });
+    revalidatePath("/desk/compliance/facts");
+    revalidatePath("/desk/compliance");
+    return { ok: true };
+  } catch (error) {
+    return { error: message(error) };
+  }
+}
+
 export async function prepareGuidedAction(filingId: string): Promise<ComplianceActionState> {
   try {
     const { user } = await requireRole("OWNER", "ADMIN");
@@ -110,6 +140,61 @@ export async function prepareGuidedAction(filingId: string): Promise<ComplianceA
         totalCashReceived: data.totalCashCents !== undefined ? formatMoney(data.totalCashCents) : "see the receipt",
         cashReceivedOn: data.receivedOn ?? "",
         fileBy: data.dueBy ?? businessDateKey(filing.dueOn),
+      });
+      revalidatePath(`/desk/compliance/${filingId}`);
+      revalidatePath("/desk/compliance");
+      return { ok: true };
+    }
+    // CMP-2: the Schedule C accountant packet, from the year's books.
+    if (filing.obligationKey === "fed.income.schedule_c") {
+      const { yearOfPeriodKey } = await import("@/domains/compliance/estimates");
+      const { computeScheduleCYear } = await import("@/domains/compliance/schedule-c");
+      const { compute1099KTieOut } = await import("@/domains/compliance/k-reconciliation");
+      const { build4562Worksheet, build4797Worksheet } = await import("@/domains/compliance/worksheets");
+      const year = yearOfPeriodKey(filing.periodKey);
+      if (year === null) return { error: "That filing's year could not be read." };
+      const profile = await getComplianceProfile();
+      await prepareFiling(user.id, filingId, {
+        year,
+        scheduleC: await computeScheduleCYear(year),
+        tieOut: await compute1099KTieOut(year),
+        worksheet4562: await build4562Worksheet(year),
+        worksheet4797: await build4797Worksheet(year),
+        homeOffice: profile.hasHomeOffice,
+      } as unknown as Record<string, unknown>);
+      revalidatePath(`/desk/compliance/${filingId}`);
+      revalidatePath("/desk/compliance");
+      return { ok: true };
+    }
+    // CMP-2: the two worksheets prepare on their own filings too.
+    if (filing.obligationKey === "fed.4562" || filing.obligationKey === "fed.4797") {
+      const { yearOfPeriodKey } = await import("@/domains/compliance/estimates");
+      const { build4562Worksheet, build4797Worksheet } = await import("@/domains/compliance/worksheets");
+      const year = yearOfPeriodKey(filing.periodKey);
+      if (year === null) return { error: "That filing's year could not be read." };
+      await prepareFiling(
+        user.id,
+        filingId,
+        filing.obligationKey === "fed.4562"
+          ? { year, worksheet4562: await build4562Worksheet(year) }
+          : { year, worksheet4797: await build4797Worksheet(year) },
+      );
+      revalidatePath(`/desk/compliance/${filingId}`);
+      revalidatePath("/desk/compliance");
+      return { ok: true };
+    }
+    // CMP-2: quarterly estimates by the safe-harbor method.
+    if (filing.obligationKey === "fed.estimated_tax" || filing.obligationKey === "co.income.dr0104ep") {
+      const { estimateQuarterlyTax, quarterOfPeriodKey, yearOfPeriodKey } = await import("@/domains/compliance/estimates");
+      const year = yearOfPeriodKey(filing.periodKey);
+      const quarter = quarterOfPeriodKey(filing.periodKey);
+      if (year === null || quarter === null) return { error: "That filing's quarter could not be read." };
+      const federal = filing.obligationKey === "fed.estimated_tax";
+      const estimate = await estimateQuarterlyTax(year, quarter, federal ? "FEDERAL" : "COLORADO");
+      await prepareFiling(user.id, filingId, {
+        ...estimate,
+        payUrl: federal ? "https://www.irs.gov/payments/direct-pay" : "https://www.colorado.gov/revenueonline",
+        payLabel: federal ? "IRS Direct Pay" : "Colorado Revenue Online",
       });
       revalidatePath(`/desk/compliance/${filingId}`);
       revalidatePath("/desk/compliance");
