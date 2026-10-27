@@ -6,9 +6,9 @@ TFA-1 (dated rules) and VAULT-1 where the spec says. Risk: see the spec section.
 
 ## Acceptance
 - [ ] Everything listed in the spec section is built, with the tests named there.
-- [ ] Anything that changes money, customers or filings waits for Chris's Approve on To do.
-- [ ] Unverified rules run on the careful starting value with their Decisions question filed.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Anything that changes money, customers or filings waits for Chris's Approve on To do.
+- [x] Unverified rules run on the careful starting value with their Decisions question filed.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 Built on branch `ai/claude/ops-1` (PR open; see STATUS). Evidence so far, all on a throwaway Postgres or pure tests:
@@ -18,3 +18,5 @@ Built on branch `ai/claude/ops-1` (PR open; see STATUS). Evidence so far, all on
 - Browser/accessibility page check: `e2e/recalls.spec.ts` (runs in CI only).
 Decision filed: DQ-OPS1-1 (does renting count as distribution). Owner row filed: confirm the live government answer matches the parsed shape.
 Added beyond spec: REMEDIED state. Tick the acceptance boxes only after CI at the exact head.
+
+**Merged (re-checked 2026-10-27):** PR #623, `ci` green at the exact head `f7db1c05` (check-run read from GitHub). All OPS-1 to OPS-8 test files re-run together on a fresh throwaway Postgres: 20 files, 164 tests, all passing. Acceptance 2 to 4 ticked on that evidence. Acceptance 1 stays open only for the "Not built" items named above.
