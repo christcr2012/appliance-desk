@@ -284,6 +284,30 @@ describe.skipIf(!enabled)("VAULT-1 business records (real Postgres)", () => {
     expect(row.expiresOn?.toISOString().slice(0, 10)).toBe("2028-01-15");
   });
 
+  it("renewing with only a new expiry clears that cycle's action date, but keeps a separate later one", async () => {
+    const sameDay = await createPaperwork(
+      ownerId,
+      input({ title: `Renew same-day ${tag}`, kind: "LICENSE", expiresOn: "2026-06-30", dueOn: "2026-06-30", status: "IN_PROGRESS" }),
+    );
+    createdRecordIds.push(sameDay);
+    let row = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: sameDay } });
+    await renewRecord(ownerId, sameDay, { expectedVersion: row.version, expiresOn: "2027-06-30" });
+    row = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: sameDay } });
+    expect(row.expiresOn?.toISOString().slice(0, 10)).toBe("2027-06-30");
+    expect(row.dueOn).toBeNull();
+
+    const separate = await createPaperwork(
+      ownerId,
+      input({ title: `Renew separate action ${tag}`, kind: "LICENSE", expiresOn: "2026-06-30", dueOn: "2026-09-15", status: "IN_PROGRESS" }),
+    );
+    createdRecordIds.push(separate);
+    row = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: separate } });
+    await renewRecord(ownerId, separate, { expectedVersion: row.version, expiresOn: "2027-06-30" });
+    row = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: separate } });
+    expect(row.expiresOn?.toISOString().slice(0, 10)).toBe("2027-06-30");
+    expect(row.dueOn?.toISOString().slice(0, 10)).toBe("2026-09-15");
+  });
+
   it("surfaces an expiring record on the To do list from its expiry, and archiving silences it", async () => {
     const now = new Date();
     const in10 = new Date(now.getTime() + 10 * 24 * 3600 * 1000);
@@ -346,6 +370,19 @@ describe.skipIf(!enabled)("VAULT-1 business records (real Postgres)", () => {
     } finally {
       m.store = { token: "test-token", storeId: "store_test" };
     }
+  });
+
+  it("refuses the export, naming the file, when an attached file can't be read — and writes no success audit", async () => {
+    const id = await createPaperwork(ownerId, input({ title: `Missing bytes ${tag}` }));
+    createdRecordIds.push(id);
+    await attachRecordFile(ownerId, id, { fileName: "vanished.pdf", bytes: PDF_BYTES });
+    const fileRow = await prisma.businessRecordFile.findFirstOrThrow({ where: { recordId: id } });
+    m.blobs.delete(fileRow.pathname);
+    const auditsBefore = await prisma.auditLog.count({ where: { action: "records.exported", userId: ownerId } });
+    await expect(buildExportPack(ownerId, [id])).rejects.toThrow(/couldn't be read/);
+    await expect(buildExportPack(ownerId, [id])).rejects.toThrow(/vanished\.pdf/);
+    const auditsAfter = await prisma.auditLog.count({ where: { action: "records.exported", userId: ownerId } });
+    expect(auditsAfter).toBe(auditsBefore);
   });
 
   it("gates direct-to-store uploads to the owner of an existing record", async () => {

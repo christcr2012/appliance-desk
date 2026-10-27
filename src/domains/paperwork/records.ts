@@ -248,6 +248,9 @@ export async function clearRecordNumber(userId: string, id: string): Promise<voi
  * Owner-only: "Renewed…" — sets the record's new expiry (and next action date
  * when given), marks it in place, and keeps every existing file as history.
  * Without explicit dates, a repeating record advances by its repeat length.
+ * When only a new expiry is given, an action date that belonged to the cycle
+ * just renewed (on or before the old expiry) is cleared with it — otherwise
+ * the renewed record would stay overdue on the old date.
  */
 export async function renewRecord(
   userId: string,
@@ -268,7 +271,17 @@ export async function renewRecord(
     if (!row) throw new Error("That record no longer exists.");
     if (row.version !== input.expectedVersion) throw new Error(PAPERWORK_STALE_MESSAGE);
     let nextExpires = expiresOn;
-    let nextDue = dueOn;
+    let nextDue: Date | null | undefined = dueOn;
+    if (nextDue === undefined && nextExpires !== undefined && row.dueOn) {
+      // The owner gave the new expiry but no new action date. When the old
+      // action date was the binding date for the cycle just renewed (on or
+      // before the old expiry — often the same day), that action is done:
+      // clear it, or the renewed record would stay overdue on the old date.
+      // A later action date is a separate future action and stays.
+      const oldEffective =
+        row.expiresOn && row.expiresOn < row.dueOn ? row.expiresOn : row.dueOn;
+      if (row.dueOn.getTime() <= oldEffective.getTime()) nextDue = null;
+    }
     if (nextExpires === undefined && nextDue === undefined) {
       if (!row.repeatEveryMonths) {
         throw new Error("Give the new expiry date — this record doesn't repeat on its own.");
@@ -540,11 +553,18 @@ export async function buildExportPack(
     const dtos = rows.map((r) => toDto(r, false));
     const entries: { name: string; data: Uint8Array }[] = [];
     const usedNames = new Set<string>();
+    const unreadable: string[] = [];
     for (const row of rows) {
       const folder = slugify(row.title);
       for (const file of row.recordFiles) {
         const result = await get(file.pathname, { access: "private", token: storeForFiles().token });
-        if (!result || result.statusCode !== 200 || !result.stream) continue;
+        if (!result || result.statusCode !== 200 || !result.stream) {
+          // Never hand over a pack that silently leaves a document out: the
+          // index lists every attached file, so a missing one fails the
+          // export by name instead of pretending the pack is complete.
+          unreadable.push(`${row.title} — ${file.fileName}`);
+          continue;
+        }
         const bytes = new Uint8Array(await new Response(result.stream as ReadableStream).arrayBuffer());
         let name = `${folder}/${file.fileName}`;
         let n = 2;
@@ -555,6 +575,11 @@ export async function buildExportPack(
         usedNames.add(name);
         entries.push({ name, data: bytes });
       }
+    }
+    if (unreadable.length > 0) {
+      throw new Error(
+        `The export stopped because ${unreadable.length === 1 ? "this file" : "these files"} couldn't be read from storage: ${unreadable.join("; ")}. Nothing was exported — check the file is still in storage, then try again.`,
+      );
     }
     const index = await buildIndexPdf(dtos, new Date());
     entries.unshift({ name: "index.pdf", data: index });

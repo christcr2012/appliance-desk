@@ -68,11 +68,13 @@ export TEST_ADMIN_PASSWORD='Ci-Test-Admin-Password-Not-Real-1!'
 export BETTER_AUTH_SECRET=ci-test-secret-not-for-production-use-only
 # Test-only key for disposable local databases, built from a throwaway string
 # so no key-shaped literal sits in the repo (the secret scanner objects).
-# Only the business-records spec gets it: it enters an encrypted record number,
-# while the compliance spec verifies the EIN box is disabled when NO key is
-# configured — mirroring the browser-c-only step in CI.
+# Every spec gets it except the compliance spec: the business-records and
+# business-paperwork specs enter encrypted record numbers, while the
+# compliance spec verifies the EIN box is disabled when NO key is configured —
+# mirroring the browser-e exclusion in CI.
 case "$*" in
-  *business-records*) export COMPLIANCE_ENCRYPTION_KEY="$(printf '0123456789abcdef0123456789abcdef' | base64)" ;;
+  *compliance.spec*) ;;
+  *) export COMPLIANCE_ENCRYPTION_KEY="$(printf '0123456789abcdef0123456789abcdef' | base64)" ;;
 esac
 export BETTER_AUTH_URL=http://localhost:3000
 export NEXT_PUBLIC_APP_URL=http://localhost:3000
