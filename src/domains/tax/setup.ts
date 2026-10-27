@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
-import { subjectForTaxCell } from "@/domains/decisions/tax-cells";
+import { isGreeleyJurisdiction, subjectForTaxCell } from "@/domains/decisions/tax-cells";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { saveRuleVersion, saveRuleVersionInTx } from "@/domains/rules/changes";
 import { assertRdfHandlingChangeable } from "./rdf-handling-lock";
@@ -597,7 +597,8 @@ export async function addManualTaxRateVersionInTx(
   await assertActiveTeamActor(tx, actorId, ["OWNER"]);
   await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
   const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
-    where: { id: input.jurisdictionId }, select: { id: true },
+    where: { id: input.jurisdictionId },
+    select: { id: true, name: true, level: true, administration: true },
   });
   const latest = await tx.taxRateVersion.findFirst({
     where: { jurisdictionId: jurisdiction.id }, orderBy: { effectiveFrom: "desc" },
@@ -617,6 +618,19 @@ export async function addManualTaxRateVersionInTx(
       newValue: { jurisdictionId: jurisdiction.id, effectiveDate: key, rateMilliPercent },
     },
   });
+  // TFA-3 gate G3: a Greeley rate saved here (Areas page or the
+  // GREELEY-RATE-2F decision) also lands in the rule book's
+  // greeley.sales_rate, so the Rules screen agrees with the rate bills
+  // use. The TaxRateVersion above stays the operative write.
+  if (isGreeleyJurisdiction(jurisdiction)) {
+    await saveRuleVersionInTx(tx, actorId, {
+      key: "greeley.sales_rate",
+      value: rateMilliPercent,
+      effectiveFrom,
+      reason: "Greeley rate saved with the tax area rate",
+      origin: "OWNER",
+    });
+  }
   return row.id;
 }
 
