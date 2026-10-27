@@ -65,6 +65,7 @@ async function deliveryCounts(
   db: Db,
   jurisdictionId: string,
   now: Date,
+  countDispatchedForJobId?: string,
 ): Promise<{ total: number; last12Months: number }> {
   const windowStart = new Date(now);
   windowStart.setMonth(windowStart.getMonth() - 12);
@@ -74,7 +75,33 @@ async function deliveryCounts(
       where: { jurisdictionId, deliveredOn: { gte: windowStart } },
     }),
   ]);
-  return { total, last12Months };
+  if (!countDispatchedForJobId) return { total, last12Months };
+  // Dispatch-time evaluation also counts deliveries already on the
+  // truck for this place (other jobs IN_PROGRESS), so two orders booked
+  // in advance can't both slip past a delivery-count license rule
+  // before either one completes.
+  const locatedHere = {
+    isCurrent: true,
+    status: "VERIFIED" as const,
+    jurisdictions: { some: { jurisdictionId } },
+  };
+  const dispatched = await db.job.count({
+    where: {
+      type: "DELIVERY",
+      status: "IN_PROGRESS",
+      id: { not: countDispatchedForJobId },
+      OR: [
+        { serviceAddress: { taxLocations: { some: locatedHere } } },
+        {
+          serviceAddressId: null,
+          agreement: {
+            serviceAddress: { taxLocations: { some: locatedHere } },
+          },
+        },
+      ],
+    },
+  });
+  return { total: total + dispatched, last12Months: last12Months + dispatched };
 }
 
 /**
@@ -91,6 +118,7 @@ export async function evaluatePlaceReadiness(
     administration: string;
   },
   now: Date,
+  opts?: { countDispatchedForJobId?: string },
 ): Promise<PlaceReadiness> {
   const base = { jurisdictionId: jurisdiction.id, name: jurisdiction.name };
   const readiness = await db.jurisdictionReadiness.findUnique({
@@ -154,7 +182,7 @@ export async function evaluatePlaceReadiness(
         };
       }
     } else if (onFile !== "ok") {
-      const counts = await deliveryCounts(db, jurisdiction.id, now);
+      const counts = await deliveryCounts(db, jurisdiction.id, now, opts?.countDispatchedForJobId);
       const crossed =
         licenseRequired === "AFTER_FIRST_DELIVERY"
           ? counts.total >= 1
@@ -187,6 +215,7 @@ export async function deliveryTaxReadinessWith(
   db: Db,
   serviceAddressId: string,
   now = new Date(),
+  opts?: { countDispatchedForJobId?: string },
 ): Promise<DeliveryReadiness> {
   const address = await db.serviceAddress.findUnique({
     where: { id: serviceAddressId },
@@ -246,7 +275,7 @@ export async function deliveryTaxReadinessWith(
 
   const places: PlaceReadiness[] = [];
   for (const row of location.jurisdictions) {
-    places.push(await evaluatePlaceReadiness(db, row.jurisdiction, now));
+    places.push(await evaluatePlaceReadiness(db, row.jurisdiction, now, opts));
   }
   const problems = places.filter((place) => place.problem);
   return {
@@ -273,10 +302,16 @@ export async function deliveryTaxReadiness(
  */
 export async function assertDeliveryReadyInTx(
   tx: Prisma.TransactionClient,
-  input: { serviceAddressId: string; agreementId?: string | null },
+  input: {
+    serviceAddressId: string;
+    agreementId?: string | null;
+    countDispatchedForJobId?: string;
+  },
   now = new Date(),
 ): Promise<void> {
-  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now);
+  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, {
+    countDispatchedForJobId: input.countDispatchedForJobId,
+  });
   if (readiness.ready) return;
 
   if (input.agreementId) {

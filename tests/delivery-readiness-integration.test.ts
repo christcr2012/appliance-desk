@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { createDraftAgreement } from "@/domains/agreements";
-import { createJob } from "@/domains/jobs";
+import { createJob, updateJobStatus } from "@/domains/jobs";
+import { scheduleJob } from "@/domains/jobs/scheduling";
 import {
   assertDeliveryReadyInTx,
   deliveryTaxReadiness,
@@ -473,5 +474,115 @@ maybeDescribe("FEETAX-2 delivery readiness (real Postgres)", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.jurisdictionId).toBe(city);
+  });
+
+  it("a license expiring before the scheduled visit date does not satisfy scheduling", async () => {
+    const { customerId, addressId } = await makeAddress();
+    const recordId = await makeLicenseRecord(new Date("2026-11-06T00:00:00.000Z"));
+    const city = await makeJurisdiction("expiringlicense", {
+      readiness: { licenseRequired: "ALWAYS", licenseRecordId: recordId },
+      rentalRule: "TAXABLE",
+    });
+    await locate(addressId, [city]);
+
+    // A visit while the license is still valid schedules fine.
+    const early = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+      scheduledAt: new Date("2026-11-01T16:00:00.000Z"),
+    });
+    expect(early.id).toBeTruthy();
+
+    // The same address with a visit after the license expires refuses.
+    await expect(
+      createJob(ownerId, {
+        type: "DELIVERY",
+        customerId,
+        serviceAddressId: addressId,
+        scheduledAt: new Date("2026-11-20T16:00:00.000Z"),
+      }),
+    ).rejects.toThrow(/has expired/);
+
+    // Rescheduling the good job past the expiry refuses too.
+    await expect(
+      scheduleJob(ownerId, {
+        jobId: early.id,
+        expectedVersion: early.version,
+        scheduledAt: new Date("2026-11-20T16:00:00.000Z"),
+        durationMinutes: null,
+        assignedToUserId: null,
+        confirmedConflictJobIds: [],
+      }),
+    ).rejects.toThrow(/has expired/);
+  });
+
+  it("starting a second advance-booked delivery refuses once the first crosses the license threshold", async () => {
+    const { customerId, addressId } = await makeAddress();
+    const city = await makeJurisdiction("dispatchcount", {
+      readiness: {
+        licenseRequired: "AFTER_SECOND_DELIVERY_IN_12_MONTHS",
+      },
+      rentalRule: "TAXABLE",
+    });
+    await locate(addressId, [city]);
+
+    // Both orders book fine in advance: no delivery has happened yet.
+    const first = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+    });
+    const second = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+    });
+
+    // The first delivery completes, which crosses the city's
+    // license-after-the-next-delivery threshold...
+    await prisma.$transaction((tx) =>
+      recordDeliveryCountInTx(tx, {
+        orderId: first.id,
+        serviceAddressId: addressId,
+        deliveredOn: NOW,
+      }),
+    );
+
+    // ...so the second job can no longer go out without the license.
+    await expect(
+      updateJobStatus(ownerId, second.id, "IN_PROGRESS"),
+    ).rejects.toThrow(/needs a city license first/);
+  });
+
+  it("a delivery already on the truck counts toward the threshold at dispatch", async () => {
+    const { customerId, addressId } = await makeAddress();
+    const city = await makeJurisdiction("dispatchtruck", {
+      readiness: {
+        licenseRequired: "AFTER_SECOND_DELIVERY_IN_12_MONTHS",
+      },
+      rentalRule: "TAXABLE",
+    });
+    await locate(addressId, [city]);
+
+    const first = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+    });
+    const second = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+    });
+
+    // The first job goes out (nothing delivered anywhere yet).
+    await updateJobStatus(ownerId, first.id, "IN_PROGRESS");
+
+    // While it is on the truck, the second cannot also go out: the
+    // in-progress delivery already counts toward the city's rule.
+    await expect(
+      updateJobStatus(ownerId, second.id, "IN_PROGRESS"),
+    ).rejects.toThrow(/needs a city license first/);
   });
 });

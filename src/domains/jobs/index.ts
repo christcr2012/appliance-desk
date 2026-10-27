@@ -289,10 +289,16 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
             )?.serviceAddressId
           : null);
       if (readinessAddressId) {
-        await assertDeliveryReadyInTx(tx, {
-          serviceAddressId: readinessAddressId,
-          agreementId: input.agreementId ?? null,
-        });
+        // Evaluate readiness at the visit's own date: a license that
+        // expires before the scheduled day must not satisfy the gate.
+        await assertDeliveryReadyInTx(
+          tx,
+          {
+            serviceAddressId: readinessAddressId,
+            agreementId: input.agreementId ?? null,
+          },
+          input.scheduledAt ?? new Date(),
+        );
       }
     }
 
@@ -364,6 +370,35 @@ export async function updateJobStatus(
     const before = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
     const check = canTransitionJobStatus(before.status, newStatus);
     if (!check.ok) throw new Error(check.reason);
+
+    // FEETAX-2: starting a delivery-type visit re-checks delivery
+    // readiness inside this transaction. Two orders booked in advance
+    // for a delivery-count city both pass at booking; once the first
+    // delivery crosses the license threshold, this gate stops the
+    // second from going out without the license. Deliveries already
+    // on the truck count toward the threshold for this check.
+    if (
+      newStatus === "IN_PROGRESS" &&
+      ["DELIVERY", "INSTALLATION", "REMOVAL"].includes(before.type)
+    ) {
+      const readinessAddressId =
+        before.serviceAddressId ??
+        (before.agreementId
+          ? (
+              await tx.rentalAgreement.findUnique({
+                where: { id: before.agreementId },
+                select: { serviceAddressId: true },
+              })
+            )?.serviceAddressId
+          : null);
+      if (readinessAddressId) {
+        await assertDeliveryReadyInTx(tx, {
+          serviceAddressId: readinessAddressId,
+          agreementId: before.agreementId,
+          countDispatchedForJobId: jobId,
+        });
+      }
+    }
 
     if (newStatus === "CANCELLED") {
       // A cancelled swap gives back the replacement it reserved.

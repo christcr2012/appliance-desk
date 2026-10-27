@@ -794,13 +794,13 @@ async function assertConversionReadinessInTx(
 ): Promise<void> {
   const agreements = await tx.rentalAgreement.findMany({
     where: { id: { in: agreementIds } },
-    select: { id: true, serviceAddressId: true },
+    select: { id: true, serviceAddressId: true, readinessOverrideByUserId: true },
     orderBy: [{ id: "asc" }],
   });
   for (const agreement of agreements) {
     const readiness = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId);
     if (readiness.ready) continue;
-    if (overrideReason?.trim()) {
+    if (overrideReason?.trim() && !agreement.readinessOverrideByUserId) {
       await recordReadinessOverrideInTx(tx, {
         agreementId: agreement.id,
         actorUserId: userId,
@@ -894,6 +894,23 @@ export async function convertEstimateToAgreements(
       }
       if (!estimate.customerId) {
         throw new Error("The approved estimate must belong to the prepared agreement customer.");
+      }
+      // FEETAX-2: an owner override given at conversion is recorded
+      // BEFORE the prepared quote is recomputed. The quote's own
+      // readiness gate refuses a not-ready address, so recording the
+      // override afterwards would make it unreachable for an estimate
+      // whose address became "rules not decided" after approval. The
+      // record call itself refuses any problem that can't be
+      // overridden, and the fingerprint checks below still run.
+      if (input.overrideReason?.trim()) {
+        for (const agreement of prepared) {
+          await recordReadinessOverrideInTx(tx, {
+            agreementId: agreement.id,
+            actorUserId: userId,
+            reason: input.overrideReason,
+            serviceAddressId: agreement.serviceAddressId,
+          });
+        }
       }
       const reviewedQuote = await getPreparedEstimateQuoteInTx(tx, estimateId);
       const originalLines = await tx.estimateLineItem.findMany({

@@ -234,10 +234,16 @@ export async function scheduleJob(
             )?.serviceAddressId
           : null);
       if (readinessAddressId) {
-        await assertDeliveryReadyInTx(tx, {
-          serviceAddressId: readinessAddressId,
-          agreementId: before.agreementId,
-        });
+        // Evaluate at the new scheduled date: a license expiring
+        // before that day must not satisfy the gate.
+        await assertDeliveryReadyInTx(
+          tx,
+          {
+            serviceAddressId: readinessAddressId,
+            agreementId: before.agreementId,
+          },
+          input.scheduledAt,
+        );
       }
     }
 

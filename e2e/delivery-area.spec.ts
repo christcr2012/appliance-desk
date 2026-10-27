@@ -22,11 +22,13 @@ test.describe("Taxes › Delivery area (FEETAX-2)", () => {
     ).toBeVisible();
 
     // Greeley is home base: its rent-tax decision starts undecided (it
-    // lives in the tax rules, not the readiness row), and its license
-    // rule — yes, before delivering — is named in the license column.
+    // lives in the tax rules, not the readiness row), but the row's
+    // headline problem is the missing city license — a required license
+    // always outranks an undecided rule. Its license rule — yes,
+    // before delivering — is named in the license column.
     const greeley = page.locator("tr", { hasText: "Greeley" }).first();
     await expect(
-      greeley.getByText(/The rental tax rule for Greeley isn't decided yet/),
+      greeley.getByText(/Greeley requires a city license before delivering there/),
     ).toBeVisible();
     await expect(
       greeley.getByRole("cell", { name: "Yes, before delivering", exact: true }),
