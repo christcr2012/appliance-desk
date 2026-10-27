@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import type { ExceptionItem } from "@/domains/exceptions/rules";
 import { encryptField, hasFieldCryptoKey } from "@/lib/field-crypto";
-import { PAPERWORK_TEMPLATES } from "./templates";
+import { PAPERWORK_TEMPLATES, type PaperworkTemplate } from "./templates";
 import {
   effectiveRecordDate,
   nextDueAfterRenewal,
@@ -45,29 +45,57 @@ async function audit(tx: Prisma.TransactionClient, userId: string, action: strin
 }
 
 /** Adds the starter checklist. Running it again never duplicates or overwrites anything. */
+/** The row one starter template creates — shared by the whole-list add and the single-record ensure. */
+export function starterRecordData(t: PaperworkTemplate, index: number, userId: string) {
+  return {
+    templateKey: t.key,
+    title: t.title,
+    groupName: t.group,
+    whatItIs: t.whatItIs,
+    agency: t.agency ?? null,
+    officialUrl: t.officialUrl ?? null,
+    remindDaysBefore: t.remindDaysBefore ?? 30,
+    repeatEveryMonths: t.repeatEveryMonths ?? null,
+    kind: t.kind ?? "TASK",
+    numberLabel: t.numberLabel ?? null,
+    linkedObligationKeys: t.linkedObligationKeys ?? [],
+    sortOrder: index * 10,
+    createdByUserId: userId,
+  };
+}
+
 export async function addStarterChecklist(userId: string): Promise<{ added: number }> {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const result = await tx.businessPaperwork.createMany({
-      data: PAPERWORK_TEMPLATES.map((t, index) => ({
-        templateKey: t.key,
-        title: t.title,
-        groupName: t.group,
-        whatItIs: t.whatItIs,
-        agency: t.agency ?? null,
-        officialUrl: t.officialUrl ?? null,
-        remindDaysBefore: t.remindDaysBefore ?? 30,
-        repeatEveryMonths: t.repeatEveryMonths ?? null,
-        kind: t.kind ?? "TASK",
-        numberLabel: t.numberLabel ?? null,
-        linkedObligationKeys: t.linkedObligationKeys ?? [],
-        sortOrder: index * 10,
-        createdByUserId: userId,
-      })),
+      data: PAPERWORK_TEMPLATES.map((t, index) => starterRecordData(t, index, userId)),
       skipDuplicates: true,
     });
     await audit(tx, userId, "paperwork.starter_added", "starter");
     return { added: result.count };
+  });
+}
+
+/**
+ * SETUP-1: make sure the one starter record a walkthrough step fills exists,
+ * creating just that record (same row the starter button would add). Returns
+ * the record id either way.
+ */
+export async function ensureStarterRecord(userId: string, templateKey: string): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER"]);
+    const existing = await tx.businessPaperwork.findUnique({
+      where: { templateKey },
+      select: { id: true },
+    });
+    if (existing) return existing.id;
+    const index = PAPERWORK_TEMPLATES.findIndex((t) => t.key === templateKey);
+    if (index < 0) throw new Error("That starter record doesn't exist.");
+    const row = await tx.businessPaperwork.create({
+      data: starterRecordData(PAPERWORK_TEMPLATES[index], index, userId),
+    });
+    await audit(tx, userId, "paperwork.starter_added", row.id);
+    return row.id;
   });
 }
 
