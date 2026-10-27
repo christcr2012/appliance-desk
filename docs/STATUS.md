@@ -1,3 +1,23 @@
+## October 26 — AR-11 keyboard navigation and quiet refresh (in progress)
+
+Branch `ai/chatgpt/ar-11-keyboard-freshness` extends merged PR #608. Adds desktop keyboard navigation and
+an on-screen shortcut guide, plus idle/visibility/unsaved-work guarded refresh for Today, Bills and Customers.
+Pure unit, client timer and authenticated browser tests are included. No access or money rules changed.
+Local package tests unavailable without the repo checkout/dependencies: CI at the exact head must prove this.
+Still not a finished AR-11 card: React/view transitions, loading skeleton sweep, touch, state memory and
+bundle budget remain on the card. Next AR-12 after AR-11.
+
+## October 26 — TFA-3: official-page watches with strict parsers (in progress)
+
+Branch `ai/vivienne/tfa-3-final`. The six seeded official-page watches are turned on behind an owner switch on the
+Rules screen, and three gain strict readers (Colorado RDF rates, IRS 1099 instructions, Colorado interest) plus
+the Greeley rate reader: pages are read weekly, and daily inside each rule's known change window. Every reading
+is stored; one that differs from the rule book waits on To do for Chris's Approve / Not right — nothing is
+applied on its own, and the old GIS rate auto-apply now starts off. Greeley readings go through the existing
+rate review path, and a Greeley approval also mirrors into the rule book so the two stores agree. Known limit:
+the live Greeley page does not state its rate in a sentence yet, so that reader reports "couldn't read" until
+the city publishes one (never a guess). Local proof: parsers 13/13, observation 9/9, watch 18/18, rate review
+6/6, Today access 11/11, registries 24/24 on throwaway Postgres. PR #646: CI green at the exact head, review round 1 resolved; merging.
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 
 One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
