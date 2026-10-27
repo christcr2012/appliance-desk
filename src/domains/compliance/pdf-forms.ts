@@ -256,3 +256,32 @@ export async function fillForm8300(
     dir,
   );
 }
+
+import { DR0104EP_VOUCHER_FIELDS } from "./forms/dr0104ep.fields";
+
+/**
+ * CMP-2: fills the DR 0104EP payment voucher (page index 4 of the
+ * vendored 2026 booklet). The identity values are the owner's, typed at
+ * download time — nothing here stores them.
+ */
+export async function fillDr0104EpVoucher(
+  values: VoucherValues & { middleInitial?: string },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  return fillMappedForm(
+    "co/dr0104ep_2026.pdf",
+    DR0104EP_VOUCHER_FIELDS as unknown as Record<string, string>,
+    {
+      lastName: values.lastName,
+      firstName: values.firstName,
+      middleInitial: values.middleInitial,
+      ssn: values.ssn,
+      address: values.address,
+      city: values.city,
+      state: values.state,
+      zip: values.zip,
+      amount: values.amountDollars,
+    },
+    dir,
+  );
+}
