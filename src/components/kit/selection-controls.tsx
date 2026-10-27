@@ -101,7 +101,7 @@ export function SearchablePicker({ name, label, search, value, addNew }: {
   const [query, setQuery] = useState("");
   // Local selection only overrides its matching input prop; a changed server value takes precedence.
   const [selection, setSelection] = useState<{ source: PickedRecord | undefined; record: PickedRecord } | null>(null);
-  const choice = selection?.source === value ? selection.record : value;
+  const choice = selection !== null && selection.source === value ? selection.record : value;
   const [result, setResult] = useState<{ query: string; rows: PickedRecord[] } | null>(null);
   const [loadingQuery, setLoadingQuery] = useState<string | null>(null);
   const [errorQuery, setErrorQuery] = useState<string | null>(null);
