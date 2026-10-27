@@ -61,7 +61,8 @@
       "system-health-keys.spec.ts",
       "customer-record.spec.ts",
       "books-month-review.spec.ts",
-      "business-records.spec.ts"
+      "business-records.spec.ts",
+      "setup-guide.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",

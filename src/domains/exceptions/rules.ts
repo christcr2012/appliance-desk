@@ -47,6 +47,7 @@ export type ExceptionCategory =
   | "PAYMENT_DISPUTE"
   | "COLLECTION_STEP"
   | "CONTINUITY"
+  | "SETUP_GUIDE"
   | "PRIVACY_DUTY"
   | "LATE_FEE_REVIEW"
   | "DECISIONS_STARTING_VALUES"
