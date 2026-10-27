@@ -34,6 +34,10 @@ function card(items: MenuItem[] = actions) {
     </ul>,
   );
 }
+function tap(element: HTMLElement) {
+  fireEvent.pointerDown(element, { pointerType: "touch", pointerId: 9, clientX: 10, clientY: 10 });
+  fireEvent.click(element);
+}
 function gesture(element: HTMLElement, x: number, y = 0, type = "touch", cancel = false) {
   fireEvent.pointerDown(element, { pointerType: type, pointerId: 1, clientX: 200, clientY: 30 });
   if (cancel) fireEvent.pointerCancel(element, { pointerType: type, pointerId: 1 });
@@ -61,7 +65,7 @@ describe("AR-11 safe phone swipe actions", () => {
     expect(screen.getByRole("link", { name: "History" })).toHaveAttribute("href", "/desk/billing/abc/history");
     expect(screen.getByRole("link", { name: "Open details" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Third action" })).toBeNull();
-    fireEvent.click(screen.getByRole("link", { name: "Bill 1" }));
+    tap(screen.getByRole("link", { name: "Bill 1" }));
     expect(li).toHaveAttribute("data-swipe-open", "false");
   });
 
@@ -95,13 +99,13 @@ describe("AR-11 safe phone swipe actions", () => {
     const li = screen.getByRole("listitem");
     gesture(li, -90);
     expect(charge).not.toHaveBeenCalled();
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Take payment" })));
+    await act(async () => tap(screen.getByRole("button", { name: "Take payment" })));
     expect(screen.getByRole("alertdialog", { name: "Take $70.00?" })).toBeInTheDocument();
     expect(charge).not.toHaveBeenCalled();
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Cancel" })));
     expect(charge).not.toHaveBeenCalled();
     expect(li).toHaveAttribute("data-swipe-open", "true");
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Take payment" })));
+    await act(async () => tap(screen.getByRole("button", { name: "Take payment" })));
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Take $70.00" })));
     expect(charge).toHaveBeenCalledTimes(1);
   });
