@@ -79,7 +79,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | System health (automations) | `/desk/automations` | Health of every scheduled job |
 | Launch list | `/desk/launch` | People waiting for you to open |
 | More → Privacy requests | `/desk/privacy` | Customers asking to see or delete data |
-| Security | `/desk/privacy-security` (the page itself is `/desk/privacy-security/setup`) | Two-step sign-in and account safety |
+| Security | `/desk/security` (the page itself is `/desk/security/setup`) | Two-step sign-in and account safety |
 | Missed calls and voicemail | `/desk/communications/calls` | Missed calls and voicemail |
 | Phone, texts and provider costs | `/desk/settings/telecom` | Phone and text setup and what the provider charges |
 | Preview storage check | `/desk/settings/preview-storage` | A check that the practice copy's photo storage works (practice copy only) |
