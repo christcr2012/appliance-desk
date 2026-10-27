@@ -5712,7 +5712,7 @@
         "CMP-2",
         "DEC-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/taxben-1 (2026-10-27); built, in PR",
       "migration": "additive (purchase capitalization fields, business-use settings)",
       "budget": 550,
       "units": [
@@ -5815,7 +5815,7 @@
         "FEETAX-1",
         "VAULT-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "MERGED — PR #684, squash 8a71a069 on main (2026-10-27); CI green at the exact head; eleven Codex findings all fixed with regression tests and resolved",
       "migration": "additive (JurisdictionReadiness, JurisdictionDeliveryCount)",
       "budget": 450,
       "units": [
@@ -5905,6 +5905,10 @@
     {
       "id": "FEETAX-2",
       "path": "docs/pr-cards/execution/FEETAX-2.json"
+    },
+    {
+      "id": "TAXBEN-1",
+      "path": "docs/pr-cards/execution/TAXBEN-1.json"
     },
     {
       "id": "W-22D12",
