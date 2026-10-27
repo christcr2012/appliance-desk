@@ -15,6 +15,7 @@ import { listRecallAttention } from "./recall-attention";
 import { listBooksAttention, listBooksSetupAttention, listBooksMonthReviewAttention } from "./books-attention";
 import { listResaleTaxAttention } from "./resale-tax-attention";
 import { listVehicleAttention } from "./vehicle-attention";
+import { listInsuranceAttention } from "./insurance-attention";
 import { listApprovalAttention } from "./approval-attention";
 import { listGoalAttention } from "./goal-attention";
 import { prisma } from "@/lib/prisma";
@@ -1124,6 +1125,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const booksAttention = canViewFinance ? await listBooksAttention(now) : [];
   const booksSetupAttention = session.user.role === "OWNER" ? await listBooksSetupAttention(now) : [];
   const vehicleAttention = (session.user as { role?: string }).role === "OWNER" ? await listVehicleAttention(now) : [];
+  const insuranceAttention = (session.user as { role?: string }).role === "OWNER" ? await listInsuranceAttention(now) : [];
   const booksMonthReviewAttention = canViewFinance ? await listBooksMonthReviewAttention(now) : [];
   const resaleTaxAttention = (session.user as { role?: string }).role === "OWNER" ? await listResaleTaxAttention(now) : [];
   const privacyAttention = (session.user as { role?: string }).role === "OWNER" ? await listPrivacyAttention(now) : [];
@@ -1214,6 +1216,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...booksMonthReviewAttention,
     ...resaleTaxAttention,
     ...vehicleAttention,
+    ...insuranceAttention,
     ...privacyAttention,
     ...approvalAttention,
     ...goalAttention,

@@ -269,6 +269,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/paperwork", role: "OWNER", fixture: "/desk/paperwork" },
   { path: "/desk/vehicle", role: "OWNER", fixture: "/desk/vehicle" },
+  { path: "/desk/insurance", role: "OWNER", fixture: "/desk/insurance" },
   {
     path: "/desk/paperwork/[id]",
     role: "OWNER",
