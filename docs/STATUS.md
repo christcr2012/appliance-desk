@@ -1,4 +1,14 @@
 ## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
+## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
+
+One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
+registries' identifier keys (the generic-api-key false positives that needed a new
+per-commit fingerprint after every commit touching those lines); 48 fingerprint
+lines came out of `.gitleaksignore`, including all of CMP-1's. Verified: full-history
+scan clean with the fingerprints removed, and planted real-shaped keys still flag,
+including inside the registry files. Merge is sequenced by the lane heartbeat.
+Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
+## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-6` (stacked on OPS-5). A nightly pass now watches bills that are past due and prepares the next step for you — a **second notice** on day 10, a **final notice** on day 20 (email text plus a printable letter), and a **decision** on day 30 (payment plan, pick up the appliance, or small claims). All three days are your settings. Nothing is sent, nothing is picked up and no money moves until you press the button; sending still goes through the normal message path, so it stays off while live email is off. Every message is written in "Robinson Appliance Rentals"'s own name. A **pickup** can be made only after you record that the customer agreed (or a court order), and never for a customer marked on active military duty without a recorded court order; "Customer objected" ends the visit with nothing taken and brings up small claims. The **small-claims packet** (PDF) gathers the bills and payments, notices sent, the appliance cost and the claim amount; it checks the $7,500 limit, the filing fee ($31 up to $500, otherwise $55) and the court's 2-a-month / 18-a-year limits from the rule book. You file it yourself. A test now fails if any agreement, quote or notice wording offers ownership or a purchase option. Proved so far: 24 new tests (pure rules and wording, ownership-wording scan, and 9 on a throwaway database); CI still to run. Not built: the court's own claim form is not copied into the app — the packet tells you to fill in JDF 250 from the Colorado Judicial Branch site so it is always the current one.
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
@@ -37,6 +47,9 @@ Branch `ai/claude/ops-5`. When Stripe tells us a customer disputed a payment, th
 ## October 26 — CI maintenance: scoped secret history and rebalanced browser groups (PR #632)
 
 PR #632 changes Gitleaks from all-branch history scanning to new PR/push commits plus the complete main-only nightly history; the full checked-out-file scan remains. Three complete browser specs moved into the previously lightest group, preserving all 85 specs and four runners. The first full CI run (40416591581, head f591596f) passed all 11 jobs: browser a 164.74s, b 142.41s, c 108.31s, d 164.08s against 180s. No automated review appeared and the diff was self-reviewed. The final evidence documentation revision must pass its own exact-head CI before merge; the PR records the current merge state. No security allowlist, test coverage, provider settings or production data changed.
+## October 26 — CMP-1 compliance center (PR #627)
+
+The Compliance center's foundation: every federal and Colorado obligation from the 2026-10-25 research file is in a pure registry with sources and correct 2026–2028 periods; the "checked and not needed" items (FinCEN BOI, Form 2290, rent-to-own license) show their reason and source. Business facts (owner-only) hold the entity type, report month, truck weight and employees; the EIN is stored AES-256-GCM encrypted (`src/lib/field-crypto.ts`), only its last 4 ever shown, never logged — and until Chris sets `COMPLIANCE_ENCRYPTION_KEY` (owner checklist) the EIN box is disabled with the reason. Filings move prepare → approve → submit under the row lock: approval binds the prepared numbers' hash (changed numbers force re-review), submitting happens once only, and prepared numbers refuse a full tax ID. The To do list gains a COMPLIANCE_DUE category driven by the TFA-1 timing rule; the Compliance screen lives at /desk/compliance, reached from the Taxes home page (the guarded four-tab Taxes menu is unchanged), with four sections of its own (Coming up, Needs you, Done, Not needed), a business-facts page, filing pages and a calendar download. The filled-form engine vendors the official 1040-ES booklet, hash-checked against a manifest, with a field map read from the PDF itself (voucher blocks verified by geometry); the SOS periodic report has the first guided preparation. Open CMP questions are filed as DQ-CMP-* in OWNER-INPUTS.md. Next: CMP-3 (1099s) then CMP-2 on this foundation.
 
 ## October 26 — OPS-1: product recalls (PR open, branch `ai/claude/ops-1`)
 

@@ -24,6 +24,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   BILLING_BLOCKED: "money",
   SUBSCRIPTION_UPDATE_PENDING: "money",
   APPROVAL_REQUEST: "money",
+  COMPLIANCE_DUE: "money",
   NEW_LEAD_CONTACT: "sales",
   LEAD_FOLLOW_UP: "sales",
   APPROVED_QUOTE: "sales",
