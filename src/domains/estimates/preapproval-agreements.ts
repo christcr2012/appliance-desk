@@ -100,7 +100,7 @@ export async function prepareEstimateAgreementsBeforeApproval(
           // The estimate amount is an aggregate, never one whole reserve per
           // property. OWNER must explicitly allocate it across these drafts.
           depositCents: 0 },
-        { sourceEstimateId: estimateId, settings });
+        { sourceEstimateId: estimateId, settings, skipDeliveryReadinessCheck: true });
       created.push(agreement.id);
     }
     await tx.auditLog.create({
