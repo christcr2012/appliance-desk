@@ -98,11 +98,12 @@ async function booksFactsForYear(
  * only a still-UPCOMING row gets a refreshed actOn when the facts or the
  * timing setting change.
  */
-export async function syncComplianceFilings(now = new Date()): Promise<{ created: number; refreshed: number }> {
+export async function syncComplianceFilings(now = new Date()): Promise<{ created: number; refreshed: number; retired: number }> {
   const { percent, marginBusinessDays: margin } = await getRuleTimingSettings();
   const thisYear = Number(businessDateKey(now).slice(0, 4));
   let created = 0;
   let refreshed = 0;
+  let retired = 0;
 
   await prisma.$transaction(async (tx) => {
     // Serialize synchronization: the business settings row is locked for the
@@ -114,8 +115,8 @@ export async function syncComplianceFilings(now = new Date()): Promise<{ created
     for (const year of [thisYear - 1, thisYear, thisYear + 1]) {
       const ctx: ComplianceContext = profileContext(profile, await booksFactsForYear(tx, year));
       for (const obligation of OBLIGATIONS) {
-        if (!obligation.applies(ctx).applies) continue;
-        for (const period of obligation.periods(year, ctx)) {
+        const periods = obligation.applies(ctx).applies ? obligation.periods(year, ctx) : [];
+        for (const period of periods) {
           const { actOn } = whenToAct({
             opens: period.opens,
             closes: period.dueOn,
@@ -152,10 +153,32 @@ export async function syncComplianceFilings(now = new Date()): Promise<{ created
             refreshed++;
           }
         }
+        // Reconcile: a still-pending row whose period is no longer
+        // generated — the obligation stopped applying (corrected facts) or
+        // its schedule changed — is retired to NOT_APPLICABLE, so reminders
+        // stop. Rows already in motion (prepared, approved, submitted…)
+        // are history and are never touched.
+        const expectedKeys = new Set(periods.map((p) => p.periodKey));
+        const pending = await tx.complianceFiling.findMany({
+          where: {
+            obligationKey: obligation.key,
+            state: "UPCOMING",
+            periodKey: { startsWith: `${year}` },
+          },
+          select: { id: true, periodKey: true },
+        });
+        const stale = pending.filter((f) => !expectedKeys.has(f.periodKey));
+        if (stale.length) {
+          await tx.complianceFiling.updateMany({
+            where: { id: { in: stale.map((f) => f.id) } },
+            data: { state: "NOT_APPLICABLE" },
+          });
+          retired += stale.length;
+        }
       }
     }
   });
-  return { created, refreshed };
+  return { created, refreshed, retired };
 }
 
 async function lockFilingInTx(

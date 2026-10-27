@@ -144,6 +144,45 @@ describe.skipIf(!enabled)("compliance filings", () => {
     expect(tag).toBeTruthy();
   });
 
+  it("sync retires pending filings when corrected facts stop an obligation applying", async () => {
+    // Hire (in the facts), sync, and payroll rows appear.
+    await saveBusinessFacts(ownerId, {
+      entityType: "SINGLE_MEMBER_LLC",
+      ein: undefined,
+      sosReportMonth: 5,
+      truckGvwrLbs: 14000,
+      employees: 1,
+      hasHomeOffice: false,
+    });
+    await syncComplianceFilings(new Date("2026-10-26T12:00:00Z"));
+    const payroll = await prisma.complianceFiling.findMany({
+      where: { obligationKey: "fed.payroll.941", state: "UPCOMING" },
+    });
+    payroll.forEach((r) => {
+      if (!filingIds.includes(r.id)) filingIds.push(r.id);
+    });
+    expect(payroll.length).toBeGreaterThan(0);
+    // One payroll filing is already in motion — history the sync must keep.
+    const inMotion = payroll[0]!;
+    await prisma.complianceFiling.update({ where: { id: inMotion.id }, data: { state: "APPROVED" } });
+
+    // The correction: no employees after all. Pending payroll reminders end.
+    await saveBusinessFacts(ownerId, {
+      entityType: "SINGLE_MEMBER_LLC",
+      ein: undefined,
+      sosReportMonth: 5,
+      truckGvwrLbs: 14000,
+      employees: 0,
+      hasHomeOffice: false,
+    });
+    const result = await syncComplianceFilings(new Date("2026-10-26T12:00:00Z"));
+    expect(result.retired).toBeGreaterThan(0);
+    const after = await prisma.complianceFiling.findMany({ where: { obligationKey: "fed.payroll.941" } });
+    expect(after.filter((r) => r.state === "UPCOMING")).toHaveLength(0);
+    expect(after.find((r) => r.id === inMotion.id)!.state).toBe("APPROVED");
+    expect(after.some((r) => r.state === "NOT_APPLICABLE")).toBe(true);
+  });
+
   it("two syncs at the same moment both succeed and create one set of rows", async () => {
     await prisma.complianceFiling.deleteMany({});
     const now = new Date("2026-10-26T12:00:00Z");

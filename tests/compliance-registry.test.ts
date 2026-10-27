@@ -3,6 +3,7 @@ import {
   OBLIGATIONS,
   notNeededObligations,
   obligationByKey,
+  unscheduledObligations,
   type ComplianceContext,
 } from "@/domains/compliance/registry";
 import { businessDateKey } from "@/lib/business-date";
@@ -55,6 +56,7 @@ describe("compliance registry completeness", () => {
         "co.sos.trade_name",
         "co.vehicle_registration",
         "fed.1099_misc",
+        "fed.1099_misc_recipients",
         "fed.1099_nec",
         "fed.1099k_reconcile",
         "fed.4562",
@@ -110,6 +112,19 @@ describe("period dates", () => {
     expect(dueKeys("fed.1099_nec", 2026)).toEqual(["2027-01-31"]);
     expect(dueKeys("fed.1099_misc", 2026)).toEqual(["2027-03-31"]);
     expect(dueKeys("fed.1099k_reconcile", 2026)).toEqual(["2027-01-31"]);
+  });
+
+  it("1099-MISC recipient copies are their own January 31 obligation", () => {
+    // Furnishing copies to recipients is a separate, earlier deadline than
+    // the IRS filing — it must never hide behind the March 31 date.
+    expect(dueKeys("fed.1099_misc_recipients", 2026)).toEqual(["2027-01-31"]);
+    expect(obligationByKey("fed.1099_misc_recipients")!.applies(base).applies).toBe(true);
+  });
+
+  it("USDOT invents no date: the biennial schedule needs the USDOT number", () => {
+    const heavy = ctx({ truckGvwrLbs: 17000 });
+    expect(obligationByKey("fed.usdot")!.periods(2027, heavy)).toEqual([]);
+    expect(obligationByKey("fed.usdot")!.unscheduledReason).toMatch(/USDOT number/);
   });
 
   it("the Weld declaration starts with the 2027 assessment, due April 15", () => {
@@ -173,6 +188,21 @@ describe("applies branches", () => {
 });
 
 describe("checked and not needed", () => {
+  it("applicable obligations with no honest dates are listed as unscheduled, never hidden", () => {
+    const withTruck = unscheduledObligations(ctx({ truckGvwrLbs: 17000 }), [2026, 2027, 2028]).map((e) => e.key);
+    expect(withTruck).toContain("co.sos.trade_name");
+    expect(withTruck).toContain("greeley.business_license");
+    expect(withTruck).toContain("co.vehicle_registration");
+    expect(withTruck).toContain("fed.usdot");
+    expect(withTruck).toContain("fed.8300");
+    // The Weld declaration has real dates from 2027, so it is scheduled.
+    expect(withTruck).not.toContain("co.bpp.weld_declaration");
+    // Under the USDOT weight line, neither USDOT nor the truck registration shows.
+    const light = unscheduledObligations(ctx({ truckGvwrLbs: 14000 }), [2026, 2027, 2028]).map((e) => e.key);
+    expect(light).not.toContain("fed.usdot");
+    expect(light).toContain("co.vehicle_registration");
+  });
+
   it("lists BOI, rent-to-own and Form 2290 with reasons and sources", () => {
     const entries = notNeededObligations(base);
     const byKey = new Map(entries.map((e) => [e.key, e]));

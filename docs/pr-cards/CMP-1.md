@@ -32,3 +32,21 @@ Taxes section now names the Compliance screen, and the filing sync runs on
 the attention surfaces (Today, Taxes home, Compliance) and on facts save
 rather than inside the read-only To do provider, whose contract the
 role-access tests guard.
+
+Review round 3 (Codex on the successor PR #639, 2026-10-26): four findings,
+all accepted. (1) The 1099-MISC recipient copies are now their own
+obligation (fed.1099_misc_recipients, due January 31) instead of hiding
+behind the March 31 IRS filing date. (2) Obligations that apply but have
+no honest dates (trade name, Greeley license, truck registration, USDOT,
+Form 8300) carry an unscheduledReason and are listed on the Compliance
+screen under "Needs you — dates not set yet" with what is missing, instead
+of disappearing. (3) The USDOT update no longer invents a December 31
+date: the FMCSA biennial schedule derives from the USDOT number's last
+two digits, so the obligation is unscheduled until the number is recorded
+(DQ-CMP-USDOT). (4) The filing sync now reconciles: a still-pending row
+whose period is no longer generated (the obligation stopped applying or
+its schedule changed) is retired to NOT_APPLICABLE, while rows already in
+motion are never touched. Registry and integration tests cover all four.
+Also on #639: the secret scan's six registry lines were fingerprinted for
+the rebuilt branch's commit (a94257d2), the last item from PR #632's
+commit-range scan changeover.

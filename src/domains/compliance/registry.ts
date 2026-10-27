@@ -52,6 +52,13 @@ export interface Obligation {
   unit: ComplianceUnit;
   applies: (ctx: ComplianceContext) => { applies: boolean; why: string };
   periods: (year: number, ctx: ComplianceContext) => ObligationPeriod[];
+  /**
+   * Set when the obligation applies but no honest dates can be scheduled
+   * yet (an unconfirmed rule, a fact nobody has recorded, or an
+   * event-driven duty). The Compliance screen shows these under
+   * "Needs you" with this reason instead of hiding the obligation.
+   */
+  unscheduledReason?: string;
 }
 
 const d = (key: string): Date => {
@@ -161,16 +168,30 @@ export const OBLIGATIONS: Obligation[] = [
   },
   {
     key: "fed.1099_misc",
-    title: "1099-MISC for rents and other payments",
+    title: "1099-MISC for rents and other payments (IRS filing)",
     agency: "IRS",
     explain:
-      "Reports rents and other miscellaneous payments of $2,000 or more in a year. Copies go to the recipient by January 31 and to the IRS by March 31 when filed electronically; the app prepares both from your books.",
+      "Reports rents and other miscellaneous payments of $2,000 or more in a year to the IRS, by March 31 when filed electronically (February 28 on paper). The recipient copies are a separate, earlier job — see the next entry.",
     sourceUrl: "https://www.irs.gov/forms-pubs/about-form-1099-misc",
     channel: "UPLOAD_FILE",
     unit: "CMP-3",
     applies: always("Applies in any year you pay $2,000 or more in rents or other reportable payments; the app checks your books."),
     periods: (year) => [
       { periodKey: `${year}`, opens: d(ymd(year + 1, 1, 1)), dueOn: d(ymd(year + 1, 3, 31)), effect: "COSTS" },
+    ],
+  },
+  {
+    key: "fed.1099_misc_recipients",
+    title: "1099-MISC copies to the people you paid",
+    agency: "IRS",
+    explain:
+      "Everyone you paid $2,000 or more in rents or other reportable payments gets their 1099-MISC copy by January 31 — earlier than the IRS filing, so it is tracked on its own. (Copies reporting only box 8 or box 10 amounts have until February 15.) The app prepares the copies from the same books amounts.",
+    sourceUrl: "https://www.irs.gov/businesses/small-businesses-self-employed/information-return-reporting",
+    channel: "GUIDED_WEB",
+    unit: "CMP-3",
+    applies: always("Applies in any year you pay $2,000 or more in rents or other reportable payments; the app checks your books."),
+    periods: (year) => [
+      { periodKey: `${year}`, opens: d(ymd(year + 1, 1, 1)), dueOn: d(ymd(year + 1, 1, 31)), effect: "COSTS" },
     ],
   },
   {
@@ -200,6 +221,8 @@ export const OBLIGATIONS: Obligation[] = [
     // Event-driven, not calendar-driven: the CMP-3 detector creates the
     // filing row directly when a qualifying cash payment is recorded.
     periods: () => [],
+    unscheduledReason:
+      "There is no calendar date: the report is due within 15 days of a cash payment over $10,000, and the app creates the filing if that ever happens.",
   },
   {
     key: "fed.payroll.941",
@@ -248,8 +271,8 @@ export const OBLIGATIONS: Obligation[] = [
     title: "USDOT registration update",
     agency: "FMCSA / Colorado State Patrol",
     explain:
-      "Colorado requires a USDOT number for intrastate trucks rated 16,001 lb or more, with a registration update every two years on the FMCSA site.",
-    sourceUrl: "https://www.fmcsa.dot.gov/registration",
+      "Colorado requires a USDOT number for intrastate trucks rated 16,001 lb or more, with a registration update every two years on the FMCSA site. The update month and year are not the same for everyone: the FMCSA schedule reads them off the last two digits of the USDOT number itself.",
+    sourceUrl: "https://www.fmcsa.dot.gov/faq/how-do-you-complete-biennial-update",
     channel: "GUIDED_WEB",
     unit: "CMP-4",
     applies: (ctx) =>
@@ -262,9 +285,12 @@ export const OBLIGATIONS: Obligation[] = [
                 ? "Enter the truck's weight rating in Business facts — a USDOT number is needed only at 16,001 lb or more."
                 : `Your truck is rated ${ctx.truckGvwrLbs.toLocaleString("en-US")} lb, under the 16,001 lb line.`,
           },
-    periods: (year) => [
-      { periodKey: `${year}`, opens: d(ymd(year, 1, 1)), dueOn: d(ymd(year, 12, 31)), effect: "BENEFITS" },
-    ],
+    // The biennial schedule derives from the USDOT number's last two
+    // digits (FMCSA), which the app does not record yet — no honest date
+    // exists until it does (DQ-CMP-USDOT), so no period is invented.
+    periods: () => [],
+    unscheduledReason:
+      "The update month and year come from the USDOT number itself. Until the number is recorded (see the USDOT question in Decisions & reviews), no date is shown rather than a guessed one.",
   },
   {
     key: "co.income.dr0104ep",
@@ -335,6 +361,8 @@ export const OBLIGATIONS: Obligation[] = [
     // Renewal rule unverified (research U): no dates until the Decisions
     // answer lands; CMP-4 wires the confirmed rule in.
     periods: () => [],
+    unscheduledReason:
+      "The renewal rule is still being confirmed (see Decisions & reviews) — the dates are set as soon as it is answered.",
   },
   {
     key: "greeley.business_license",
@@ -348,6 +376,8 @@ export const OBLIGATIONS: Obligation[] = [
     applies: always("The business operates in Greeley, so a city license is required."),
     // Fee/renewal unverified (research U): CMP-4 wires the confirmed dates.
     periods: () => [],
+    unscheduledReason:
+      "The fee and renewal dates are still being confirmed (see Decisions & reviews) — the dates are set as soon as they are answered.",
   },
   {
     key: "co.vehicle_registration",
@@ -364,6 +394,8 @@ export const OBLIGATIONS: Obligation[] = [
         : { applies: false, why: "No truck is recorded yet — enter its weight rating in Business facts." },
     // The registration month is collected by CMP-4; no dates until then.
     periods: () => [],
+    unscheduledReason:
+      "The renewal month comes from the truck's current registration, which is not recorded yet — no date is shown rather than a guessed one.",
   },
   {
     key: "co.payroll.withholding",
@@ -411,6 +443,39 @@ export interface NotNeededEntry {
   agency: string;
   reason: string;
   sourceUrl: string;
+}
+
+export interface UnscheduledEntry {
+  key: string;
+  title: string;
+  agency: string;
+  explain: string;
+  /** What is still needed before dates can be scheduled, in plain words. */
+  reason: string;
+  sourceUrl: string;
+}
+
+/**
+ * Applies to the business, but no honest dates can be scheduled yet — the
+ * Compliance screen lists these under "Needs you" with what is missing, so
+ * an unanswered rule never looks like no obligation at all. An obligation
+ * qualifies when it carries an unscheduledReason and produces no period in
+ * any of the given years.
+ */
+export function unscheduledObligations(ctx: ComplianceContext, years: number[]): UnscheduledEntry[] {
+  return OBLIGATIONS.filter(
+    (o) =>
+      o.unscheduledReason !== undefined &&
+      o.applies(ctx).applies &&
+      years.every((year) => o.periods(year, ctx).length === 0),
+  ).map((o) => ({
+    key: o.key,
+    title: o.title,
+    agency: o.agency,
+    explain: o.explain,
+    reason: o.unscheduledReason as string,
+    sourceUrl: o.sourceUrl,
+  }));
 }
 
 /**

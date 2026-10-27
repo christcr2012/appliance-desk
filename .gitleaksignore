@@ -53,6 +53,14 @@ ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:gene
 ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:221
 ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:234
 ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:270
+# Same six lines again: CMP-1's successor branch (PR #639) re-committed the
+# registry in a94257d2, so the scanner attributes the lines to that commit too.
+a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:163
+a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:177
+a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:205
+a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:221
+a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:234
+a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:270
 # Same three lines again: merging main into LD-1 re-committed main's versions
 # of these files in new commits (d29df93, fc4ad1e), so the scanner attributes
 # the lines to those commits too.

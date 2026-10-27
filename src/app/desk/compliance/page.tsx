@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EmptyState, StatusPill } from "@/components/kit";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
-import { OBLIGATIONS, notNeededObligations, obligationByKey } from "@/domains/compliance/registry";
+import { OBLIGATIONS, notNeededObligations, obligationByKey, unscheduledObligations } from "@/domains/compliance/registry";
 import { getComplianceProfile, missingFacts } from "@/domains/compliance/profile";
 import {
   complianceContextForYear,
@@ -98,6 +98,9 @@ export default async function CompliancePage({
   const notApplicable = grouped.notApplicable;
   const dormant = OBLIGATIONS.filter((o) => !o.applies(ctx).applies);
   const notNeeded = notNeededObligations(ctx);
+  // Applies, but no honest dates yet — shown under "Needs you" with what
+  // is missing, never silently dropped.
+  const unscheduled = unscheduledObligations(ctx, [thisYear - 1, thisYear, thisYear + 1]);
 
   return (
     <div className="space-y-5">
@@ -115,8 +118,8 @@ export default async function CompliancePage({
               }`}
             >
               {t.label}
-              {t.key === "needs" && needsFilings.length + gaps.length > 0
-                ? ` (${needsFilings.length + gaps.length})`
+              {t.key === "needs" && needsFilings.length + gaps.length + unscheduled.length > 0
+                ? ` (${needsFilings.length + gaps.length + unscheduled.length})`
                 : ""}
             </Link>
           ))}
@@ -172,7 +175,24 @@ export default async function CompliancePage({
               ))}
             </ul>
           ) : null}
-          {!gaps.length && !needsFilings.length ? (
+          {unscheduled.length ? (
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-ink">Applies to you, dates not set yet</h2>
+              {unscheduled.map((entry) => (
+                <div key={entry.key} className="rounded-card bg-surface px-4 py-3">
+                  <p className="font-semibold text-ink">{entry.title}</p>
+                  <p className="text-sm text-ink-soft">{entry.explain}</p>
+                  <p className="text-sm text-ink-soft">{entry.reason}</p>
+                  <p className="text-sm">
+                    <a className="underline" href={entry.sourceUrl} target="_blank" rel="noreferrer">
+                      Source: {entry.agency}
+                    </a>
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!gaps.length && !needsFilings.length && !unscheduled.length ? (
             <EmptyState title="Nothing needs you right now" />
           ) : null}
         </div>
