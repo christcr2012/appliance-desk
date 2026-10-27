@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { StatusPill } from "@/components/kit";
 import { requireRole } from "@/lib/session";
 import { formatMoney } from "@/lib/money-ui";
-import { getComplianceFiling, submissionKeyFor } from "@/domains/compliance/filings";
+import { getComplianceFiling, getFilingReview, submissionKeyFor } from "@/domains/compliance/filings";
 import { obligationByKey } from "@/domains/compliance/registry";
 import { IRIS_MAX_ROWS_PER_FILE } from "@/domains/compliance/iris-csv";
 import { FilingActions } from "./filing-actions";
@@ -44,7 +44,7 @@ function preparedRows(data: unknown): Array<[string, string]> {
 }
 
 export default async function FilingPage({ params }: { params: Promise<{ id: string }> }) {
-  const { user } = await requireRole("OWNER", "ADMIN");
+  const { user } = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const { id } = await params;
   const filing = await getComplianceFiling(id);
   if (!filing) notFound();
@@ -73,8 +73,9 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
   };
   const recipients = is1099 && Array.isArray(prepared.recipients) ? prepared.recipients : [];
   const unclassifiedCategories = is1099 && Array.isArray(prepared.unclassifiedCategories) ? prepared.unclassifiedCategories : [];
-  const outputsReady = ["APPROVED", "SUBMITTED", "ACCEPTED"].includes(filing.state);
+  const outputsReady = user.role !== "ACCOUNTANT" && ["APPROVED", "SUBMITTED", "ACCEPTED"].includes(filing.state);
   const formReady = ["READY_FOR_REVIEW", "APPROVED", "SUBMITTED", "ACCEPTED"].includes(filing.state);
+  const review = await getFilingReview(filing.id);
   const rows = preparedRows(filing.preparedData);
 
   return (
@@ -279,7 +280,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
                 </a>{" "}
                 — the app never pays for you — or fill the paper voucher:
               </p>
-              {formReady && estimate.year === VOUCHER_BOOKLET_YEAR ? (
+              {user.role !== "ACCOUNTANT" && formReady && estimate.year === VOUCHER_BOOKLET_YEAR ? (
                 <VoucherForm
                   filingId={filing.id}
                   quarter={estimate.quarter}
@@ -291,7 +292,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
                     zip: profile?.businessZip ?? "",
                   }}
                 />
-              ) : formReady ? (
+              ) : formReady && user.role !== "ACCOUNTANT" ? (
                 <p className="text-sm text-ink-soft">
                   The filled voucher booklet on file is for {VOUCHER_BOOKLET_YEAR}; for {estimate.year}, pay online
                   or use that year&apos;s paper voucher.
@@ -314,6 +315,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
 
       <FilingActions
         filingId={filing.id}
+        reviewedLabel={review ? `Reviewed by ${review.byName} on ${review.at.toLocaleDateString("en-US")}.` : null}
         state={filing.state}
         preparedHash={filing.preparedHash}
         channel={obligation?.channel ?? "GUIDED_WEB"}

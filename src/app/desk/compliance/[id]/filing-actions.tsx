@@ -7,6 +7,7 @@ import {
   approveAndSubmitAction,
   doneElsewhereAction,
   markSubmittedAction,
+  markReviewedAction,
   notApplicableAction,
   prepareGuidedAction,
   resolveAction,
@@ -20,6 +21,8 @@ type Props = {
   channel: string;
   canPrepareGuided: boolean;
   isOwner: boolean;
+  /** ACCT-1: who marked the prepared numbers reviewed (owner, admin or the accountant), if anyone has. */
+  reviewedLabel: string | null;
   /**
    * CMP-3 (PR #654 review): filings whose file is downloaded after
    * approval and filed in an outside system (the IRIS portal upload, the
@@ -35,7 +38,7 @@ const btn =
 const primaryBtn =
   "rounded-lg border border-action bg-action px-3 py-2 text-sm font-medium text-on-action disabled:opacity-50";
 
-export function FilingActions({ filingId, state, preparedHash, channel, canPrepareGuided, isOwner, separateSubmission }: Props) {
+export function FilingActions({ filingId, state, preparedHash, channel, canPrepareGuided, isOwner, reviewedLabel, separateSubmission }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [result, setResult] = useState<ComplianceActionState>({});
@@ -69,6 +72,13 @@ export function FilingActions({ filingId, state, preparedHash, channel, canPrepa
 
       {state === "READY_FOR_REVIEW" && preparedHash ? (
         <div className="flex flex-wrap items-center gap-2">
+          {reviewedLabel ? (
+            <span className="text-sm font-medium text-ink">{reviewedLabel}</span>
+          ) : (
+            <button type="button" className={btn} disabled={pending} onClick={() => run(() => markReviewedAction(filingId))}>
+              Mark reviewed
+            </button>
+          )}
           {isOwner ? (
             <>
               <button

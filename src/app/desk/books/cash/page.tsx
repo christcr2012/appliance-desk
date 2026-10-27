@@ -18,7 +18,7 @@ const EVENT_NAMES:Record<string,string>={
  BANK_INTEREST:"Bank interest earned",CARD_PAYMENT:"Card payment",CASH_DEPOSIT:"Deposit linked cash/check receipts",
 };
 export default async function CashEvidencePage({searchParams}:{searchParams:Promise<{notice?:string}>}){
- const session=await requireRole("OWNER","ADMIN"),owner=session.user.role==="OWNER";
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT"),owner=session.user.role==="OWNER";
  const [data,settings]=await Promise.all([getCashDesk(session.user.id),
   prisma.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}})]);
  const notice=(await searchParams).notice?.slice(0,300),today=businessDateKey(new Date());
