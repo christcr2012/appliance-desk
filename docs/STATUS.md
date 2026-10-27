@@ -8,9 +8,9 @@ scan clean with the fingerprints removed, and planted real-shaped keys still fla
 including inside the registry files. Merge is sequenced by the lane heartbeat.
 Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
 
-## October 26 — CI speed fixes across parallel lanes (PR pending)
+## October 26 — CI speed fixes across parallel lanes (PR #645)
 
-Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Exact-head CI and review are pending. No tests, production settings, or secret allowlist changed.
+Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
 
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
