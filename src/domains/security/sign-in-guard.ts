@@ -97,7 +97,7 @@ export async function noteCompletedSignIn(
   deviceCookie: string | null,
 ): Promise<"first" | "known" | "new" | "skipped"> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-  if (!user || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF" && user.role !== "CUSTOMER")) return "skipped";
+  if (!user || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF" && user.role !== "CUSTOMER" && user.role !== "ACCOUNTANT")) return "skipped";
   const device = sessionDeviceLabel(userAgent);
   // Without a cookie there is nothing to key the device on; fall back to the device kind so the sign-in is
   // still recorded (the sign-in follow-up always passes a cookie, so this is only for direct callers).
