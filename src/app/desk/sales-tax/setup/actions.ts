@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { confirmBusinessTaxAddress, locateBusinessTaxAddress } from "@/domains/tax/locations";
 import { requireRole } from "@/lib/session";
 import { parseDollarInput } from "@/lib/money-ui";
-import { saveTaxSettings, saveTaxFilingAccount, saveTaxabilityCell, addRdfRate, addManualTaxRateVersion, type TaxSettingsInput, type FilingAccountInput } from "@/domains/tax/setup";
+import { saveTaxSettings, saveTaxFilingAccount, markLicenseRenewed, saveTaxabilityCell, addRdfRate, addManualTaxRateVersion, type TaxSettingsInput, type FilingAccountInput } from "@/domains/tax/setup";
 import { RdfHandling, ShortTermLeaseElection, TaxFilingAccountKind, TaxFilingFrequency, TaxReportingBasis, TaxChargeCategory, Taxability } from "@prisma/client";
 export type TaxActionState = { error: string; success: string };
 const v = (data: FormData, key: string) => {
@@ -96,6 +96,16 @@ export async function saveTaxAccountAction(_state: TaxActionState, form: FormDat
     revalidatePath("/desk/sales-tax/setup");
     revalidatePath("/desk/sales-tax/setup/accounts/" + saved.id);
     return { error: "", success: "Filing account saved. Review any missing account answers." };
+  } catch (error) { return err(error); }
+}
+export async function markLicenseRenewedAction(_state: TaxActionState, form: FormData): Promise<TaxActionState> {
+  try {
+    const session = await requireRole("OWNER");
+    const id = v(form, "id");
+    const renewed = await markLicenseRenewed(session.user.id, id);
+    revalidatePath("/desk/sales-tax/setup");
+    revalidatePath("/desk/sales-tax/setup/accounts/" + id);
+    return { error: "", success: "License marked renewed. The new expiration is " + renewed.licenseExpiresOn.toISOString().slice(0, 10) + "." };
   } catch (error) { return err(error); }
 }
 export async function saveTaxCellAction(_state: TaxActionState, form: FormData): Promise<TaxActionState> {

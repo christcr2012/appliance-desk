@@ -4,7 +4,8 @@ import { todoAction, todoDeadlineLabel, todoKey } from "./todo";
 import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
-import { listTaxFilingAttention, listRdfRefundAttention } from "@/domains/tax/filing-attention";
+import { listPendingRdfSwitches } from "@/domains/tax/rdf-switches";
+import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { listRetiredPlanAttention } from "./retired-attention";
@@ -48,6 +49,7 @@ import {
   taxRateReviewReminderException,
   officialRateReviewException,
   officialRateScheduledException,
+  rdfSwitchException,
   taxSourceChangedException,
   taxSourceUnreachableException,
   returnedEarlyException,
@@ -382,6 +384,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxSourceChanges,
     taxSourceFailures,
     officialRateAttention,
+    rdfSwitchesPending,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -538,6 +541,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         )
       : empty<never>(),
     canViewFinance ? listOfficialRateAttention(now) : Promise.resolve([]),
+    canViewFinance ? listPendingRdfSwitches(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -1073,6 +1077,15 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     (session.user as { role?: string }).role === "OWNER" ? await listPaperworkAttention(now) : [];
   const paperworkAttention: Capped<ExceptionItem> = { rows: paperworkItems, total: paperworkItems.length };
   const rdfRefundAttention = canViewFinance ? await listRdfRefundAttention() : [];
+  const useTaxResetAttention = canViewFinance ? await listUseTaxResetAttention(now) : [];
+  const expiredExemptionAttention = canViewFinance ? await listExpiredExemptionAttention(now) : [];
+  const filingFrequencyAdviceAttention = canViewFinance ? await listFilingFrequencyAdviceAttention(now) : [];
+  // TFA-2 §6.3: prepared delivery-fee switches waiting for the owner's
+  // approval, rendered as To do items with the approve action.
+  const rdfSwitchAttention = rdfSwitchesPending.map((row) => rdfSwitchException({
+    switchId: row.id, kind: row.kind, startsOn: row.startsOn,
+    basisRetailCents: row.basisRetailCents, since: row.createdAt, now,
+  }));
 
   const amendmentAttention = canViewFinance
     ? await listTaxAmendmentAttention(now)
@@ -1150,6 +1163,10 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...filingAttention.setupChecks.rows,
     ...paperworkAttention.rows,
     ...rdfRefundAttention,
+    ...rdfSwitchAttention,
+    ...useTaxResetAttention,
+    ...expiredExemptionAttention,
+    ...filingFrequencyAdviceAttention,
     ...amendmentAttention.amendments.rows,
     ...amendmentAttention.readiness.rows,
     ...acquisitionAttention,
@@ -1176,6 +1193,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           taxSourceChanges.total +
           taxSourceFailures.total +
           officialRateAttention.length +
+          rdfSwitchesPending.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))
