@@ -11,6 +11,14 @@ type Props = {
   truckGvwrLbs: number | null;
   employees: number;
   hasHomeOffice: boolean;
+  payer: {
+    businessLegalName: string;
+    businessAddress: string;
+    businessCity: string;
+    businessState: string;
+    businessZip: string;
+    businessPhone: string;
+  };
 };
 
 const inputCls = "w-full rounded-lg border border-border bg-card px-3 py-2";
@@ -132,6 +140,40 @@ export function FactsForm(props: Props) {
         <input type="checkbox" name="hasHomeOffice" defaultChecked={props.hasHomeOffice} />
         I run the business from a home office
       </label>
+
+      <fieldset className="space-y-4 border-t border-border pt-5">
+        <legend className="text-sm font-semibold text-ink">Name and address on 1099s (the payer block)</legend>
+        <p className={helpCls}>
+          This is what prints as the payer on every 1099 you send, and what the IRS portal file carries. Use
+          the legal name and mailing address from your EIN paperwork.
+        </p>
+        <div>
+          <label className={labelCls} htmlFor="businessLegalName">Business legal name</label>
+          <input id="businessLegalName" name="businessLegalName" defaultValue={props.payer.businessLegalName} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls} htmlFor="businessAddress">Mailing address</label>
+          <input id="businessAddress" name="businessAddress" defaultValue={props.payer.businessAddress} className={inputCls} />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className={labelCls} htmlFor="businessCity">City</label>
+            <input id="businessCity" name="businessCity" defaultValue={props.payer.businessCity} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="businessState">State</label>
+            <input id="businessState" name="businessState" defaultValue={props.payer.businessState} maxLength={2} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="businessZip">ZIP</label>
+            <input id="businessZip" name="businessZip" defaultValue={props.payer.businessZip} className={inputCls} />
+          </div>
+        </div>
+        <div>
+          <label className={labelCls} htmlFor="businessPhone">Phone (optional)</label>
+          <input id="businessPhone" name="businessPhone" defaultValue={props.payer.businessPhone} className={inputCls} />
+        </div>
+      </fieldset>
 
       <button
         type="submit"

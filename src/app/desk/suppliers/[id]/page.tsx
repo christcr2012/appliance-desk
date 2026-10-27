@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { SupplierDetailClient } from "./supplier-detail-client";
 import { SupplierArchiveButton } from "./supplier-archive-button";
+import { W9Panel } from "./w9-panel";
 import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Supplier" };
@@ -27,7 +28,7 @@ export default async function SupplierDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("OWNER", "ADMIN");
+  const { user } = await requireRole("OWNER", "ADMIN");
   const { id } = await params;
   const supplier = await getSupplierById(id);
   const purchases = supplier ? await listPurchases({ supplierId: supplier.id, take: 50 }) : [];
@@ -112,6 +113,18 @@ export default async function SupplierDetailPage({
           supplierId={supplier.id}
           archived={supplier.archivedAt !== null}
         />
+
+        {supplier.is1099Vendor ? (
+          <W9Panel
+            supplierId={supplier.id}
+            legalName={supplier.legalName ?? supplier.name}
+            tinLast4={supplier.tinLast4}
+            tinType={supplier.tinType}
+            w9ReceivedOn={supplier.w9ReceivedOn ? supplier.w9ReceivedOn.toLocaleDateString("en-US", { timeZone: "America/Denver" }) : null}
+            backupWithholding={supplier.backupWithholding}
+            isOwner={user.role === "OWNER"}
+          />
+        ) : null}
 
         <section aria-labelledby="supplier-purchases">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
