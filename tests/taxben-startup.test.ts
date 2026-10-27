@@ -190,17 +190,26 @@ describe.skipIf(!enabled)("start-up tagging (real Postgres)", () => {
         const type = await tx.applianceType.create({
           data: { name: `TB derived type ${tag}`, slug: `tb-derived-${tag}` },
         });
-        await tx.appliance.create({
+        // Bought 2026-02-01 but only AVAILABLE from 2026-06-01: the derived
+        // date follows availability, never the purchase (PR #696 review).
+        const unit = await tx.appliance.create({
           data: {
             assetNumber: `TB-DV-${tag}`, applianceTypeId: type.id,
-            purchaseDate: businessDateFromKey("2026-02-01"), acquisitionCostCents: 100_000,
+            purchaseDate: businessDateFromKey("2026-02-01")!, acquisitionCostCents: 100_000,
+          },
+        });
+        await tx.bookAsset.create({
+          data: {
+            applianceId: unit.id, costCents: 100_000,
+            placedInServiceOn: businessDateFromKey("2026-06-01")!, lifeMonths: 60, salvagePercent: 0,
           },
         });
         const summary = await computeStartupSummary(tx);
         // Another lane of the seed may hold an even earlier first; the date
-        // can only be on or before this unit's purchase day.
+        // can only be on or before this unit's placed-in-service day, and a
+        // purchase-only unit (no availability record) must not pull it back.
         expect(summary.beganOn).not.toBeNull();
-        expect(summary.beganOn! <= "2026-02-01").toBe(true);
+        expect(summary.beganOn! <= "2026-06-01").toBe(true);
         expect(summary.beganStored).toBe(false);
         throw new Rollback();
       }),

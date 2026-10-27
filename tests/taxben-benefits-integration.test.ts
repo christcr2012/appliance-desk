@@ -219,3 +219,61 @@ describe.skipIf(!enabled)("tax benefits engine (real Postgres)", () => {
     ).rejects.toBeInstanceOf(Rollback);
   });
 });
+
+describe.skipIf(!enabled)("review fixes on PR #696 (real Postgres)", () => {
+  const tag = randomUUID().replaceAll("-", "");
+
+  it("counts contra-income against profit, and years a prior-year expensed unit by its purchase year", async () => {
+    await expect(
+      prisma.$transaction(async (tx) => {
+        const income = await tx.ledgerAccount.findUniqueOrThrow({ where: { systemRole: "RENTAL_INCOME" } });
+        const contra = await tx.ledgerAccount.findFirst({ where: { type: "CONTRA_INCOME" } });
+        expect(contra).not.toBeNull();
+        const journal = async (on: string, sourceId: string, accountId: string, debit: number, credit: number) => {
+          await tx.journalEntry.create({
+            data: {
+              entryDate: businessDateFromKey(on)!, periodKey: on.slice(0, 7),
+              sourceType: "EXPENSE", sourceId, eventKind: "TAXBEN_TEST", memo: "review fix test",
+              lines: { create: [{ ledgerAccountId: accountId, debitCents: debit, creditCents: credit }] },
+            },
+          });
+        };
+        // Delta over the seeded baseline: +$1,000 income, +$100 contra-income.
+        const before = await computeTaxBenefits(2026, tx);
+        await journal("2026-05-01", `tb696-inc-${tag}`, income.id, 0, 100_000);
+        await journal("2026-05-02", `tb696-con-${tag}`, contra!.id, 10_000, 0);
+        const after = await computeTaxBenefits(2026, tx);
+        expect(after.netProfitCents - before.netProfitCents).toBe(90_000);
+
+        // A unit bought in December 2026 but only classified in January 2027
+        // still belongs to the 2026 expensing total, not 2027's.
+        const type = await tx.applianceType.create({
+          data: { name: `TB 696 type ${tag}`, slug: `tb-696-${tag}` },
+        });
+        const purchase = await tx.purchase.create({
+          data: {
+            operationKey: `tb696-${tag}`, payloadHash: "test", sellerName: "Test seller",
+            purchasedOn: businessDateFromKey("2026-12-15")!, subtotalCents: 100_000,
+            sellerTaxCents: 0, sellerTaxKind: "NONE", otherChargesCents: 0,
+            createdByUserId: "tb696", taxRevisionAt: new Date(),
+          },
+        });
+        await tx.appliance.create({
+          data: {
+            assetNumber: `TB-696-${tag}`, applianceTypeId: type.id, purchaseId: purchase.id,
+            purchaseDate: businessDateFromKey("2026-12-15")!, acquisitionCostCents: 100_000,
+            capDecision: "EXPENSED_DE_MINIMIS", capLineCents: 100_000,
+            capDecidedAt: businessDateFromKey("2027-01-10")!,
+          },
+        });
+        const dep2026 = (await computeTaxBenefits(2026, tx)).rows.find((r) => r.key === "depreciation");
+        const dep2027 = (await computeTaxBenefits(2027, tx)).rows.find((r) => r.key === "depreciation");
+        expect(dep2026?.amountCents ?? 0).toBeGreaterThanOrEqual(100_000);
+        expect(
+          dep2027?.details.find((d) => d.label === "Expensed under the de minimis safe harbor")?.cents ?? 0,
+        ).toBe(0);
+        throw new Rollback();
+      }),
+    ).rejects.toBeInstanceOf(Rollback);
+  });
+});
