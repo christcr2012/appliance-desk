@@ -191,7 +191,12 @@ export default async function DeliveryAreaPage({
         <h3 id="places-heading" className="font-semibold">
           Places within 50 miles of Greeley, and any place an address has reached
         </h3>
-        <div className="overflow-x-auto rounded-xl border border-border">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Delivery area places"
+          className="overflow-x-auto rounded-xl border border-border"
+        >
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50">
