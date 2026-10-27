@@ -94,7 +94,7 @@ export function MobileSwipeCard({
       onClickCapture={clickCapture}
     >
       {open && swipable ? (
-        <div data-swipe-actions aria-label={`Actions for ${label}`} className="absolute inset-y-0 right-0 flex w-[min(65vw,280px)] items-center gap-1.5 bg-tint px-2">
+        <div data-swipe-actions role="group" aria-label={`Actions for ${label}`} className="absolute inset-y-0 right-0 flex w-[min(65vw,280px)] items-center gap-1.5 bg-tint px-2">
           {actions.slice(0, 2).map((action, index) => (
             <ActionButton
               key={`${action.kind}-${action.label}-${index}`}
