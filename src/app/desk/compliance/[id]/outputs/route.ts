@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getComplianceFiling } from "@/domains/compliance/filings";
 import { build1099Outputs, payerIdentity, type Prepared1099Row } from "@/domains/compliance/information-returns";
 import { dollars } from "@/domains/compliance/iris-csv";
-import { fillDr0104EpVoucher, fillDs056, fillDs060, fillEstimatedTaxVoucher, fillForm8300, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
+import { fillDr0104EpVoucher, fillDs056, fillDs060, fillEstimatedTaxVoucher, fillForm8300, vendoredDsForm, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
 import { bppBusinessFromPrepared, bppSnapshotFromPrepared, bppSpreadsheetCsv } from "@/domains/compliance/bpp";
 import { packetCsv, packetPdf, type PacketData } from "@/domains/compliance/schedule-c";
 import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
@@ -84,6 +84,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       }
       const snapshot = bppSnapshotFromPrepared(filing.preparedData);
       if (!snapshot) return new Response("That snapshot is not part of this filing.", { status: 404 });
+      // The county re-issues the DS forms per assessment year, and the
+      // year is printed on the form itself: a filled form is served
+      // only when the vendored printing is the filing's own year. The
+      // spreadsheet is always available — it carries the full listing.
+      if ((kind === "ds056" || kind === "ds060") && !vendoredDsForm(kind, snapshot.year)) {
+        return new Response(
+          `The ${snapshot.year} printing of this form has not been published by the county yet — the itemized spreadsheet has everything the form asks for.`,
+          { status: 404 },
+        );
+      }
       if (kind === "bpp-csv") {
         return new Response(bppSpreadsheetCsv(snapshot), {
           headers: {
@@ -109,6 +119,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         item.serialNumber ? `${item.description} — serial ${item.serialNumber}` : item.description;
       if (kind === "ds056") {
         const bytes = await fillDs056({
+          year: snapshot.year,
           identity,
           newBusiness: snapshot.firstTimeFiler,
           rows: snapshot.items.slice(0, 5).map((item) => ({
@@ -131,6 +142,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       const renters = new Set(rented.map((item) => item.userName).filter(Boolean));
       const firstRented = rented[0];
       const bytes = await fillDs060({
+        year: snapshot.year,
         identity,
         singleRenter:
           renters.size === 1 && firstRented?.userName

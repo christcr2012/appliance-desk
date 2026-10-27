@@ -215,23 +215,18 @@ export async function prepareGuidedAction(filingId: string): Promise<ComplianceA
       return { ok: true };
     }
     // CMP-4: the Weld property declaration, from the January 1 snapshot.
+    // An under-exemption verdict does NOT close the filing here: the
+    // snapshot totals the property the app tracks, and other business
+    // property could still take the real total over the line. The
+    // filing stays ready for review; the owner confirms "this is
+    // everything" on the filing page to close it as not needed (the
+    // BppSection confirm), or approves it and files with the rest
+    // added by hand.
     if (filing.obligationKey === "co.bpp.weld_declaration") {
-      const { buildBppPreparedData, bppSnapshotFromPrepared } = await import("@/domains/compliance/bpp");
+      const { buildBppPreparedData } = await import("@/domains/compliance/bpp");
       const profile = await getComplianceProfile();
       const data = await buildBppPreparedData(filing, profile);
       await prepareFiling(user.id, filingId, data);
-      const snapshot = bppSnapshotFromPrepared(data);
-      if (snapshot?.verdict === "UNDER" && snapshot.thresholdCents !== null) {
-        // At or under the exemption the county wants no declaration: the
-        // filing closes as not applicable with the numbers kept, so the
-        // owner can show the working if the assessor ever asks.
-        const { markFilingNotApplicable } = await import("@/domains/compliance/filings");
-        await markFilingNotApplicable(
-          user.id,
-          filingId,
-          `No declaration needed — the January 1 total (${formatMoney(snapshot.totalCostCents)} in original cost) is at or under the ${formatMoney(snapshot.thresholdCents)} exemption for ${snapshot.year}.`,
-        );
-      }
       revalidatePath(`/desk/compliance/${filingId}`);
       revalidatePath("/desk/compliance");
       return { ok: true };

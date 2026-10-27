@@ -12,7 +12,7 @@ import { BppSection, ScheduleCPacketSection, Worksheet4562Section, Worksheet4797
 import { bppSnapshotFromPrepared } from "@/domains/compliance/bpp";
 import { VoucherForm } from "./voucher-form";
 import { getComplianceProfile } from "@/domains/compliance/profile";
-import { VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
+import { vendoredDsForm, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
 import type { PacketData } from "@/domains/compliance/schedule-c";
 import type { Worksheet4562, Worksheet4797 } from "@/domains/compliance/worksheets";
 import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
@@ -248,7 +248,15 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
         <ScheduleCPacketSection filingId={filing.id} packet={packet} outputsReady={outputsReady} />
       ) : null}
       {bppSnapshot ? (
-        <BppSection filingId={filing.id} snapshot={bppSnapshot} outputsReady={outputsReady} />
+        <BppSection
+          filingId={filing.id}
+          filingState={filing.state}
+          snapshot={bppSnapshot}
+          outputsReady={outputsReady}
+          dsFormsAvailable={
+            vendoredDsForm("ds056", bppSnapshot.year) !== null && vendoredDsForm("ds060", bppSnapshot.year) !== null
+          }
+        />
       ) : null}
       {worksheet4562 ? <Worksheet4562Section worksheet={worksheet4562} /> : null}
       {worksheet4797 ? <Worksheet4797Section worksheet={worksheet4797} /> : null}

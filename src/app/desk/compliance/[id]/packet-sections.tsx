@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/money-ui";
+import { BppConfirmNoDeclaration } from "./bpp-confirm";
 import type { PacketData } from "@/domains/compliance/schedule-c";
 import type { Worksheet4562, Worksheet4797 } from "@/domains/compliance/worksheets";
 import type { BppSnapshot } from "@/domains/compliance/bpp";
@@ -196,12 +197,17 @@ export function ScheduleCPacketSection({
  */
 export function BppSection({
   filingId,
+  filingState,
   snapshot,
   outputsReady,
+  dsFormsAvailable,
 }: {
   filingId: string;
+  filingState: string;
   snapshot: BppSnapshot;
   outputsReady: boolean;
+  /** The vendored DS printings are the filing year's own (see vendoredDsForm). */
+  dsFormsAvailable: boolean;
 }) {
   const renters = new Set(snapshot.items.filter((i) => i.rentedOut).map((i) => i.userName).filter(Boolean));
   return (
@@ -211,11 +217,34 @@ export function BppSection({
           January 1, {snapshot.year} snapshot — {snapshot.items.length} item
           {snapshot.items.length === 1 ? "" : "s"}, {formatMoney(snapshot.totalCostCents)} in original cost
         </h3>
-        {snapshot.verdict === "UNDER" && snapshot.thresholdCents !== null ? (
+        {snapshot.verdict === "UNDER" && snapshot.thresholdCents !== null && filingState === "NOT_APPLICABLE" ? (
           <p className="text-sm text-ink-soft">
             <span className="font-semibold text-ink">No declaration needed.</span> The total is at or under the{" "}
-            {formatMoney(snapshot.thresholdCents)} exemption for {snapshot.year}, so this filing has been closed as
-            not needed with these numbers kept — you can show the working if the assessor ever asks.
+            {formatMoney(snapshot.thresholdCents)} exemption for {snapshot.year}, and you confirmed the tracked
+            fleet is everything the business owns — this filing is closed as not needed with these numbers kept,
+            so you can show the working if the assessor ever asks.
+          </p>
+        ) : snapshot.verdict === "UNDER" && snapshot.thresholdCents !== null && filingState === "READY_FOR_REVIEW" ? (
+          <div className="space-y-3">
+            <p className="text-sm text-ink-soft">
+              <span className="font-semibold text-ink">This looks like no declaration is needed</span> — the
+              tracked appliances total {formatMoney(snapshot.totalCostCents)}, at or under the{" "}
+              {formatMoney(snapshot.thresholdCents)} exemption for {snapshot.year}. That total counts only the
+              property the app tracks, though. If the business owns anything else declarable (tools, office
+              equipment, signage), add its cost: over the line means a declaration is due, and approving this
+              filing instead gives you the files with the fleet listing to attach. If the tracked fleet really
+              is everything, confirm it and the filing closes as not needed with these numbers kept.
+            </p>
+            <BppConfirmNoDeclaration
+              filingId={filingId}
+              note={`No declaration needed — the January 1 total (${formatMoney(snapshot.totalCostCents)} in original cost) is at or under the ${formatMoney(snapshot.thresholdCents)} exemption for ${snapshot.year}, and the owner confirmed the tracked fleet is all the business property there is.`}
+            />
+          </div>
+        ) : snapshot.verdict === "UNDER" && snapshot.thresholdCents !== null ? (
+          <p className="text-sm text-ink-soft">
+            The tracked total is at or under the {formatMoney(snapshot.thresholdCents)} exemption for{" "}
+            {snapshot.year} — no declaration is owed on these numbers. You approved the filing anyway, so the
+            files below carry the full listing if you want it on record with the assessor.
           </p>
         ) : snapshot.verdict === "OVER" && snapshot.thresholdCents !== null ? (
           <p className="text-sm text-ink-soft">
@@ -284,31 +313,51 @@ export function BppSection({
       {outputsReady ? (
         <section className="max-w-3xl space-y-2">
           <h3 className="font-semibold text-ink">Declaration files</h3>
-          <p className="text-sm text-ink-soft">
-            Built from the approved snapshot above. The DS 056 prints the first 5 items and the DS 060 the first 4
-            rented-out units; the spreadsheet lists every item and is the itemized listing the form asks you to
-            attach.
-            {renters.size > 1
-              ? " The DS 060's renter column can print only one name, so it is left blank when units are with different renters — each unit's renter is in the spreadsheet."
-              : ""}
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-sm">
-            <li>
-              <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=ds056`}>
-                DS 056 — declaration schedule (PDF)
-              </a>
-            </li>
-            <li>
-              <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=ds060`}>
-                DS 060 — lessor schedule (PDF)
-              </a>
-            </li>
-            <li>
-              <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=bpp-csv`}>
-                Itemized listing spreadsheet (CSV)
-              </a>
-            </li>
-          </ul>
+          {dsFormsAvailable ? (
+            <>
+              <p className="text-sm text-ink-soft">
+                Built from the approved snapshot above. The DS 056 prints the first 5 items and the DS 060 the first 4
+                rented-out units; the spreadsheet lists every item and is the itemized listing the form asks you to
+                attach.
+                {renters.size > 1
+                  ? " The DS 060's renter column can print only one name, so it is left blank when units are with different renters — each unit's renter is in the spreadsheet."
+                  : ""}
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                <li>
+                  <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=ds056`}>
+                    DS 056 — declaration schedule (PDF)
+                  </a>
+                </li>
+                <li>
+                  <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=ds060`}>
+                    DS 060 — lessor schedule (PDF)
+                  </a>
+                </li>
+                <li>
+                  <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=bpp-csv`}>
+                    Itemized listing spreadsheet (CSV)
+                  </a>
+                </li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-ink-soft">
+                The filled DS 056 and DS 060 for {snapshot.year} appear here once the county publishes the{" "}
+                {snapshot.year} printing — Weld County re-issues these forms every year with the year printed on
+                them, and only that year&apos;s printing is safe to file. The spreadsheet below is the complete
+                itemized listing the form asks you to attach, and it carries everything the forms ask for.
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-sm">
+                <li>
+                  <a className="underline" href={`/desk/compliance/${filingId}/outputs?kind=bpp-csv`}>
+                    Itemized listing spreadsheet (CSV)
+                  </a>
+                </li>
+              </ul>
+            </>
+          )}
         </section>
       ) : null}
     </div>

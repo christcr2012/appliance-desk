@@ -20,7 +20,11 @@ export interface BppItem {
   serialNumber: string | null;
   category: string;
   yearAcquired: number;
-  /** "Mar 2026" — the DS 060 month/year first placed in service column. */
+  /**
+   * "Mar 2026" — the DS forms' month/year acquired-and-in-service
+   * columns, from the purchase date when one is recorded (the book
+   * in-service date can be a books-start clamp, not the real date).
+   */
   placedInService: string;
   costCents: number;
   /** Over the $350 per-item listing line for a first-time filer. */
@@ -75,8 +79,16 @@ export async function computeBppSnapshot(year: number): Promise<BppSnapshot> {
   const assets = await prisma.bookAsset.findMany({
     include: { appliance: { include: { applianceType: true } } },
   });
+  // Ownership is read off the purchase date, NOT the book in-service
+  // date: Books deliberately clamps placedInServiceOn to the books
+  // start date for depreciation (books/autopilot), so a unit bought
+  // before the books opened would vanish from its first declaration
+  // and be mis-dated. The purchase date is the ownership evidence;
+  // the book date is only the fallback when no purchase was recorded.
+  const ownershipDate = (asset: (typeof assets)[number]) =>
+    asset.appliance.purchaseDate ?? asset.placedInServiceOn;
   const owned = assets.filter((asset) => {
-    if (businessDateKey(asset.placedInServiceOn) > asOf) return false;
+    if (businessDateKey(ownershipDate(asset)) > asOf) return false;
     if (asset.disposedOn && businessDateKey(asset.disposedOn) <= asOf) return false;
     return true;
   });
@@ -111,7 +123,7 @@ export async function computeBppSnapshot(year: number): Promise<BppSnapshot> {
     .map((asset) => {
       const appliance = asset.appliance;
       const assignment = inForce.get(asset.applianceId);
-      const placed = businessDateKey(asset.placedInServiceOn);
+      const placed = businessDateKey(ownershipDate(asset));
       const [placedYear, placedMonth] = placed.split("-").map(Number);
       const description = [
         appliance.applianceType.name,
