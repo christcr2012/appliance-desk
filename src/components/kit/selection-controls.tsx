@@ -28,8 +28,9 @@ export function SegmentedControl({ name, label, options, value, onChange }: {
     <div className="flex min-h-11 overflow-hidden rounded-field border border-line-strong" role="group">
       {options.slice(0, 4).map((option) => (
         <label key={option.value} className="relative min-w-0 flex-1 cursor-pointer border-r border-line-strong last:border-r-0">
-          <input type="radio" name={name} value={option.value} checked={value === option.value}
-            onChange={() => onChange?.(option.value)} className="peer sr-only" />
+          <input type="radio" name={name} value={option.value} checked={onChange ? value === option.value : undefined}
+            defaultChecked={!onChange ? value === option.value : undefined}
+            onChange={onChange ? () => onChange(option.value) : undefined} className="peer sr-only" />
           <span className="flex min-h-11 items-center justify-center px-2 text-center text-sm font-bold text-ink peer-checked:bg-primary peer-checked:text-on-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-[-2px] peer-focus-visible:outline-focus-ring">
             {option.label}
           </span>
@@ -98,28 +99,35 @@ export function SearchablePicker({ name, label, search, value, addNew }: {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [choice, setChoice] = useState<PickedRecord | undefined>(value);
-  const [found, setFound] = useState<PickedRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  useEffect(() => { setChoice(value); }, [value]);
+  // Local selection only overrides its matching input prop; a changed server value takes precedence.
+  const [selection, setSelection] = useState<{ source: PickedRecord | undefined; record: PickedRecord } | null>(null);
+  const choice = selection?.source === value ? selection.record : value;
+  const [result, setResult] = useState<{ query: string; rows: PickedRecord[] } | null>(null);
+  const [loadingQuery, setLoadingQuery] = useState<string | null>(null);
+  const [errorQuery, setErrorQuery] = useState<string | null>(null);
+  const activeQuery = query.trim();
+  const failed = errorQuery === activeQuery;
+  const loading = activeQuery.length >= PICKER_MIN_CHARS &&
+    (loadingQuery === activeQuery || (!failed && result?.query !== activeQuery));
+  // Never display previous query's results while another search is pending.
+  const found = !loading && !failed && result?.query === activeQuery ? result.rows : [];
   useEffect(() => {
     const trimmed = query.trim();
     if (!open || trimmed.length < PICKER_MIN_CHARS) return;
     let alive = true;
     const handle = setTimeout(() => {
-      setLoading(true); setError(false);
+      setLoadingQuery(trimmed); setErrorQuery(null);
       search(trimmed).then((rows) => {
-        if (alive) setFound(rows.slice(0, 30));
+        if (alive) setResult({ query: trimmed, rows: rows.slice(0, 30) });
       }).catch(() => {
-        if (alive) { setError(true); setFound([]); }
-      }).finally(() => { if (alive) setLoading(false); });
+        if (alive) { setErrorQuery(trimmed); setResult(null); }
+      }).finally(() => { if (alive) setLoadingQuery(null); });
     }, PICKER_DEBOUNCE_MS);
     return () => { alive = false; clearTimeout(handle); };
   }, [query, open, search]);
   const setVisible = (next: boolean) => {
     setOpen(next);
-    if (!next) { setQuery(""); setFound([]); setError(false); setLoading(false); }
+    if (!next) { setQuery(""); setResult(null); setErrorQuery(null); setLoadingQuery(null); }
   };
   const body: ReactNode = <Command shouldFilter={false} label={"Choose " + label} className="text-ink">
     <CommandInput value={query} onValueChange={setQuery} placeholder="Type 2 letters to search"
@@ -127,10 +135,14 @@ export function SearchablePicker({ name, label, search, value, addNew }: {
     {query.trim().length < PICKER_MIN_CHARS ? <p className="py-3 text-sm text-ink-soft">Type 2 letters to search.</p> :
       <CommandList className="max-h-64 overflow-y-auto">
         {loading ? <p role="status" className="py-3 text-sm text-ink-soft">Searching…</p> : null}
-        {error ? <p role="alert" className="py-3 text-sm text-danger">Search did not work. Try again.</p> : null}
-        {!loading && !error && found.length === 0 ? <p className="py-3 text-sm text-ink-soft">No matches found</p> : null}
-        {!error && found.map((record) => <CommandItem key={record.id} value={record.id}
-          onSelect={() => { setChoice(record); setVisible(false); }}
+        {failed ? <p role="alert" className="py-3 text-sm text-danger">Search did not work. Try again.</p> : null}
+        {!loading && !failed && found.length === 0 ? <p className="py-3 text-sm text-ink-soft">No matches found</p> : null}
+        {!loading && !failed && found.map((record) => <CommandItem key={record.id} value={record.id}
+          onSelect={() => {
+            if (result?.query !== query.trim()) return;
+            setSelection({ source: value, record });
+            setVisible(false);
+          }}
           className={"flex min-h-11 cursor-pointer flex-col justify-center rounded-field px-3 py-2 text-sm text-ink data-[selected=true]:bg-tint " + FOCUS}>
           <span className="font-bold">{record.label}</span>
           {record.detail ? <span className="text-ink-soft">{record.detail}</span> : null}
@@ -141,7 +153,7 @@ export function SearchablePicker({ name, label, search, value, addNew }: {
       <Icon name="plus" /> {addNew.label}
     </Link> : null}
   </Command>;
-  const trigger = <button type="button" id={id} aria-haspopup="dialog" aria-expanded={open}
+  const trigger = <button type="button" id={id} aria-label={choice ? `${label}: ${choice.label}` : `Choose ${label.toLowerCase()}`} aria-haspopup="dialog" aria-expanded={open}
     onClick={() => setVisible(true)} className={FIELD + " flex items-center justify-between gap-2 text-left"}>
     <span className={choice ? "truncate" : "truncate text-ink-soft"}>{choice?.label ?? "Choose " + label.toLowerCase()}</span>
     <Icon name="down" />

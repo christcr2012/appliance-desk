@@ -1,3 +1,6 @@
+## October 27 — Lane 1 AR-12 review fixes (PR #693)
+Addressed three Codex findings: searched record results cannot be selected for a different query, native segmented radios work without callbacks, and changing list search/filters resets page numbers. Fixed picker lint and Bills workspace test fake; added regression coverage. Fresh exact-head CI/review still required; an unrelated compliance lock-test failure in the prior CI is being checked separately.
+
 ## October 27 — Lane 1 AR-12 controls and saved views (PR incoming)
 Built five accessible kit choice controls, mobile/desktop record lookup, built-in Bills/Customers views, honest pending flags on filters not yet supported, real customer search/rental/property-manager filtering, and owner/admin-only saved views with the existing locked workspace store. Tests now cover controls, view registry, customer predicates, and strict saved filter values. CI and review remain pending; no money logic or production settings changed. Remaining AR-12 wording, status explanation, feature settings, help and practice outcomes follow separately.
 

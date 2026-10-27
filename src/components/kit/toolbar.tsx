@@ -42,7 +42,7 @@ export const DATE_PRESETS: FilterOption[] = [
   { value: "custom", label: "Pick dates" },
 ];
 /** Params that describe where you are in a list, not what it shows; never saved in a view or counted as filters. */
-const POSITION_PARAMS = ["cursor", "open", "view"];
+const POSITION_PARAMS = ["cursor", "open", "view", "page"];
 
 type Values = Record<string, string>;
 
@@ -61,7 +61,7 @@ export function activeFilterCount(filters: FilterDef[], params: URLSearchParams)
   return filters.filter((def) => (params.get(def.param) ?? "") !== "").length;
 }
 
-/** The URL after applying `values` for these filters: empty values are removed, as is `cursor`. */
+/** After changing filters, numbered pagination and cursor both restart at the first results. */
 export function applyFilters(pathname: string, search: string, filters: FilterDef[], values: Values): string {
   const params = new URLSearchParams(search);
   for (const def of filters) {
@@ -73,6 +73,7 @@ export function applyFilters(pathname: string, search: string, filters: FilterDe
     }
   }
   params.delete("cursor");
+  params.delete("page");
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
@@ -82,6 +83,7 @@ function withParam(pathname: string, search: string, name: string, value: string
   if (value) params.set(name, value);
   else params.delete(name);
   params.delete("cursor");
+  params.delete("page");
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
 }

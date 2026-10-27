@@ -23,6 +23,14 @@ describe("AR-12 owner-friendly native choices", () => {
     expect(week).toBeChecked();
     expect(today).not.toBeChecked();
   });
+  it("submits the chosen named radio even when no onChange callback exists", () => {
+    render(<form aria-label="Choice form"><SegmentedControl name="range" label="Show" value="today"
+      options={[{ value: "today", label: "Today" }, { value: "week", label: "This week" }]} /></form>);
+    const week = screen.getByRole("radio", { name: "This week" });
+    fireEvent.click(week);
+    expect(week).toBeChecked();
+    expect(new FormData(screen.getByRole("form", { name: "Choice form" }) as HTMLFormElement).get("range")).toBe("week");
+  });
   it("refuses 5 segments rather than shrinking a choice silently", () => {
     expect(() => render(<SegmentedControl name="bad" label="Too many" value="a"
       options={["a","b","c","d","e"].map(v => ({ value:v,label:v }))} />)).toThrow(/between two and four/);
@@ -69,6 +77,24 @@ describe("AR-12 owner-friendly native choices", () => {
     expect(hidden).toHaveAttribute("type","hidden");
     expect(hidden).toHaveValue("cus-123");
     expect(screen.queryByRole("dialog", { name:"Choose Customer" })).toBeNull();
+  });
+  it("hides stale records immediately as another picker search starts", async () => {
+    let finishSecond!: (rows: { id: string; label: string }[]) => void;
+    const search = vi.fn(async (q: string) => q === "Ma"
+      ? [{ id: "customer-1", label: "Maria Lopez" }]
+      : new Promise<{ id: string; label: string }[]>((resolve) => { finishSecond = resolve; }));
+    const { container } = render(<SearchablePicker name="customerId" label="Customer" search={search} />);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Choose customer/i })));
+    const input = screen.getByRole("combobox", { name: "Search Customer" });
+    await act(async () => fireEvent.change(input, { target: { value: "Ma" } }));
+    await waitFor(() => expect(screen.getByText("Maria Lopez")).toBeVisible());
+    await act(async () => fireEvent.change(input, { target: { value: "Jo" } }));
+    expect(screen.queryByText("Maria Lopez")).toBeNull();
+    expect(container.querySelector('input[name="customerId"]')).toHaveValue("");
+    await waitFor(() => expect(search).toHaveBeenCalledWith("Jo"));
+    await act(async () => finishSecond([{ id: "customer-2", label: "Jo Smith" }]));
+    await waitFor(() => expect(screen.getByText("Jo Smith")).toBeVisible());
+    expect(screen.queryByText("Maria Lopez")).toBeNull();
   });
   it("record picker on desktop uses a popover and does not save a stale failed query", async () => {
     setDesktop(true);
