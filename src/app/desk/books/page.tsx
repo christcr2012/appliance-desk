@@ -6,7 +6,7 @@ import { formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import {
   renameAccountAction, createAccountAction, mapExportAccountAction,
-  postBooksAction, closeMonthAction, reopenMonthAction,
+  postBooksAction,
 } from "./actions";
 
 export const metadata={title:"Your books"};
@@ -77,19 +77,11 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
         {model.page*30<model.total&&<Link className="underline" href={`/desk/books?month=${model.month??""}&page=${model.page+1}`}>Next</Link>}
       </nav>
       <p className="text-sm text-muted-foreground">Months you have locked: {model.periods.length?model.periods.map(p=>p.periodKey+" "+(p.status==="CLOSED"?"locked":"open")).join(" · "):"none yet, every month is still open"}</p>
-      {owner&&<div className="grid gap-4 sm:grid-cols-2">
-        <form action={closeMonthAction} className="space-y-2 rounded border border-border p-3">
-          <h3 className="font-semibold">Lock a month once you have checked it</h3>
-          <p>Download the month for your accountant first. After you lock it, anything that turns up late is recorded in the next open month instead.</p>
-          <input type="hidden" name="month" value={selected}/><button className={button} type="submit">Lock {selected}</button>
-        </form>
-        <form action={reopenMonthAction} className="space-y-2 rounded border border-border p-3">
-          <h3 className="font-semibold">Unlock a month</h3>
-          <input type="hidden" name="month" value={selected}/>
-          <label>Why are you unlocking this month? (kept in the activity log)<input className={input} name="reason" required maxLength={300}/></label>
-          <button className={button} type="submit">Unlock {selected}</button>
-        </form>
-      </div>}
+      <div className="space-y-2 rounded border border-border p-3">
+        <h3 className="font-semibold">Review this month before locking it</h3>
+        <p>Check source records, receipts, payments and depreciation. The owner can lock a completed month after its required checks. Admins can review it.</p>
+        <Link className={button} href={"/desk/books/months/"+selected}>Review {selected}</Link>
+      </div>
     </section>}
     {model.issues.length>0&&<section className="rounded-lg border border-border p-4 space-y-2">
       <h2 className="text-lg font-semibold">Things the books could not record</h2>
