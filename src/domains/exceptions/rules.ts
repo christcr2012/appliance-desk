@@ -28,6 +28,7 @@ export type ExceptionCategory =
   | "BOOKS_NOT_UP_TO_DATE"
   | "BOOKS_NEEDS_FIX"
   | "BOOKS_SETUP"
+  | "BOOKS_MONTH_REVIEW"
   | "SYSTEM_ISSUE"
   | "BILLING_BLOCKED"
   | "SALES_TAX"

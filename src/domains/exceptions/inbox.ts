@@ -11,6 +11,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   BOOKS_NOT_UP_TO_DATE: "taxes",
   BOOKS_NEEDS_FIX: "taxes",
   BOOKS_SETUP: "taxes",
+  BOOKS_MONTH_REVIEW: "taxes",
   PAST_DUE_INVOICE: "money",
   BANK_PAYMENT_SLOW: "money",
   PAYMENT_DISPUTE: "money",

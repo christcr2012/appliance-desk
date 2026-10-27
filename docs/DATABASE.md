@@ -1460,3 +1460,7 @@ All three tables are in the backup manifest.
 - `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
+
+### BA-3 review evidence (implementation branch)
+
+Additive migration `20261026070000_books_month_review` retains review reasons and accountant-send evidence per month, owner review reminder day (default 15), optional accountant destination, and expense no-receipt explanations. It never rewrites the original ledger or opens a provider connection. Accountants receive a report only when the OWNER explicitly selects Send.

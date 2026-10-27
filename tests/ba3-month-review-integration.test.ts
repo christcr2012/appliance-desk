@@ -1,0 +1,241 @@
+import { randomUUID } from "node:crypto";
+import { beforeAll,afterAll,describe,expect,it } from "vitest";
+import { prisma } from "@/lib/prisma";
+import { businessDateFromKey } from "@/lib/business-date";
+import { openingBalance } from "@/domains/books/posting-rules";
+import { writeJournal, postForSource, postPending } from "@/domains/books/post";
+import { monthReview } from "@/domains/books/month-review";
+import { buildMonthPacket } from "@/domains/books/accountant-packet";
+import { closeAccountingMonthWithReview, type BooksActor } from "@/domains/books/management";
+import { listBooksMonthReviewAttention } from "@/domains/exceptions/books-attention";
+
+const target=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
+const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(target.hostname)
+ &&target.pathname==="/appliance_desk_test";
+const tag=randomUUID().slice(0,9),key="2020-01";
+const owner:BooksActor={id:"ba3-owner-"+tag,role:"OWNER"};
+const admin:BooksActor={id:"ba3-admin-"+tag,role:"ADMIN"};
+const dates=(s:string)=>businessDateFromKey(s)!;
+const where={sourceType:"OPENING" as const,sourceId:"2020-01-01"};
+
+describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated PostgreSQL",()=>{
+ let original:Date|null=null;
+ let oldPeriod:null|{status:"OPEN"|"CLOSED";closedAt:Date|null;
+  closedByUserId:string|null;reopenedReason:string|null;reviewNotes:unknown;accountantSentAt:Date|null}=null;
+ let expenseId:string|null=null;
+ beforeAll(async()=>{
+  const [settings,existing]=await Promise.all([
+   prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{booksStartDate:true}}),
+   prisma.accountingPeriod.findUnique({where:{periodKey:key},select:{
+    status:true,closedAt:true,closedByUserId:true,reopenedReason:true,reviewNotes:true,accountantSentAt:true,
+   }}),
+  ]);
+  original=settings.booksStartDate;oldPeriod=existing;
+  await prisma.user.createMany({data:[
+   {id:owner.id,email:owner.id+"@example.test",role:"OWNER"},
+   {id:admin.id,email:admin.id+"@example.test",role:"ADMIN"},
+  ]});
+  await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:dates("2020-01-01")}});
+  const plan=openingBalance({date:dates("2020-01-01"),
+   bankCents:25000,stripeCents:0,cardCents:0});
+  expect(plan).not.toBeNull();
+  await prisma.$transaction(tx=>writeJournal(tx,"OPENING","2020-01-01","OPENING_BALANCE",plan!));
+ });
+ afterAll(async()=>{
+  await prisma.accountingPeriod.updateMany({where:{periodKey:key},data:{status:"OPEN",
+   closedAt:null,closedByUserId:null}});
+  const batches=await prisma.exportBatch.findMany({where:{
+   fileName:"books-review-"+key+".csv",createdByUserId:owner.id,
+  },select:{id:true}});
+  await prisma.exportBatchEntry.deleteMany({where:{exportBatchId:{in:batches.map(x=>x.id)}}});
+  await prisma.exportBatch.deleteMany({where:{id:{in:batches.map(x=>x.id)}}});
+  await prisma.journalLine.deleteMany({where:{entry:where}});
+  await prisma.journalEntry.deleteMany({where});
+  if(expenseId)await prisma.expense.deleteMany({where:{id:expenseId}});
+  await prisma.auditLog.deleteMany({where:{userId:{in:[owner.id,admin.id]}}});
+  if(oldPeriod)await prisma.accountingPeriod.update({where:{periodKey:key},data:{
+   status:oldPeriod.status,closedAt:oldPeriod.closedAt,
+   closedByUserId:oldPeriod.closedByUserId,reopenedReason:oldPeriod.reopenedReason,
+   reviewNotes:oldPeriod.reviewNotes as never,accountantSentAt:oldPeriod.accountantSentAt,
+  }});
+  else await prisma.accountingPeriod.deleteMany({where:{periodKey:key}});
+  await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:original}});
+  await prisma.user.deleteMany({where:{id:{in:[owner.id,admin.id]}}});
+ });
+ it("shows an ended unlocked month and four grounded checks to owner and admin",async()=>{
+  const review=await monthReview(owner,key);
+  expect(review.status).toBe("OPEN");
+  expect(review.checks.sources.ok).toBe(true);
+  expect(review.checks.equipment.ok).toBe(true);
+  expect(review.profit.netProfitCents).toBe(0);
+  expect((await monthReview(admin,key)).checks.sources.ok).toBe(true);
+  expect((await listBooksMonthReviewAttention()).some(x=>x.href==="/desk/books/months/"+key)).toBe(true);
+ });
+ it("raises the monthly To do urgency only after day 15 in Colorado during daylight time",async()=>{
+  const row=await prisma.businessSettings.findUniqueOrThrow({
+   where:{id:"singleton"},select:{booksReviewReminderDay:true},
+  });
+  expect(row.booksReviewReminderDay).toBe(15);
+  const before=await listBooksMonthReviewAttention(new Date("2020-03-16T05:59:00Z"));
+  const after=await listBooksMonthReviewAttention(new Date("2020-03-16T06:01:00Z"));
+  const feb="/desk/books/months/2020-02";
+  expect(before.find(x=>x.href===feb)?.severity).toBe("medium");
+  expect(after.find(x=>x.href===feb)?.severity).toBe("high");
+ });
+ it("flags an unresolved source issue dated in this month even when its journal was posted",async()=>{
+  const id="ba3-reviewed-invoice-"+tag;
+  const customer=await prisma.customer.findFirstOrThrow({select:{id:true}});
+  const issue={kind:"SOURCE_NOT_RECORDED",subjectType:"INVOICE",subjectId:id};
+  await prisma.invoice.create({data:{
+   id,customerId:customer.id,status:"OPEN",createdAt:dates("2020-01-12"),
+   amountDueCents:1000,
+   lineItems:{create:{kind:"RENTAL",description:"Month review synthetic bill",amountCents:1000}},
+  }});
+  try{
+   await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+   expect((await monthReview(owner,key)).checks.sources.ok).toBe(true);
+   await prisma.booksProblem.create({data:{...issue,message:"Unresolved historical source warning"}});
+   const warning=await monthReview(owner,key);
+   expect(warning.checks.sources.ok).toBe(false);
+   expect(warning.checks.sources.count).toBeGreaterThanOrEqual(1);
+   await prisma.booksProblem.update({where:{kind_subjectType_subjectId:issue},
+    data:{resolvedAt:new Date()}});
+   expect((await monthReview(owner,key)).checks.sources.ok).toBe(true);
+  }finally{
+   await prisma.booksProblem.deleteMany({where:{subjectId:id}});
+   await prisma.journalLine.deleteMany({where:{entry:{sourceType:"INVOICE",sourceId:id}}});
+   await prisma.journalEntry.deleteMany({where:{sourceType:"INVOICE",sourceId:id}});
+   await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+   await prisma.invoice.deleteMany({where:{id}});
+  }
+ });
+ it("does not falsely require a second acquisition entry for capitalized paid expenses",async()=>{
+  const typeId="ba3-cap-type-"+tag,applianceId="ba3-cap-device-"+tag,expenseId="ba3-cap-expense-"+tag;
+  await prisma.applianceType.create({data:{
+   id:typeId,slug:"ba3-cap-"+tag,name:"BA3 capitalized "+tag,
+  }});
+  try{
+   await prisma.appliance.create({data:{
+    id:applianceId,applianceTypeId:typeId,assetNumber:"BA3-CAP-"+tag,
+    acquisitionCostCents:22000,purchaseDate:dates("2020-01-13"),
+   }});
+   const category=await prisma.expenseCategory.findFirstOrThrow({select:{id:true}});
+   const ownerContributions=await prisma.ledgerAccount.findFirstOrThrow({
+    where:{systemRole:"OWNER_CONTRIBUTIONS"},select:{id:true},
+   });
+   await prisma.expense.create({data:{
+    id:expenseId,status:"POSTED",spentOn:dates("2020-01-13"),amountCents:22000,
+    vendorTaxCents:0,vendorName:"Synthetic capitalization evidence",
+    categoryId:category.id,paidFromAccountId:ownerContributions.id,
+    submittedByUserId:owner.id,postedByUserId:owner.id,
+    postedAt:dates("2020-01-13"),capitalizeToAppliance:true,applianceId,
+   }});
+   await prisma.$transaction(tx=>postForSource(tx,"EXPENSE",expenseId));
+   expect(await prisma.journalEntry.count({where:{
+    sourceType:"EXPENSE",sourceId:expenseId,eventKind:"EXPENSE_POSTED",
+   }})).toBe(1);
+   const inspection=await postPending({inspectMonth:key});
+   expect(inspection.problems.filter(p=>p.sourceType==="APPLIANCE"&&p.sourceId===applianceId)).toEqual([]);
+   expect(inspection.posted).toBe(0);
+   expect((await prisma.$transaction(tx=>postForSource(tx,"APPLIANCE",applianceId)))).toBeUndefined();
+   expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",sourceId:applianceId,
+    eventKind:"APPLIANCE_CONTRIBUTED"}})).toBe(0);
+  }finally{
+   await prisma.journalLine.deleteMany({where:{entry:{OR:[
+    {sourceType:"EXPENSE",sourceId:expenseId},{sourceType:"APPLIANCE",sourceId:applianceId},
+   ]}}});
+   await prisma.journalEntry.deleteMany({where:{OR:[
+    {sourceType:"EXPENSE",sourceId:expenseId},{sourceType:"APPLIANCE",sourceId:applianceId},
+   ]}});
+   await prisma.expense.deleteMany({where:{id:expenseId}});
+   await prisma.appliance.deleteMany({where:{id:applianceId}});
+   await prisma.applianceType.deleteMany({where:{id:typeId}});
+  }
+ });
+ it("reviews and exports an opening month even when Books began mid-month",async()=>{
+  await prisma.businessSettings.update({where:{id:"singleton"},data:{
+   booksStartDate:dates("2020-01-15"),
+  }});
+  try{
+   const review=await monthReview(owner,key);
+   expect(review.checks.sources.ok).toBe(true);
+   expect(review.profit.netProfitCents).toBe(0);
+   const packet=await buildMonthPacket(owner,key);
+   expect(packet.month).toBe(key);
+   expect(packet.profitCsv).toContain("Net profit");
+  }finally{
+   await prisma.businessSettings.update({where:{id:"singleton"},data:{
+    booksStartDate:dates("2020-01-01"),
+   }});
+  }
+ });
+ it("rechecks owner authorization inside the closing transaction after a preview",async()=>{
+  await monthReview(owner,key);
+  await prisma.user.update({where:{id:owner.id},data:{role:"ADMIN"}});
+  try{
+   await expect(closeAccountingMonthWithReview(owner,key,{
+    expenses:"Already reviewed",payments:"Already reconciled",
+   })).rejects.toThrow();
+   expect(await prisma.accountingPeriod.findUnique({where:{periodKey:key}}))
+    .not.toMatchObject({status:"CLOSED"});
+  }finally{
+   await prisma.user.update({where:{id:owner.id},data:{role:"OWNER"}});
+  }
+ });
+ it("reports a February invoice void even when the invoice began and was paid in January",async()=>{
+  const id="ba3-cross-month-void-"+tag;
+  const customer=await prisma.customer.findFirstOrThrow({select:{id:true}});
+  await prisma.invoice.create({data:{
+   id,customerId:customer.id,status:"OPEN",createdAt:dates("2020-01-12"),
+   amountDueCents:900,
+   lineItems:{create:{kind:"RENTAL",description:"Synthetic prior-month invoice",amountCents:900}},
+  }});
+  try{
+   await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+   await prisma.invoice.update({where:{id},data:{
+    status:"VOID",cancelledAt:dates("2020-02-09"),
+   }});
+   const january=await postPending({limit:500,inspectMonth:"2020-01"});
+   expect(january.problems.filter(x=>x.sourceId===id)).toHaveLength(0);
+   const february=await postPending({limit:500,inspectMonth:"2020-02"});
+   expect(february.problems.some(x=>x.sourceId===id&&x.sourceType==="INVOICE")).toBe(true);
+  }finally{
+   await prisma.journalLine.deleteMany({where:{entry:{sourceType:"INVOICE",sourceId:id}}});
+   await prisma.journalEntry.deleteMany({where:{sourceType:"INVOICE",sourceId:id}});
+   await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+   await prisma.invoice.deleteMany({where:{id}});
+  }
+ });
+ it("rejects admin locking and an expense override without a stated reason",async()=>{
+  await expect(closeAccountingMonthWithReview(admin,key)).rejects.toThrow(/OWNER/);
+  const [category,payment]=await Promise.all([
+   prisma.expenseCategory.findFirstOrThrow(),
+   prisma.ledgerAccount.findFirstOrThrow({where:{OR:[{isPaymentSource:true},
+    {systemRole:"OWNER_CONTRIBUTIONS"}]}}),
+  ]);
+  const row=await prisma.expense.create({data:{
+   status:"DRAFT",spentOn:dates("2020-01-11"),amountCents:1000,vendorTaxCents:0,
+   vendorName:"Synthetic review cost",categoryId:category.id,
+   paidFromAccountId:payment.id,submittedByUserId:owner.id,
+  }});
+  expenseId=row.id;
+  expect((await monthReview(owner,key)).checks.costs.ok).toBe(false);
+  await expect(closeAccountingMonthWithReview(owner,key)).rejects.toThrow(/Explain/);
+ });
+ it("exports the unchanged journal and locks with the typed reason atomically",async()=>{
+  const result=await closeAccountingMonthWithReview(owner,key,{
+   expenses:"Synthetic missing receipt reviewed, follow-up remains on the accountant packet.",
+   payments:"Bank source remains outside this historical accounting month.",
+  });
+  expect(result).toMatchObject({alreadyClosed:false,exported:true});
+  const period=await prisma.accountingPeriod.findUniqueOrThrow({where:{periodKey:key}});
+  expect(period.status).toBe("CLOSED");
+  expect(JSON.stringify(period.reviewNotes)).toContain("Synthetic missing receipt reviewed");
+  expect(await prisma.exportBatchEntry.count({where:{entry:where}})).toBeGreaterThan(0);
+  const again=await closeAccountingMonthWithReview(owner,key);
+  expect(again.alreadyClosed).toBe(true);
+  expect(await prisma.auditLog.count({where:{action:"books.period.close-review",entityId:key,
+   userId:owner.id}})).toBe(1);
+  expect((await listBooksMonthReviewAttention()).some(x=>x.href==="/desk/books/months/"+key)).toBe(false);
+ });
+});

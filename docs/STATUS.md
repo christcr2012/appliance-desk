@@ -22,6 +22,10 @@ rate review path, and a Greeley approval also mirrors into the rule book so the 
 the live Greeley page does not state its rate in a sentence yet, so that reader reports "couldn't read" until
 the city publishes one (never a guess). Local proof: parsers 13/13, observation 9/9, watch 18/18, rate review
 6/6, Today access 11/11, registries 24/24 on throwaway Postgres. PR #646: CI green at the exact head, review round 1 resolved; merging.
+## October 26 — BA-3: guided monthly Books review (PR #624)
+
+Completed four month-end source checks, immutable accountant CSV package and explicit owner-approved email with honest provider outcomes, owner-only audited month closing, expense receipt explanations, reminder items and role-safe screens. BA-1 and BA-2 prerequisites are merged. CI run 40441051070 passed full tests, browser/accessibility (all five shards), secret scan and typecheck at `d0fa86a2`; all 10 Codex findings dispositioned and threads resolved. Reconciled newer main without discarding other lanes. The final documentation-only commit must still pass its exact-head CI before guarded merge. No customer email, payment, live settings or production data changed.
+
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 
 One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance

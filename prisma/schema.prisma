@@ -3405,6 +3405,8 @@ model BusinessSettings {
   booksLastBroughtUpToDateAt DateTime?
   booksLastProblemCount Int @default(0)
   booksConsecutiveFailedNights Int @default(0)
+  booksReviewReminderDay Int @default(15)
+  accountantEmail String?
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
   badDebtTaxRecovery String @default("UNDECIDED")
@@ -5024,6 +5026,8 @@ model AccountingPeriod {
   closedAt       DateTime?
   closedByUserId String?
   reopenedReason String?
+  reviewNotes Json?
+  accountantSentAt DateTime?
   updatedAt      DateTime               @updatedAt
 }
 
@@ -5076,6 +5080,7 @@ model Expense {
   paidFromAccountId     String
   memo                  String?
   receiptPhotoId        String?
+  noReceiptReason       String?
   applianceId           String?
   jobId                 String?
   purchaseOrderId       String?
