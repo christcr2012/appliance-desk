@@ -91,6 +91,26 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
     remedies, record it once (STATUS + checklist if it needs Chris), and continue independent work. Stop early only
     with concrete evidence that no eligible approved work remains.
 
+## Speed-first execution protocol (within sections 1–2 and 6)
+
+1. **Choose by outcome and risk, not arbitrary PR count.** Group adjacent approved roadmap cards that share
+   screens and one security/provider boundary when they make one testable feature. A high-risk boundary (OAuth,
+   payments, personal data, permission changes) may merit its own complete PR. Never create micro-PRs or bundle
+   unrelated providers just to reach a target number.
+2. **A PR has one expensive CI cycle.** Finish the implementation, tests, docs and focused checks before pushing.
+   Use the full GitHub suite for the finished head; do not repeatedly run full local suites after small edits.
+   If CI goes red, gather every failing check, fix the group and push one corrected head.
+3. **Pipeline, not queue.** An open PR waiting for `ci`, `review-gate`, Codex or allowed auto-merge does not stop
+   unrelated approved development. Resume its review when a result actually changes. Do not poll or rebase just
+   because another agent merged to `main`. Resolve a reported real merge conflict before trying again.
+4. **Never trade correctness for throughput.** Keep access checks, real-database sensitive tests, hooks,
+   additive migrations and required checks. If a sandbox cannot finish its checks due to documented resource
+   constraints, use the repository's authorized sandbox transfer and GitHub CI route; record what was and
+   was not verified instead of weakening or silently skipping checks.
+5. **Publish complete outcomes and record blockers once.** One blocked PR does not freeze the next independent
+   roadmap outcome. Auto-merge is a convenience, not permission to bypass review, branch protections or hard
+   limits. Report completed vs merged vs externally unverified separately.
+
 ## 3. Definition of Done
 
 1. No placeholders, stubs, TODO-as-implementation or mock data presented as real.

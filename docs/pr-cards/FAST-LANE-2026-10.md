@@ -3,10 +3,10 @@
 **Owner-approved:** October 27, 2026 (this session). Scope: execution documentation, not product behavior.
 
 ## Acceptance (committed before changes)
-- [ ] Keep AGENTS.md the only authoritative rules and preserve all section 1 protections.
-- [ ] Align SESSION-START and AGENT-QUICKSTART with the 2026-10-27 auto-merge (squash), exact-head `ci` + `review-gate`, and **no up-to-date requirement**. Never advocate manually merging past failed protections.
-- [ ] Reduce idle time: one active bundle per risk boundary, overlap CI/review with independent approved work, avoid repeated full local test suites; fix red runs as batches.
-- [ ] Clarify that open PRs should be triaged, not allowed to block independent work, and real conflicts need explicit resolution.
+- [x] Keep AGENTS.md the only authoritative rules and preserve all section 1 protections.
+- [x] Align SESSION-START and AGENT-QUICKSTART with the 2026-10-27 auto-merge (squash), exact-head `ci` + `review-gate`, and **no up-to-date requirement**. Never advocate manually merging past failed protections.
+- [x] Reduce idle time: one active bundle per risk boundary, overlap CI/review with independent approved work, avoid repeated full local test suites; fix red runs as batches.
+- [x] Clarify that open PRs should be triaged, not allowed to block independent work, and real conflicts need explicit resolution.
 - [ ] Check documentation references and CI/preflight; publish a normal PR and enable auto-merge, no direct main push.
 
 ## Reason for the change

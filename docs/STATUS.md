@@ -1,3 +1,9 @@
+## October 27 — Fast-lane execution rules alignment (branch `ai/chatgpt/fast-lane-protocol`)
+
+Aligned session instructions with the already-approved squash auto-merge, final-head `ci` and `review-gate`,
+no up-to-date branch rule, and continuous work on independent approved items during CI. Preserved all
+data, permission, payment, spending, and release protections. PR and CI evidence pending.
+
 ## October 27 — OPS-2: recycler receipt photo on a record (branch `ai/claude/ops2-receipt-photo`)
 
 After a refrigerant record is signed, the owner can keep the recycler's receipt photo or PDF with the business

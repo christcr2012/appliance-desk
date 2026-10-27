@@ -26,6 +26,10 @@ DB, reset from the parent, copy production identities, or mark business tax sett
 
 ## The loop
 
+Follow the **Speed-first execution protocol** in AGENTS.md: bundle connected outcomes, not unrelated risks;
+continue independent approved work while a finished PR is in CI/review. Do not sync for a moving main
+unless GitHub reports an actual conflict. The merge is always gated, never forced.
+
 Branch `ai/<tool>/<topic>` from `main` → build with tests → `npm run check:quick` → **one push** → open PR (plain English
 body) → **turn on auto-merge (squash)** and keep working → answer every Codex finding with a reply (if Codex is
 unavailable, post one "self-reviewed <short sha>" comment after your last push) → GitHub merges by itself when `ci` and
