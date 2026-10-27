@@ -1,3 +1,7 @@
+## October 27 — ACCT-1: Accountant sign-in
+
+
+
 ## October 27 — CMP-5: Hiring readiness (merged)
 
 MERGED via PR #679, squash `d22a76e8` on main (chain #674 → #676 → #679; the first two were closed
@@ -51,9 +55,9 @@ React 19.3/title transitions and measured JS budget remain in progress.
 
 
 
-## October 27 — VAULT-2: Logins vault and emergency access (in build)
+## October 27 — VAULT-2: Logins vault and emergency access (PR #667 merged)
 
-Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+Merged 2026-10-27 (squash `5aadc888`; successor to #664 after a phantom-dirty rebuild; two Codex rounds, six real findings, all fixed with regression tests — the second round: the emergency code now honours the owner's security-texting switch, the export PDF wrap is character-exact including repeated spaces, and characters the PDF fonts cannot print are substituted there while a new `logins.txt` in the export ZIP carries every login exactly as saved). New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
 the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
 encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
 beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,

@@ -4,11 +4,11 @@ Build spec: `docs/build-specs/engines/RECORDS-VAULT.md` sections 4–7. Requeste
 ACC-6. Risk: **passwords** — separate encryption key, owner only, fresh sign-in code to reveal.
 
 ## Acceptance
-- [ ] Owner only; everyone else and every AI/ops/export path refused (tests incl. the grep test for secret fields).
-- [ ] Reveal, copy and save need a fresh second-step code; 5-minute unlock; every reveal audited without the value.
-- [ ] Failed codes lock the vault; signing out everywhere clears unlocks; backups keep values encrypted.
-- [ ] Emergency access ships **off**; when turned on in a test, the wait, deny and one-time read-only export work.
-- [ ] `ci` green; every review comment read.
+- [x] Owner only; everyone else and every AI/ops/export path refused (tests incl. the grep test for secret fields).
+- [x] Reveal, copy and save need a fresh second-step code; 5-minute unlock; every reveal audited without the value.
+- [x] Failed codes lock the vault; signing out everywhere clears unlocks; backups keep values encrypted.
+- [x] Emergency access ships **off**; when turned on in a test, the wait, deny and one-time read-only export work.
+- [x] `ci` green; every review comment read.
 
 ## Owner checklist
 "Vault encryption key" row (spec section 4). Never blocks merging.
@@ -48,3 +48,5 @@ Packet and drift check written 2026-10-27 (this commit also lands the SETUP-1 me
 Build completed 2026-10-27 on `ai/vivienne/vault-2`: migration `20261112000000_vault`; field-crypto vault trio; `src/domains/vault/` (rules, schema, unlock, index, emergency, attention); screens `/desk/vault` + `/desk/vault/[id]` with the Better Auth unlock flow and 30-second reveal/copy; the record page's Login card; the public `/emergency/[token]` flow + one-time download route; the daily `/api/cron/emergency-access` reminder sweep; unlock clearing at the ACC-6 forget points; backup decisions (credentials backed up encrypted, unlocks and emergency requests never); DQ-VAULT-BANK and DQ-CONT-SUCCESSOR filed. One build fix beyond the packet: the emergency export tolerates a business with zero records (the VAULT-1 pack refuses an empty pick) by omitting the records file and saying so in the READ-ME. Proof: `tests/vault.test.ts`, `tests/vault-secret-fields-grep.test.ts`, `tests/vault-integration.test.ts` (14 cases, real Postgres), `e2e/vault.spec.ts` (browser-e).
 
 Review round on PR #664 (2026-10-27): the first CI run failed the repo checks — the execution packet named a `node_modules` path as a reference (the packet validator refuses protected paths) and two anchors were descriptive rather than verbatim; fixed and reproduced locally (`work-session` tests green). Codex found three real bugs, all fixed with regression tests in the same round: (P2) the derived lockout evaporated once failures aged out of the 15-minute counting window — the lock is now derived from failure clusters over a window-plus-lock lookback (`vaultLockFromFailures`, unit + backdated-rows integration tests); (P1) a totally failed start warning was treated as success — `requestEmergencyAccess` now checks the delivery result, stamps `startNoticeFailedAt` (migration `20261112010000_vault_start_notice`), shows it on the owner's vault page and the public waiting page, and the daily sweep retries it; (P2) the export PDF truncated words past 110 characters — wrapping is now lossless (`wrapPdfText`) and the export test reconstructs a 300-character password in full. PR #664 itself went phantom-dirty when AR-11 (#662) merged, so the finished tree moved to a successor PR built from the new main (same pattern as VAULT-1).
+
+MERGED 2026-10-27 via successor PR #667 (squash `5aadc888`), ci green at the exact head `a23e5f8c`. Codex's second round on #667 found three more real bugs, all fixed with regression tests before the merge: (P1) the emergency code could be texted while the owner's security-texting switch was off — `sendEmergencyCode` now gates on `textCodesReady()` like `remindOwner` does, with a switch on/off integration test; (P2) the lossless wrap still collapsed repeated spaces in secrets — `wrapPdfText` now tokenizes word/whitespace runs and is character-exact; (P2) a saved value with characters outside the PDF fonts' WinAnsi set (emoji, non-Latin) made the whole export throw — the PDF substitutes "?" via `pdfSafeText` with a printed note, and the ZIP always adds `logins.txt` (UTF-8) carrying every login exactly as saved (drift row 11). This close-out (acceptance ticks + work-index) rides the ACCT-1 branch.
