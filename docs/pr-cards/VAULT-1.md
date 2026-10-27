@@ -4,10 +4,10 @@ Build spec: `docs/build-specs/engines/RECORDS-VAULT.md` sections 1–3. Requeste
 (field encryption). Risk: **private files and encrypted numbers**.
 
 ## Acceptance
-- [ ] Records hold files (private storage, PDF/images by magic bytes), masked numbers (encrypted), issue/expiry dates, portal links, costs and linked filings.
-- [ ] Starter records offered for every account and document in the spec; adding them twice changes nothing.
-- [ ] Renewal reminders on To do; "Renewed…" keeps the old file as history.
-- [ ] Export pack (ZIP + index), numbers masked unless unlocked; audited.
+- [x] Records hold files (private storage, PDF/images by magic bytes), masked numbers (encrypted), issue/expiry dates, portal links, costs and linked filings.
+- [x] Starter records offered for every account and document in the spec; adding them twice changes nothing.
+- [x] Renewal reminders on To do; "Renewed…" keeps the old file as history.
+- [x] Export pack (ZIP + index), numbers masked unless unlocked; audited. (Masked form delivered here; the unlocked form arrives with VAULT-2's unlock, per drift item 5.)
 - [ ] OWNER only (ADMIN read of non-sensitive kinds); `ci` green; every review comment read.
 
 ## Progress
@@ -75,3 +75,31 @@ then the repo preflight before the one push (lane DB on port 5435 for manual run
 **Gates:** acceptance checked item by item with test/CI evidence; OWNER-GUIDE
 and DATABASE updated; STATUS top entry at the end.
 
+
+**Built 2026-10-26 (Vivienne, Lane 6).** Migration `20261103000000_business_records`
+(additive; `scripts/check-migrations.mjs` clean). Domain: `src/domains/paperwork`
+extended (`records.ts` — DTO boundary, files, renew, export, admin-kinds setting;
+`rules.ts` — kinds, admin gate, magic-byte sniffing, effective date; `templates.ts` —
+13 existing starters kinded + 19 new, 32 total; `src/lib/zip.ts` — the in-repo ZIP
+writer). Screens: `/desk/paperwork` renamed Business records (URL kept) with
+Needs you / All / Coming up / Files tabs + search, the record page (facts, masked
+number, files with preview, Renewed…, history, archive), the export picker, and
+the owner setting for admin-visible kinds. File reads: `/api/records/files/[id]`
+(role-gated, audited for the owner); exports: `/api/records/export` (owner only,
+audited). Backup manifest gained `BusinessRecordFile`. Docs: DATABASE.md,
+OWNER-GUIDE.md, DQ-VAULT-ADMIN-KINDS in OWNER-INPUTS.md.
+
+Evidence (local, lane DB on port 5435): `tests/business-records.test.ts` 10/10
+(zip round-trip + CRC vector, sniffing incl. a renamed executable, the admin
+gate, the effective date, starter consistency against the real compliance
+registry); `tests/business-records-integration.test.ts` 11/11 (starter
+idempotency, encryption round trip + masking + the OWNER/ADMIN/STAFF boundary,
+missing-key refusal, magic-byte refusal + soft-delete history + the
+delete-with-files guard, the verified large-PDF register path, renewal by date
+and by repeat with files kept, To do surfacing from `expiresOn` + archive
+silence, the masked export pack + its audit row, the upload gate, the
+admin-kinds setting); existing paperwork suites 14/14 unchanged. Money and
+plain-words checks pass. Browser: `e2e/business-records.spec.ts` (new,
+browser-c) and the updated `e2e/business-paperwork.spec.ts` through the repo
+launcher — results recorded in the PR. Remaining acceptance line (ci green at
+the exact head; every review comment read) completes in the PR itself.

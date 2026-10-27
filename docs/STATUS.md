@@ -1,12 +1,17 @@
-## October 26 — VAULT-1: business records (building)
+## October 26 — VAULT-1: business records (built; PR follows)
 
-Branch `ai/vivienne/vault-1` on main `238f7a57` (CMP-1 merged, so the field-encryption
-dependency is in). Packet and drift check are written into `docs/pr-cards/VAULT-1.md`: five
-spec-vs-code drifts reconciled (no `co.license.expiry` key exists; the "admins may see"
-mark becomes an owner setting of kinds, starting with the non-sensitive ones, and a record
-with an encrypted number is never admin-readable; archive = NOT_NEEDED; no zip library
-exists, so a small in-repo writer; VAULT-1 never decrypts — reveal stays with VAULT-2's
-unlock). This commit also lands the ACC-6 merged-status tidy-up (work index, STATUS, card).
+Business paperwork is now **Business records**: kinds, issued/expiry dates, portal
+links, costs and compliance links on every record; numbers stored encrypted (the
+compliance field key) and shown only masked, owner-only when a number is on file;
+files in the private store, sniffed by magic bytes, with a verified large-PDF path;
+"Renewed…" keeps old files as history; the export pack (ZIP + PDF index, masked,
+audited) downloads from the list page; 19 new starters (32 total) with starter
+idempotency proven. Admins read only the kinds in the owner's new setting
+(DQ-VAULT-ADMIN-KINDS). Packet + five-item drift table are in the card. Local
+evidence: 10 unit + 11 integration tests green on the lane database, the existing
+paperwork suites (14) still green, money and plain-words checks pass; browser
+specs run through the repo launcher before the push. The ACC-6 merged-status
+tidy-up rides this branch's first commit.
 
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
