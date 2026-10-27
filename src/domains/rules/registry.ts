@@ -137,6 +137,7 @@ export const RULES = {
       percentField("regular", "Regular interest (%)"),
       percentField("discounted", "Discounted interest (%)"),
     ],
+    watch: "https://tax.colorado.gov/index.php/tax-topics-penalties-and-interest",
   }),
   "co.lease.short_term_months": defineRule({
     key: "co.lease.short_term_months",
@@ -167,6 +168,7 @@ export const RULES = {
     describe: (v: number) => `${formatMoney(v)} paid to a supplier in a year`,
     change: "FIXED_JAN_1",
     fields: [moneyField("value", "1099 limit ($)")],
+    watch: "https://www.irs.gov/instructions/i1099mec",
   }),
   "us.1099.deadlines": defineRule({
     key: "us.1099.deadlines",
@@ -244,6 +246,7 @@ export const RULES = {
     describe: (v: number) => `${(v / 1000).toFixed(2)}%`,
     change: "ANY_DATE",
     fields: [integerField("value", "Greeley rate (milli-percent)", 0, 100000)],
+    watch: "https://greeleyco.gov/business/business-operations/sales-tax/",
   }),
 };
 

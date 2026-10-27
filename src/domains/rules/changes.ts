@@ -76,7 +76,9 @@ export async function saveRuleVersionInTx(
     value: unknown;
     effectiveFrom: Date;
     reason: string;
-    origin?: "OWNER" | "PROFESSIONAL";
+    // OFFICIAL_WATCH is written only by the TFA-3 approval flow, with the
+    // owner as the actor: a reading he approved on To do.
+    origin?: "OWNER" | "PROFESSIONAL" | "OFFICIAL_WATCH";
   },
   now: Date = new Date(),
 ): Promise<{ versionId: string; trueUp: TrueUpResult }> {
@@ -161,14 +163,15 @@ export async function saveRuleVersionInTx(
 
 export async function saveRuleVersion(
   actorId: string,
-  input: { key: string; value: unknown; effectiveFrom: Date; reason: string; origin?: "OWNER" | "PROFESSIONAL" },
+  input: { key: string; value: unknown; effectiveFrom: Date; reason: string; origin?: "OWNER" | "PROFESSIONAL" | "OFFICIAL_WATCH" },
 ): Promise<{ versionId: string; trueUp: TrueUpResult }> {
   return prisma.$transaction((tx) => saveRuleVersionInTx(tx, actorId, input));
 }
 
 /**
- * Undo an owner or professional change whose start date has not arrived yet.
- * The version stays as history, struck through on the screen; reads skip it.
+ * Undo an owner, professional or owner-approved official-watch change
+ * whose start date has not arrived yet. The version stays as history,
+ * struck through on the screen; reads skip it.
  */
 export async function undoRuleVersion(actorId: string, versionId: string, now: Date = new Date()): Promise<void> {
   await prisma.$transaction(async (tx) => {
@@ -181,7 +184,7 @@ export async function undoRuleVersion(actorId: string, versionId: string, now: D
     const version = rows[0];
     if (!version) throw new Error("That rule change was not found.");
     if (version.undoneAt) throw new Error("That change was already undone.");
-    if (version.origin !== "OWNER" && version.origin !== "PROFESSIONAL")
+    if (version.origin !== "OWNER" && version.origin !== "PROFESSIONAL" && version.origin !== "OFFICIAL_WATCH")
       throw new Error("Only a change set by the owner can be undone here.");
     if (version.effectiveFrom.getTime() <= now.getTime())
       throw new Error("That change has already started, so it cannot be undone. Change it instead.");
@@ -194,6 +197,30 @@ export async function undoRuleVersion(actorId: string, versionId: string, now: D
         entityId: version.id,
         oldValue: { ruleKey: version.ruleKey, effectiveFrom: version.effectiveFrom.toISOString() },
         newValue: { undoneAt: now.toISOString() },
+      },
+    });
+  });
+}
+
+/** Owner switch for the official-page watches (TFA-3 section 12). */
+export async function saveWatchOfficialPagesSetting(
+  actorId: string, input: { enabled: boolean; expectedEnabled: boolean },
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    const changed = await tx.businessSettings.updateMany({
+      where: { id: "singleton", watchOfficialTaxPages: input.expectedEnabled },
+      data: { watchOfficialTaxPages: input.enabled },
+    });
+    if (changed.count !== 1) throw new Error("The watch setting was changed in another session. Refresh before saving.");
+    await tx.auditLog.create({
+      data: {
+        userId: actorId,
+        action: "rules.watch.update",
+        entityType: "BusinessSettings",
+        entityId: "singleton",
+        oldValue: { watchOfficialTaxPages: input.expectedEnabled },
+        newValue: { watchOfficialTaxPages: input.enabled },
       },
     });
   });
