@@ -30,6 +30,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/cron/collections",
+      "schedule": "20 15 * * *"
+    },
+    {
       "path": "/api/cron/billing-reconcile",
       "schedule": "30 15 * * *"
     },
