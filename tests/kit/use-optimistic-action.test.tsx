@@ -14,7 +14,7 @@ function Example({
   success = "Snoozed",
   undo,
 }: {
-  action: (fd: FormData) => Promise<unknown> | Extract<ActionSpec, { kind: "form" }>;
+  action: ((fd: FormData) => Promise<unknown>) | Extract<ActionSpec, { kind: "form" }>;
   success?: string;
   undo?: () => Promise<unknown>;
 }) {
