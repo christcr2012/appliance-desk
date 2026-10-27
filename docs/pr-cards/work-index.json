@@ -4824,7 +4824,7 @@
         "DEC-1",
         "FEE-1"
       ],
-      "status": "IN PROGRESS — built on ai/claude/dec-2-starting-values, stacked on DEC-1b (PR #603)",
+      "status": "DONE — PR #635",
       "migration": "additive (BusinessSettings.decisionsReviewedAt; Invoice.lateFeeWaivedAt dropped, FEE-1 waiver replaced it)",
       "budget": 460,
       "units": [

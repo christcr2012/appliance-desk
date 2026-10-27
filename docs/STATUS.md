@@ -1,6 +1,6 @@
-## October 26 — DEC-2: researched starting values in the live app (in review)
+## October 26 — DEC-2: researched starting values in the live app (PR #635, merged after green checks)
 
-Branch `ai/claude/dec-2-starting-values`, stacked on DEC-1b (PR #603, which I took over and merged with main; it must merge first).
+Branch `ai/claude/dec-2-starting-values`. DEC-1b (PR #603) is merged. Codex found two real problems, both fixed before merge: the overnight values were being cancelled on their start day (nobody was named to carry them out), and the nightly save now re-checks under its lock that nobody answered meanwhile.
 Coded: every question in Decisions & reviews has a researched value with sources (tax-by-charge, Greeley careful choices,
 filing basis, delivery fee, bad debt, setup fee, record years, remembered-device days, and the "as built" wording
 answers); new questions for Greeley's measure 2F city rate and the late fee amount. The nightly run (inside the existing
