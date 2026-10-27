@@ -4715,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — merged #608/#647/#649/#651; remembered lists PR pending",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652; swipe PR #662 CI green and awaiting close-out, React/transitions, snooze, bundle pending",
       "migration": "none",
       "budget": 480,
       "units": [
