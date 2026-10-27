@@ -73,6 +73,11 @@ a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:gene
 a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:296
 a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:tests/compliance-filings-integration.test.ts:generic-api-key:159
 a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:tests/compliance-filings-integration.test.ts:generic-api-key:180
+# Same class in CMP-1's round-4 test additions (commit dc8bf077): three more
+# obligationKey lookups in the reactivation regression test.
+dc8bf077ecf698b8993fd4cfbfefb9b6b4c024af:tests/compliance-filings-integration.test.ts:generic-api-key:202
+dc8bf077ecf698b8993fd4cfbfefb9b6b4c024af:tests/compliance-filings-integration.test.ts:generic-api-key:219
+dc8bf077ecf698b8993fd4cfbfefb9b6b4c024af:tests/compliance-filings-integration.test.ts:generic-api-key:233
 # Same three lines again: merging main into LD-1 re-committed main's versions
 # of these files in new commits (d29df93, fc4ad1e), so the scanner attributes
 # the lines to those commits too.
