@@ -1,6 +1,6 @@
-## October 26 — BA-3 month review PR #624 (final integration)
+## October 26 — BA-3: guided monthly Books review (PR #624)
 
-BA-1 PR #610 and BA-2 PR #613 are merged. BA-3 has four-check month reviews, owner-only locking, read-only accountant exports, explicit outcome-aware accountant email and dedicated Postgres/browser tests. Full CI passed at `327d8b1b` in run 40401815061; a subsequent same-head CI run failed an invoice page title accessibility timing check (browser-a). Commit `5bb115e0` now requires a non-empty streamed document title before the full accessibility scan. Current main advanced by 30 commits; resolving branch conflicts without discarding other lanes. Not merged; exact merged-head CI and review-thread dispositions are still required. No live provider or production changes.
+Completed four month-end source checks, immutable accountant CSV package and explicit owner-approved email with honest provider outcomes, owner-only audited month closing, expense receipt explanations, reminder items and role-safe screens. BA-1 and BA-2 prerequisites are merged. CI run 40441051070 passed full tests, browser/accessibility (all five shards), secret scan and typecheck at `d0fa86a2`; all 10 Codex findings dispositioned and threads resolved. Reconciled newer main without discarding other lanes. The final documentation-only commit must still pass its exact-head CI before guarded merge. No customer email, payment, live settings or production data changed.
 
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 

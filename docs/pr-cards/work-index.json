@@ -4075,7 +4075,7 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "IN REVIEW — PR #624, implementation CI green 40399920849; final acceptance tests and docs require new exact-head CI",
+      "status": "MERGED — PR #624, full CI 40441051070 green at reconciled implementation head (docs-only exact-head gate follows)",
       "migration": "month_review",
       "budget": 480,
       "units": [
@@ -4092,7 +4092,7 @@
         "tests/ba3-month-review.test.ts",
         "tests/ba3-month-actions.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-3.md"
     },
     {
