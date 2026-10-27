@@ -31,6 +31,7 @@ export const DESK_SECTIONS: Record<DeskSectionKey, { label: string; tabs: DeskSe
     tabs: [
       { href: "/desk/billing", label: "Billing", restriction: "finance" },
       { href: "/desk/disputes", label: "Disputes", restriction: "finance" },
+      { href: "/desk/collections", label: "Past due", restriction: "finance" },
       { href: "/desk/sales", label: "Shop sales", restriction: "finance" },
       { href: "/desk/revenue", label: "Revenue", restriction: "finance" },
       { href: "/desk/books", label: "Books", restriction: "finance" },

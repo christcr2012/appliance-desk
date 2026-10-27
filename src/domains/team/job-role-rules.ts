@@ -43,6 +43,14 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   "sales-tax": "sales-tax", books: "books", expenses: "expenses", suppliers: "suppliers", activity: "activity",
   settings: "management", paperwork: "management", privacy: "management", automations: "management", growth: "management",
   launch: "management", "control-center": "management", approvals: "management",
+  // OPS-8: owner-only; a job role that includes Settings can open it, nobody else.
+  continuity: "management",
+  // OPS-3: vehicles and mileage are expense-side money screens.
+  vehicle: "expenses",
+  // OPS-4: owner-only; a job role that includes Settings can open it, nobody else.
+  insurance: "management",
+  // OPS-7: privacy and security duties sit with the other owner-level settings.
+  "privacy-security": "management",
   feedback: "feedback",
 };
 
