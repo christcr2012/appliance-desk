@@ -25,6 +25,7 @@ import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listFeedbackWaiting } from "./feedback-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listComplianceDue } from "./compliance-attention";
+import { listSupplierW9Needed } from "./supplier-w9-attention";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listUnsignedAgreements } from "./unsigned-agreements";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, listCleaningNeeded } from "./turning-points-attention";
@@ -1151,6 +1152,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const newLeadContact = canViewFinance ? await listNewLeadContact(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const leadFollowUps = canViewFinance ? await listLeadFollowUps(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const complianceDue = canViewFinance ? await listComplianceDue(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const supplierW9 = canViewFinance ? await listSupplierW9Needed(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const approvedQuotes = canViewFinance ? await listApprovedQuoteToRental(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const unsignedAgreements = canViewFinance ? await listUnsignedAgreements(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
@@ -1190,6 +1192,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...newLeadContact.rows,
     ...leadFollowUps.rows,
     ...complianceDue.rows,
+    ...supplierW9.rows,
     ...approvedQuotes.rows,
     ...depositDecisions.rows,
     ...rentalEndingSoon.rows,
@@ -1268,6 +1271,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["NEW_LEAD_CONTACT", newLeadContact],
       ["LEAD_FOLLOW_UP", leadFollowUps],
       ["COMPLIANCE_DUE", complianceDue],
+      ["SUPPLIER_TAX_ID", supplierW9],
       ["APPROVED_QUOTE", approvedQuotes],
       ["RENTAL_ENDING_SOON", rentalEndingSoon],
       ["UNSIGNED_AGREEMENT", unsignedAgreements],

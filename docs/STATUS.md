@@ -1,3 +1,18 @@
+## October 26 — CMP-3: 1099s and W-9s, Form 8300 detector (PR open)
+
+Branch `ai/vivienne/cmp-3`. Suppliers carry an encrypted tax ID (last 4 only on screen) with a one-time W-9
+link page (typed answers — which also fill the official W-9 PDF into the private store — or a PDF upload;
+rate limited, single use, 14 days). Paying a 1099 supplier with no W-9 raises a To do carrying the 24%
+backup-withholding warning. 1099 preparation runs on the year-end review's books basis with the dated
+threshold rule; amounts the owner has not classified stay out of the boxes (classified on the filing page,
+never guessed); after approval the filing page serves the IRIS portal CSV (template header verified,
+100-form batches) and filled Copy B PDFs built from the approved numbers only. The IRIS A2A client is built
+and fixture-tested behind its switch (off until the A2A TCC lands). Recording a manual cash payment runs
+the Form 8300 detector in the same transaction: the receipt that pushes a customer's 12-month cash total
+over $10,000 creates the filing once, due in 15 days, with a filled draft on the filing page. The CMP-1
+close-out at the top of this branch's history is already on main (238f7a57). Next for this lane after CMP-3
+merges: **CMP-2**.
+
 ## October 26 — Lane 7 (back-office operations) close-out
 Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653. Each merged at a green exact-head `ci` with Codex findings answered. Not built: letting a successor use the pause switch in an emergency needs VAULT-1 (does not exist yet). Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
 ## October 26 — OPS-8: "If something happens to me" and the yearly check-up (PR #653, CI green at the exact head; merging)
@@ -70,6 +85,13 @@ including inside the registry files. Merge is sequenced by the lane heartbeat.
 Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
 ## October 26 — CI speed fixes across parallel lanes (PR #645)
 Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
+## October 26 — CMP-1: Compliance center (MERGED, PR #642, commit 238f7a57)
+
+The Compliance center is on main: the obligation registry with sources and 2026–2028 periods, business facts with the EIN encrypted (last 4 only), the prepare → approve (hash-bound) → submit filing flow, the To do COMPLIANCE_DUE category, the filled-form engine with the vendored 1040-ES booklet, and the Compliance screen (Coming up / Needs you / Done / Not needed). Four Codex review rounds were answered on the way in; the final head passed every check. The merged detail lives in the October 26 entry below and on the CMP-1 card. Still on Chris's checklist: set the compliance encryption key so the EIN box unlocks. Next for this lane: **CMP-3** (1099s and W-9s, plus the Form 8300 detector) on this foundation, then CMP-2.
+
+
+
+
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-4`. New **More → Insurance** screen (`/desk/insurance`, owner only): your policies (general liability, commercial auto, equipment, workers' comp, other) with company, policy number, limits as your agent wrote them, yearly cost, end date, agent and where the certificate is kept. A To do appears at 60 days and again at 30 days before a policy ends (both numbers are settings, with "Restore recommended"), and once it has ended. Workers' compensation status is recorded (no employees and rejected as an LLC member, with form date and certified-mail number, or a policy in place); entering one or more employees without a live policy puts "Workers' compensation insurance is required now" on To do. "Request a certificate of insurance" records the ask and writes the email to your agent for you to read and send yourself (the app sends nothing).
