@@ -1240,6 +1240,12 @@ model RentalAgreement {
   // pricing or billing logic.
   sourceEstimateId String?
   sourceEstimate   Estimate? @relation(fields: [sourceEstimateId], references: [id])
+  // FEETAX-2: the owner's one-order override of a "rules not decided"
+  // delivery-readiness refusal (never for a missing license). Reason is
+  // required; the save is audited.
+  readinessOverrideByUserId String?
+  readinessOverrideReason   String?   @db.VarChar(500)
+  readinessOverrideAt       DateTime?
   // W-24 independent agreement owner-offered windows; never a booked visit.
   deliveryOffer Json @default("[]")
   deliveryOfferVersion Int @default(0)
@@ -2384,6 +2390,24 @@ enum Taxability {
   UNDECIDED
 }
 
+// FEETAX-2: how a place's delivery license rule works, from the 50-mile
+// research table and the owner's review on Taxes > Delivery area.
+enum LicenseRequirement {
+  NONE
+  AFTER_FIRST_DELIVERY
+  AFTER_SECOND_DELIVERY_IN_12_MONTHS
+  ALWAYS
+  UNKNOWN
+}
+
+// FEETAX-2: how sales tax returns for a place are filed.
+enum FilingChannel {
+  SUTS
+  CITY_PORTAL
+  STATE_RETURN
+  UNKNOWN
+}
+
 enum TaxRateSource {
   COLORADO_GIS
   BULK_FILE
@@ -2919,6 +2943,8 @@ model TaxJurisdiction {
   notes            String?
   rates            TaxRateVersion[]
   rateObservations TaxRateObservation[]
+  readiness        JurisdictionReadiness?
+  deliveryCounts   JurisdictionDeliveryCount[]
   rules            TaxabilityRule[]
   addresses        AddressTaxJurisdiction[]
   invoiceTaxLines  InvoiceTaxLine[]
@@ -3142,6 +3168,43 @@ model AddressTaxJurisdiction {
 
   @@id([addressTaxLocationId, jurisdictionId])
   @@index([jurisdictionId])
+}
+
+// FEETAX-2: whether the business is set up to deliver into one taxing
+// place — its researched rent rule, license rule and filing channel, the
+// business record holding the city's license, and the owner's review
+// state. Seeded from docs/research/2026-10-25-tax-jurisdictions-50mi.md;
+// the owner edits it on Taxes > Delivery area. Whether the place taxes
+// rentals is NOT stored here — that is the TaxabilityRule RENTAL cell for
+// the jurisdiction (the one live rent decision, decided on Taxes > What
+// gets taxed); this row carries only delivery setup facts.
+model JurisdictionReadiness {
+  id              String             @id @default(cuid())
+  jurisdictionId  String             @unique
+  jurisdiction    TaxJurisdiction    @relation(fields: [jurisdictionId], references: [id])
+  licenseRequired LicenseRequirement @default(UNKNOWN)
+  licenseRecordId String?
+  licenseRecord   BusinessPaperwork? @relation("ReadinessLicenseRecord", fields: [licenseRecordId], references: [id])
+  filesThrough    FilingChannel      @default(UNKNOWN)
+  sourceUrl       String?            @db.VarChar(500)
+  checkedOn       DateTime?
+  reviewStatus    TaxReviewStatus    @default(NEEDS_REVIEW)
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+// FEETAX-2: one row per completed delivery order into a place whose
+// license rule counts deliveries (orderId unique makes the write
+// idempotent when a completion is retried).
+model JurisdictionDeliveryCount {
+  id             String          @id @default(cuid())
+  jurisdictionId String
+  jurisdiction   TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  deliveredOn    DateTime
+  orderId        String          @unique
+
+  @@index([jurisdictionId, deliveredOn])
 }
 
 model InvoiceTaxLine {
@@ -5853,6 +5916,7 @@ model BusinessPaperwork {
   /// Compliance registry keys this record unlocks or feeds.
   linkedObligationKeys String[] @default([])
   recordFiles     BusinessRecordFile[]
+  readinessLicenses JurisdictionReadiness[] @relation("ReadinessLicenseRecord")
 
   @@index([status, dueOn])
 }
