@@ -6375,6 +6375,7 @@ model OwnerInsurancePolicy {
   /// export pack). Created on demand by the owner; the policy's dates and yearly cost are copied onto it on every save.
   recordId         String?       @unique
   record           BusinessPaperwork? @relation("InsurancePolicyRecord", fields: [recordId], references: [id], onDelete: SetNull)
+  vehicles         FleetVehicle[]     @relation("VehicleInsurancePolicy")
   notes            String?
   archivedAt       DateTime?
   createdByUserId  String
@@ -6431,10 +6432,15 @@ model FleetVehicle {
   medicalCardExpiresOn  DateTime?
   notes                 String?
   archivedAt            DateTime?
+  /// OPS-3: the insurance policy that covers this vehicle (cleared if the policy is ever deleted).
+  insurancePolicyId     String?
+  insurancePolicy       OwnerInsurancePolicy? @relation("VehicleInsurancePolicy", fields: [insurancePolicyId], references: [id], onDelete: SetNull)
   createdByUserId       String
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   trips                 MileageTrip[]
+
+  @@index([insurancePolicyId])
 }
 
 model MileageTrip {

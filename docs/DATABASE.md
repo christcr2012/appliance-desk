@@ -1462,7 +1462,7 @@ Existing financial entries remain append-only and closed months stay immutable.
 
 ### OPS-3: vehicle and mileage (additive migration `20261108000000_vehicle`)
 
-- `FleetVehicle` — nickname, year, make, model, VIN, plate, `gvwrLbs` (required, > 0), `registrationMonth` (1–12), `odometerAtPurchase`, maintenance interval (miles/months) and last service, `medicalCardExpiresOn`, `archivedAt`. In the backup manifest.
+- `FleetVehicle` — nickname, year, make, model, VIN, plate, `gvwrLbs` (required, > 0), `registrationMonth` (1–12), `odometerAtPurchase`, maintenance interval (miles/months) and last service, `medicalCardExpiresOn`, `archivedAt`, `insurancePolicyId` (optional link to the `OwnerInsurancePolicy` that covers it; cleared if the policy is deleted). In the backup manifest.
 - `MileageTrip` — one row per trip: vehicle (Restrict), Denver-midnight `tripDate`, start/end odometer, `miles` (database checks: end ≥ start, miles = end − start), purpose, `source` (`MileageTripSource`: ROUTE or MANUAL), stops. A partial unique index allows only one ROUTE trip per vehicle per day. In the backup manifest.
 - `BusinessSettings.mileageMethod` (`MileageMethod`, default STANDARD_RATE) and `vehicleMedicalCardRequired` (default true).
 - One seeded rule-book row: `us.mileage_rate` = 725 (tenths of a cent, 72.5¢) from 2026-01-01, from IRS Notice 2026-10 (secondary summary, checked 2026-10-26).
