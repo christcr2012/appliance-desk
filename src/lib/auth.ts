@@ -308,6 +308,15 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      // ACCT-1: rides along for the same reason — session validation refuses
+      // an accountant whose access end date has passed, without a database
+      // call. Set only by the team actions (invite/accept/end-date change) —
+      // never by the client.
+      accessEndsOn: {
+        type: "date",
+        required: false,
+        input: false,
+      },
     },
   },
   session: {
