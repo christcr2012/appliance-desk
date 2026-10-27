@@ -1,3 +1,13 @@
+## October 26 — VAULT-1: business records (building)
+
+Branch `ai/vivienne/vault-1` on main `238f7a57` (CMP-1 merged, so the field-encryption
+dependency is in). Packet and drift check are written into `docs/pr-cards/VAULT-1.md`: five
+spec-vs-code drifts reconciled (no `co.license.expiry` key exists; the "admins may see"
+mark becomes an owner setting of kinds, starting with the non-sensitive ones, and a record
+with an encrypted number is never admin-readable; archive = NOT_NEEDED; no zip library
+exists, so a small in-repo writer; VAULT-1 never decrypts — reveal stays with VAULT-2's
+unlock). This commit also lands the ACC-6 merged-status tidy-up (work index, STATUS, card).
+
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-2`. A retired refrigerator, freezer or mini-fridge can no longer be marked "scrapped" or "thrown away" (one at a time, in bulk, or as the leftovers of a parts-stripping) until its **refrigerant record** is signed on screen: refrigerant type, whether it was recovered (by whom, their address, certification number, equipment, date) or had already leaked, and the scrap yard's receipt number. The app prints the signed **statement** (PDF) to hand the scrap yard. The record is kept for **6 years** (a dated rule-book number; the federal rule asks for 3; not confirmed). Owner setting on the Retired appliances page: which kinds of appliance have refrigerant (starting value: refrigerators, freezers and mini-fridges; washers and dryers no). Migration `20261106000000_refrigerant` (additive). Proof: pure tests (`tests/ops2-refrigerant-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops2-refrigerant-integration.test.ts`), typecheck and lint clean.
@@ -72,6 +82,14 @@ Update 2026-10-26 ~18:25 MDT: while the round-3 patch was being verified, OPS-5 
 PR #616's checks came back all green at head beb787c4. Codex's review left two findings: a P2 — the two-step login page could be prerendered, so it kept offering "Remember this device" after the owner turned remembering off (already fixed in an earlier round by making the page request-rendered) — and a P1 — the My account "Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated between the page check and the write could still have their trust rows deleted. The forget now re-checks the actor inside the transaction (row lock + active-team check, the repo's rule), with unit tests for the active, deactivated, and internal-cleanup paths; internal cleanup (password, reset, email, owner actions) is unchanged. Typecheck clean, 27 focused unit tests pass. The rerun on the fix head then failed only the secret scan: the full-history scan reads every branch, and it flagged the same legal rule-name lines under main's TFA-1 merge commit (already allowlisted on main — this branch's copy was older) and under the leads lane's merge commits (not allowlisted anywhere). Main has been merged in, bringing the refreshed allowlist, and the four leads-branch fingerprints were added with the reason recorded in `.gitleaksignore` and the PR; every flagged line was read — they are tax rule names and a migration comment, not credentials. Next: exact-head CI, then reply to and resolve both review threads and merge.
 
 Update 2026-10-26 ~13:45 MDT: three more runs, each red on exactly one thing, all diagnosed and fixed in turn. Run 40370951794 (head 0627b5c2): everything green except browser-b — 164 passed but 3.0m against the 180s phase budget; feedback and staff-security moved b to c. Run 40386761485 (head 52207003): the scanner flagged the leads migration comment under LD-1's merge commit (50e265ec — one fingerprint added, reason recorded) and browser-c ran 3.1m with 109 passing (the desk-a route scan varies 120–183 test-seconds between runs). LD-1 then merged to main (#625), so main was merged in again here: conflicts in `.gitleaksignore` (union of both lanes' fingerprints), this file (both top entries kept) and the shard file resolved; LD-1's new lead-staff-detail spec assigned to browser-b, revenue-records moved c to a and my-account d to c from run 40386761485's measured times (a 2.3m, b 2.6m, d 2.9m). Next: exact-head CI on the merged tree, then reply to and resolve both review threads and merge.
+
+Update 2026-10-26 (merged): PR #628 — the rebuilt PR, after #616 was closed when its branch was
+reset — merged as 66543a92 at head eac60bcd, ci green at the exact head (one failed-jobs rerun
+for a browser-a phase-budget overrun on the PR-event run; a dispatched run on the same head was
+fully green; no review threads on #628). Main's own post-merge run passed the secret scan with
+no allowlist refresh, and PR #632 has since scoped the scan by commit range and rebalanced the
+browser groups. Card complete. The ACC-6 work-index/card merged notes ride the VAULT-1 branch
+(this entry's commit), per the lane plan.
 ## October 26 — LD-1: fix pushed, checks never started — needs one manual start
 
 PR #618 (leads pipeline engine) at `ac70fedc`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.
