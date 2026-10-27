@@ -125,3 +125,12 @@ describe("owner-editable notice wording", () => {
   });
   it("refuses very long text", () => { expect(__wordingProblem("x".repeat(601))).not.toBeNull(); });
 });
+
+describe("printed final notice", () => {
+  it("prints the saved words of an already-written notice, not today's wording", async () => {
+    const facts = { customerName: "Ana", invoiceNumber: 7, owedCents: 12_500, dueOnText: "October 3, 2026", daysPastDue: 25, todayText: "October 26, 2026" };
+    const a = await renderFinalNoticeLetterPdf({ ...facts, payHowText: "NEW WORDING" });
+    const b = await renderFinalNoticeLetterPdf({ ...facts, payHowText: "NEW WORDING", savedBody: "Hello Ana,\n\nSaved earlier text only." });
+    expect(Buffer.from(a).length).not.toBe(Buffer.from(b).length);
+  });
+});

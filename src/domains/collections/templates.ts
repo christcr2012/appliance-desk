@@ -55,8 +55,9 @@ export function renderFinalNotice(f: NoticeFacts): { subject: string; body: stri
 }
 
 /** The final notice as a printable one-page letter (Chris can mail it). */
-export async function renderFinalNoticeLetterPdf(f: NoticeFacts & { addressLines?: string[]; todayText: string }): Promise<Uint8Array> {
-  const { body } = renderFinalNotice(f);
+export async function renderFinalNoticeLetterPdf(f: NoticeFacts & { addressLines?: string[]; todayText: string; savedBody?: string | null }): Promise<Uint8Array> {
+  // A notice that was already written keeps its words: print the saved text, not today's wording setting.
+  const body = f.savedBody?.trim() ? f.savedBody : renderFinalNotice(f).body;
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);

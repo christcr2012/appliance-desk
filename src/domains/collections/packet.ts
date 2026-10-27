@@ -128,7 +128,7 @@ export async function renderSmallClaimsPacket(facts: SmallClaimsFacts, now = new
   for (const l of facts.defendantAddress) line(l);
   gap();
   line("Agreement", 12, true);
-  line(`Signed ${day(facts.agreementSignedAt)}; rental started ${day(facts.agreementStart)}. The signed agreement is attached from the account.`);
+  line(`Signed ${day(facts.agreementSignedAt)}; rental started ${day(facts.agreementStart)}. Print the signed agreement from the customer's account and attach it behind this summary.`);
   gap();
   line("Bills and payments", 12, true);
   for (const bill of facts.ledger) {

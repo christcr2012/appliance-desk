@@ -57,6 +57,8 @@ export async function sendNotice(actorUserId: string, stepId: string): Promise<{
     if (!row) throw new CollectionError("Couldn't find that notice.");
     if (row.kind !== "SECOND_NOTICE" && row.kind !== "FINAL_NOTICE") throw new CollectionError("That step is a decision, not a notice.");
     if (row.state !== "WAITING") throw new CollectionError("That notice was already handled.");
+    const confirming = await tx.bankPaymentInFlight.count({ where: { invoiceId: row.invoiceId, clearedAt: null } });
+    if (confirming > 0) throw new CollectionError("A bank payment for this bill is still being confirmed. Wait until it clears before sending a notice, so the customer isn't asked to pay twice.");
     if (row.invoice.amountDueCents - row.invoice.amountPaidCents <= 0) {
       await tx.collectionStep.update({ where: { id: stepId }, data: { state: "SKIPPED", note: "Paid before it was sent.", decidedAt: new Date(), decidedByUserId: actorUserId } });
       throw new CollectionError("This bill has been paid, so no notice is needed.");

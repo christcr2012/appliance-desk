@@ -1,6 +1,7 @@
 // OPS-6: the nightly pass of the past-due ladder. It only writes WAITING steps (drafts for Chris); it never sends
 // anything, never contacts a customer, and never takes or changes money. Safe to run twice.
 import { prisma } from "@/lib/prisma";
+import { notInFlightWhere } from "@/domains/billing/in-flight";
 import { businessDateKey } from "@/lib/business-date";
 import {
   RECOMMENDED_LADDER, daysPastDue, stepStillNeeded, stepsCameUp, validateLadder, type LadderDays,
@@ -39,6 +40,7 @@ export async function runCollectionsPass(now: Date = new Date()): Promise<PassRe
   const bills = await prisma.invoice.findMany({
     where: {
       status: { in: [...OPEN_STATUSES] },
+      ...notInFlightWhere, // a bill whose bank payment is still being confirmed is not chased
       dueDate: { not: null, lt: now },
       agreementId: { not: null },
       agreement: { status: "ACTIVE" },

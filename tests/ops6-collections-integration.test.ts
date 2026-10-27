@@ -103,6 +103,19 @@ describe.skipIf(!enabled)("collections (real Postgres, fake message path)", () =
     expect((await prisma.collectionStep.findUniqueOrThrow({ where: { id: step.id } })).state).toBe("WAITING");
   });
 
+  it("does not chase or send a notice for a bill whose bank payment is still being confirmed", async () => {
+    const step = await prisma.collectionStep.findFirstOrThrow({ where: { invoiceId, kind: "FINAL_NOTICE" } });
+    const flight = await prisma.bankPaymentInFlight.create({ data: { invoiceId, agreementId, source: "LOCAL_CHECKOUT", paymentIntentId: `pi_ops6_${tag}`, amountCents: 12_500, method: "ach", startedAt: new Date() } });
+    await expect(sendNotice(ownerId, step.id)).rejects.toThrow(/still being confirmed/);
+    expect(sent.calls).toHaveLength(0);
+    const other = await prisma.invoice.create({ data: { customerId, agreementId, status: "OPEN", amountDueCents: 5_000, amountPaidCents: 0, dueDate: new Date(now.getTime() - 40 * DAY) } });
+    const otherFlight = await prisma.bankPaymentInFlight.create({ data: { invoiceId: other.id, agreementId, source: "LOCAL_CHECKOUT", paymentIntentId: `pi_ops6b_${tag}`, amountCents: 5_000, method: "ach", startedAt: new Date() } });
+    await runCollectionsPass(now);
+    expect(await prisma.collectionStep.count({ where: { invoiceId: other.id } })).toBe(0);
+    await prisma.bankPaymentInFlight.deleteMany({ where: { id: { in: [flight.id, otherFlight.id] } } });
+    await prisma.invoice.delete({ where: { id: other.id } });
+  });
+
   it("does not call an uncertain or pending message \"sent\"", async () => {
     const step = await prisma.collectionStep.findFirstOrThrow({ where: { invoiceId, kind: "FINAL_NOTICE" } });
     for (const state of ["UNKNOWN", "PENDING"]) {
