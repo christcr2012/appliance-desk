@@ -1,3 +1,14 @@
+## October 26 — TFA-3: official-page watches with strict parsers (in progress)
+
+Branch `ai/vivienne/tfa-3-final`. The six seeded official-page watches are turned on behind an owner switch on the
+Rules screen, and three gain strict readers (Colorado RDF rates, IRS 1099 instructions, Colorado interest) plus
+the Greeley rate reader: pages are read weekly, and daily inside each rule's known change window. Every reading
+is stored; one that differs from the rule book waits on To do for Chris's Approve / Not right — nothing is
+applied on its own, and the old GIS rate auto-apply now starts off. Greeley readings go through the existing
+rate review path, and a Greeley approval also mirrors into the rule book so the two stores agree. Known limit:
+the live Greeley page does not state its rate in a sentence yet, so that reader reports "couldn't read" until
+the city publishes one (never a guess). Local proof: parsers 13/13, observation 9/9, watch 18/18, rate review
+6/6, Today access 11/11, registries 24/24 on throwaway Postgres. Next: PR, exact-head CI, review, merge.
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 
 One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
