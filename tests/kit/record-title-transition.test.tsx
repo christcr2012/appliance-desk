@@ -40,7 +40,7 @@ describe("AR-11 shared record titles", () => {
   it("uses exactly 180ms animations and disables all movement for reduced-motion", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     expect(css).toContain("::view-transition-group(.desk-record-title)");
-    expect(css).toMatch(/::view-transition-new\(\.desk-area-enter\).*180ms/s);
+    expect(css).toContain("::view-transition-new(.desk-area-enter) { animation: 180ms");
     const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
     expect(reduced).toContain("::view-transition-group(*)");
     expect(reduced).toContain("animation: none !important");
