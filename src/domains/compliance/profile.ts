@@ -23,6 +23,15 @@ export interface BusinessFactsInput {
   truckGvwrLbs: number | null;
   employees: number;
   hasHomeOffice: boolean;
+  /** CMP-3: the payer identity for information returns; undefined = leave as-is. */
+  payer?: {
+    businessLegalName: string | null;
+    businessAddress: string | null;
+    businessCity: string | null;
+    businessState: string | null;
+    businessZip: string | null;
+    businessPhone: string | null;
+  };
 }
 
 /** The stored profile, or the starting values when none was saved yet. */
@@ -38,6 +47,12 @@ export async function getComplianceProfile(): Promise<ComplianceProfile> {
     truckGvwrLbs: null,
     employees: 0,
     hasHomeOffice: false,
+    businessLegalName: null,
+    businessAddress: null,
+    businessCity: null,
+    businessState: null,
+    businessZip: null,
+    businessPhone: null,
     updatedAt: new Date(0),
   };
 }
@@ -153,6 +168,7 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
       employees: input.employees,
       hasHomeOffice: input.hasHomeOffice,
       ...(einPatch ?? {}),
+      ...(input.payer ?? {}),
     };
     await tx.complianceProfile.upsert({
       where: { id: "singleton" },

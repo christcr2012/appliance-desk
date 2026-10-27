@@ -7,6 +7,7 @@ import {
   createReceiptWithAllocations,
   lockCustomerLedger,
 } from "./ledger";
+import { assessCashReceipt8300 } from "@/domains/compliance/form-8300";
 
 export type ManualPaymentMethod = "check" | "cash" | "bank_transfer" | "other";
 
@@ -132,6 +133,12 @@ export async function recordManualPayment(
       allocations,
     });
     committedReceiptId=recordedReceipt.receiptId;
+
+    // CMP-3: a cash receipt can trigger a Form 8300 filing (cash over
+    // $10,000 from one customer, alone or related within 12 months).
+    if (input.method === "cash") {
+      await assessCashReceipt8300(tx, { id: recordedReceipt.receiptId, customerId, receivedOn });
+    }
 
     // Keep the existing per-invoice audit trail even though the receipt is now
     // the cash source of truth.
