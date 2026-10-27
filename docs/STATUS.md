@@ -1,3 +1,14 @@
+## October 26 — TFA-3: official-page watches with strict parsers (in progress)
+
+Branch `ai/vivienne/tfa-3`. The six seeded official-page watches are turned on behind an owner switch on the
+Rules screen, and three gain strict readers (Colorado RDF rates, IRS 1099 instructions, Colorado interest) plus
+the Greeley rate reader: pages are read weekly, and daily inside each rule's known change window. Every reading
+is stored; one that differs from the rule book waits on To do for Chris's Approve / Not right — nothing is
+applied on its own, and the old GIS rate auto-apply now starts off. Greeley readings go through the existing
+rate review path, and a Greeley approval also mirrors into the rule book so the two stores agree. Known limit:
+the live Greeley page does not state its rate in a sentence yet, so that reader reports "couldn't read" until
+the city publishes one (never a guess). Local proof: parsers 13/13, observation 9/9, watch 18/18, rate review
+6/6, Today access 11/11, registries 24/24 on throwaway Postgres. Next: PR, exact-head CI, review, merge.
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-2`. A retired refrigerator, freezer or mini-fridge can no longer be marked "scrapped" or "thrown away" (one at a time, in bulk, or as the leftovers of a parts-stripping) until its **refrigerant record** is signed on screen: refrigerant type, whether it was recovered (by whom, their address, certification number, equipment, date) or had already leaked, and the scrap yard's receipt number. The app prints the signed **statement** (PDF) to hand the scrap yard. The record is kept for **6 years** (a dated rule-book number; the federal rule asks for 3; not confirmed). Owner setting on the Retired appliances page: which kinds of appliance have refrigerant (starting value: refrigerators, freezers and mini-fridges; washers and dryers no). Migration `20261106000000_refrigerant` (additive). Proof: pure tests (`tests/ops2-refrigerant-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops2-refrigerant-integration.test.ts`), typecheck and lint clean.
