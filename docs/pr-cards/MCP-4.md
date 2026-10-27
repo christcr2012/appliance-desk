@@ -5,15 +5,15 @@ Approved by Chris 2026-10-25. Depends on MCP-3, MCP-2 (backup status) and DEC-1a
 to read data** — every tool re-checks role and scope; nothing writes.
 
 ## Acceptance
-- [ ] The nine read tools in the spec exist, each with schema, scope and read-only hints (registry test).
-- [ ] No tool output contains customer personal details, report text or storage paths (canary test).
-- [ ] Two concurrent connections only ever see their own identity (test).
-- [ ] Missing scope → tool error `FORBIDDEN_SCOPE`; unknown fields rejected.
+- [x] The nine read tools in the spec exist, each with schema, scope and read-only hints (registry test).
+- [x] No tool output contains customer personal details, report text or storage paths (canary test).
+- [x] Two concurrent connections only ever see their own identity (test).
+- [x] Missing scope → tool error `FORBIDDEN_SCOPE`; unknown fields rejected.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
 
-**Acceptance plan — 2026-10-27 (before code).** The branch is stacked on MCP-3 and must not merge before secure OAuth is proven. Implement the **nine complete read-only tools** listed in `CONNECT-AGENT.md` section 6, including `appliance_whoami`:
+**Acceptance plan — 2026-10-27 (before code).** The branch began stacked on MCP-3; MCP-3 merged as PR #692 before MCP-4 was published. Implement the **nine complete read-only tools** listed in `CONNECT-AGENT.md` section 6, including `appliance_whoami`:
 
 - Every entry has a stable name, title, safe description, strict Zod input and output schemas, explicit scope (except whoami), and read-only/idempotent tool hints; registry tests enumerate all nine.
 - Each domain read uses server-side actor and permission gates. Missing scope fails `FORBIDDEN_SCOPE`, wrong/unknown fields reject, and two concurrent MCP callers never share state.
@@ -23,3 +23,20 @@ to read data** — every tool re-checks role and scope; nothing writes.
 - Run quick and focused tests, full CI green **on this branch's exact head**, review findings addressed, then merge only after MCP-3 dependency is green and merged.
 
 No code yet; this is a plan-only checkpoint.
+
+**Implementation evidence — October 27:** All nine MCP SDK tools are registered on a fresh
+server per authenticated request, with explicit strict input/output Zod schemas, role/scope
+checks, read-only hints, safe DTOs and bounded valid JSON responses. Backup status is based
+on the verified artifact ledger, not an optimistic scheduled-run flag. Diagnostics strip
+freeform reports, answer histories, provider errors and private storage paths.
+
+- `tests/mcp-read-tools.test.ts`: 4 passing tests (nine-tool registry, errors, session
+  isolation, large-page cursor).
+- `tests/mcp-diagnostics-privacy.test.ts`: 3 passing tests, including a canary embedded
+  in private reports, provider fields, references, settings and decision answers. That test
+  caught and fixed an over-broad correlation-reference rule.
+- `tests/mcp-read-role-integration.test.ts`: passed on a fresh local disposable
+  PostgreSQL with migrations and seed; confirms role downgrade and account archive
+  block a previously authorized tool call.
+- Changed-file ESLint passed. Full local typecheck exhausted the sandbox's 3 GB
+  Node.js heap; exact-head GitHub `ci` and `review-gate` are mandatory before merge.
