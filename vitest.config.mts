@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/ops3-vehicle-integration.test.ts", // OPS-3 changes and restores the shared mileage method and medical-card setting.
   "tests/ops4-insurance-integration.test.ts", // OPS-4 changes and restores the shared insurance reminder days and workers' compensation status.
   "tests/ops7-privacy-integration.test.ts", // OPS-7 changes and restores the shared privacy settings (retention years, purge switch).
   "tests/job-click-to-call-integration.test.ts", // COM-N2 changes and restores the shared phone policy.

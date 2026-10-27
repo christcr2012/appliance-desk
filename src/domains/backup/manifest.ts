@@ -241,6 +241,9 @@ export const BACKUP_MODEL_POLICY = {
   RecallWatchState: "recallWatchState",
   SafetyIncident: "safetyIncident",
 
+  // OPS-3: the delivery vehicle and its mileage log are business records.
+  FleetVehicle: "fleetVehicle",
+  MileageTrip: "mileageTrip",
   // OPS-4: insurance policies and certificate requests are business records.
   OwnerInsurancePolicy: "ownerInsurancePolicy",
   InsuranceCertificateRequest: "insuranceCertificateRequest",

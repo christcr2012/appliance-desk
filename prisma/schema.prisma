@@ -3380,6 +3380,10 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  // OPS-3: how the owner claims vehicle costs. Starting value: the standard mileage rate in the first year (keeps both options open).
+  mileageMethod MileageMethod @default(STANDARD_RATE)
+  // OPS-3: a medical card is asked for from this vehicle weight up (starting value: required from 16,001 lb; not confirmed).
+  vehicleMedicalCardRequired Boolean @default(true)
   // OPS-4: insurance. Renewal reminders (days before a policy ends) and workers' compensation status.
   insuranceRemindFirstDays Int @default(60)
   insuranceRemindSecondDays Int @default(30)
@@ -6032,6 +6036,64 @@ model InsuranceCertificateRequest {
   requestedAt      DateTime @default(now())
 
   @@index([policyId, requestedAt])
+}
+
+// OPS-3: the delivery vehicle(s), the mileage log, and the rules that follow from the vehicle's weight (GVWR).
+enum MileageMethod {
+  STANDARD_RATE
+  ACTUAL_COSTS
+}
+
+enum MileageTripSource {
+  ROUTE
+  MANUAL
+}
+
+model FleetVehicle {
+  id                    String   @id @default(cuid())
+  nickname              String
+  year                  Int
+  make                  String
+  model                 String
+  vin                   String?
+  plate                 String?
+  /// Gross vehicle weight rating in pounds. Required: the license and commercial-vehicle rules depend on it.
+  gvwrLbs               Int
+  /// 1-12: the month the registration is due each year.
+  registrationMonth     Int?
+  odometerAtPurchase    Int      @default(0)
+  maintenanceEveryMiles Int?
+  maintenanceEveryMonths Int?
+  lastMaintenanceOn     DateTime?
+  lastMaintenanceMiles  Int?
+  medicalCardExpiresOn  DateTime?
+  notes                 String?
+  archivedAt            DateTime?
+  createdByUserId       String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  trips                 MileageTrip[]
+}
+
+model MileageTrip {
+  id              String            @id @default(cuid())
+  vehicleId       String
+  vehicle         FleetVehicle      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  /// The business day (Denver midnight).
+  tripDate        DateTime
+  startOdometer   Int
+  /// Null while the day is still in progress.
+  endOdometer     Int?
+  miles           Int?
+  purpose         String
+  source          MileageTripSource
+  stops           Int               @default(0)
+  notes           String?
+  createdByUserId String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([vehicleId, tripDate])
 }
 
 // OPS-6: the past-due ladder. One row per bill per step, made by the nightly pass; nothing reaches a customer until

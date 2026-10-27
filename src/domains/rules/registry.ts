@@ -203,6 +203,16 @@ export const RULES = {
       moneyField("phaseoutCents", "Phase-out starts at ($)", 10000000000),
     ],
   }),
+  "us.mileage_rate": defineRule({
+    key: "us.mileage_rate",
+    title: "Business mileage rate",
+    explain: "The IRS standard rate per business mile for a vehicle, used to work out the mileage deduction. Stored in tenths of a cent (725 = 72.5 cents).",
+    area: "FEDERAL",
+    schema: z.number().int().min(0).max(5000),
+    describe: (v: number) => `${v / 10} cents per business mile`,
+    change: "FIXED_JAN_1",
+    fields: [integerField("value", "Rate (tenths of a cent per mile)", 0, 5000)],
+  }),
   "us.bonus_depreciation": defineRule({
     key: "us.bonus_depreciation",
     title: "Bonus depreciation",
