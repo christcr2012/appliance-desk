@@ -79,6 +79,9 @@ vi.mock("@/domains/exceptions/continuity-attention", () => ({
 vi.mock("@/domains/exceptions/setup-attention", () => ({
   listSetupGuideAttention: vi.fn(async () => []), // covered by tests/setup-guide-integration.test.ts
 }));
+vi.mock("@/domains/vault/attention", () => ({
+  listVaultRotationAttention: vi.fn(async () => []), // covered by tests/vault-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
