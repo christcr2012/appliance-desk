@@ -53,7 +53,7 @@ export async function setCashMatchWindow(userId:string,accountId:string,expected
 }
 export async function getCashAccounts(userId:string) {
   return prisma.$transaction(async tx=>{
-    await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+    await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
     return tx.cashAccount.findMany({orderBy:{createdAt:"asc"},take:100,
       include:{ledgerAccount:{select:{id:true,name:true,systemRole:true,active:true}},
         imports:{where:{status:"ACTIVE"},select:{id:true,rowCount:true,createdAt:true},take:10,

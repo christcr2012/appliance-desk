@@ -43,7 +43,7 @@ function safeFilename(target:ExportTarget,mode:ExportMode,from:string,to:string)
 }
 type Tx=Prisma.TransactionClient;
 async function liveRole(tx:Tx,userId:string) {
-  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
 }
 export async function runExport(userId:string,input:ExportInput):Promise<{batchId:string;alreadyImported?:boolean}|{blocked:string[]}> {
   const interval=validInput(input);
