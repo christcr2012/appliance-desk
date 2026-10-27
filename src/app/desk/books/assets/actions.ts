@@ -41,7 +41,7 @@ export async function retireBookAssetAction(form:FormData){
   int(form,"version"),str(form,"intent"),str(form,"retiredDate")));
 }
 export async function bookAssetPolicyAction(form:FormData){
- const user=(await requireRole("OWNER")).user;
+ const user=(await requireRole("OWNER","ACCOUNTANT")).user;
  await finish("Asset policy",()=>setBookAssetPolicy(user.id,str(form,"applianceId"),
   int(form,"version"),int(form,"lifeMonths"),int(form,"salvagePercent")));
 }
@@ -51,7 +51,7 @@ export async function bookDefaultsAction(form:FormData){
   int(form,"months"),int(form,"salvagePercent")));
 }
 export async function bookTaxEvidenceAction(form:FormData){
- const user=(await requireRole("OWNER")).user;
+ const user=(await requireRole("OWNER","ACCOUNTANT")).user;
  await finish("CPA tax evidence",()=>addBookTaxEvidence(user.id,str(form,"applianceId"),{
   classification:str(form,"classification"),confidence:str(form,"confidence"),
   originalBasisCents:optionalCents(form,"originalBasis"),
