@@ -230,8 +230,8 @@ export default async function DeskSettingsPage({
           viewerId={session.user.id}
           settings={teamSettings}
           jobRoles={jobRoles}
-          members={team.members.map((m) => ({ ...m, lastSignIn: m.lastSignIn ? m.lastSignIn.toISOString() : null }))}
-          invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString() }))}
+          members={team.members.map((m) => ({ ...m, lastSignIn: m.lastSignIn ? m.lastSignIn.toISOString() : null, accessEndsOn: m.accessEndsOn ? m.accessEndsOn.toISOString() : null }))}
+          invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString(), firm: i.firm, accessEndsOn: i.accessEndsOn ? i.accessEndsOn.toISOString() : null }))}
         />
       </Card>
     );

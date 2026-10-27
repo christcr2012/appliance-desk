@@ -28,7 +28,7 @@ const field = "w-full rounded border border-border bg-background p-2";
 export default async function AmendmentPage({ params }: {
   params: Promise<{ periodId: string }>;
 }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const owner = session.user.role === "OWNER";
   const { periodId } = await params;
   if (!/^[A-Za-z0-9_-]{5,128}$/.test(periodId)) throw new Error("Invalid filing period.");
