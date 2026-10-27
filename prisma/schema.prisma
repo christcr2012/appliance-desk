@@ -3380,6 +3380,14 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  // OPS-4: insurance. Renewal reminders (days before a policy ends) and workers' compensation status.
+  insuranceRemindFirstDays Int @default(60)
+  insuranceRemindSecondDays Int @default(30)
+  workersCompStatus WorkersCompStatus @default(NOT_SET)
+  workersCompEmployees Int @default(0)
+  workersCompNote String?
+  workersCompFormSentOn DateTime?
+  workersCompMailNumber String?
   // Batch M-2: remind on Today when a retired appliance has had no plan (or an unfinished one) this many days; 0 = never.
   retiredFollowUpDays Int @default(30)
   // O-5: warn on Today when a ready-to-rent appliance has sat idle this many days (0 = never) and when fleet utilization
@@ -5984,6 +5992,60 @@ model SafetyIncident {
   @@index([applianceId])
   @@index([maintenanceRequestId])
   @@index([jobId])
+}
+
+// OPS-4: the owner's insurance policies (general liability, commercial auto, equipment, workers' comp) with a renewal
+// date that feeds To do reminders. Limits are free text ("$1M per claim") because only the agent can say what is right.
+enum InsuranceKind {
+  GENERAL_LIABILITY
+  COMMERCIAL_AUTO
+  EQUIPMENT
+  WORKERS_COMP
+  OTHER
+}
+
+enum WorkersCompStatus {
+  NOT_SET
+  NO_EMPLOYEES_REJECTED
+  POLICY_IN_PLACE
+}
+
+model OwnerInsurancePolicy {
+  id               String        @id @default(cuid())
+  kind             InsuranceKind
+  insurer          String
+  policyNumber     String
+  limitsText       String?
+  annualPremiumCents Int?
+  effectiveOn      DateTime?
+  expiresOn        DateTime
+  agentName        String?
+  agentEmail       String?
+  /// Where the certificate of insurance (COI) PDF is kept, e.g. "Emailed by agent, in the Insurance folder in Drive".
+  certificateNote  String?
+  notes            String?
+  archivedAt       DateTime?
+  createdByUserId  String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  certificateRequests InsuranceCertificateRequest[]
+
+  @@index([expiresOn])
+}
+
+/// Each time Chris asked his agent for a certificate of insurance on behalf of someone (usually a property manager).
+model InsuranceCertificateRequest {
+  id               String   @id @default(cuid())
+  policyId         String
+  policy           OwnerInsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  requesterName    String
+  requesterCompany String?
+  requesterEmail   String
+  holderText       String?
+  requestedByUserId String
+  requestedAt      DateTime @default(now())
+
+  @@index([policyId, requestedAt])
 }
 
 // OPS-6: the past-due ladder. One row per bill per step, made by the nightly pass; nothing reaches a customer until

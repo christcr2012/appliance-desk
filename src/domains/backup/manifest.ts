@@ -242,6 +242,10 @@ export const BACKUP_MODEL_POLICY = {
   SafetyIncident: "safetyIncident",
   // OPS-8: which December check-up items the owner looked at, per year.
   YearlyCheckup: "yearlyCheckup",
+
+  // OPS-4: insurance policies and certificate requests are business records.
+  OwnerInsurancePolicy: "ownerInsurancePolicy",
+  InsuranceCertificateRequest: "insuranceCertificateRequest",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(
