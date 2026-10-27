@@ -30,6 +30,22 @@ selector; all unit and browser groups, checks and secret scan green. Codex revie
 Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
 optimistic Snooze and bundle budget remain. No user payment or permission path changed.
 
+## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR pending)
+
+Branch `ai/vivienne/feetax-2`. Every place within 50 miles of Greeley is seeded with its delivery
+readiness (city license rule, how returns are filed, source and review state — no tax rates
+seeded, and no rent-tax decisions either: whether a place taxes rentals stays in the tax rules). Before an address can be quoted, ordered
+or scheduled, the new readiness check refuses it with a plain reason when a place's rules are
+undecided, a required city license is missing or expired, the delivery count crosses a city's
+license rule, the address's tax places aren't confirmed, or the address is outside Colorado. The
+one override — owner-only, with a reason, written to Activity — covers "rules not decided" only;
+a missing license can never be overridden. Delivery counts are recorded when a delivery job
+finishes. New screen **Taxes › Delivery area** lists every place and runs "Check an address";
+a "Get ready to deliver in {city}" item lands on the To do list only for places a real customer
+address needs. Proof so far: `tests/delivery-readiness-integration.test.ts` (13 tests) and the
+wired-path suites on throwaway Postgres; full preflight + PR next. Starting values filed as
+DQ-FEETAX2-1 (Boulder rent "likely") and DQ-FEETAX2-2 (presumed city licenses).
+
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
 Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
