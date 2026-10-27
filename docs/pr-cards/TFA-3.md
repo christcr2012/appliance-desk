@@ -8,7 +8,7 @@ TFA-1. Risk: **tax rule changes** — always approved by Chris on To do (his rul
 - [x] Strict parsers for the RDF rates, Greeley rate, IRS 1099 threshold and Colorado interest; a changed page layout → "couldn't read", never a guess (fixture tests).
 - [x] Every reading that differs goes to To do for Chris to approve; nothing is applied automatically (test); the old rate auto-apply starts off.
 - [x] Greeley's post-election rate goes through the existing rate review path (Approve on To do).
-- [ ] No network in CI; `ci` green at the exact head; every review comment read.
+- [x] No network in CI; `ci` green at the exact head; every review comment read.
 
 ## Progress
 Built on `ai/vivienne/tfa-3-final` (Vivienne, 2026-10-26):
