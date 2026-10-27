@@ -1,18 +1,74 @@
-## October 27 — Lane 1 React 19.3 transition review fixes (PR #665)
-Three actionable review findings are corrected: mobile-only customer title names
-avoid duplicate concurrently mounted boundaries; area transition is keyed at the
-ViewTransition boundary rather than only the child; and browser regression locates
-the visible phone customer link. Added unit regressions for duplicate prevention
-and area keys. React 19.3 registry lockfile was npm-generated and npm ci passed
-on read-only GitHub Actions; full exact-head project CI and fresh review still pending.
+## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
+React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 
-## October 27 — Lane 1 AR-11 React 19.3 and native navigation (implementation branch)
-Branch `ai/chatgpt/ar-11-react-transitions-20261027`: pinned React/DOM and types at 19.3.0, committed registry-generated npm lockfile.
-Free read-only GitHub Actions verified npm ci and read installed Next 16.4.2 transition docs.
-Named customer-list-to-record title transitions and desk-area crossfades now have unit/mobile
-browser regression coverage; full product CI/review have not run. Temporary lockfile-generator
-workflow is removed before PR. All AR-11 acceptance stays in progress until CI and bundle budget pass.
+## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
 
+MERGED earlier: the review check (#685) and OPS-4 "Keep certificate on record" (#687, squash `ffac3c8`). #687 merged
+before its two Codex fixes landed because `review-gate` is not yet a required check (one row on OWNER-CHECKLIST
+section A needs Chris). This PR carries those fixes: policy saves keep the owner's reminder days on the record, and
+renewing a linked record moves the policy's end date in the same step. Tests on real Postgres pass.
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
+## October 27 — Lane 7 follow-ups: review gate merged, insurance certificate on a record
+
+MERGED: the automatic-merge safety check (`review-gate`, PR #685). Self-review notes now have to name the commit
+reviewed and come from the author or a collaborator; Codex findings clear only with a written disposition. It is already
+posting on open PRs. NEEDS CHRIS: two GitHub rule settings (agents cannot edit them) — one row in OWNER-CHECKLIST
+section A; until done, PRs still need a re-sync when main moves. IN PROGRESS (branch `ai/claude/ops-vault-gaps`): OPS-4
+"Keep certificate on record" (links each policy to one Insurance record in the vault; tests on real Postgres pass).
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
+## October 27 — Automatic merging and the review gate (branch `ai/claude/auto-merge-review-gate`)
+
+Chris asked for pull requests to merge themselves, because several agents work at once and main keeps moving. Two
+things were in the way: the main-branch rule required every PR to be re-synced after each other merge, and nothing
+handled Codex being slow or out of usage. Built: a `review-gate` check (`.github/workflows/review-gate.yml`,
+`scripts/review-gate.mjs`, 14 tests) that passes when Codex reviewed and every finding has a reply, or, when Codex
+is unavailable (usage limit, or no answer in 25 minutes), when the author left a "self-reviewed" comment after the last
+real push (a sync with main does not erase it). It only reads pull requests and writes one commit status; it never
+checks out a PR. After this merges the main-branch rule is changed to require `review-gate` and to stop requiring
+branches to be up to date, then auto-merge is turned on per PR. AGENTS.md section 6 and the quickstart say how.
+
+## October 27 — CMP-5: Hiring readiness (merged)
+
+MERGED via PR #679, squash `d22a76e8` on main (chain #674 → #676 → #679; the first two were closed
+unmerged for GitHub merge-check reasons only, the tree never changed). Built ahead of the first
+hire by owner decision 2026-10-27 — the dormant-until-employees condition is lifted. The six payroll obligations CMP-1 registered (Form 941,
+Form 940, W-2s, Colorado withholding, UI, FAMLI) already wake from the Business facts **employees**
+count; CMP-5 adds what was missing. New fact `firstHireDate` and a seventh payroll obligation,
+**co.payroll.new_hire** (Colorado new-hire report, due the first employee's start date + 20 days,
+GUIDED_WEB to the Colorado Child Support Services page — verified 2026-10-27; without the date it
+stays unscheduled with the reason printed). The Compliance screen gains a **Hiring checklist** when
+employees > 0 (EIN, W-4, I-9, new hire report, withholding account, UI account, FAMLI, workers'
+comp, posters, paid sick leave) whose state derives from facts and filings — no stored tick boxes.
+**DQ-CMP-PAYROLL-HOW** filed (starting value: payroll service). The provider's summary CSV imports
+each pay run into the books through `writeJournal` as source type **PAYROLL** (Dr wages, Dr employer
+payroll taxes, Cr bank) against two new system accounts — `WAGES` (Schedule C line 26, newly added
+to the worksheet's line list) and `EMPLOYER_PAYROLL_TAXES` (line 23) — with strict balance
+validation (the one withdrawal equals gross + employer taxes; the employee share rides inside the
+gross), whole-file duplicate protection via a unique (fileHash, rowIndex) `PayrollImport` record,
+and plain-word refusals (books not started, pay date before the books start, customer actor).
+Nothing is filed or calculated; payroll stays with the service. Proof: `tests/hiring-readiness.test.ts`
+(schedule incl. leap/December crossings, checklist derivation, CSV parser, balance rules),
+`tests/compliance-registry.test.ts` (23 obligations), `tests/payroll-import-integration.test.ts`
+(real Postgres on the lane's own cluster: wake + 20-day deadline, balanced journals, duplicate and
+gate refusals). With CMP-5 merged, Lane 5's compliance line (CMP-1…CMP-5) is complete.
+## October 27 — Lane 7 follow-up: your emergency contact can pause charges (branch `ai/claude/successor-pause`)
+
+The last Lane 7 piece, blocked until now on the logins vault (VAULT-1 and VAULT-2 are merged), is built. On the
+public emergency-access link (ships switched off), a contact who has waited out the period and confirmed the code sent to
+the saved phone or email now also sees **Pause all automatic charges**, good for the same 24 hours (also after the one
+download). It only pauses: new charges, late fees and reminders stop; nothing is refunded or cancelled, only the owner
+turns charges back on, a second press changes nothing, each link can pause only once (if you turn charges back on it cannot pause again), replacing the link
+or pressing "Close this link now" ends the power at once, the owner is emailed and texted (a notice that reaches nobody is recorded,
+shown honestly to the contact, retried on the next press, and the pause shows as a high To do), and the audit row
+`continuity.charges_paused_emergency` names the request. Two Codex findings on #672 fixed with tests. Refused before the code, with a bad link, after the window, and
+when emergency access is switched off. Proof: `tests/vault-integration.test.ts` (new case, real Postgres); all 20 OPS-1 to
+OPS-8 test files re-run together on a fresh throwaway Postgres (164 passing). Re-check of the eight cards: all merged at a
+green exact-head `ci` (PRs #623, #640, #648, #641, #631, #636, #637, #653); the cards still said "PR open" and had unticked
+boxes, now corrected (acceptance 1 stays open only for the "Not built" items each card names). Codex never posted a finding on
+#653 (its note stayed "running" on an older commit): self-read, nothing blocking. Unblocked by VAULT-1 but still not built:
+OPS-4 certificate upload and OPS-2 sealed-system technician check. Browser proof for the public page is CI only.
 
 ## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
 A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
@@ -57,6 +113,23 @@ selector; all unit and browser groups, checks and secret scan green. Codex revie
 (portalled Confirm interactions and long labels) were fixed and regression-tested; replies posted.
 Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
 optimistic Snooze and bundle budget remain. No user payment or permission path changed.
+
+## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR #669)
+
+Branch `ai/vivienne/feetax-2-final` (successor to the first PR, #666). Every place within 50 miles of Greeley is seeded with its delivery
+readiness (city license rule, how returns are filed, source and review state — no tax rates
+seeded, and no rent-tax decisions either: whether a place taxes rentals stays in the tax rules). Before an address can be quoted, ordered
+or scheduled, the new readiness check refuses it with a plain reason when a place's rules are
+undecided, a required city license is missing or expired, the delivery count crosses a city's
+license rule, the address's tax places aren't confirmed, or the address is outside Colorado. The
+one override — owner-only, with a reason, written to Activity — covers "rules not decided" only;
+a missing license can never be overridden. Delivery counts are recorded when a delivery job
+finishes. New screen **Taxes › Delivery area** lists every place and runs "Check an address";
+a "Get ready to deliver in {city}" item lands on the To do list only for places a real customer
+address needs. Proof so far: `tests/delivery-readiness-integration.test.ts` (19 tests), the
+conversion suite and the wired-path suites on throwaway Postgres; PR #669 carries the full
+verification record. Starting values filed as
+DQ-FEETAX2-1 (Boulder rent "likely") and DQ-FEETAX2-2 (presumed city licenses).
 
 ## October 27 — CMP-4 merged (PR #670)
 
@@ -105,8 +178,8 @@ detector, after three PRs (#654, #655, #656) and ten Codex findings — all real
 tests.
 
 ## October 26 — Lane 7 (back-office operations) close-out
-Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653. Each merged at a green exact-head `ci` with Codex findings answered. Not built: letting a successor use the pause switch in an emergency needs VAULT-1 (does not exist yet). Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
-## October 26 — OPS-8: "If something happens to me" and the yearly check-up (PR #653, CI green at the exact head; merging)
+Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653, merged. Each merged at a green exact-head `ci`; Codex findings answered where it posted any (it posted none on #653). The successor pause switch (needed VAULT-1) is built on `ai/claude/successor-pause`. Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
+## October 26 — OPS-8: "If something happens to me" and the yearly check-up (PR #653, merged, CI green at the exact head)
 
 Branch `ai/claude/ops-8`. New **More → If something happens to me** screen (`/desk/continuity`, owner only): who to call (emergency contact, who would keep the business running, CPA, attorney, where records are kept), a live snapshot (appliances out, unpaid bills and total owed, visits in the next 14 days; counts only, no customer names), and an owner-only **Pause all automatic charges** switch. While on, the nightly jobs that start charges, add late fees, send past-due notices or email reminders do not run (11 named jobs); backups, payment checking, recall watch and the tax watches keep running; nothing is refunded or cancelled. Each press is written to Activity. A paused store shows a high To do until turned back on. **Yearly check-up** (`/desk/continuity/checkup`): in December an owner To do opens an 11-step walkthrough (insurance, prices, CPA packet, policies, records clean-up, access, vendors, recalls, expiring records, tax set-aside, this page); ticking only records that you looked; finishing is once per year.
 Proof: `tests/ops8-continuity-rules.test.ts` and `tests/ops8-continuity-integration.test.ts` on throwaway Postgres (owner-only, audit once per real change, the pause stops `late-fees` but not `backup`, December and Denver-calendar edges, finish-once); `e2e/continuity.spec.ts` (axe at 360 and 1440). Not yet done: CI at the exact head; the successor using the switch through VAULT emergency access (VAULT-1 does not exist yet, so only the owner can press it today — see OWNER-CHECKLIST). Starting values not confirmed: DQ-OPS8-1, DQ-OPS8-2.

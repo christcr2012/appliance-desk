@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateKey } from "@/lib/business-date";
-import { archivePolicy, requestCertificate, savePolicy, saveReminderDays, saveWorkersComp } from "@/domains/insurance/actions";
+import { archivePolicy, keepCertificateOnRecord, requestCertificate, savePolicy, saveReminderDays, saveWorkersComp } from "@/domains/insurance/actions";
+import { renewRecord } from "@/domains/paperwork/records";
 import { loadInsuranceOverview } from "@/domains/insurance/reads";
 import { listInsuranceAttention } from "@/domains/exceptions/insurance-attention";
 
@@ -25,8 +26,10 @@ describe.skipIf(!enabled)("insurance (real Postgres)", () => {
   });
 
   afterAll(async () => {
+    const linked = await prisma.ownerInsurancePolicy.findMany({ where: { id: { in: policies }, recordId: { not: null } }, select: { recordId: true } });
     await prisma.insuranceCertificateRequest.deleteMany({ where: { policyId: { in: policies } } });
     await prisma.ownerInsurancePolicy.deleteMany({ where: { id: { in: policies } } });
+    await prisma.businessPaperwork.deleteMany({ where: { id: { in: linked.map((l) => l.recordId!) } } });
     await prisma.auditLog.deleteMany({ where: { OR: [{ userId: staffId }, { entityId: { in: policies } }, { action: { startsWith: "settings.insurance" }, userId: ownerId }, { action: "settings.workers_comp", userId: ownerId }] } });
     if (before) await prisma.businessSettings.update({ where: { id: "singleton" }, data: { ...before, workersCompNote: null, workersCompFormSentOn: null, workersCompMailNumber: null } });
     await prisma.user.deleteMany({ where: { id: staffId } });
@@ -119,5 +122,41 @@ describe.skipIf(!enabled)("insurance (real Postgres)", () => {
     expect(draft.to).toBe("agent@ins.example");
     expect(draft.body).toContain("Pat Lee");
     expect(await prisma.insuranceCertificateRequest.count({ where: { policyId: withAgent } })).toBe(1);
+  });
+  it("keeps the certificate on one business record: owner only, once, and renewals carry across", async () => {
+    const id = await savePolicy(ownerId, null, { ...base, policyNumber: "CERT-OPS4", expiresOnKey: key(300), annualPremiumCents: 240_000 });
+    policies.push(id);
+    await expect(keepCertificateOnRecord(staffId, id)).rejects.toThrow();
+    const admin = `ops4-admin-${tag}`;
+    await prisma.user.create({ data: { id: admin, email: `${admin}@example.test`, role: "ADMIN", emailVerified: true } });
+    try {
+      await expect(keepCertificateOnRecord(admin, id)).rejects.toThrow();
+    } finally {
+      await prisma.user.deleteMany({ where: { id: admin } });
+    }
+    await expect(keepCertificateOnRecord(ownerId, "missing")).rejects.toThrow(/find/);
+    const results = await Promise.all([keepCertificateOnRecord(ownerId, id), keepCertificateOnRecord(ownerId, id)]);
+    expect(results[0].recordId).toBe(results[1].recordId);
+    expect(results.filter((r) => r.created)).toHaveLength(1);
+    const record = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: results[0].recordId } });
+    expect(record.kind).toBe("INSURANCE");
+    expect(record.costCents).toBe(240_000);
+    expect(await prisma.businessPaperwork.count({ where: { id: results[0].recordId } })).toBe(1);
+    expect(await prisma.auditLog.count({ where: { action: "insurance.certificate_record_created", entityId: id } })).toBe(1);
+    // Renewing the policy updates the same record instead of leaving a stale copy.
+    await savePolicy(ownerId, id, { ...base, policyNumber: "CERT-OPS4", expiresOnKey: key(500), annualPremiumCents: 260_000 });
+    const renewed = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: results[0].recordId } });
+    expect(renewed.costCents).toBe(260_000);
+    expect(renewed.id).toBe(record.id);
+    expect(renewed.expiresOn?.getTime()).not.toBe(record.expiresOn?.getTime());
+    // The owner's own reminder setting on the record survives a policy save...
+    await prisma.businessPaperwork.update({ where: { id: record.id }, data: { remindDaysBefore: 45 } });
+    await savePolicy(ownerId, id, { ...base, policyNumber: "CERT-OPS4", agentName: "New Agent", expiresOnKey: key(500), annualPremiumCents: 260_000 });
+    expect((await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: record.id } })).remindDaysBefore).toBe(45);
+    // ...and renewing through the record carries the new end date back onto the policy.
+    const current = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: record.id } });
+    await renewRecord(ownerId, record.id, { expiresOn: key(700), expectedVersion: current.version });
+    const policy = await prisma.ownerInsurancePolicy.findUniqueOrThrow({ where: { id } });
+    expect(businessDateKey(policy.expiresOn)).toBe(key(700));
   });
 });

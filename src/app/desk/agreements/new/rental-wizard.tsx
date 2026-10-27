@@ -146,6 +146,9 @@ export function RentalWizard({
   );
   const requestKey = useRef(initialRequestKey);
   const [error, setError] = useState<string | null>(null);
+  // FEETAX-2: the owner's one-order override reason for a "rules not
+  // decided" delivery-area refusal; only used when a save is refused.
+  const [overrideReason, setOverrideReason] = useState("");
   const [activationWarning, setActivationWarning] = useState<string | null>(null);
 
   // Step 1 — customer
@@ -293,6 +296,9 @@ export function RentalWizard({
           customerId,
           serviceAddressId,
           ...termFields,
+          ...(overrideReason.trim()
+            ? { overrideReason: overrideReason.trim() }
+            : {}),
         });
       } catch {
         setError(
@@ -818,6 +824,31 @@ export function RentalWizard({
               free-month bonus, if that&apos;s turned on in Settings)
             </label>
           )}
+
+          <div>
+            <label
+              htmlFor="overrideReason"
+              className="block text-sm font-medium text-ink-soft"
+            >
+              Delivery-area override reason (owner only, rarely needed)
+            </label>
+            <input
+              disabled={isPending}
+              id="overrideReason"
+              type="text"
+              maxLength={500}
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              placeholder="Only if saving is refused because a place's tax rules aren't decided yet"
+              className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-ink-soft">
+              If the delivery-area check refuses this address because a
+              place&apos;s tax rules aren&apos;t decided yet, the owner can
+              give a reason here and save anyway — the reason is kept on
+              the record. A missing city license can never be overridden.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

@@ -1,0 +1,62 @@
+name: Review gate
+
+# The automatic version of "every review comment read" (AGENTS.md section 6), so GitHub's own auto-merge can
+# finish a pull request without anyone watching it. It sets ONE commit status, `review-gate`, on each open pull
+# request's newest commit:
+#   success  Codex reviewed and every finding has a written reply, or Codex is unavailable (usage limit, or no answer
+#            in 25 minutes) and the author commented that they self-reviewed after their last push.
+#   pending  Codex is still working, or the pull request is a draft.
+#   failure  a Codex finding has no reply, or Codex was unavailable and no self-review comment exists yet.
+# Logic and tests: scripts/review-gate.mjs, scripts/review-gate.test.mjs.
+#
+# Public-repo safety (keep it that way):
+#   - Only the narrow token below: it can READ pull requests and WRITE commit statuses. No contents write, no secrets.
+#   - It checks out the DEFAULT branch, never the pull request, so a pull request cannot change the rule that judges it.
+#   - No pull_request_target. Fork pull requests are skipped (their token cannot write a status anyway).
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_comment:
+    types: [created, edited]
+  issue_comment:
+    types: [created, edited]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  schedule:
+    - cron: "*/10 * * * *" # catches the 25-minute "Codex never answered" timeout and any missed event
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  statuses: write
+
+concurrency:
+  group: review-gate-${{ github.event.pull_request.number || github.event.issue.number || github.event.workflow_run.id || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      && (github.event_name != 'issue_comment' || github.event.issue.pull_request)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/review-gate.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - name: Set the review-gate status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/review-gate.mjs

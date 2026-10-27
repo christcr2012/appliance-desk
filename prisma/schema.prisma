@@ -870,6 +870,29 @@ model Supplier {
   updatedAt DateTime @updatedAt
 }
 
+// CMP-5: one pay run imported from the payroll provider's summary CSV.
+// Provider totals only — no employee-level data is ever stored here. The
+// row's id is the books journal's sourceId (sourceType PAYROLL), and the
+// (fileHash, rowIndex) uniqueness is what stops the same file from ever
+// posting a pay run twice.
+model PayrollImport {
+  id                 String   @id @default(cuid())
+  fileHash           String
+  rowIndex           Int
+  payDate            DateTime @db.Date
+  grossWagesCents    Int
+  employerTaxesCents Int
+  employeeTaxesCents Int?
+  withdrawnCents     Int
+  providerName       String?
+  sourceFileName     String?
+  importedById       String
+  createdAt          DateTime @default(now())
+
+  @@unique([fileHash, rowIndex])
+  @@index([payDate])
+}
+
 // CMP-3: a one-time W-9 request link for a supplier. Only the token's
 // SHA-256 hash is stored; the link works once and expires after 14 days.
 model W9Request {
@@ -1240,6 +1263,12 @@ model RentalAgreement {
   // pricing or billing logic.
   sourceEstimateId String?
   sourceEstimate   Estimate? @relation(fields: [sourceEstimateId], references: [id])
+  // FEETAX-2: the owner's one-order override of a "rules not decided"
+  // delivery-readiness refusal (never for a missing license). Reason is
+  // required; the save is audited.
+  readinessOverrideByUserId String?
+  readinessOverrideReason   String?   @db.VarChar(500)
+  readinessOverrideAt       DateTime?
   // W-24 independent agreement owner-offered windows; never a booked visit.
   deliveryOffer Json @default("[]")
   deliveryOfferVersion Int @default(0)
@@ -2384,6 +2413,24 @@ enum Taxability {
   UNDECIDED
 }
 
+// FEETAX-2: how a place's delivery license rule works, from the 50-mile
+// research table and the owner's review on Taxes > Delivery area.
+enum LicenseRequirement {
+  NONE
+  AFTER_FIRST_DELIVERY
+  AFTER_SECOND_DELIVERY_IN_12_MONTHS
+  ALWAYS
+  UNKNOWN
+}
+
+// FEETAX-2: how sales tax returns for a place are filed.
+enum FilingChannel {
+  SUTS
+  CITY_PORTAL
+  STATE_RETURN
+  UNKNOWN
+}
+
 enum TaxRateSource {
   COLORADO_GIS
   BULK_FILE
@@ -2919,6 +2966,8 @@ model TaxJurisdiction {
   notes            String?
   rates            TaxRateVersion[]
   rateObservations TaxRateObservation[]
+  readiness        JurisdictionReadiness?
+  deliveryCounts   JurisdictionDeliveryCount[]
   rules            TaxabilityRule[]
   addresses        AddressTaxJurisdiction[]
   invoiceTaxLines  InvoiceTaxLine[]
@@ -3142,6 +3191,43 @@ model AddressTaxJurisdiction {
 
   @@id([addressTaxLocationId, jurisdictionId])
   @@index([jurisdictionId])
+}
+
+// FEETAX-2: whether the business is set up to deliver into one taxing
+// place — its researched rent rule, license rule and filing channel, the
+// business record holding the city's license, and the owner's review
+// state. Seeded from docs/research/2026-10-25-tax-jurisdictions-50mi.md;
+// the owner edits it on Taxes > Delivery area. Whether the place taxes
+// rentals is NOT stored here — that is the TaxabilityRule RENTAL cell for
+// the jurisdiction (the one live rent decision, decided on Taxes > What
+// gets taxed); this row carries only delivery setup facts.
+model JurisdictionReadiness {
+  id              String             @id @default(cuid())
+  jurisdictionId  String             @unique
+  jurisdiction    TaxJurisdiction    @relation(fields: [jurisdictionId], references: [id])
+  licenseRequired LicenseRequirement @default(UNKNOWN)
+  licenseRecordId String?
+  licenseRecord   BusinessPaperwork? @relation("ReadinessLicenseRecord", fields: [licenseRecordId], references: [id])
+  filesThrough    FilingChannel      @default(UNKNOWN)
+  sourceUrl       String?            @db.VarChar(500)
+  checkedOn       DateTime?
+  reviewStatus    TaxReviewStatus    @default(NEEDS_REVIEW)
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+// FEETAX-2: one row per completed delivery order into a place whose
+// license rule counts deliveries (orderId unique makes the write
+// idempotent when a completion is retried).
+model JurisdictionDeliveryCount {
+  id             String          @id @default(cuid())
+  jurisdictionId String
+  jurisdiction   TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  deliveredOn    DateTime
+  orderId        String          @unique
+
+  @@index([jurisdictionId, deliveredOn])
 }
 
 model InvoiceTaxLine {
@@ -3755,6 +3841,11 @@ model ComplianceProfile {
   usdotNumber            String?
   truckRegistrationMonth Int?
   greeleyLicenseDate     DateTime?
+  // CMP-5: the first employee's start date. The Colorado new-hire report
+  // is due 20 days after it; the payroll obligations wake from the
+  // employees count above, and this date schedules the one deadline that
+  // hangs off the first hire itself.
+  firstHireDate          DateTime?
   registeredAgentName    String?
   registeredAgentAddress String?
   registeredAgentCity    String?
@@ -5091,6 +5182,7 @@ enum JournalSourceType {
   USE_TAX
   TAX_FILING
   CASH_EVENT
+  PAYROLL
 }
 
 enum AccountingPeriodStatus {
@@ -5853,6 +5945,8 @@ model BusinessPaperwork {
   /// Compliance registry keys this record unlocks or feeds.
   linkedObligationKeys String[] @default([])
   recordFiles     BusinessRecordFile[]
+  readinessLicenses JurisdictionReadiness[] @relation("ReadinessLicenseRecord")
+  insurancePolicy OwnerInsurancePolicy? @relation("InsurancePolicyRecord")
 
   @@index([status, dueOn])
 }
@@ -6269,6 +6363,10 @@ model OwnerInsurancePolicy {
   agentEmail       String?
   /// Where the certificate of insurance (COI) PDF is kept, e.g. "Emailed by agent, in the Insurance folder in Drive".
   certificateNote  String?
+  /// OPS-4 + VAULT-1: the business record that holds this policy's certificate PDF (private files, expiry reminders,
+  /// export pack). Created on demand by the owner; the policy's dates and yearly cost are copied onto it on every save.
+  recordId         String?       @unique
+  record           BusinessPaperwork? @relation("InsurancePolicyRecord", fields: [recordId], references: [id], onDelete: SetNull)
   notes            String?
   archivedAt       DateTime?
   createdByUserId  String

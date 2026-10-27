@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   Prisma,
+  Taxability,
   TaxAddressStatus,
   TaxRateSource,
 } from "@prisma/client";
@@ -711,6 +712,28 @@ export async function getSaleTaxContext(
  * only place that reads the TaxabilityRule table (tests/decisions-append-only.test.ts checks), so dated reads cannot
  * be bypassed by accident.
  */
+/**
+ * FEETAX-2: the stored RENTAL rule for one jurisdiction, or null when the
+ * jurisdiction has no RENTAL row (an undecided rule). This file is the
+ * only TaxabilityRule reader, so the delivery-readiness check asks here
+ * instead of querying the table itself.
+ */
+export async function getJurisdictionRentalTaxability(
+  tx: Prisma.TransactionClient,
+  jurisdictionId: string,
+  at: Date,
+): Promise<Taxability | null> {
+  // Resolve at the check's effective date, not just the stored cell:
+  // a decision the owner scheduled that is due by `at` counts as
+  // decided even before the nightly run applies it — the same dated
+  // resolution the tax engine prices with.
+  const cells = await getTaxabilityRulesAsOf(tx, at);
+  const cell = cells.find(
+    (entry) => entry.jurisdictionId === jurisdictionId && entry.category === "RENTAL",
+  );
+  return cell?.taxability ?? null;
+}
+
 export async function listTaxabilityRuleCells(tx: Prisma.TransactionClient) {
   return tx.taxabilityRule.findMany({
     select: { id: true, jurisdictionId: true, category: true, taxability: true, cpaConfirmedOn: true,

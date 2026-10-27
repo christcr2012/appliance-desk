@@ -110,6 +110,9 @@ export const BACKUP_MODEL_POLICY = {
   OfficialSourceWatch: "officialSourceWatch",
   // TFA-3: stored official-page readings and their approval trail.
   LegalRuleObservation: "legalRuleObservation",
+  // FEETAX-2: delivery-area readiness and per-place delivery counts.
+  JurisdictionReadiness: "jurisdictionReadiness",
+  JurisdictionDeliveryCount: "jurisdictionDeliveryCount",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
   TaxabilityRuleVersion: "taxabilityRuleVersion",
@@ -147,6 +150,7 @@ export const BACKUP_MODEL_POLICY = {
   ComplianceFiling: "complianceFiling",
   W9Request: "w9Request",
   TaxYearFacts: "taxYearFacts",
+  PayrollImport: "payrollImport",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",

@@ -37,6 +37,17 @@ describe.skipIf(!enabled)("preapproval estimate preparation on disposable Postgr
         line1: "200 Test Lane", city: "Greeley", zip: "80631" } }),
     ]);
     addressA = a.id; addressB = b.id;
+    // FEETAX-2: converting an estimate refuses an address whose tax places
+    // are not confirmed yet, so both addresses are confirmed into the
+    // state-collected state jurisdiction (ready: no city license rule and
+    // the state does not tax rent through a city readiness row).
+    for (const id of [addressA, addressB]) {
+      await prisma.addressTaxLocation.create({ data: {
+        serviceAddressId: id, status: "VERIFIED", source: "MANUAL",
+        lookedUpAt: new Date(), isCurrent: true,
+        jurisdictions: { create: [{ jurisdictionId: "tax-jurisdiction-co" }] },
+      } });
+    }
     const pkg = await prisma.rentalPackage.create({ data: {
       name: `Preparation ${marker}`, slug: `prep-${marker}`, isActive: true, monthlyPriceCents: 6000,
     } });
@@ -57,6 +68,7 @@ describe.skipIf(!enabled)("preapproval estimate preparation on disposable Postgr
     await prisma.rentalAgreement.deleteMany({ where: { sourceEstimateId: estimate } });
     await prisma.estimate.deleteMany({ where: { id: { in: [estimate,...approvalIds] } } });
     await prisma.rentalPackage.deleteMany({ where: { id: packageId } });
+    await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId: { in: [addressA, addressB] } } });
     await prisma.serviceAddress.deleteMany({ where: { id: { in: [addressA, addressB] } } });
     await prisma.customer.deleteMany({ where: { id: customer } });
     await prisma.auditLog.deleteMany({ where: { userId: { in: [owner, staff] } } });

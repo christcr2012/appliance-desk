@@ -17,6 +17,12 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
   worked: the EIN box on Business facts is enabled and saving an EIN shows "ending" plus its last 4 digits.
   Until then the EIN box stays off on purpose, so a tax ID is never stored unprotected.
+- [ ] **GitHub: let pull requests merge themselves (2 settings, about 3 minutes).** Agents are blocked from editing the
+  repository's merge rules, so this one needs your hands. Steps: GitHub → christcr2012/appliance-desk → Settings → Rules →
+  Rulesets → "Ci and deploy" → under "Require status checks to pass" (a) turn OFF "Require branches to be up to date
+  before merging" and (b) add the check named `review-gate` (it is already running on every open pull request). Save.
+  Ready when: now (the check is on main). You'll know it worked: a pull request with auto-merge turned on merges by
+  itself once `ci` and `review-gate` are green, even if main moved. Until then agents re-sync and merge by hand.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
@@ -70,8 +76,9 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   More › If something happens to me and type who to call, who would keep the business running, your CPA and attorney, and
   where records are kept (never passwords). Then ask your attorney whether your LLC agreement names a successor member
   (a Colorado LLC with no members dissolves 91 days later, C.R.S. 7-80-801; Decisions question DQ-OPS8-1). Ready when
-  OPS-8 is live. Worked when the page's "Still missing" note is gone. The page's pause switch works for you today;
-  letting your successor press it needs the records vault (VAULT-1), which is not built yet.
+  OPS-8 is live. Worked when the page's "Still missing" note is gone. The page's pause switch works for you today,
+  and your emergency contact can press it too from their emergency-access link (after the waiting period and a code sent to
+  their saved phone or email); emergency access ships switched off, see More › Logins vault.
 - [ ] **If you have no employees: send the workers' comp rejection form (Colorado).** As an LLC member you may reject
   coverage by sending the state's form by certified mail (C.R.S. 8-41-202). The Insurance screen (OPS-4) will hold the
   date and the certified-mail number. Worked when the Division or your insurer confirms.
@@ -282,6 +289,7 @@ on readiness).
 
 | Date | Row added | Why |
 |---|---|---|
+| 2026-10-27 | GitHub merge rules for auto-merge | Agents cannot edit repository rules; Chris asked for automatic merging. |
 | 2026-10-23 | Business paperwork list | Chris asked for one place for LLC/EIN/licenses with renewal reminders (built in the app). |
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
