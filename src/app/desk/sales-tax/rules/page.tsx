@@ -107,7 +107,7 @@ export default async function RulesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const owner = session.user.role === "OWNER";
   const rawParams = await searchParams;
   const params = parseRulesParams(rawParams);

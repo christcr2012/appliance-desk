@@ -23,6 +23,9 @@ export type DecisionActionsProps = {
   show: { keep: boolean; change: boolean; ask: boolean; answer: boolean; reopen: boolean };
   professionals: Professional[];
   answerLabel: string;
+  /** ACCT-1: the accountant answering for themselves — their name/firm are stamped by the domain,
+   * so the sheet shows who is answering instead of asking, and the words say "your answer". */
+  selfAnswer?: { name: string; firm: string | null };
   actions: { keep: Action; change: Action; ask: Action; reopen: Action };
 };
 
@@ -99,7 +102,7 @@ function AnswerSheet({ props, onClose }: { props: DecisionActionsProps; onClose:
         const response = await fetch("/api/desk/decisions/answer", { method: "POST", body: data });
         const body = await response.json().catch(() => ({})) as { message?: string; error?: string };
         if (!response.ok) { setError(body.error ?? "That couldn't be saved. Try again."); return; }
-        toast({ message: body.message ?? "Their answer was saved.", tone: "good" });
+        toast({ message: props.selfAnswer ? "Your answer was saved." : body.message ?? "Their answer was saved.", tone: "good" });
         onClose();
         router.refresh();
       } catch {
@@ -109,12 +112,12 @@ function AnswerSheet({ props, onClose }: { props: DecisionActionsProps; onClose:
   };
   return (
     <Sheet open onOpenChange={(open) => { if (!open) onClose(); }} title={`${props.answerLabel}: ${props.title}`}
-      footer={<button type="submit" form={formId} disabled={pending} className={actionButtonClass({ spec: { kind: "link", label: "", href: "" }, variant: "primary", className: "w-full" })}>{pending ? "Saving…" : "Save their answer"}</button>}>
+      footer={<button type="submit" form={formId} disabled={pending} className={actionButtonClass({ spec: { kind: "link", label: "", href: "" }, variant: "primary", className: "w-full" })}>{pending ? "Saving…" : props.selfAnswer ? "Save your answer" : "Save their answer"}</button>}>
       <form id={formId} onSubmit={submit} onChange={(event) => {
         const target = event.target as unknown as HTMLInputElement;
         if (target.name === "option") setOther(target.value === "OTHER");
       }} className="space-y-4">
-        <OptionList name="option" options={props.options} allowOther={props.allowOther} defaultIndex={null} legend="Their answer" />
+        <OptionList name="option" options={props.options} allowOther={props.allowOther} defaultIndex={null} legend={props.selfAnswer ? "Your answer" : "Their answer"} />
         {other ? (
           <label className={LABEL}>What they answered
             <textarea name="otherText" required maxLength={1000} rows={2} className={`${INPUT} py-2`} />
@@ -123,19 +126,29 @@ function AnswerSheet({ props, onClose }: { props: DecisionActionsProps; onClose:
         <label className={LABEL}>Starts on
           <input type="date" name="effectiveFrom" min={props.today} defaultValue={props.today} className={INPUT} />
         </label>
-        <label className={LABEL}>Who answered
-          <input name="professionalName" required maxLength={120} autoComplete="off" className={INPUT} />
-        </label>
-        <label className={LABEL}>Firm (optional)
-          <input name="professionalFirm" maxLength={120} autoComplete="off" className={INPUT} />
-        </label>
-        <label className={LABEL}>Date they answered
+        {props.selfAnswer ? (
+          <p className="text-sm text-ink-soft">
+            Answering as {props.selfAnswer.name}{props.selfAnswer.firm ? `, ${props.selfAnswer.firm}` : ""}. Your name and firm are recorded with the answer.
+            <input type="hidden" name="professionalName" value={props.selfAnswer.name} />
+            <input type="hidden" name="professionalFirm" value={props.selfAnswer.firm ?? ""} />
+          </p>
+        ) : (
+          <>
+            <label className={LABEL}>Who answered
+              <input name="professionalName" required maxLength={120} autoComplete="off" className={INPUT} />
+            </label>
+            <label className={LABEL}>Firm (optional)
+              <input name="professionalFirm" maxLength={120} autoComplete="off" className={INPUT} />
+            </label>
+          </>
+        )}
+        <label className={LABEL}>{props.selfAnswer ? "Date answered" : "Date they answered"}
           <input type="date" name="answeredOn" required max={props.today} defaultValue={props.today} className={INPUT} />
         </label>
-        <label className={LABEL}>Their explanation (optional)
+        <label className={LABEL}>{props.selfAnswer ? "Your explanation (optional)" : "Their explanation (optional)"}
           <textarea name="explanation" maxLength={4000} rows={4} className={`${INPUT} py-2`} />
         </label>
-        <label className={LABEL}>Their completed form (optional, PDF or Word, up to 4 MB)
+        <label className={LABEL}>{props.selfAnswer ? "Your completed form (optional, PDF or Word, up to 4 MB)" : "Their completed form (optional, PDF or Word, up to 4 MB)"}
           <input type="file" name="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="mt-1 block w-full text-sm text-ink file:mr-3 file:min-h-11 file:rounded-field file:border file:border-line-strong file:bg-surface file:px-3 file:font-bold" />
         </label>
         {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
