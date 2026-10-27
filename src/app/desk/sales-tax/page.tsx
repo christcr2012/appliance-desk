@@ -70,10 +70,12 @@ export default async function SalesTaxRootPage() {
           No current tax attention items. Continue to verify official filing obligations.
         </li>}
       </ul>
-      <p className="text-sm text-muted-foreground">
-        This is a bounded summary. <Link href="/desk/today" className="underline">See the complete Today inbox</Link>
-        {" "}for additional tax, refund, invoice and rate-review work.
-      </p>
+      {actor.user.role !== "ACCOUNTANT" && (
+        <p className="text-sm text-muted-foreground">
+          This is a bounded summary. <Link href="/desk/today" className="underline">See the complete Today inbox</Link>
+          {" "}for additional tax, refund, invoice and rate-review work.
+        </p>
+      )}
     </section>
     <section className="space-y-3">
       <h3 className="text-lg font-semibold">Upcoming deadlines</h3>
