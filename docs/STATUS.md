@@ -1,3 +1,11 @@
+## October 27 — Lane 1 React 19.3 transition review fixes (PR #665)
+Three actionable review findings are corrected: mobile-only customer title names
+avoid duplicate concurrently mounted boundaries; area transition is keyed at the
+ViewTransition boundary rather than only the child; and browser regression locates
+the visible phone customer link. Added unit regressions for duplicate prevention
+and area keys. React 19.3 registry lockfile was npm-generated and npm ci passed
+on read-only GitHub Actions; full exact-head project CI and fresh review still pending.
+
 ## October 27 — Lane 1 AR-11 React 19.3 and native navigation (implementation branch)
 Branch `ai/chatgpt/ar-11-react-transitions-20261027`: pinned React/DOM and types at 19.3.0, committed registry-generated npm lockfile.
 Free read-only GitHub Actions verified npm ci and read installed Next 16.4.2 transition docs.

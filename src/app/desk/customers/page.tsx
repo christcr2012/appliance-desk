@@ -34,15 +34,19 @@ export default async function CustomersPage({
       key: "customer",
       header: "Customer",
       primary: true,
-      cell: (customer) => (
+      cell: (customer, surface) => (
         <div>
           <Link
             href={`/desk/customers/${customer.id}`}
             className="font-semibold text-ink underline-offset-4 hover:underline"
           >
-            <RecordTitleTransition id={customer.id}>
+            {surface === "mobile" ? (
+              <RecordTitleTransition id={customer.id}>
+                <span>{customer.user.name ?? customer.user.email}</span>
+              </RecordTitleTransition>
+            ) : (
               <span>{customer.user.name ?? customer.user.email}</span>
-            </RecordTitleTransition>
+            )}
           </Link>
           {customer.companyName && (
             <span className="mt-1 block text-sm font-normal text-ink-soft">

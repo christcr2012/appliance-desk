@@ -32,7 +32,7 @@ test("record title remains accessible after following a customer link with motio
     await page.emulateMedia({ reducedMotion: preference });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/desk/customers", { waitUntil: "load" });
-    const record = page.locator('a[href^="/desk/customers/"]').first();
+    const record = page.locator('ul[aria-label="Customers"] a[href^="/desk/customers/"]').first();
     await expect(record).toBeVisible();
     const name = (await record.innerText()).trim();
     await record.click();
