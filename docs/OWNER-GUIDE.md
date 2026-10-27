@@ -106,10 +106,13 @@ This screen is available only on the engineering branch until exact-head CI, rev
 
 ADMIN may inspect, import and confirm/void unreconciled matches but may not complete/reopen statements, ignore rows or create/release holds. STAFF and CUSTOMER cannot view bank data. Corrections and source checks preserve audit records. Nothing on these screens signs into the bank, initiates a transfer, submits a tax return or enables LIVE Stripe.
 
+## Vehicle and mileage
+
+**More → Vehicle and mileage** (`/desk/vehicle`, owner and admin). Add your delivery vehicle; the **weight rating (GVWR)** is required because it decides the rules: under 16,001 lb no special license, from 16,001 lb Colorado's commercial-vehicle rules (and a medical card, if you keep that setting on), from 26,001 lb a commercial driver's license. Whoever drives opens the **Driver view** (`/desk/driver`) and types the odometer when they start and when they finish; the app works out the miles and fills in the purpose from the day's visits. You can add a trip by hand for a supply run. The screen totals business miles by year and shows the deduction at the IRS rate in the rule book (72.5¢ a mile for 2026). Ask your accountant whether to use that rate or your actual vehicle costs; the app starts with the standard rate in the first year. To do reminders cover the registration month, maintenance (by the miles or months you set) and the medical card.
+
+**What it's for.** A clean mileage log for your taxes and a reminder before something lapses. **Change without code.** Every number on the screen, the method and the medical-card setting can be changed by you. **If it fails.** A save that fails shows the reason in red under the button; nothing is half-saved.
 ## Insurance
-
 **More → Insurance** (`/desk/insurance`, owner only). Add each policy you have: the company, policy number, the limits exactly as your agent wrote them, what it costs a year, when it ends, your agent's email and where the certificate is kept. The app puts a reminder on To do 60 days and again 30 days before a policy ends (change both numbers on the same screen; **Restore recommended** puts them back), and again if one has ended. It never chooses coverage amounts for you: ask your agent. **Workers' compensation** records whether you have no employees and rejected coverage as an LLC member (with the date you sent the form and the certified-mail number) or have a policy; enter the number of employees when you hire, and if no policy is recorded a high-priority To do says it is required now. **Request a certificate of insurance** (for a property manager) records who asked and writes the email to your agent; you read it and send it from your own email, because the app sends nothing.
-
 **What it's for.** Keeping every policy and renewal date in one place, so nothing lapses. **Change without code.** Everything on the screen, including the two reminder numbers, can be changed by you. **If it fails.** A save that fails shows the reason in red under the button; nothing is half-saved.
 
 ## Business paperwork (LLC, EIN, licenses, insurance)

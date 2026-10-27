@@ -5551,7 +5551,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-3)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5563,7 +5563,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-3-integration.test.ts"
+        "tests/ops3-vehicle-rules.test.ts",
+        "tests/ops3-vehicle-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-3.md"

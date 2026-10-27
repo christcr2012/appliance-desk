@@ -66,6 +66,7 @@ export type ExceptionCategory =
   | "RECALL_POSSIBLE"
   | "SAFETY_INCIDENT"
   | "RETIRED_SALE_TAX_REVIEW"
+  | "VEHICLE_DUE"
   | "INSURANCE_RENEWAL"
   | "APPROVAL_REQUEST"
   | "GOAL_BEHIND"
