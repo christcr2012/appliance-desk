@@ -58,7 +58,7 @@ describe("AR-11 desk keyboard access", () => {
   });
   it("shows help using ? and closes on Escape", async () => {
     render(<DeskShortcuts role="OWNER" />);
-    await act(async () => fireEvent.keyDown(document, { key: "?" }));
+    await act(async () => fireEvent.keyDown(document, { key: "/", shiftKey: true }));
     expect(screen.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
   });
 });

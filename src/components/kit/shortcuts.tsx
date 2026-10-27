@@ -83,7 +83,7 @@ export function DeskShortcuts({ role }: { role: string }) {
         }
         return;
       }
-      if (key === "?") {
+      if (key === "?" || (key === "/" && event.shiftKey)) {
         event.preventDefault();
         setHelpOpen(true);
         return;
