@@ -29,7 +29,7 @@ export type ScreenKey = keyof typeof SCREENS;
 export const SCREEN_KEYS = Object.keys(SCREENS) as ScreenKey[];
 
 /** Screens everyone on the team always has, whatever their job role (so nobody is locked out of their own account). */
-export const ALWAYS_ALLOWED = ["today", "account", "security", "notices", "search", "more"] as const;
+export const ALWAYS_ALLOWED = ["today", "account", "security", "notices", "search", "more", "help"] as const;
 
 /** First address segment under /desk -> the screen it belongs to. */
 const PATH_TO_SCREEN: Record<string, ScreenKey> = {

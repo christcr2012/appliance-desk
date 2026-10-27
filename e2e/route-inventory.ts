@@ -361,6 +361,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/settings/feedback", role: "OWNER", fixture: "/desk/settings/feedback" },
   { path: "/desk/settings/decisions", role: "OWNER", fixture: "/desk/settings/decisions" },
   { path: "/desk/settings/decisions/import", role: "OWNER", fixture: "/desk/settings/decisions/import" },
+  { path: "/desk/help", role: "STAFF", fixture: "/desk/help" },
   { path: "/desk/feedback", role: "OWNER", fixture: "/desk/feedback" },
   { path: "/desk/feedback/new", role: "STAFF", fixture: "/desk/feedback/new?from=/desk/today" },
   { path: "/desk/feedback/mine", role: "STAFF", fixture: "/desk/feedback/mine" },

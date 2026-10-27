@@ -1,3 +1,12 @@
+## October 27 — Lane 1 AR-12 help guides (implementation PR)
+
+AR-12 step 7: fifteen short searchable task guides, new Help screen linked from More,
+three-step accessible Sheet, working route targets and job-role-filtered results. Added
+five-size phone/tablet/desktop browser and accessibility tests plus route/permission checks.
+No financial action or customer message is executed by reading instructions. Branch
+`ai/chatgpt/ar12-help-guides-20261027`; exact-head CI, Codex and review-gate still pending.
+Feature switches/Practice link remain separate AR-12 work.
+
 ## October 27 — Fast-lane execution rules alignment (branch `ai/chatgpt/fast-lane-protocol`)
 
 Aligned session instructions with the already-approved squash auto-merge, final-head `ci` and `review-gate`,
