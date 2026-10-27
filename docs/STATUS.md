@@ -4,8 +4,10 @@ The last Lane 7 piece, blocked until now on the logins vault (VAULT-1 and VAULT-
 public emergency-access link (ships switched off), a contact who has waited out the period and confirmed the code sent to
 the saved phone or email now also sees **Pause all automatic charges**, good for the same 24 hours (also after the one
 download). It only pauses: new charges, late fees and reminders stop; nothing is refunded or cancelled, only the owner
-turns charges back on, a second press changes nothing, the owner is emailed and texted, and the audit row
-`continuity.charges_paused_emergency` names the request. Refused before the code, with a bad link, after the window, and
+turns charges back on, a second press changes nothing, each link can pause only once (if you turn charges back on it cannot pause again), replacing the link
+or pressing "Close this link now" ends the power at once, the owner is emailed and texted (a notice that reaches nobody is recorded,
+shown honestly to the contact, retried on the next press, and the pause shows as a high To do), and the audit row
+`continuity.charges_paused_emergency` names the request. Two Codex findings on #672 fixed with tests. Refused before the code, with a bad link, after the window, and
 when emergency access is switched off. Proof: `tests/vault-integration.test.ts` (new case, real Postgres); all 20 OPS-1 to
 OPS-8 test files re-run together on a fresh throwaway Postgres (164 passing). Re-check of the eight cards: all merged at a
 green exact-head `ci` (PRs #623, #640, #648, #641, #631, #636, #637, #653); the cards still said "PR open" and had unticked

@@ -78,13 +78,14 @@ export async function pauseChargesAction(
 ): Promise<EmergencyFlowState> {
   void _previous;
   try {
-    const { changed } = await pauseChargesAsContact(token);
+    const { changed, ownerNotified } = await pauseChargesAsContact(token);
     revalidatePath(`/emergency/${token}`);
+    const told = ownerNotified
+      ? "The owner has been told."
+      : "We could not reach the owner yet. The pause is saved and shows at the top of their To do list. Press the button again later to retry the notice, and try calling them too.";
     return {
       status: "done",
-      message: changed
-        ? "Automatic charges are paused. The owner has been told."
-        : "Automatic charges were already paused.",
+      message: `${changed ? "Automatic charges are paused." : "Automatic charges are already paused."} ${told}`,
     };
   } catch (error) {
     return { status: "error", message: messageOf(error, "Charges could not be paused.") };

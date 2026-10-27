@@ -118,6 +118,8 @@ export type EmergencyOwnerView = {
     waitEndsAt: string | null;
     downloadedAt: string | null;
     startNoticeFailed: boolean;
+    /** A downloaded link can still pause charges until its 24 hours end; the owner can close that early. */
+    pauseOpen: boolean;
   } | null;
 };
 
@@ -142,6 +144,7 @@ export async function getEmergencyOwnerView(userId: string): Promise<EmergencyOw
           waitEndsAt: active.waitEndsAt?.toISOString() ?? null,
           downloadedAt: active.downloadedAt?.toISOString() ?? null,
           startNoticeFailed: active.startNoticeFailedAt != null,
+          pauseOpen: pauseWindowOpen(active, new Date()),
         }
       : null,
   };
@@ -160,6 +163,11 @@ export async function createEmergencyLink(userId: string): Promise<{ token: stri
     await tx.emergencyAccessRequest.updateMany({
       where: { status: { in: [...NON_TERMINAL] } },
       data: { status: "SUPERSEDED" },
+    });
+    // A downloaded link keeps one power for its 24 hours (pausing charges); replacing the link takes that away too.
+    await tx.emergencyAccessRequest.updateMany({
+      where: { status: "CONSUMED", exportExpiresAt: { gt: new Date() } },
+      data: { exportExpiresAt: new Date() },
     });
     await tx.emergencyAccessRequest.create({
       data: {
@@ -180,9 +188,17 @@ export async function createEmergencyLink(userId: string): Promise<{ token: stri
 export async function denyEmergencyRequest(userId: string, requestId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
-    const locked = await tx.$queryRaw<{ status: string }[]>`SELECT "status" FROM "EmergencyAccessRequest" WHERE "id" = ${requestId} FOR UPDATE`;
+    const locked = await tx.$queryRaw<{ status: string; exportExpiresAt: Date | null }[]>`SELECT "status", "exportExpiresAt" FROM "EmergencyAccessRequest" WHERE "id" = ${requestId} FOR UPDATE`;
     const row = locked[0];
     if (!row) throw new VaultError("That request no longer exists.");
+    if (pauseWindowOpen(row, new Date()) && row.status === "CONSUMED") {
+      // Already downloaded: nothing left to deny except the pause power, which ends now.
+      await tx.emergencyAccessRequest.update({ where: { id: requestId }, data: { exportExpiresAt: new Date() } });
+      await tx.auditLog.create({
+        data: { userId, action: "vault.emergency_denied", entityType: "EmergencyAccess", entityId: requestId, newValue: { afterDownload: true } },
+      });
+      return;
+    }
     if (!["WAITING", "CODE_SENT", "VERIFIED"].includes(row.status)) {
       throw new VaultError("That request can't be denied now.");
     }
@@ -283,28 +299,49 @@ export async function getPublicEmergencyState(token: string, now = new Date()): 
  * the 24-hour window) and the feature still switched on. It only stops new charges, late fees and reminders; it never
  * refunds or cancels, and only the owner can turn charges back on. The owner is told by email and text.
  */
-export async function pauseChargesAsContact(token: string, now = new Date()): Promise<{ changed: boolean }> {
+export async function pauseChargesAsContact(token: string, now = new Date()): Promise<{ changed: boolean; ownerNotified: boolean }> {
   const row = await findByToken(token);
   const settings = await getEmergencySettings();
-  if (!row || !settings.enabled || !pauseWindowOpen(row, now)) {
-    throw new VaultError("This link can't pause charges. Confirm a code first, or contact the owner.");
-  }
+  const refused = "This link can't pause charges. Confirm a code first, or contact the owner.";
+  if (!row || !settings.enabled || !pauseWindowOpen(row, now)) throw new VaultError(refused);
   const result = await prisma.$transaction(async (tx) => {
     const locked = await tx.$queryRaw<{ status: string; exportExpiresAt: Date | null }[]>`SELECT "status", "exportExpiresAt" FROM "EmergencyAccessRequest" WHERE "id" = ${row.id} FOR UPDATE`;
-    if (!locked[0] || !pauseWindowOpen(locked[0], now)) throw new VaultError("This link can't pause charges. Confirm a code first, or contact the owner.");
+    if (!locked[0] || !pauseWindowOpen(locked[0], now)) throw new VaultError(refused);
+    // One pause per link: if the owner already turned charges back on, this link does not get to pause them again.
+    const usedBefore = await tx.auditLog.count({ where: { action: "continuity.charges_paused_emergency", entityId: row.id } });
+    if (usedBefore > 0) {
+      const current = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { chargesPausedAt: true } });
+      if (!current?.chargesPausedAt) {
+        throw new VaultError("This link already paused charges once, and the owner has turned them back on. Contact the owner.");
+      }
+      return { changed: false };
+    }
     return pauseChargesForEmergencyContact(tx, { requestId: row.id, contactName: row.contactName }, now);
   });
-  if (result.changed) {
+
+  // Tell the owner on every working channel, and keep an honest record of whether anyone was reached. A failed
+  // notice keeps the pause (the high To do item shows it) and is retried the next time the contact presses again.
+  const told = await prisma.auditLog.count({ where: { action: "continuity.charges_paused_owner_told", entityId: row.id } });
+  let ownerNotified = told > 0;
+  if (!ownerNotified) {
+    let channels = 0;
     try {
-      await remindOwner(
+      channels = await remindOwner(
         "Automatic charges were paused",
         `${row.contactName ?? "Your emergency contact"} paused all automatic charges through emergency access. Nothing was refunded or cancelled. Turn charges back on from More > If something happens to me.`,
       );
     } catch {
-      // The pause is already saved and audited; a failed notice must not undo it.
+      channels = 0;
     }
+    ownerNotified = channels > 0;
+    await prisma.auditLog.create({
+      data: {
+        action: ownerNotified ? "continuity.charges_paused_owner_told" : "continuity.charges_paused_notice_failed",
+        entityType: "EmergencyAccess", entityId: row.id, newValue: { channels },
+      },
+    });
   }
-  return { changed: result.changed };
+  return { changed: result.changed, ownerNotified };
 }
 
 export async function requestEmergencyAccess(token: string, now = new Date()): Promise<{ ownerNotified: boolean }> {
