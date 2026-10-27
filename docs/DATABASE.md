@@ -1436,3 +1436,8 @@ All three tables are in the backup manifest.
 - The "on active military duty" flag already existed (`Customer.activeMilitary`); collections reads it.
 All three tables are in the backup manifest.
 
+### OPS-2: refrigerant records (additive migration `20261106000000_refrigerant`)
+- `ApplianceType.hasRefrigerant` — set true at migration time for types whose name or slug mentions refrigerator, fridge or freezer; new appliance types get the same starting value when they are added; the owner can change it on Retired appliances.
+- `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
+- One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
+`RefrigerantRecord` is in the backup manifest.
