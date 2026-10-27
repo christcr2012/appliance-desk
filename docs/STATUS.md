@@ -10,7 +10,7 @@ Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
 
 ## October 26 — CI speed fixes across parallel lanes (PR pending)
 
-Branch `ai/chatgpt/ci-lane-throughput` adds a fourth disposable-Postgres unit runner after OPS-6's 187.38s passing test phase crossed the 180s budget (run 40434874127), makes the CI topology guard require all five actual browser groups, and adds a fast job-role mapping test for desk menu changes (OPS-4 missed that before CI). The local-test guide now covers disposable database limits, reading complete job logs through GitHub MCP and real commit ancestry when main advances. Focused and exact-head CI, review and merge still pending; the separate Gitleaks issue is handled by PR #643. No changes to production, providers, coverage or CI phase budget.
+Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Exact-head CI and review are pending. No tests, production settings, or secret allowlist changed.
 
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 

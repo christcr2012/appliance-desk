@@ -501,7 +501,7 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run these checks (secret scan, static checks, four unit/integration shards and five browser shards, then one final `ci` gate):
+`.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run these checks (secret scan, static checks, three unit/integration shards and five browser shards, then one final `ci` gate):
 
 - **static checks** — install → type-check → lint (no database).
 - **Local Vercel Sandbox integration tests** — run
@@ -533,7 +533,7 @@ fails when a new one is not listed.
 | classify | decides docs-only vs code (checkout only, no install) | ~6s |
 | secret scan | `scripts/check-secrets.mjs` on current files + gitleaks (pinned, checksum-verified) on new PR/push commits; nightly covers complete main history; always runs | ~10s |
 | type-check, lint and repo checks | dependencies (cached), then typecheck and lint at the same time, browser-group check, migration check | ~1–1.3 min |
-| unit tests ×4 | each shard: own Postgres, migrate, seed, `vitest --shard=N/4`; shard 1 also runs schema-health and migration-upgrade drills | measure exact-head timings in CI |
+| unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | record timings each run; rebalance only for sustained slowdown |
 | browser tests ×4 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | ~2–2.5 min |
 | ci (gate) | passes only if everything required passed | ~3s |
 
@@ -599,7 +599,7 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 
 ### Rules when adding tests
 
-1. **Default to unit tests.** `tests/` (vitest, real Postgres) is split over four disposable-Postgres runners; browser tests carry the heavy fixed cost.
+1. **Default to unit tests.** `tests/` (vitest, real Postgres) uses three independent disposable-Postgres runners; browser tests carry the heavy fixed cost.
 2. **Assign every new spec file** in `e2e/shards.json` (the `static` job runs `scripts/e2e-shard.mjs --check`). Rebalance groups from real durations (printed as notices after each browser run) when one shard becomes the slowest.
 3. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role; tests use `test.use({ storageState })`.
 4. **Build cache and Playwright cache** are restored per run; keep `package-lock.json` changes deliberate because they invalidate both.

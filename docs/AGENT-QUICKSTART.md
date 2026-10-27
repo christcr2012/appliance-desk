@@ -32,7 +32,7 @@ read every review comment → merge with the expected-head SHA → short STATUS 
 
 ## When CI is red
 
-Read **all** failed CI jobs before editing. The connected Robinson GitHub MCP provides `github_actions_get_run`, `github_actions_get_job_log` and `github_workflow_ci_failure_summary` for job logs and complete failure summaries; REST check-run annotations remain a fallback. Distinguish a failed assertion, missing test fake, secret finding and a passing command over the 180-second phase budget. Fix **all** failures, reproduce locally, push once. A green check on an older SHA is not proof for your latest push.
+Read **all** failed CI jobs before editing. The connected Robinson GitHub MCP provides `github_actions_get_run`, `github_actions_get_job_log` and `github_workflow_ci_failure_summary` for job logs and complete failure summaries; REST check-run annotations remain a fallback. Distinguish a failed assertion, missing test fake or secret finding from a passing command that merely exceeds the **informational** 180-second phase target. Slow passing commands remain green; do not rerun for timing alone. Fix **all real failures**, reproduce locally, push once. A green check on an older SHA is not proof for your latest push.
 
 | What CI says | Real cause | Fix |
 |---|---|---|
@@ -44,7 +44,7 @@ Read **all** failed CI jobs before editing. The connected Robinson GitHub MCP pr
 | typecheck: unused `@ts-expect-error` | importing a `.mjs` that already has types | delete the comment |
 | scenario test flaky / wrong counts | `tests/scenarios/**` share one database | purge queues with `purgeScenarioQueues`, count only rows you caused, never depend on another file's leftovers |
 | a11y/axe failure on a touched page | missing label, focus ring or contrast; `sr-only` text inside an `overflow-x:auto` box needs a `relative` wrapper | fix the markup; never skip the test |
-| browser shard "phase budget" (tests pass, job fails at ~3 min) | that group exceeds its 180-second budget | move a spec to the lightest group in `e2e/shards.json` (compare group times in the annotations); never raise the budget |
+| slow unit/browser shard notice (tests pass) | that group exceeded the 180-second **performance target**, not a test failure | leave CI green and retain the timing notice; compare the **same group over its last five comparable full runs**. Rebalance only if **3 of 5** exceed the target or a reproducible structural regression explains the slowdown. Never skip tests to speed it up |
 | owner-guide-coverage | a new desk screen not named in `docs/OWNER-GUIDE.md` | add it |
 | a menu test counts links | you added a desk menu link | update the expected count and assert the new link |
 | typed value doubled in a form test (e.g. "1012") | typing before the client form loaded its saved value | wait for the saved value to show, then fill |
