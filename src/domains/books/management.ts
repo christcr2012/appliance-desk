@@ -235,9 +235,8 @@ export async function reopenAccountingMonth(actor:BooksActor,key:string,reason:s
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
 /** K-2B's immutable review export; K-5 adds provider-specific journal import formats. */
-export async function exportMonthReview(actor:BooksActor,key:string) {
-  allow(actor,"OWNER","ADMIN");periodKey(key);
-  return prisma.$transaction(async tx=>{
+async function exportMonthReviewInTx(tx:Prisma.TransactionClient,actor:BooksActor,key:string){
+
     const entries=await tx.journalEntry.findMany({where:{periodKey:key},include:{lines:{include:{ledgerAccount:true}}},orderBy:{entryNumber:"asc"}});
     const cleanCell=(value:string)=>'"'+(/^[=+@\-\t\r]/.test(value)?"'"+value:value).replaceAll('"','""')+'"';
     const csv=['Date,Entry,Source,Account,Debit cents,Credit cents,Memo',
@@ -255,5 +254,68 @@ export async function exportMonthReview(actor:BooksActor,key:string) {
     await tx.auditLog.create({data:{userId:actor.id,action:"books.export.review",entityType:"ExportBatch",
       entityId:batch.id,newValue:{month:key,entries:entries.length,sha256:fingerprint}}});
     return {batchId:batch.id,csv,fileName:batch.fileName};
+}
+export async function exportMonthReview(actor:BooksActor,key:string){
+ allow(actor,"OWNER","ADMIN");periodKey(key);
+ return prisma.$transaction(tx=>exportMonthReviewInTx(tx,actor,key));
+}
+
+/** Month lock and its audit/export are one transaction, not separate button clicks. */
+export async function closeAccountingMonthWithReview(actor:BooksActor,key:string,
+ notes:{expenses?:string;payments?:string}={}){
+ allow(actor,"OWNER");periodKey(key);
+ const clean=(value:string|undefined)=>{
+  const text=(value??"").trim();
+  if(text.length>300)throw new BooksInputError("Review explanation must be 300 characters or fewer.");
+  return text;
+ };
+ const expenses=clean(notes.expenses),payments=clean(notes.payments);
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,actor.id,["OWNER"]);
+  await tx.$queryRaw`SELECT "revision" FROM "BooksPostingRevision"
+   WHERE "id"=${"singleton"} FOR UPDATE`;
+  await tx.$queryRaw`SELECT 1 AS locked FROM
+   (SELECT pg_advisory_xact_lock(hashtext(${"books-period:"+key}))) AS guard`;
+  const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
+   select:{booksStartDate:true}});
+  if(!settings?.booksStartDate)throw new BooksInputError("Start your books before locking.");
+  const was=await tx.accountingPeriod.findUnique({where:{periodKey:key}});
+  if(was?.status==="CLOSED")return {alreadyClosed:true,exported:false};
+  // Every Books evidence read that authorizes this close belongs to this
+  // Serializable snapshot, after the ledger and month locks are acquired.
+  const {monthReview}=await import("./month-review");
+  const review=await monthReview(actor,key,new Date(),tx);
+  if(!review.checks.sources.ok||!review.checks.equipment.ok)
+   throw new BooksInputError("First finish the missing source journals and equipment depreciation.");
+  if(!review.checks.costs.ok&&!expenses)
+   throw new BooksInputError("Explain why the unverified expenses are being locked.");
+  if(!review.checks.payments.ok&&!payments)
+   throw new BooksInputError("Explain why unresolved payment evidence is being locked.");
+  const entries=await tx.journalEntry.findMany({where:{periodKey:key},select:{id:true}});
+  const existing=entries.length?await tx.exportBatchEntry.findMany({
+   where:{journalEntryId:{in:entries.map(x=>x.id)}},select:{journalEntryId:true},
+  }):[];
+  const exported=entries.length>new Set(existing.map(x=>x.journalEntryId)).size;
+  if(exported)await exportMonthReviewInTx(tx,actor,key);
+  const reviewNotes=[
+   ...(!review.checks.costs.ok?[{check:"expenses",reason:expenses,
+    byUserId:actor.id,at:new Date().toISOString()}]:[]),
+   ...(!review.checks.payments.ok?[{check:"payments",reason:payments,
+    byUserId:actor.id,at:new Date().toISOString()}]:[]),
+  ];
+  await tx.accountingPeriod.upsert({where:{periodKey:key},
+   create:{periodKey:key,status:"CLOSED",closedAt:new Date(),closedByUserId:actor.id,
+    reviewNotes},
+   update:{status:"CLOSED",closedAt:new Date(),closedByUserId:actor.id,
+    reopenedReason:null,reviewNotes},
   });
+  await tx.auditLog.create({data:{userId:actor.id,action:"books.period.close-review",
+   entityType:"AccountingPeriod",entityId:key,
+   oldValue:{status:was?.status??"OPEN"},
+   newValue:{status:"CLOSED",sourceChecksPassed:true,equipmentCheckPassed:true,
+    expensesOverridden:!!(!review.checks.costs.ok&&expenses),
+    paymentsOverridden:!!(!review.checks.payments.ok&&payments),
+    entryCount:entries.length,createdReviewExport:exported}}});
+  return {alreadyClosed:false,exported};
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }

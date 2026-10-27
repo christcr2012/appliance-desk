@@ -36,6 +36,7 @@ export async function sendEmail(input: {
   actionLabel?: string;
   replyTo?: string;
   idempotencyKey?: string;
+  attachments?: { filename: string; content: Buffer }[];
   marketing?: { postalAddress: string; unsubscribeUrl: string };
 }): Promise<EmailResult> {
   // Database isolation alone cannot prevent messages to copied contacts.
@@ -64,6 +65,7 @@ export async function sendEmail(input: {
         to: input.to,
         subject: input.subject,
         text: input.text + marketingFooter,
+        ...(input.attachments ? { attachments: input.attachments } : {}),
         html: renderBrandedEmailHtml(
           input.text,
           input.actionLabel,

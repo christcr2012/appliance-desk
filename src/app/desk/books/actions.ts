@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import {
   initializeBooks, correctOpeningBalances, renameAccount, addCustomAccount, mapExportAccount,
-  closeAccountingMonth, reopenAccountingMonth,
+  reopenAccountingMonth, closeAccountingMonthWithReview,
 } from "@/domains/books/management";
 import { postPending } from "@/domains/books/post";
 import { runBooksAutopilot } from "@/domains/books/autopilot";
+import { monthKey } from "@/domains/books/depreciation";
+import { sendMonthToAccountant, saveAccountantReviewSettings } from "@/domains/books/accountant-packet";
 import type { LedgerAccountType, ExportTarget } from "@prisma/client";
 
 const str=(form:FormData,key:string)=>String(form.get(key)??"");
@@ -107,9 +109,53 @@ export async function postBooksAction() {
 }
 export async function closeMonthAction(form:FormData) {
   const session=await requireRole("OWNER");
-  await handle("Close month",()=>closeAccountingMonth(actor(session.user),str(form,"month")));
+  await handle("Close month",()=>closeAccountingMonthWithReview(actor(session.user),str(form,"month")));
 }
 export async function reopenMonthAction(form:FormData) {
   const session=await requireRole("OWNER");
   await handle("Reopen month",()=>reopenAccountingMonth(actor(session.user),str(form,"month"),str(form,"reason")));
+}
+
+function redirectToReviewedMonth(key:string,message:string):never{
+ revalidatePath("/desk/books");
+ revalidatePath("/desk/today");
+ revalidatePath("/desk/books/months/"+key);
+ redirect("/desk/books/months/"+key+"?notice="+encodeURIComponent(message));
+}
+function monthFromForm(form:FormData):string{
+ const month=str(form,"month");
+ monthKey(month);
+ return month;
+}
+export async function lockReviewedMonthAction(form:FormData){
+ const session=await requireRole("OWNER");
+ const month=monthFromForm(form);
+ let message="Reviewed month locked.";
+ try{
+  const result=await closeAccountingMonthWithReview(actor(session.user),month,{
+   expenses:str(form,"expensesReason"),payments:str(form,"paymentsReason"),
+  });
+  if(result.alreadyClosed)message="This month was already locked; no second entry was created.";
+ }catch(e){message=e instanceof Error?e.message:"The month could not be locked.";}
+ redirectToReviewedMonth(month,message);
+}
+export async function accountantReviewSettingsAction(form:FormData){
+ const session=await requireRole("OWNER");
+ const month=monthFromForm(form);
+ let message="Accountant email and review reminder saved.";
+ try{
+  await saveAccountantReviewSettings(actor(session.user),{
+   accountantEmail:str(form,"accountantEmail"),
+   reminderDay:Number(str(form,"reminderDay")),
+  });
+ }catch(e){message=e instanceof Error?e.message:"Settings were not saved.";}
+ redirectToReviewedMonth(month,message);
+}
+export async function sendAccountantMonthAction(form:FormData){
+ const session=await requireRole("OWNER");
+ const month=monthFromForm(form);
+ let message="";
+ try{message=(await sendMonthToAccountant(actor(session.user),month)).message;}
+ catch(e){message=e instanceof Error?e.message:"No message was sent.";}
+ redirectToReviewedMonth(month,message);
 }

@@ -12,7 +12,7 @@ import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { listRetiredPlanAttention } from "./retired-attention";
 import { listRecallAttention } from "./recall-attention";
-import { listBooksAttention, listBooksSetupAttention } from "./books-attention";
+import { listBooksAttention, listBooksSetupAttention, listBooksMonthReviewAttention } from "./books-attention";
 import { listResaleTaxAttention } from "./resale-tax-attention";
 import { listApprovalAttention } from "./approval-attention";
 import { listGoalAttention } from "./goal-attention";
@@ -1122,6 +1122,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const recallAttention = canViewFinance ? await listRecallAttention(now) : [];
   const booksAttention = canViewFinance ? await listBooksAttention(now) : [];
   const booksSetupAttention = session.user.role === "OWNER" ? await listBooksSetupAttention(now) : [];
+  const booksMonthReviewAttention = canViewFinance ? await listBooksMonthReviewAttention(now) : [];
   const resaleTaxAttention = (session.user as { role?: string }).role === "OWNER" ? await listResaleTaxAttention(now) : [];
   const privacyAttention = (session.user as { role?: string }).role === "OWNER" ? await listPrivacyAttention(now) : [];
   const approvalAttention = (session.user as { role?: string }).role === "OWNER" ? await listApprovalAttention(now) : [];
@@ -1208,6 +1209,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...recallAttention,
     ...booksAttention,
     ...booksSetupAttention,
+    ...booksMonthReviewAttention,
     ...resaleTaxAttention,
     ...privacyAttention,
     ...approvalAttention,
