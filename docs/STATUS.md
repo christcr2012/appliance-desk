@@ -4,14 +4,21 @@ All nine spec'd tools are coded and covered by seven passing SDK/privacy tests p
 passing disposable-Postgres role-downgrade/archived-user test. The private-data canary caught
 and fixed a diagnostic-reference leak. MCP-3 (#692) and the fast-lane rules (#701)
 have merged. Sandbox full typecheck still hits the Node memory limit; GitHub exact-head
-CI/Reviewgate and PR review are still required. Next: publish MCP-4, enable auto-merge,
-and begin MCP-5 while checks run.
+CI/Reviewgate and PR review are still required on PR #704 (auto-merge enabled).
+Next: complete #704 exact-head CI/review and begin MCP-5 while checks run.
+
+## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
+
+A repair visit can be marked "sealed refrigerant system". Only a person with a refrigerant (Type I) certification on file can be
+given it, you included; certifications are entered by the owner in Settings > Team. The rule applies when the visit is created,
+when it comes from a maintenance request, and when it is reassigned. Question DQ-OPS2-2 filed (starting value, not confirmed).
+Tests on real Postgres pass. This was the last unbuilt OPS-2 item.
 
 ## October 27 — Fast-lane execution rules alignment (branch `ai/chatgpt/fast-lane-protocol`)
 
 Aligned session instructions with the already-approved squash auto-merge, final-head `ci` and `review-gate`,
 no up-to-date branch rule, and continuous work on independent approved items during CI. Preserved all
-data, permission, payment, spending, and release protections. PR and CI evidence pending.
+data, permission, payment, spending, and release protections. Merged as PR #701 with required checks.
 
 ## October 27 — OPS-2: recycler receipt photo on a record (branch `ai/claude/ops2-receipt-photo`)
 

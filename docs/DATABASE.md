@@ -1513,6 +1513,8 @@ All three tables are in the backup manifest.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
 
+- `TeamCertification` — a team member's refrigerant (EPA 608 Type I) certification: person (Restrict), `kind` (starts `EPA_608_TYPE_I`), certification number, optional issue date; one per person per kind. Owner-entered. A `Job` marked `sealedSystem` (repair visits only) can only be assigned to someone with a row here. In the backup manifest.
+
 ## MCP-2 backup-artifact ledger (additive, 2026-10-25)
 
 `BackupArtifact` tracks the protected storage **pathname only**, file hash and size, database migration/revision,

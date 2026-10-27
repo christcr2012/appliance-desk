@@ -131,6 +131,8 @@ export type ScheduleMaintenanceInput = {
   scheduledAt: Date;
   durationMinutes: number | null;
   assignedToUserId: string | null;
+  /** A repair on a sealed refrigerant system: only a certified person may be assigned. */
+  sealedSystem?: boolean;
   serviceAddressId: string;
   /** Visits the person has already agreed to overlap; anything else that conflicts is refused. */
   confirmedConflictJobIds: readonly string[];
@@ -166,6 +168,7 @@ export async function scheduleMaintenanceRequest(userId: string, input: Schedule
       scheduledAt: input.scheduledAt,
       durationMinutes: input.durationMinutes,
       assignedToUserId: input.assignedToUserId,
+      sealedSystem: input.sealedSystem === true,
       customerId: request.customerId,
       serviceAddressId: input.serviceAddressId,
       maintenanceRequestId: request.id,

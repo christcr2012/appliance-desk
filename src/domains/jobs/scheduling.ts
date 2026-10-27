@@ -1,3 +1,4 @@
+import { assertSealedSystemAssignee } from "@/domains/certifications/actions";
 import type { JobType, Prisma } from "@prisma/client";
 import { releaseSwapReservationsInTx } from "./swaps";
 import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx } from "@/domains/maintenance/visit-sync";
@@ -205,7 +206,7 @@ export async function scheduleJob(
     const before = await tx.job.findUniqueOrThrow({
       where: { id: input.jobId },
       select: { status: true, version: true, scheduledAt: true,
-        durationMinutes: true, assignedToUserId: true, agreementId: true,
+        durationMinutes: true, assignedToUserId: true, agreementId: true, sealedSystem: true,
         serviceAddressId: true,
         type: true, requestedDelivery: true, requestedDeliveryAt: true,
         confirmedDeliveryAt: true, originalConfirmedDeliveryFor: true },
@@ -273,6 +274,10 @@ export async function scheduleJob(
         });
         firstDeliveryConfirmation = true;
       }
+    }
+
+    if (before.sealedSystem && input.assignedToUserId && input.assignedToUserId !== before.assignedToUserId) {
+      await assertSealedSystemAssignee(tx, input.assignedToUserId);
     }
 
     const overriddenConflictJobIds = await checkConfirmedConflicts(tx, {
