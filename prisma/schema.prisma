@@ -842,6 +842,24 @@ model Supplier {
   email       String?
   notes       String?
 
+  // CMP-3: the W-9 record. The TIN itself is stored only encrypted
+  // (field-crypto, AES-256-GCM); screens show the last 4. legalName is the
+  // name on the tax return, which can differ from the trade name above.
+  tinType           String? // "SSN" | "EIN"
+  tinEncrypted      String?
+  tinLast4          String?
+  legalName         String?
+  // The mailing address from the W-9 — 1099 recipient copies and the IRIS
+  // file are incomplete without it (review finding on PR #654).
+  mailingAddress    String?
+  mailingCity       String?
+  mailingState      String?
+  mailingZip        String?
+  w9ReceivedOn      DateTime?
+  w9FileUrl         String?
+  backupWithholding Boolean   @default(false)
+  w9Requests        W9Request[]
+
   // Batch C P1-C: archived suppliers are hidden from pickers and cannot take new purchase orders.
   archivedAt DateTime?
 
@@ -850,6 +868,21 @@ model Supplier {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// CMP-3: a one-time W-9 request link for a supplier. Only the token's
+// SHA-256 hash is stored; the link works once and expires after 14 days.
+model W9Request {
+  id              String    @id @default(cuid())
+  supplierId      String
+  supplier        Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  tokenHash       String    @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+
+  @@index([supplierId])
 }
 
 // One order placed with a supplier. DRAFT while Chris is still putting
@@ -3690,6 +3723,15 @@ model ComplianceProfile {
   truckGvwrLbs   Int?
   employees      Int      @default(0)
   hasHomeOffice  Boolean  @default(false)
+  // CMP-3: the payer identity printed on information returns (1099s) and
+  // Form 8300 — the business's legal name and mailing address, entered
+  // once on the business-facts screen.
+  businessLegalName String?
+  businessAddress   String?
+  businessCity      String?
+  businessState     String?
+  businessZip       String?
+  businessPhone     String?
   updatedAt      DateTime @updatedAt
 }
 
@@ -3699,7 +3741,7 @@ model ComplianceFiling {
   // APPROVED → SUBMITTED step happens once only under the row lock.
   id               String    @id @default(cuid())
   obligationKey    String    @db.VarChar(60)
-  periodKey        String    @db.VarChar(20)
+  periodKey        String    @db.VarChar(40)
   state            String    @db.VarChar(20)
   dueOn            DateTime
   actOn            DateTime
@@ -5103,6 +5145,11 @@ model ExpenseCategory {
   ledgerAccountId String
   active          Boolean   @default(true)
   sortOrder       Int       @default(0)
+  // CMP-3: which 1099 box payments in this category count toward, when the
+  // supplier is a 1099 vendor: "NEC_1" (services), "MISC_1" (rents) or
+  // "MISC_3" (other income). Null = not classified yet — those amounts are
+  // shown as unclassified on the 1099 filing, never silently guessed.
+  form1099Box     String?
   expenses        Expense[]
   createdAt       DateTime  @default(now())
 }

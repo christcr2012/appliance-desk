@@ -66,3 +66,8 @@ Regression tests cover all three (reactivation cycle, owner-decision
 permanence, prepared-filing survival, and a lock-blocking save). The
 round also adds the docs/DATABASE.md entry the merged-state docs gate
 requires for a schema change.
+
+MERGED 2026-10-26: PR #642, squash commit 238f7a57 on main, at head
+965defa8 with CI fully green and all review threads resolved. Successor
+PRs #627 and #639 were closed unmerged along the way (their branch
+histories could not record merges of main). Next in this lane: CMP-3.

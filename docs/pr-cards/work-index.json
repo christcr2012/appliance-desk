@@ -5268,7 +5268,7 @@
         "TFA-1",
         "DEC-1"
       ],
-      "status": "IN PROGRESS",
+      "status": "MERGED — PR #642, 238f7a57 (2026-10-26)",
       "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
       "budget": 550,
       "units": [
@@ -5323,8 +5323,8 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (Supplier TIN fields)",
+      "status": "BUILT — PR pending (2026-10-26)",
+      "migration": "20261107000000_supplier_tin_w9 + 20261107010000_filing_period_key_widen (Supplier TIN fields, W9Request, ExpenseCategory.form1099Box, ComplianceProfile payer block, ComplianceFiling.periodKey 20→40)",
       "budget": 600,
       "units": [
         "CMP-3"
@@ -5338,7 +5338,9 @@
         "tests/w9-integration.test.ts",
         "tests/1099-prep-integration.test.ts",
         "tests/iris-csv.test.ts",
-        "tests/form8300-detector.test.ts"
+        "tests/iris-a2a.test.ts",
+        "tests/form-8300-detector.test.ts",
+        "tests/compliance-forms.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-3.md"
@@ -6060,6 +6062,10 @@
     {
       "id": "CMP-1",
       "path": "docs/pr-cards/execution/CMP-1.json"
+    },
+    {
+      "id": "CMP-3",
+      "path": "docs/pr-cards/execution/CMP-3.json"
     },
     {
       "id": "TFA-2",

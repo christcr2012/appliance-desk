@@ -1,3 +1,12 @@
+## November 7 — Supplier tax IDs, W-9s and 1099 preparation (CMP-3, additive)
+
+Migrations `20261107000000_supplier_tin_w9` and `20261107010000_filing_period_key_widen`.
+- `Supplier` gains the 1099 record: `tinType` (SSN or EIN), `tinEncrypted` (the tax ID under the same AES-256-GCM field crypto as the EIN; never logged, never shown) with `tinLast4` the only clear digits, `legalName` (the name on the W-9), the W-9 mailing address (`mailingAddress`, `mailingCity`, `mailingState`, `mailingZip` — the IRIS file and recipient copies are incomplete without it), `w9ReceivedOn`, `w9FileUrl` (an uploaded W-9 in the private file store), and `backupWithholding` (24% applies until a W-9 is on file).
+- `W9Request` — one row per one-time W-9 link: `supplierId`, `tokenHash` (only the SHA-256 hash of the link token is stored), `expiresAt` (14 days), `usedAt`, `createdByUserId`. A fresh request deletes the supplier's unused ones.
+- `ExpenseCategory.form1099Box` — which 1099 box the category's payments belong in (`NEC_1`, `MISC_1`, `MISC_3`, or null = not classified yet; amounts are never guessed into a box). The migration classifies only the two system categories whose meaning is certain: warehouse rent → `MISC_1`, professional fees (CPA/legal) → `NEC_1`.
+- `ComplianceProfile` gains the payer block printed on information returns: `businessLegalName`, `businessAddress`, `businessCity`, `businessState`, `businessZip`, `businessPhone`.
+- `ComplianceFiling.periodKey` widens from 20 to 40 characters: Form 8300 filings key their period by the triggering receipt (`8300-` + the receipt id).
+
 ## November 2 — Compliance center (CMP-1, additive)
 
 Migration `20261102000000_compliance`.
