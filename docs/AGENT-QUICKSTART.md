@@ -28,7 +28,7 @@ DB, reset from the parent, copy production identities, or mark business tax sett
 
 Branch `ai/<tool>/<topic>` from `main` → build with tests → `npm run check:quick` → **one push** → open PR (plain English
 body) → **turn on auto-merge (squash)** and keep working → answer every Codex finding with a reply (if Codex is
-unavailable, post one "self-reviewed" comment after your last push) → GitHub merges by itself when `ci` and
+unavailable, post one "self-reviewed <short sha>" comment after your last push) → GitHub merges by itself when `ci` and
 `review-gate` are green; main moving does not force a re-sync → short STATUS entry → report to Chris.
 
 ## When CI is red

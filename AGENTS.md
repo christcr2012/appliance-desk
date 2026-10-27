@@ -150,10 +150,10 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
 - Automated review: Codex comments on PR open; Copilot review is not available (never wait for it). Record a
   disposition (fixed / already fixed / superseded / still open) as a **reply on every Codex finding** and resolve
   threads only after checking the fix at the exact head. If Codex is unavailable (usage limit, or no answer in 25
-  minutes), read the diff yourself and post **one comment containing "self-reviewed"** (what you checked) after your
+  minutes), read the diff yourself and post **one comment containing "self-reviewed" and the short commit sha you reviewed** (what you checked) after your
   last push. The `review-gate` status (`.github/workflows/review-gate.yml`, `scripts/review-gate.mjs`) reads exactly
-  that: it fails while a Codex finding has no reply or while neither Codex nor a self-review note exists, and passes
-  by itself the moment they do. A clean sync with main does not erase a self-review note.
+  that: it fails while a Codex finding has no reply (from the PR author or a collaborator, saying fixed / already fixed / superseded / still open) or while neither Codex nor a self-review note exists, and passes
+  by itself the moment they do. A clean sync with main does not erase a self-review note that names your last real commit.
 - **Merge (authorized by Chris):** the `ci` and `review-gate` checks green at the exact head and acceptance met with
   evidence → merge. **Turn on auto-merge (squash) as soon as the PR is open** and keep working: GitHub merges it the
   moment both checks pass, and **main moving does not force a re-sync** (the "branch must be up to date" rule is off,

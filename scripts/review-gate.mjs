@@ -2,8 +2,9 @@
 // auto-merge can finish a pull request without a person or an agent watching it.
 //
 // The `review-gate` status on a pull request's head commit is:
-//   success - Codex reviewed and every finding has a written reply, OR Codex is unavailable (usage limit, no answer
-//             after WAIT_MINUTES) and the author left a "self-reviewed" comment after the last push.
+//   success - Codex reviewed and every finding has a written disposition from the author or a collaborator, OR Codex is
+//             unavailable (usage limit, no answer after WAIT_MINUTES) and the author left a "self-reviewed" comment
+//             that names the commit they reviewed.
 //   pending - Codex is still working (inside the wait window), or the pull request is a draft.
 //   failure - a Codex finding has no reply, or Codex was unavailable and no self-review comment exists yet.
 // Anyone who adds a reply or a comment re-runs it (see .github/workflows/review-gate.yml).
@@ -19,6 +20,7 @@ export const WAIT_MINUTES = 25;
 const STATE_MARKER = /<!--\s*codex-review-state:v1\s*(\{[\s\S]*?\})\s*-->/;
 const LIMIT_WORDS = /usage limit|rate limit|reached (?:your|the) .{0,40}limit|out of (?:credits|usage)|unable to (?:complete|run|perform)|try again later/i;
 const SELF_REVIEW = /self[-\s]?review/i;
+const DISPOSITION = /fixed|superseded|still open|not an issue|won'?t fix/i;
 const TRUSTED = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
 /** The state Codex writes into its summary comment, or null if the comment is not a Codex summary. */
@@ -36,45 +38,54 @@ export function parseCodexState(body) {
 const at = (value) => Date.parse(value ?? '') || 0;
 
 /**
- * When the author last changed the code. Merge commits (syncing with main) do not count, so a clean sync never wipes
- * out a self-review note; a pull request that is only merge commits falls back to its newest commit.
+ * The newest commit that is not a merge (a clean sync with main is not a change to review). A pull request made only
+ * of merge commits falls back to its newest commit. Returns { sha, date } or null.
  */
-export function lastChangeAt(commits) {
-  const dates = (list) => list.map((c) => c.commit?.committer?.date).filter(Boolean).sort();
-  const real = dates(commits.filter((c) => (c.parents?.length ?? 1) < 2));
-  return (real.length ? real : dates(commits)).at(-1) ?? null;
+export function lastChange(commits) {
+  const pick = (list) => list.filter((c) => c.sha && c.commit?.committer?.date).sort((a, b) => at(a.commit.committer.date) - at(b.commit.committer.date)).at(-1);
+  const real = pick(commits.filter((c) => (c.parents?.length ?? 1) < 2)) ?? pick(commits);
+  return real ? { sha: real.sha, date: real.commit.committer.date } : null;
+}
+
+/** True when the text names one of these commits (a hex string of 7+ characters that starts the full sha). */
+export function namesCommit(text, shas) {
+  const tokens = String(text ?? '').toLowerCase().match(/\b[0-9a-f]{7,40}\b/g) ?? [];
+  return tokens.some((token) => shas.some((sha) => sha && sha.toLowerCase().startsWith(token)));
 }
 const clip = (text) => (text.length <= 140 ? text : `${text.slice(0, 137)}...`);
 
 /**
- * Pure decision. `headCommitAt` is when the newest commit was made; comments before it do not count as a
- * self-review of this code. Returns { state, description }.
+ * Pure decision. `windowStartAt` is when the gate first saw this head commit (the real "pushed" moment, which a commit's
+ * own timestamp cannot tell us); the Codex wait window and "limit hit" messages are measured from it. `reviewedShas` are
+ * the commits a self-review note may name (the head, and the newest non-merge commit). Returns { state, description }.
  */
-export function evaluate({ pr, headCommitAt, now, issueComments = [], reviewComments = [], reviews = [], waitMinutes = WAIT_MINUTES }) {
+export function evaluate({ pr, windowStartAt, now, reviewedShas = [], issueComments = [], reviewComments = [], reviews = [], waitMinutes = WAIT_MINUTES }) {
   const done = (state, description) => ({ state, description: clip(description) });
   if (pr.draft) return done('pending', 'Draft pull request: marked ready for review to merge.');
 
   const bot = (c) => c?.user?.login === CODEX_BOT;
-  const headAt = at(headCommitAt);
-  const ageMinutes = (at(now) - headAt) / 60000;
+  const windowAt = at(windowStartAt);
+  const ageMinutes = (at(now) - windowAt) / 60000;
+  const trusted = (c) => c?.user?.login === pr.user.login || TRUSTED.has(c?.author_association);
 
-  // 1. Every Codex inline finding needs a written reply from a person/agent (fixed, already fixed, superseded, still open).
+  // 1. Every Codex inline finding needs a written disposition (fixed, already fixed, superseded, still open) from the
+  //    author or a collaborator. A bot, a stranger, or an unrelated reply does not clear it.
   const roots = reviewComments.filter((c) => bot(c) && !c.in_reply_to_id);
-  const unanswered = roots.filter((root) => !reviewComments.some((c) => c.in_reply_to_id === root.id && !bot(c)));
+  const unanswered = roots.filter((root) => !reviewComments.some((c) => c.in_reply_to_id === root.id && !bot(c) && trusted(c) && DISPOSITION.test(c.body ?? '')));
   if (unanswered.length > 0) {
-    return done('failure', `${unanswered.length} Codex finding${unanswered.length === 1 ? '' : 's'} still need a reply (fixed, already fixed, superseded or still open).`);
+    return done('failure', `${unanswered.length} Codex finding${unanswered.length === 1 ? '' : 's'} still need${unanswered.length === 1 ? 's' : ''} a reply from the author: fixed, already fixed, superseded or still open.`);
   }
 
   // 2. Where is Codex? Newest summary comment, and any "I hit my limit" message since the last push.
   const botIssue = issueComments.filter(bot);
   const summaries = botIssue.map((c) => ({ c, state: parseCodexState(c.body) })).filter((x) => x.state);
   const latest = summaries.sort((a, b) => at(a.c.created_at) - at(b.c.created_at)).at(-1)?.state ?? null;
-  const limitHit = botIssue.some((c) => !STATE_MARKER.test(c.body ?? '') && LIMIT_WORDS.test(c.body ?? '') && at(c.created_at) >= headAt);
+  const limitHit = botIssue.some((c) => !STATE_MARKER.test(c.body ?? '') && LIMIT_WORDS.test(c.body ?? '') && at(c.created_at) >= windowAt);
 
-  // 3. Did the author leave a self-review note after the last push?
-  const trusted = (c) => c?.user?.login === pr.user.login || TRUSTED.has(c?.author_association);
+  // 3. Did the author leave a self-review note that names the commit they reviewed? (Naming it ties the note to this
+  //    revision, so an old note can never vouch for newer code, whatever the timestamps say.)
   const notes = [...issueComments, ...reviewComments, ...reviews].filter(
-    (c) => !bot(c) && trusted(c) && SELF_REVIEW.test(c.body ?? '') && at(c.created_at ?? c.submitted_at) >= headAt,
+    (c) => !bot(c) && trusted(c) && SELF_REVIEW.test(c.body ?? '') && namesCommit(c.body, reviewedShas),
   );
   const selfReviewed = notes.length > 0;
 
@@ -83,7 +94,7 @@ export function evaluate({ pr, headCommitAt, now, issueComments = [], reviewComm
     if (latest.commitSha === pr.head.sha) return done('success', 'Codex reviewed this commit and every finding has a reply.');
     return selfReviewed
       ? done('success', 'Codex reviewed an earlier commit; the newer changes are self-reviewed.')
-      : done('failure', 'Codex looked at an earlier commit. Comment that you self-reviewed the changes since (after your last push).');
+      : done('failure', 'Codex looked at an earlier commit. Comment "self-reviewed <commit sha>" for the changes since.');
   }
 
   const waiting = !limitHit && ageMinutes < waitMinutes;
@@ -94,7 +105,7 @@ export function evaluate({ pr, headCommitAt, now, issueComments = [], reviewComm
   // 4. Codex is unavailable: usage limit, or no answer in time. The author's own review stands in for it.
   return selfReviewed
     ? done('success', 'Automated review unavailable - waived; self-reviewed.')
-    : done('failure', 'Codex did not review (limit or no answer). Comment that you self-reviewed this change, after your last push.');
+    : done('failure', 'Codex did not review (limit or no answer). Comment "self-reviewed <commit sha>" after reading the change.');
 }
 
 // ---- GitHub plumbing (only used by the workflow) ----
@@ -142,11 +153,15 @@ export async function runOne(repo, number, now = new Date().toISOString()) {
     pages(`/repos/${repo}/pulls/${number}/reviews`),
     pages(`/repos/${repo}/pulls/${number}/commits`),
   ]);
-  const result = evaluate({
-    pr, headCommitAt: lastChangeAt(commits), now, issueComments, reviewComments, reviews,
-  });
   const statuses = await api(`/repos/${repo}/commits/${pr.head.sha}/statuses?per_page=100`);
-  const current = statuses.find((s) => s.context === CONTEXT);
+  const mine = statuses.filter((s) => s.context === CONTEXT);
+  // First sight of this commit = when it was really pushed (a commit's own date can be hours older).
+  const windowStartAt = mine.map((s) => s.created_at).sort()[0] ?? now;
+  const change = lastChange(commits);
+  const result = evaluate({
+    pr, windowStartAt, now, reviewedShas: [pr.head.sha, change?.sha], issueComments, reviewComments, reviews,
+  });
+  const current = mine[0];
   if (!current || current.state !== result.state || current.description !== result.description) {
     await api(`/repos/${repo}/statuses/${pr.head.sha}`, {
       method: 'POST',
