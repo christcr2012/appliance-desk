@@ -131,7 +131,7 @@ export const OWNER_ACTIONS: OwnerAction[] = [
     summary: "The launch checklist.", synonyms: ["go live", "checklist", "ready to launch"], href: "/desk/launch" },
   { id: "undo", label: "Settings history and undo", group: "health", access: "admin",
     summary: "See every settings change and undo one.", synonyms: ["revert", "oops", "change back", "undo setting"], href: "/desk/settings/history" },
-  { id: "paperwork", label: "Business paperwork and renewals", group: "health", access: "owner",
+  { id: "paperwork", label: "Business records and renewals", group: "health", access: "admin",
     summary: "Your LLC, EIN, licenses and insurance with renewal reminders.", synonyms: ["license", "insurance", "llc", "ein", "renewal date"], href: "/desk/paperwork" },
   { id: "privacy", label: "Privacy requests", group: "health", access: "owner",
     summary: "Customers asking to see or delete their information.", synonyms: ["delete my data", "gdpr", "ccpa", "data request"], href: "/desk/privacy" },

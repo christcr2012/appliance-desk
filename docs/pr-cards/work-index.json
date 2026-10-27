@@ -5172,7 +5172,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "IN PROGRESS — PR #616 open. CI all green at head beb787c4; Codex review dispositions: P2 (two-step page prerender) already fixed via force-dynamic, P1 (forget action actor recheck) fixed with an in-transaction assertActiveTeamActor + 3 unit tests, typecheck clean. Awaiting ci at the new exact head, then reply/resolve threads and merge.",
+      "status": "MERGED 2026-10-26 — PR #628 (merge commit 66543a92) at head eac60bcd; PR #616 was rebuilt as #628 after its snapshot history could not merge. ci green at the exact head after one failed-jobs rerun (browser-a phase budget on the PR-event run; the dispatched run was fully green). Codex dispositions for #616's findings recorded in #628's body; #628 had no review threads. Main's post-merge run passed the secret scan with no refresh needed.",
       "units": [
         "ACC-6"
       ]
@@ -5401,7 +5401,7 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/vault-1; packet and drift check written 2026-10-26; built and verified locally (unit 10/10, integration 12/12, both browser specs green via the repo launcher); PR follows. First commit also lands the ACC-6 merged-status tidy-up.",
       "migration": "20261103000000_business_records",
       "budget": 450,
       "units": [

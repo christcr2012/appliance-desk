@@ -410,6 +410,15 @@ jobs:
               < /dev/null > "$RUNNER_TEMP/pw-deps.log" 2>&1 &
           fi
 
+      - name: Set the test-only compliance encryption key
+        # Built from a throwaway string so no key-shaped literal sits in the repo;
+        # it only ever encrypts test data on the disposable CI database.
+        # Every shard except browser-e: the business-records (c) and
+        # business-paperwork (a) specs enter encrypted record numbers, while
+        # the compliance spec (browser-e) verifies the EIN box is disabled
+        # when NO key is configured — so browser-e must not get one.
+        if: matrix.shard != 'browser-e'
+        run: echo "COMPLIANCE_ENCRYPTION_KEY=$(printf '0123456789abcdef0123456789abcdef' | base64)" >> "$GITHUB_ENV"
       - name: Apply database migrations
         run: npm run db:migrate:deploy
 

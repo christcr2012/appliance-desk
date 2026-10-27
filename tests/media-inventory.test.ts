@@ -16,6 +16,7 @@ const BACKUP_HOST = "backup.private.blob.vercel-storage.com";
 const state = vi.hoisted(() => ({
   photos: [] as Array<{ id: string; url: string }>,
   feedback: [] as Array<{ id: string; pathname: string }>,
+  recordFiles: [] as Array<{ id: string; pathname: string }>,
   stores: new Map<string, Map<string, Stored>>(),
   putOrder: [] as string[],
   delOrder: [] as string[],
@@ -86,6 +87,8 @@ vi.mock("../src/lib/prisma", () => ({
     },
     // MCP-10a: no app-feedback screenshots in these cases.
     feedbackAttachment: { findMany: vi.fn(async () => [...state.feedback]) },
+    // VAULT-1: no business-record files in these cases.
+    businessRecordFile: { findMany: vi.fn(async () => [...state.recordFiles]) },
   },
 }));
 
@@ -218,6 +221,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.photos.length = 0;
   state.feedback.length = 0;
+  state.recordFiles.length = 0;
   state.stores.clear();
   state.putOrder.length = 0;
   state.delOrder.length = 0;
@@ -291,6 +295,20 @@ describe("Batch F private-media recovery", () => {
     });
     expect(result.manifest.entries).toEqual([
       expect.objectContaining({ photoId: "feedback:fa01", sourcePath: shot, status: "COPIED" }),
+    ]);
+    expect(result.manifest.unreferenced).toEqual([]);
+  });
+
+  it("VAULT-1: copies live business-record files too (they are not Photo rows)", async () => {
+    const doc = "records/record-1/file-1.pdf";
+    seed(PRIVATE_TOKEN, doc, "ein letter", "application/pdf");
+    state.recordFiles.push({ id: "file-1", pathname: doc });
+    const result = await runMediaInventoryAndCopy({
+      databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-3.json`,
+      now: new Date("2026-10-06T09:00:00.000Z"),
+    });
+    expect(result.manifest.entries).toEqual([
+      expect.objectContaining({ photoId: "record:file-1", sourcePath: doc, status: "COPIED" }),
     ]);
     expect(result.manifest.unreferenced).toEqual([]);
   });

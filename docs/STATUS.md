@@ -85,9 +85,25 @@ including inside the registry files. Merge is sequenced by the lane heartbeat.
 Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
 ## October 26 — CI speed fixes across parallel lanes (PR #645)
 Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
+## October 26 — VAULT-1: business records (PR #658, CI green at the exact head; merging)
+
+Business paperwork is now **Business records**: kinds, issued/expiry dates, portal
+links, costs and compliance links on every record; numbers stored encrypted (the
+compliance field key) and shown only masked, owner-only when a number is on file;
+files in the private store, sniffed by magic bytes, with a verified large-PDF path;
+"Renewed…" keeps old files as history; the export pack (ZIP + PDF index, masked,
+audited) downloads from the list page; 19 new starters (32 total) with starter
+idempotency proven. Admins read only the kinds in the owner's new setting
+(DQ-VAULT-ADMIN-KINDS). Packet + five-item drift table are in the card. Local
+evidence: 10 unit + 14 integration tests green on the lane database, the existing
+paperwork suites (14) still green, money and plain-words checks pass; full CI
+green at the exact head on PR #658 (three Codex findings fixed with tests). The ACC-6 merged-status
+tidy-up rides this branch's first commit.
+
 ## October 26 — CMP-1: Compliance center (MERGED, PR #642, commit 238f7a57)
 
 The Compliance center is on main: the obligation registry with sources and 2026–2028 periods, business facts with the EIN encrypted (last 4 only), the prepare → approve (hash-bound) → submit filing flow, the To do COMPLIANCE_DUE category, the filled-form engine with the vendored 1040-ES booklet, and the Compliance screen (Coming up / Needs you / Done / Not needed). Four Codex review rounds were answered on the way in; the final head passed every check. The merged detail lives in the October 26 entry below and on the CMP-1 card. Still on Chris's checklist: set the compliance encryption key so the EIN box unlocks. Next for this lane: **CMP-3** (1099s and W-9s, plus the Form 8300 detector) on this foundation, then CMP-2.
+
 
 
 
@@ -173,6 +189,14 @@ Update 2026-10-26 ~18:25 MDT: while the round-3 patch was being verified, OPS-5 
 PR #616's checks came back all green at head beb787c4. Codex's review left two findings: a P2 — the two-step login page could be prerendered, so it kept offering "Remember this device" after the owner turned remembering off (already fixed in an earlier round by making the page request-rendered) — and a P1 — the My account "Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated between the page check and the write could still have their trust rows deleted. The forget now re-checks the actor inside the transaction (row lock + active-team check, the repo's rule), with unit tests for the active, deactivated, and internal-cleanup paths; internal cleanup (password, reset, email, owner actions) is unchanged. Typecheck clean, 27 focused unit tests pass. The rerun on the fix head then failed only the secret scan: the full-history scan reads every branch, and it flagged the same legal rule-name lines under main's TFA-1 merge commit (already allowlisted on main — this branch's copy was older) and under the leads lane's merge commits (not allowlisted anywhere). Main has been merged in, bringing the refreshed allowlist, and the four leads-branch fingerprints were added with the reason recorded in `.gitleaksignore` and the PR; every flagged line was read — they are tax rule names and a migration comment, not credentials. Next: exact-head CI, then reply to and resolve both review threads and merge.
 
 Update 2026-10-26 ~13:45 MDT: three more runs, each red on exactly one thing, all diagnosed and fixed in turn. Run 40370951794 (head 0627b5c2): everything green except browser-b — 164 passed but 3.0m against the 180s phase budget; feedback and staff-security moved b to c. Run 40386761485 (head 52207003): the scanner flagged the leads migration comment under LD-1's merge commit (50e265ec — one fingerprint added, reason recorded) and browser-c ran 3.1m with 109 passing (the desk-a route scan varies 120–183 test-seconds between runs). LD-1 then merged to main (#625), so main was merged in again here: conflicts in `.gitleaksignore` (union of both lanes' fingerprints), this file (both top entries kept) and the shard file resolved; LD-1's new lead-staff-detail spec assigned to browser-b, revenue-records moved c to a and my-account d to c from run 40386761485's measured times (a 2.3m, b 2.6m, d 2.9m). Next: exact-head CI on the merged tree, then reply to and resolve both review threads and merge.
+
+Update 2026-10-26 (merged): PR #628 — the rebuilt PR, after #616 was closed when its branch was
+reset — merged as 66543a92 at head eac60bcd, ci green at the exact head (one failed-jobs rerun
+for a browser-a phase-budget overrun on the PR-event run; a dispatched run on the same head was
+fully green; no review threads on #628). Main's own post-merge run passed the secret scan with
+no allowlist refresh, and PR #632 has since scoped the scan by commit range and rebalanced the
+browser groups. Card complete. The ACC-6 work-index/card merged notes ride the VAULT-1 branch
+(this entry's commit), per the lane plan.
 ## October 26 — LD-1: fix pushed, checks never started — needs one manual start
 
 PR #618 (leads pipeline engine) at `ac70fedc`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.

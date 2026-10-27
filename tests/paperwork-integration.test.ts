@@ -111,6 +111,23 @@ describe.skipIf(!enabled)("business paperwork on disposable Postgres", () => {
     expect(o.lastDoneOn).not.toBeNull();
   });
 
+  it("mark done also advances a repeating item's expiry date, and clears a one-time item's expiry", async () => {
+    // VAULT-1: reminders key off the earlier of dueOn and expiresOn, so a
+    // mark-done that only moved dueOn would leave an expiry-driven item
+    // overdue forever.
+    const expiring = await createPaperwork(ownerId, input({ title: `Expiring yearly ${tag}`, kind: "LICENSE", expiresOn: "2026-06-30", repeatEveryMonths: 12 }));
+    const onceExpiring = await createPaperwork(ownerId, input({ title: `Expiring once ${tag}`, kind: "LICENSE", status: "IN_PROGRESS", expiresOn: "2026-06-30" }));
+    const v1 = (await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: expiring } })).version;
+    const v2 = (await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: onceExpiring } })).version;
+    await markPaperworkDone(ownerId, expiring, v1, new Date("2026-10-23T18:00:00Z"));
+    await markPaperworkDone(ownerId, onceExpiring, v2, new Date("2026-10-23T18:00:00Z"));
+    const e = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: expiring } });
+    const o = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: onceExpiring } });
+    expect(e.expiresOn?.toISOString().slice(0, 10)).toBe("2027-06-30");
+    expect(o.expiresOn).toBeNull();
+    expect(o.dueOn).toBeNull();
+  });
+
   it("ignores a repeated 'mark done' so a renewal year is never skipped", async () => {
     const yearly = await createPaperwork(ownerId, input({ title: `Twice ${tag}`, dueOn: "2026-10-30", repeatEveryMonths: "12" }));
     await markPaperworkDone(ownerId, yearly, 1, new Date("2026-10-23T18:00:00Z"));

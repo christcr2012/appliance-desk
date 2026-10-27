@@ -95,3 +95,10 @@ re-checks the actor inside the transaction (the repo's row-lock rule); the inter
 change, reset, email change, method switch, owner actions) do not pass it and are unchanged. Three unit tests
 cover the active, deactivated, and internal-cleanup paths (27 focused unit tests pass; typecheck clean). Pushed
 for an exact-head rerun; on green, reply to and resolve both threads, then merge.
+
+Merged 2026-10-26: PR #628 (the rebuilt PR — #616 was closed automatically when its branch was reset onto
+current main after the snapshot history became unmergeable) went in as merge commit 66543a92 at head
+eac60bcd, with ci green at that exact head (one failed-jobs rerun for a browser-a phase-budget overrun on
+the PR-event run; a dispatched run on the same head was fully green; 0 review threads on #628). Both Codex
+findings stand disposed (P1 fixed, P2 already fixed — recorded in #628's body; the review tool could not
+resolve #616's threads after the history rewrite). Card complete. Next in this lane: VAULT-1.
