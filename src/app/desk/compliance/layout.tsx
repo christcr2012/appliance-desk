@@ -4,7 +4,7 @@ import { TaxesTabs } from "@/app/desk/sales-tax/taxes-tabs";
 export const metadata = { title: "Compliance", robots: { index: false, follow: false } };
 
 export default async function ComplianceLayout({ children }: { children: React.ReactNode }) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   return (
     <section className="mx-auto max-w-6xl space-y-5 pb-10">
       <header className="space-y-2 print:hidden">
