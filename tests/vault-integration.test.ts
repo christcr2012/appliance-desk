@@ -85,8 +85,10 @@ import {
   runEmergencyReminders,
   sendEmergencyCode,
   confirmEmergencyCode,
+  pauseChargesAsContact,
   updateEmergencySettings,
 } from "@/domains/vault/emergency";
+import { setChargesPaused } from "@/domains/continuity/actions";
 import { listVaultRotationAttention } from "@/domains/vault/attention";
 import { revokeOtherSessions } from "@/domains/security/sessions";
 import { setMethodSettings } from "@/domains/security/second-step";
@@ -709,5 +711,72 @@ describe.skipIf(!enabled)("VAULT-2 logins vault and emergency access (real Postg
     await deleteCredential(ownerId, uniId);
     await deleteCredential(ownerId, spaceId);
     await prisma.businessPaperwork.delete({ where: { id: recordId } });
+  });
+
+  it("emergency: a verified contact can pause automatic charges (only pause, owner told, once, inside the window)", async () => {
+    vi.mocked(sendEmail).mockReset();
+    vi.mocked(sendEmail).mockImplementation(async (input: { to: string; subject: string; text: string }) => {
+      m.sentMail.push(input);
+      return { sent: true, outcome: "SENT" };
+    });
+    await prisma.businessSettings.upsert({ where: { id: "singleton" }, create: { id: "singleton" }, update: {} });
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { chargesPausedAt: null, chargesPausedByUserId: null, chargesPausedNote: null } });
+    await updateEmergencySettings(ownerId, { enabled: true, contactName: "Pat", contactEmail: CONTACT_EMAIL, contactPhone: "", waitDays: 1 });
+    const { token } = await createEmergencyLink(ownerId);
+
+    // Before the contact has proved themselves, the pause is refused, whatever the link state.
+    await expect(pauseChargesAsContact(token)).rejects.toThrow(/can't pause/i);
+    await requestEmergencyAccess(token);
+    await expect(pauseChargesAsContact(token)).rejects.toThrow(/can't pause/i);
+    await expect(pauseChargesAsContact("not-a-real-token")).rejects.toThrow(/can't pause/i);
+    const view = await getEmergencyOwnerView(ownerId);
+    const requestId = view.active!.id;
+    await prisma.emergencyAccessRequest.update({ where: { id: requestId }, data: { waitEndsAt: new Date(Date.now() - 60_000) } });
+    m.sentMail.length = 0;
+    await sendEmergencyCode(token);
+    await expect(pauseChargesAsContact(token)).rejects.toThrow(/can't pause/i);
+    const code = m.sentMail.find((mail) => mail.subject.includes("emergency access code"))?.text.match(/\b(\d{6})\b/)?.[1];
+    expect(code).toBeTruthy();
+    await confirmEmergencyCode(token, code!);
+    const verified = await getPublicEmergencyState(token);
+    expect(verified).toMatchObject({ state: "verified", chargesPaused: false });
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).chargesPausedAt).toBeNull();
+
+    // The proven contact pauses: the switch is on, the note names them, the audit row names the request, the owner is told.
+    m.sentMail.length = 0;
+    expect(await pauseChargesAsContact(token)).toEqual({ changed: true });
+    const paused = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    expect(paused.chargesPausedAt).not.toBeNull();
+    expect(paused.chargesPausedByUserId).toBeNull();
+    expect(paused.chargesPausedNote).toBe("Paused by Pat through emergency access");
+    expect(m.sentMail.some((mail) => mail.subject === "Automatic charges were paused")).toBe(true);
+    expect(await getPublicEmergencyState(token)).toMatchObject({ state: "verified", chargesPaused: true });
+
+    // A second press changes nothing and writes no second audit line, and sends no second notice.
+    m.sentMail.length = 0;
+    expect(await pauseChargesAsContact(token)).toEqual({ changed: false });
+    expect(m.sentMail.filter((mail) => mail.subject === "Automatic charges were paused")).toHaveLength(0);
+    const audits = await prisma.auditLog.findMany({ where: { action: "continuity.charges_paused_emergency", entityId: requestId } });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]?.userId).toBeNull();
+
+    // The one download does not take the pause away; the link still shows the pause state afterwards.
+    await downloadEmergencyExport(token);
+    expect(await getPublicEmergencyState(token)).toMatchObject({ state: "consumed", canPause: true, chargesPaused: true });
+
+    // Only the owner turns charges back on, and the contact cannot pause again once the window closes.
+    expect(await setChargesPaused(ownerId, false, null)).toEqual({ changed: true, paused: false });
+    expect(await pauseChargesAsContact(token)).toEqual({ changed: true });
+    expect(await setChargesPaused(ownerId, false, null)).toEqual({ changed: true, paused: false });
+    await prisma.emergencyAccessRequest.update({ where: { id: requestId }, data: { exportExpiresAt: new Date(Date.now() - 60_000) } });
+    await expect(pauseChargesAsContact(token)).rejects.toThrow(/can't pause/i);
+    expect(await getPublicEmergencyState(token)).toMatchObject({ state: "consumed", canPause: false });
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).chargesPausedAt).toBeNull();
+
+    // Switching emergency access off stops the pause too.
+    await prisma.emergencyAccessRequest.update({ where: { id: requestId }, data: { exportExpiresAt: new Date(Date.now() + 3_600_000) } });
+    await updateEmergencySettings(ownerId, { enabled: false, contactName: "Pat", contactEmail: CONTACT_EMAIL, contactPhone: "", waitDays: 1 });
+    await expect(pauseChargesAsContact(token)).rejects.toThrow(/can't pause/i);
+    await prisma.auditLog.deleteMany({ where: { entityType: "EmergencyAccess", entityId: requestId } });
   });
 });

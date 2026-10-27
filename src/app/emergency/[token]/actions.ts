@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   confirmEmergencyCode,
+  pauseChargesAsContact,
   requestEmergencyAccess,
   sendEmergencyCode,
 } from "@/domains/vault/emergency";
@@ -69,4 +70,23 @@ export async function confirmCodeAction(
   }
   revalidatePath(`/emergency/${token}`);
   return { status: "done", message: "Code confirmed. Your download is ready below." };
+}
+
+export async function pauseChargesAction(
+  token: string,
+  _previous: EmergencyFlowState,
+): Promise<EmergencyFlowState> {
+  void _previous;
+  try {
+    const { changed } = await pauseChargesAsContact(token);
+    revalidatePath(`/emergency/${token}`);
+    return {
+      status: "done",
+      message: changed
+        ? "Automatic charges are paused. The owner has been told."
+        : "Automatic charges were already paused.",
+    };
+  } catch (error) {
+    return { status: "error", message: messageOf(error, "Charges could not be paused.") };
+  }
 }

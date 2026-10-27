@@ -11,6 +11,7 @@ import { makeSixDigitCode } from "@/domains/security/second-step-rules";
 import { textCodesReady } from "@/domains/security/second-step";
 import { VaultError } from "./unlock";
 import { pdfSafeText, wrapPdfText } from "./rules";
+import { pauseChargesForEmergencyContact } from "@/domains/continuity/actions";
 
 /**
  * VAULT-2: emergency access (spec §7) — designed in full, shipped OFF.
@@ -231,8 +232,8 @@ export type PublicEmergencyState =
   | { state: "denied" }
   | { state: "ready_for_code"; contactName: string }
   | { state: "code_sent"; contactName: string }
-  | { state: "verified"; contactName: string; exportExpiresAt: string }
-  | { state: "consumed" }
+  | { state: "verified"; contactName: string; exportExpiresAt: string; chargesPaused: boolean }
+  | { state: "consumed"; canPause: boolean; chargesPaused: boolean }
   | { state: "expired" };
 
 type RequestRow = NonNullable<Awaited<ReturnType<typeof findByToken>>>;
@@ -241,7 +242,12 @@ async function findByToken(token: string) {
   return prisma.emergencyAccessRequest.findUnique({ where: { tokenHash: hashToken(token) } });
 }
 
-function publicState(row: RequestRow, settings: EmergencySettings, now: Date): PublicEmergencyState {
+/** The contact may pause charges while the 24-hour window after the code is open, even after the one download. */
+function pauseWindowOpen(row: { status: string; exportExpiresAt: Date | null }, now: Date): boolean {
+  return (row.status === "VERIFIED" || row.status === "CONSUMED") && row.exportExpiresAt !== null && now <= row.exportExpiresAt;
+}
+
+function publicState(row: RequestRow, settings: EmergencySettings, now: Date, chargesPaused = false): PublicEmergencyState {
   if (!settings.enabled) return { state: "inactive" };
   const name = row.contactName ?? "the emergency contact";
   switch (row.status) {
@@ -254,11 +260,11 @@ function publicState(row: RequestRow, settings: EmergencySettings, now: Date): P
       return { state: "code_sent", contactName: name };
     case "VERIFIED":
       if (row.exportExpiresAt && now > row.exportExpiresAt) return { state: "expired" };
-      return { state: "verified", contactName: name, exportExpiresAt: row.exportExpiresAt?.toISOString() ?? "" };
+      return { state: "verified", contactName: name, exportExpiresAt: row.exportExpiresAt?.toISOString() ?? "", chargesPaused };
     case "DENIED":
       return { state: "denied" };
     case "CONSUMED":
-      return { state: "consumed" };
+      return { state: "consumed", canPause: pauseWindowOpen(row, now), chargesPaused };
     default:
       return { state: "inactive" };
   }
@@ -268,7 +274,37 @@ export async function getPublicEmergencyState(token: string, now = new Date()): 
   const row = await findByToken(token);
   if (!row) return { state: "inactive" };
   const settings = await getEmergencySettings();
-  return publicState(row, settings, now);
+  const paused = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { chargesPausedAt: true } });
+  return publicState(row, settings, now, paused?.chargesPausedAt != null);
+}
+
+/**
+ * OPS-8: the contact's "Pause all automatic charges". Needs the same proof as the download (a verified code, inside
+ * the 24-hour window) and the feature still switched on. It only stops new charges, late fees and reminders; it never
+ * refunds or cancels, and only the owner can turn charges back on. The owner is told by email and text.
+ */
+export async function pauseChargesAsContact(token: string, now = new Date()): Promise<{ changed: boolean }> {
+  const row = await findByToken(token);
+  const settings = await getEmergencySettings();
+  if (!row || !settings.enabled || !pauseWindowOpen(row, now)) {
+    throw new VaultError("This link can't pause charges. Confirm a code first, or contact the owner.");
+  }
+  const result = await prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<{ status: string; exportExpiresAt: Date | null }[]>`SELECT "status", "exportExpiresAt" FROM "EmergencyAccessRequest" WHERE "id" = ${row.id} FOR UPDATE`;
+    if (!locked[0] || !pauseWindowOpen(locked[0], now)) throw new VaultError("This link can't pause charges. Confirm a code first, or contact the owner.");
+    return pauseChargesForEmergencyContact(tx, { requestId: row.id, contactName: row.contactName }, now);
+  });
+  if (result.changed) {
+    try {
+      await remindOwner(
+        "Automatic charges were paused",
+        `${row.contactName ?? "Your emergency contact"} paused all automatic charges through emergency access. Nothing was refunded or cancelled. Turn charges back on from More > If something happens to me.`,
+      );
+    } catch {
+      // The pause is already saved and audited; a failed notice must not undo it.
+    }
+  }
+  return { changed: result.changed };
 }
 
 export async function requestEmergencyAccess(token: string, now = new Date()): Promise<{ ownerNotified: boolean }> {
