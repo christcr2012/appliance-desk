@@ -44,7 +44,11 @@ describe("creating a draft agreement", () => {
   function fakeTx() {
     const created: Record<string, unknown>[] = [];
     const tx = {
-      serviceAddress: { findUnique: vi.fn(async () => ({ customerId: "c1", customer: { archivedAt: null } })) },
+      serviceAddress: { findUnique: vi.fn(async () => ({ customerId: "c1", state: "CO", city: "Greeley", customer: { archivedAt: null } })) },
+      // FEETAX-2: the draft save runs the delivery readiness check; the
+      // fake address is confirmed into the state-collected jurisdiction.
+      addressTaxLocation: { findFirst: vi.fn(async () => ({ status: "VERIFIED", jurisdictions: [{ jurisdiction: { id: "tax-jurisdiction-co", name: "State of Colorado", level: "STATE", administration: "STATE_COLLECTED" } }] })) },
+      jurisdictionReadiness: { findUnique: vi.fn(async () => null) },
       auditLog: { create: vi.fn(async () => ({})) },
       rentalAgreement: { create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => (created.push(data), { id: "a1", ...data })) },
     };
