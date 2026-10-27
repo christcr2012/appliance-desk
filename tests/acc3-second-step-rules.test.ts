@@ -27,6 +27,9 @@ describe("ACC-3 second-step rules", () => {
   it("gives customers and unknown roles no methods", () => {
     expect(allowedMethodsFor("CUSTOMER", RECOMMENDED_METHOD_POLICY)).toEqual([]);
     expect(allowedMethodsFor("nobody", RECOMMENDED_METHOD_POLICY)).toEqual([]);
+    // ACCT-1: the accountant is outside the per-level policy; the authenticator
+    // app is always their method.
+    expect(allowedMethodsFor("ACCOUNTANT", RECOMMENDED_METHOD_POLICY)).toEqual(["TOTP"]);
   });
 
   it("allows text codes only when production, keys and the owner's switch are all true", () => {
