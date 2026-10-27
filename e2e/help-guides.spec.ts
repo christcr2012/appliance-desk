@@ -17,12 +17,13 @@ test("How do I has searchable 3-step answers, real links, keyboard and accessibl
     await expect(page.getByRole("heading", { level: 1, name: "How do I…?" })).toBeVisible();
     const search = page.getByRole("searchbox", { name: "Search questions" });
     await search.fill("refund");
-    await expect(page.getByText("How do I refund a payment?")).toBeVisible();
-    await expect(page.getByText("How do I take a card payment?")).toHaveCount(0);
+    const activeList = width < 1024
+      ? page.getByRole("list", { name: "How-to guides" })
+      : page.getByRole("table", { name: "How-to guides" });
+    await expect(activeList.getByText("How do I refund a payment?")).toBeVisible();
+    await expect(activeList.getByText("How do I take a card payment?")).toHaveCount(0);
     await search.fill("");
-    const question = width < 1024
-      ? page.getByRole("list", { name: "How-to guides" }).getByRole("link", { name: /How do I snooze a To do item/i })
-      : page.getByRole("table", { name: "How-to guides" }).getByRole("link", { name: "How do I snooze a To do item?" });
+    const question = activeList.getByRole("link", { name: "How do I snooze a To do item?" });
     await question.focus();
     await page.keyboard.press("Enter");
     const sheet = page.getByRole("dialog", { name: "How do I snooze a To do item?" });
