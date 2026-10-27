@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { RememberList, clearRememberedLists, followRememberedClick, readListPosition, rememberedListHref, saveListPosition } from "@/components/kit/remember-list";
 import { nav, resetNav } from "./kit-test-env";
 
 vi.mock("next/navigation", () => import("./kit-test-env"));
 beforeEach(() => { resetNav("/desk/billing"); sessionStorage.clear(); vi.restoreAllMocks(); });
-afterEach(() => { cleanup(); sessionStorage.clear(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); sessionStorage.clear(); vi.restoreAllMocks(); Reflect.deleteProperty(document.documentElement, "scrollHeight"); Reflect.deleteProperty(window, "innerHeight"); });
 
 describe("AR-11 tab-local list memory", () => {
   it("remembers filter and scroll but never rewrites direct filtered, hash, external or record URLs", () => {
@@ -36,9 +36,36 @@ describe("AR-11 tab-local list memory", () => {
     expect(rememberedListHref("/desk/billing")).toBe("/desk/billing");
     storage.mockRestore();
   });
+  it("does not recreate cleared list state when a signed-out page unmounts", () => {
+    resetNav("/desk/billing", "status=past-due");
+    const view = render(<RememberList />);
+    clearRememberedLists();
+    view.unmount();
+    expect(readListPosition("/desk/billing")).toBeNull();
+  });
+  it("waits for streamed rows before restoring a long list", async () => {
+    saveListPosition("/desk/billing", "?status=past-due", 315);
+    resetNav("/desk/billing", "status=past-due");
+    let height = 600;
+    Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, get: () => height });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    const main = document.createElement("main");
+    main.id = "main-content";
+    document.body.append(main);
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const view = render(<RememberList />);
+    expect(scrollTo).not.toHaveBeenCalled();
+    height = 1600;
+    await act(async () => { main.append(document.createElement("div")); await Promise.resolve(); });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 315, behavior: "auto" });
+    view.unmount();
+    main.remove();
+  });
   it("restores saved scroll after a matching list renders, and clears it at sign out", async () => {
     saveListPosition("/desk/billing", "?status=past-due", 315);
     resetNav("/desk/billing", "status=past-due");
+    Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, value: 2000 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
     const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
     const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation((fn) => { fn(0); return 1; });
     render(<RememberList />);

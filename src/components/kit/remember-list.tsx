@@ -12,6 +12,8 @@ export const REMEMBERED_LIST_PATHS = new Set([
 ]);
 export type ListPosition = { search: string; scrollY: number };
 const keyFor = (path: string) => `list:${path}`;
+// Revokes in-flight list subscriptions when sign-out clears tab-owned state.
+let memoryEpoch = 0;
 
 export function readListPosition(path: string): ListPosition | null {
   if (!REMEMBERED_LIST_PATHS.has(path) || typeof window === "undefined") return null;
@@ -64,6 +66,7 @@ export function followRememberedClick(
 }
 
 export function clearRememberedLists(): void {
+  memoryEpoch += 1;
   if (typeof window === "undefined") return;
   try {
     const keys = Array.from({ length: sessionStorage.length }, (_, i) => sessionStorage.key(i));
@@ -78,17 +81,44 @@ export function RememberList() {
   useEffect(() => {
     if (!REMEMBERED_LIST_PATHS.has(pathname)) return;
     const query = search ? `?${search}` : "";
+    const epoch = memoryEpoch;
     let scrollY = window.scrollY;
     const previous = readListPosition(pathname);
-    const frame = previous && previous.search === query && previous.scrollY > 0
-      ? requestAnimationFrame(() => window.scrollTo({ top: previous.scrollY, behavior: "auto" }))
-      : null;
+    let frame: number | null = null;
+    let expiry: number | null = null;
+    let observer: MutationObserver | null = null;
+    if (previous && previous.search === query && previous.scrollY > 0) {
+      const tryRestore = () => {
+        if (memoryEpoch !== epoch) return;
+        const root = document.scrollingElement ?? document.documentElement;
+        // The page may still be the much shorter loading skeleton. Restore only
+        // once its streamed content is tall enough to hold the saved position.
+        if (root.scrollHeight - window.innerHeight + 1 < previous.scrollY) return;
+        window.scrollTo({ top: previous.scrollY, behavior: "auto" });
+        observer?.disconnect();
+        if (expiry !== null) window.clearTimeout(expiry);
+      };
+      observer = new MutationObserver(tryRestore);
+      observer.observe(document.getElementById("main-content") ?? document.body, { childList: true, subtree: true });
+      expiry = window.setTimeout(() => {
+        observer?.disconnect();
+        if (memoryEpoch === epoch) {
+          const root = document.scrollingElement ?? document.documentElement;
+          window.scrollTo({ top: Math.min(previous.scrollY, Math.max(0, root.scrollHeight - window.innerHeight)), behavior: "auto" });
+        }
+      }, 7000);
+      frame = requestAnimationFrame(tryRestore);
+    }
     const onScroll = () => { scrollY = window.scrollY; };
-    const save = () => saveListPosition(pathname, query, scrollY);
+    const save = () => {
+      if (memoryEpoch === epoch) saveListPosition(pathname, query, scrollY);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pagehide", save);
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
+      if (expiry !== null) window.clearTimeout(expiry);
+      observer?.disconnect();
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", save);
       save();
