@@ -1,8 +1,11 @@
-## October 26 — MCP-2 PR #611 verified backup implementation
+## October 26 — MCP-2 PR #611 all tests green, finishing merge sync
 
-Branch `ai/chatgpt/mcp-2-backup-reliability`; latest `main` integrated.
-Local check: 28 focused tests and `check:quick` passed with refreshed dependencies.
-Remaining: exact-head CI, full review, guarded merge. No production data or stores touched.
+Branch `ai/chatgpt/mcp-2-backup-reliability`, PR #611. Full CI 40443264938
+passed all 11 jobs on previous head, including throwaway PostgreSQL, backup
+restore and five browser groups. Latest `main` merged before final exact-head
+CI/review; no real backup provider or production data was touched.
+
+## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
 
 ## October 26 — TFA-3: official-page watches with strict parsers (in progress)
 
@@ -27,11 +30,11 @@ including inside the registry files. Merge is sequenced by the lane heartbeat.
 Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
 
 ## October 26 — CI speed fixes across parallel lanes (PR #645)
-
 Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
-
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
+Branch `ai/claude/ops-6` (stacked on OPS-5). A nightly pass now watches bills that are past due and prepares the next step for you — a **second notice** on day 10, a **final notice** on day 20 (email text plus a printable letter), and a **decision** on day 30 (payment plan, pick up the appliance, or small claims). All three days are your settings. Nothing is sent, nothing is picked up and no money moves until you press the button; sending still goes through the normal message path, so it stays off while live email is off. Every message is written in "Robinson Appliance Rentals"'s own name. A **pickup** can be made only after you record that the customer agreed (or a court order), and never for a customer marked on active military duty without a recorded court order; "Customer objected" ends the visit with nothing taken and brings up small claims. The **small-claims packet** (PDF) gathers the bills and payments, notices sent, the appliance cost and the claim amount; it checks the $7,500 limit, the filing fee ($31 up to $500, otherwise $55) and the court's 2-a-month / 18-a-year limits from the rule book. You file it yourself. A test now fails if any agreement, quote or notice wording offers ownership or a purchase option. Proved so far: 24 new tests (pure rules and wording, ownership-wording scan, and 9 on a throwaway database); CI still to run. Not built: the court's own claim form is not copied into the app — the packet tells you to fill in JDF 250 from the Colorado Judicial Branch site so it is always the current one.
+## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 Branch `ai/claude/ops-2`. A retired refrigerator, freezer or mini-fridge can no longer be marked "scrapped" or "thrown away" (one at a time, in bulk, or as the leftovers of a parts-stripping) until its **refrigerant record** is signed on screen: refrigerant type, whether it was recovered (by whom, their address, certification number, equipment, date) or had already leaked, and the scrap yard's receipt number. The app prints the signed **statement** (PDF) to hand the scrap yard. The record is kept for **6 years** (a dated rule-book number; the federal rule asks for 3; not confirmed). Owner setting on the Retired appliances page: which kinds of appliance have refrigerant (starting value: refrigerators, freezers and mini-fridges; washers and dryers no). Migration `20261106000000_refrigerant` (additive). Proof: pure tests (`tests/ops2-refrigerant-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops2-refrigerant-integration.test.ts`), typecheck and lint clean.
 Not done: the **recycler receipt photo** (a text receipt number is saved instead; a photo needs a new private upload area) and the **sealed-system repair gate** (needs a technician certification record, which belongs to VAULT-1, not built yet). The Colorado-specific rule is not confirmed (DQ-OPS2-1).
 

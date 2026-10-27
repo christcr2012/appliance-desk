@@ -63,6 +63,9 @@ vi.mock("@/domains/exceptions/bank-payment-attention", () => ({
 vi.mock("@/domains/exceptions/dispute-attention", () => ({
   listDisputeAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/collection-attention", () => ({
+  listCollectionAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));

@@ -202,6 +202,13 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/inventory", role: "OWNER", fixture: "/desk/inventory" },
   { path: "/desk/disputes", role: "OWNER", fixture: "/desk/disputes" },
+  { path: "/desk/collections", role: "OWNER", fixture: "/desk/collections" },
+  {
+    path: "/desk/collections/[agreementId]",
+    role: "OWNER",
+    fixture: "A rental that is far behind on a bill",
+    manualOnlyReason: "CI seeds no overdue rental past the day-30 decision; the flow is covered by tests/ops6-collections-integration.test.ts.",
+  },
   {
     path: "/desk/disputes/[id]",
     role: "OWNER",

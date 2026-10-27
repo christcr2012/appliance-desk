@@ -5622,7 +5622,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-6",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5634,7 +5634,9 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-6-integration.test.ts"
+        "tests/ops6-collections-rules.test.ts",
+        "tests/ops6-no-ownership-wording.test.ts",
+        "tests/ops6-collections-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-6.md"
