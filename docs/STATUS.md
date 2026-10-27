@@ -1,7 +1,8 @@
-## October 27 — CMP-5: Hiring readiness (in build)
+## October 27 — CMP-5: Hiring readiness (merged)
 
-Branch `ai/vivienne/cmp-5` (owner decision 2026-10-27: build now, ahead of the first hire — the
-dormant-until-employees condition is lifted). The six payroll obligations CMP-1 registered (Form 941,
+MERGED via PR #679, squash `d22a76e8` on main (chain #674 → #676 → #679; the first two were closed
+unmerged for GitHub merge-check reasons only, the tree never changed). Built ahead of the first
+hire by owner decision 2026-10-27 — the dormant-until-employees condition is lifted. The six payroll obligations CMP-1 registered (Form 941,
 Form 940, W-2s, Colorado withholding, UI, FAMLI) already wake from the Business facts **employees**
 count; CMP-5 adds what was missing. New fact `firstHireDate` and a seventh payroll obligation,
 **co.payroll.new_hire** (Colorado new-hire report, due the first employee's start date + 20 days,

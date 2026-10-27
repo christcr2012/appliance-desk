@@ -5380,7 +5380,7 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #679, squash d22a76e8 on main (2026-10-27)",
       "migration": "20261112000000_cmp5_hiring (ComplianceProfile.firstHireDate, PAYROLL journal source, PayrollImport, WAGES + EMPLOYER_PAYROLL_TAXES accounts)",
       "budget": 200,
       "units": [
