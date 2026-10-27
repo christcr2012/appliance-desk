@@ -1,3 +1,9 @@
+## October 27 — Fix: closing the emergency link works in the same millisecond (branch `ai/claude/pause-window-edge`)
+
+CI caught a rare edge from the successor-pause work (#672): if "Close this link now" and the contact's Pause press landed in
+the very same millisecond, the pause still went through. The window is now strictly before its end. A test checks the exact
+closing instant. Nothing else changes.
+
 ## October 27 — OPS-3: vehicle-to-insurance link (branch `ai/claude/ops3-vehicle-insurance`)
 
 Each delivery vehicle can now be linked to the insurance policy that covers it. The vehicle page says "Insured by …,
