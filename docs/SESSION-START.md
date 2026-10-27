@@ -5,9 +5,10 @@ this file is archived in [archive/rules-reset-2026-10-23/](archive/rules-reset-2
 
 ## 1. Orient (5 minutes)
 
-1. `git fetch origin` and work from actual current `main`. Look at open PRs, their CI and unread review comments
-   (`gh api repos/christcr2012/appliance-desk/pulls?state=open`). **Finish ready PRs first; while their checks
-   run, continue an independent approved outcome rather than waiting. Never duplicate another agent's open work.**
+1. `git fetch origin` and work from actual current `main`. Review **your lane's** open PRs, CI and unread
+   review comments (`gh api repos/christcr2012/appliance-desk/pulls?state=open`). Fix an actionable blocker;
+   when checks/review are pending, continue eligible independent work rather than waiting. Never disturb another
+   agent's lane. A moving `main` alone does **not** require syncing an open PR.
 2. Read the top of [STATUS.md](STATUS.md) and `npm run work -- start` (names the active card). Trust the repo and
    GitHub over any chat handoff — handoffs go stale.
 3. Read [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) before hosted acceptance: use the seeded testing app,
@@ -32,11 +33,11 @@ building, then the complete tree once. Commands and the table of known CI failur
 
 ## 4. Publish and merge
 
-One push per CI cycle. Open the PR to `main` in plain English. `ci` and `review-gate` green at the
-exact head + every Codex finding replied to + every blocking review fixed → squash merge. Enable squash auto-merge
-when the ruleset requires **both** checks; otherwise wait to arm it until Reviewgate is green (see AGENTS §6).
-Other agents moving `main` do not force a branch update: reconcile only real merge conflicts. Update STATUS
-(short top entry). Do not wait for Vercel, a release, or any real-account acceptance.
+One push per CI cycle. Open the PR to `main` in plain English. `ci` and `review-gate` green at
+the exact head and all blocking review findings fixed → squash merge. Enable auto-merge immediately **only if**
+GitHub requires both checks; otherwise enable it once Reviewgate has actually passed (AGENTS §6). When GitHub
+reports a real conflict, reconcile both sides, but never sync just because `main` moved. In parallel, build
+an independent approved outcome. Update STATUS briefly; do not wait for a release or real-account acceptance.
 
 ## 5. Close out
 

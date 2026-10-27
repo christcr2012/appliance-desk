@@ -58,6 +58,13 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   credential in chat or source control. Ready when: the checked nightly release has installed MCP-2.
   You'll know it worked when a daily backup has a checked date and the last complete recovery set shows a date;
   do not tick this for a local test or until that hosted evidence appears.
+- [ ] **Connect your preferred AI assistant to Appliance Desk (MCP-3).** After the checked release makes the
+  System health → Connect an AI assistant card available, open your assistant's Settings → Connectors → Add custom
+  connector. Copy the address from that card, sign in to Appliance Desk with your usual second step, read the
+  requested permissions, and tap Allow only for an assistant you trust. Ready when MCP-3/4 are released and the
+  app displays its MCP address. You'll know it worked when the app lists the assistant as Connected and the assistant
+  can report its own connected identity. To test instant disconnect, use the app's Disconnect button and confirm the
+  next assistant request is refused. Do not check this row from local developer tests alone.
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 

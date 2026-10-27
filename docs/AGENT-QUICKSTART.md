@@ -26,11 +26,15 @@ DB, reset from the parent, copy production identities, or mark business tax sett
 
 ## The loop
 
-Check active PRs to avoid duplicate work → branch `ai/<tool>/<topic>` from `main` → build the **whole**
-approved outcome with tests and documentation → focused checks + `npm run check:quick` → **one push and one full CI**
-→ open PR (plain English) → respond to every Codex finding (or self-review the final code commit under AGENTS §6)
-→ `ci` and `review-gate` green → squash auto-merge when both are required; otherwise enable auto-merge only once
-Reviewgate is green. Keep building a non-overlapping outcome during CI. Never sync just because `main` moved.
+Follow the **Speed-first execution protocol** in AGENTS.md: bundle connected outcomes, not unrelated risks;
+continue independent approved work while a finished PR is in CI/review. Do not sync for a moving main
+unless GitHub reports an actual conflict. The merge is always gated, never forced.
+
+Check lane PRs → take the next non-overlapping complete outcome → focused checks +
+`npm run check:quick` → **one push and one full CI** → review every Codex finding and reply
+(or self-review under AGENTS §6) → exact-head `ci` + `review-gate` green → squash auto-merge,
+immediately only when both checks are required in the GitHub ruleset; otherwise arm after Reviewgate
+passes. Keep building independent work while CI runs. Never sync just because `main` moved.
 
 ## When CI is red
 

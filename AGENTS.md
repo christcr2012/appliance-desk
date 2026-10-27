@@ -91,6 +91,26 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
     remedies, record it once (STATUS + checklist if it needs Chris), and continue independent work. Stop early only
     with concrete evidence that no eligible approved work remains.
 
+## Speed-first execution protocol (within sections 1–2 and 6)
+
+1. **Choose by outcome and risk, not arbitrary PR count.** Group adjacent approved roadmap cards that share
+   screens and one security/provider boundary when they make one testable feature. A high-risk boundary (OAuth,
+   payments, personal data, permission changes) may merit its own complete PR. Never create micro-PRs or bundle
+   unrelated providers just to reach a target number.
+2. **A PR has one expensive CI cycle.** Finish the implementation, tests, docs and focused checks before pushing.
+   Use the full GitHub suite for the finished head; do not repeatedly run full local suites after small edits.
+   If CI goes red, gather every failing check, fix the group and push one corrected head.
+3. **Pipeline, not queue.** An open PR waiting for `ci`, `review-gate`, Codex or allowed auto-merge does not stop
+   unrelated approved development. Resume its review when a result actually changes. Do not poll or rebase just
+   because another agent merged to `main`. Resolve a reported real merge conflict before trying again.
+4. **Never trade correctness for throughput.** Keep access checks, real-database sensitive tests, hooks,
+   additive migrations and required checks. If a sandbox cannot finish its checks due to documented resource
+   constraints, use the repository's authorized sandbox transfer and GitHub CI route; record what was and
+   was not verified instead of weakening or silently skipping checks.
+5. **Publish complete outcomes and record blockers once.** One blocked PR does not freeze the next independent
+   roadmap outcome. Auto-merge is a convenience, not permission to bypass review, branch protections or hard
+   limits. Report completed vs merged vs externally unverified separately.
+
 ## 3. Definition of Done
 
 1. No placeholders, stubs, TODO-as-implementation or mock data presented as real.
@@ -138,17 +158,6 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
   (ready for review, review threads, auto-merge). A `create_blob` call does not move a branch: commit and update the
   ref within a few blobs, then verify the remote SHA.
 - External waits (CI) are checkpoints: do other eligible work, then re-check at a real transition. No poll loops.
-- **Assembly-line delivery (Chris, 2026-10-27):** At session start check open PRs and actual `main`, then take the
-  next approved, non-overlapping outcome. Prefer completing 2–3 closely related whole roadmap items in one usable
-  PR when they share the same screen/data and safety boundary; different providers or permission/money risks get
-  separate PRs. These numbers are a planning aid, never a PR quota or reason to delay a finished outcome.
-- **Build once, test once:** inspect existing code before adding new code, put data, server rules, UI, errors,
-  acceptance tests and a short card/STATUS update into the same change. Run focused tests and quick checks before
-  the push. Run the full CI suite once on the complete PR tree, not after each tiny edit.
-- **Coordinate concurrent agents by files, not age:** do not start work another open PR already owns, do not
-  rewrite another agent's branch, and prefer independent files while their CI runs. After a merge, take the next
-  item without rereading every evergreen document. Never synchronize branches merely because `main` advanced.
-  A *real* GitHub merge conflict does require careful reconciliation of both sides before merge.
 
 ## 6. Branches, PRs, review, merge
 

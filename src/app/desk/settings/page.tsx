@@ -36,6 +36,8 @@ import { AppliancePricingTable } from "./appliance-pricing-table";
 import { PackageTable } from "./package-table";
 import { listPackagesForSettings } from "@/domains/packages";
 import { TeamSection } from "./team-section";
+import { CertificationSection } from "./certification-section";
+import { listTeamCertifications } from "@/domains/certifications/actions";
 import { CustomerEmailSwitch } from "./customer-email-switch";
 import { SmsTemplatePreview } from "./sms-template-preview";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
@@ -222,8 +224,9 @@ export default async function DeskSettingsPage({
       </Card>
     );
   } else if (section === "staff") {
-    const [team, teamSettings, jobRoles] = await Promise.all([getTeam(), getTeamSettings(), listJobRoles({ includeArchived: session.user.role === "OWNER" })]);
+    const [team, teamSettings, jobRoles, certifications] = await Promise.all([getTeam(), getTeamSettings(), listJobRoles({ includeArchived: session.user.role === "OWNER" }), session.user.role === "OWNER" ? listTeamCertifications() : Promise.resolve([])]);
     content = (
+      <>
       <Card title="Team">
         <TeamSection
           viewerRole={session.user.role === "OWNER" ? "OWNER" : "ADMIN"}
@@ -234,6 +237,12 @@ export default async function DeskSettingsPage({
           invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString() }))}
         />
       </Card>
+      {session.user.role === "OWNER" ? (
+        <Card title="Refrigerant certifications">
+          <CertificationSection people={certifications.map((c) => ({ id: c.id, name: c.name, role: c.role, certification: c.certification ? { certificationNumber: c.certification.certificationNumber, issuedOn: c.certification.issuedOn ? c.certification.issuedOn.toISOString().slice(0, 10) : null } : null }))} />
+        </Card>
+      ) : null}
+      </>
     );
   } else if (section === "website") {
     content = (

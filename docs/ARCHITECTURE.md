@@ -1,3 +1,7 @@
+## Optional AI assistant connection (MCP-3, in development)
+
+`MCP_ISSUER_URL` is the canonical HTTPS origin of the app authorized to issue assistant access tokens. If unset or malformed, the OAuth plugin and assistant endpoints remain unavailable. Never derive the issuer from incoming host headers or reuse public photo-storage credentials. Authentication relies on the existing invitation-only owner/admin sign-in and second step, an explicit consent screen, and persisted connections. A connection is denied immediately after revocation or a role/archive change. This section describes the proposed feature under construction, not a deployed or verified working connection.
+
 ## Dedicated testing environment (owner-approved October 24)
 
 [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) is authoritative for the hosted testing app, reset/seed contract,
