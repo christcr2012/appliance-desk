@@ -3450,6 +3450,8 @@ model BusinessSettings {
   lateFeeNoticeDaysBefore Int @default(2)
   // FEE-1: the day Chris confirmed the Colorado consumer-lease notification was filed (before the first household rental over 4 months). Null = not yet.
   ucccNotificationFiledOn DateTime?
+  // DEC-2: when the owner last marked the researched starting values as reviewed (To do item until then).
+  decisionsReviewedAt     DateTime?
   taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
   taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)

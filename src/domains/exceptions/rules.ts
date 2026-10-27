@@ -45,6 +45,7 @@ export type ExceptionCategory =
   | "BANK_PAYMENT_SLOW"
   | "PAYMENT_DISPUTE"
   | "LATE_FEE_REVIEW"
+  | "DECISIONS_STARTING_VALUES"
   | "HELD_PAYMENT_DECISION"
   | "DEPOSIT_DECISION"
   | "NEW_LEAD_CONTACT"
@@ -863,6 +864,18 @@ export function lateFeeReviewException(row: {
     amountCents: row.amountCents,
     since: row.dueOn ?? new Date(0),
     ...(row.dueOn ? { dueOn: row.dueOn, dueDateOnly: true } : {}),
+  };
+}
+
+/** DEC-2: researched starting values now run the app; the owner reviews them or sends the tax ones to the CPA. */
+export function startingValuesAppliedException(input: { count: number; newest: Date }): ExceptionItem {
+  return {
+    category: "DECISIONS_STARTING_VALUES",
+    severity: "medium",
+    title: `${input.count} starting value${input.count === 1 ? " is" : "s are"} now in use`,
+    detail: "Researched answers for tax and rental questions. Review them, or send the tax ones to your CPA.",
+    href: "/desk/settings/decisions?state=starting_value",
+    since: input.newest,
   };
 }
 

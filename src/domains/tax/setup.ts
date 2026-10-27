@@ -572,6 +572,11 @@ export async function addManualTaxRateVersion(actorId: string, input: {
   rateMilliPercent: number;
   sourceNote: string;
 }): Promise<string> {
+  checkManualRateInput(input);
+  return prisma.$transaction(tx => addManualTaxRateVersionInTx(tx, actorId, input));
+}
+
+function checkManualRateInput(input: { effectiveFrom: Date; rateMilliPercent: number; sourceNote: string }) {
   date(input.effectiveFrom, "effective date");
   const key = businessDateKey(input.effectiveFrom);
   const effectiveFrom = businessDateFromKey(key);
@@ -579,31 +584,39 @@ export async function addManualTaxRateVersion(actorId: string, input: {
   const rateMilliPercent = cents(input.rateMilliPercent, 100_000, "rate");
   const sourceNote = textField(input.sourceNote, 500, "official rate evidence");
   if (!sourceNote) throw new Error("Explain the official rate evidence.");
-  return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
-    const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
-      where: { id: input.jurisdictionId }, select: { id: true },
-    });
-    const latest = await tx.taxRateVersion.findFirst({
-      where: { jurisdictionId: jurisdiction.id }, orderBy: { effectiveFrom: "desc" },
-    });
-    if (latest && effectiveFrom <= latest.effectiveFrom)
-      throw new Error("New rate must follow the existing history; review corrections separately.");
-    const row = await tx.taxRateVersion.create({
-      data: {
-        jurisdictionId: jurisdiction.id, effectiveFrom, rateMilliPercent,
-        source: "MANUAL", sourceNote, recordedByUserId: actorId,
-      }, select: { id: true },
-    });
-    await tx.auditLog.create({
-      data: {
-        userId: actorId, action: "tax.setup.rate_version_appended",
-        entityType: "TaxRateVersion", entityId: row.id,
-        newValue: { jurisdictionId: jurisdiction.id, effectiveDate: key, rateMilliPercent },
-      },
-    });
-    return row.id;
+  return { key, effectiveFrom, rateMilliPercent, sourceNote };
+}
+
+/** The same save inside a caller's transaction (Decisions & reviews: the city rate answer, DEC-2). */
+export async function addManualTaxRateVersionInTx(
+  tx: Prisma.TransactionClient,
+  actorId: string,
+  input: { jurisdictionId: string; effectiveFrom: Date; rateMilliPercent: number; sourceNote: string },
+): Promise<string> {
+  const { key, effectiveFrom, rateMilliPercent, sourceNote } = checkManualRateInput(input);
+  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
+  const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
+    where: { id: input.jurisdictionId }, select: { id: true },
   });
+  const latest = await tx.taxRateVersion.findFirst({
+    where: { jurisdictionId: jurisdiction.id }, orderBy: { effectiveFrom: "desc" },
+  });
+  if (latest && effectiveFrom <= latest.effectiveFrom)
+    throw new Error("New rate must follow the existing history; review corrections separately.");
+  const row = await tx.taxRateVersion.create({
+    data: {
+      jurisdictionId: jurisdiction.id, effectiveFrom, rateMilliPercent,
+      source: "MANUAL", sourceNote, recordedByUserId: actorId,
+    }, select: { id: true },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId: actorId, action: "tax.setup.rate_version_appended",
+      entityType: "TaxRateVersion", entityId: row.id,
+      newValue: { jurisdictionId: jurisdiction.id, effectiveDate: key, rateMilliPercent },
+    },
+  });
+  return row.id;
 }
 

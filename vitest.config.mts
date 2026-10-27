@@ -24,6 +24,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/stored-file-cleanup-integration.test.ts", // Older findings: changes and restores the shared file-keeping days settings.
   "tests/scheduled-prices-integration.test.ts", // O-4 the nightly job applies every due change in the database; it must not overlap the set-price suite.
   "tests/scheduled-package-prices-integration.test.ts", // O-4 same nightly job as above, for rental sets.
+  "tests/starting-values-integration.test.ts", // DEC-2 archives other owners and looks at every question; must not overlap other tests.
   "tests/decisions-integration.test.ts", // DEC-1a changes/restores shared tax settings and an all-state default tax rule; runs the same nightly job.
   "tests/settings-undo-integration.test.ts", // O-1 changes and restores shared BusinessSettings fields and reads the settings audit history.
   "tests/bank-reconciliation-integration.test.ts",
