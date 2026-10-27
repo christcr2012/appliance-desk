@@ -1,3 +1,15 @@
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
+
+
+
 ## October 27 — VAULT-2: Logins vault and emergency access (in build)
 
 Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
