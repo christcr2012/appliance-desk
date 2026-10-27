@@ -25,10 +25,12 @@ export async function saveVehicle(actorUserId: string, vehicleId: string | null,
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     if (data.insurancePolicyId) {
-      // Lock the policy first (the order the insurance screen uses) and make sure it is a live one.
+      // Lock the policy first (the order the insurance screen uses). A NEW link must be a live policy; keeping the link
+      // a vehicle already has is always allowed, so saving an unrelated change never fails or drops it.
       await tx.$queryRaw`SELECT "id" FROM "OwnerInsurancePolicy" WHERE "id" = ${data.insurancePolicyId} FOR UPDATE`;
+      const current = vehicleId ? await tx.fleetVehicle.findUnique({ where: { id: vehicleId }, select: { insurancePolicyId: true } }) : null;
       const policy = await tx.ownerInsurancePolicy.findUnique({ where: { id: data.insurancePolicyId }, select: { archivedAt: true } });
-      if (!policy || policy.archivedAt) throw new VehicleError("Pick an insurance policy that is still on your list.");
+      if (!policy || (policy.archivedAt && current?.insurancePolicyId !== data.insurancePolicyId)) throw new VehicleError("Pick an insurance policy that is still on your list.");
     }
     if (vehicleId) {
       await tx.$queryRaw`SELECT "id" FROM "FleetVehicle" WHERE "id" = ${vehicleId} FOR UPDATE`;
