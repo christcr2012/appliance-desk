@@ -11,7 +11,7 @@ import {
 export type StepResult = { status: "success"; message?: string } | { status: "error"; message: string };
 
 async function run(fn: (userId: string) => Promise<string | undefined>, fallback: string): Promise<StepResult> {
-  const session = await requireRoleForTwoFactorSetup("OWNER", "ADMIN", "STAFF");
+  const session = await requireRoleForTwoFactorSetup("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   try {
     const message = await fn(session.user.id);
     revalidatePath("/desk/account");
