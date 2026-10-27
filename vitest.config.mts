@@ -155,6 +155,7 @@ const SHARED_SETTINGS_TESTS = [
   // on and off, and work through whole-database queues (billing hand-offs, waiting notices, due terminations), so they
   // run one after another and never beside each other.
   "tests/scenarios/**/*.test.ts",
+  "tests/payroll-import-integration.test.ts", // CMP-5 sets and restores the shared Books start date and the compliance facts (employees, first hire date).
 ];
 
 export default defineConfig({
