@@ -57,6 +57,7 @@ const newJobSchema = z.object({
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   assignedToUserId: z.string().trim().max(64).optional().or(z.literal("")),
   durationMinutes: z.number().int().min(15).max(720).nullable().optional(),
+  sealedSystem: z.boolean().optional(),
   confirmedConflictJobIds: z.array(z.string().trim().min(1).max(64)).max(50).optional(),
 });
 
@@ -119,6 +120,7 @@ export async function createJobAction(
         scheduledAt,
         durationMinutes: data.durationMinutes ?? null,
         assignedToUserId: data.assignedToUserId || null,
+        sealedSystem: data.sealedSystem === true,
         serviceAddressId: data.serviceAddressId,
         confirmedConflictJobIds: data.confirmedConflictJobIds ?? [],
       });
@@ -132,6 +134,7 @@ export async function createJobAction(
       type: data.type,
       scheduledAt,
       assignedToUserId: data.assignedToUserId || null,
+      sealedSystem: data.sealedSystem === true,
       durationMinutes: data.durationMinutes ?? null,
       confirmedConflictJobIds: data.confirmedConflictJobIds ?? [],
       customerId: data.customerId || null,

@@ -105,6 +105,7 @@ model User {
   // MCP-10a app feedback (reports about the app, never appliance repairs).
   feedbackReports FeedbackReport[] @relation("FeedbackReporter")
   feedbackEntries FeedbackEntry[]  @relation("FeedbackEntryAuthor")
+  teamCertifications TeamCertification[] @relation("TeamCertificationUser")
 }
 
 model Session {
@@ -1948,6 +1949,8 @@ model Job {
   @@index([agreementId])
   @@index([maintenanceRequestId])
   @@index([assignedToUserId, scheduledAt])
+  /// OPS-2: a repair on a sealed refrigerant system. Only someone with a refrigerant certification on file may be assigned.
+  sealedSystem     Boolean   @default(false)
 }
 
 // An agreement item that was NOT delivered on the delivery visit that started
@@ -6554,6 +6557,21 @@ enum RefrigerantOutcome {
 
 // OPS-2: what happened to the refrigerant in a retired appliance before it was scrapped or thrown away (40 CFR 82.155:
 // the scrap yard must get a signed statement). Kept for the rule-book number of years (records.refrigerant_keep_years).
+/// OPS-2: a team member's refrigerant (EPA Section 608 Type I) certification, entered by the owner. One per person per kind.
+model TeamCertification {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation("TeamCertificationUser", fields: [userId], references: [id], onDelete: Restrict)
+  kind                String   @default("EPA_608_TYPE_I")
+  certificationNumber String
+  issuedOn            DateTime?
+  createdByUserId     String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, kind])
+}
+
 model RefrigerantRecord {
   applianceId      String   @id
   appliance        Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
