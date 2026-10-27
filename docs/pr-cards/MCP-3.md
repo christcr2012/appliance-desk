@@ -44,6 +44,23 @@ type definitions and the repo's identity/2FA rules. Acceptance requires:
 This card and plan commit are not proof of implementation. Nothing is released yet.
 
 
+### Verified incremental work, October 27 (still unshipped)
+
+The current branch incorporates merged MCP-2 (#611) and main through bc204189.
+Four issuer/redirect/scope checks, nine MCP request-authority tests and four streamed
+size-cap tests passed locally (17/17). A disposable PostgreSQL instance applied the
+OAuth migration and passed three real-database revocation tests, including concurrent
+submissions, cross-account access and a role downgraded after sign-in. Disconnect now
+atomically revokes the connection, OAuth access/refresh grants and consent.
+Owner connection inventory includes admins' connections. The resource-client import
+uses the SDK's actual resource-client export, not the obsolete build-spec spelling.
+
+NOT COMPLETE: real OAuth SDK authorize/consent/token/refresh/whoami roundtrip,
+registration and metadata SSRF adversarial coverage, owner phone/keyboard/axe proof,
+full TypeScript/quick check, CI and review. The 4 GB sandbox exhausted TypeScript
+heap in a full project run; this is not a compiler pass. Do not enable a real issuer
+or publish the draft connection to production as tested.
+
 ### Working checkpoint, 2026-10-27
 
 Branch `ai/chatgpt/mcp-3-oauth-connect` contains the saved acceptance plan, correctly pinned OAuth/MCP SDKs, conditional issuer and read-only scope definitions, initial OAuth metadata/MCP bearer route, generated eight OAuth models and additive `McpConnection` migration, backup exclusions, restore-to-revoked treatment, and draft consent/disconnect screens. Four issuer/scope/redirect tests passed; Prisma schema validation and client generation passed with **synthetic local connection strings**. This is **not shipped** and must not be treated as working OAuth until the SDK end-to-end roundtrip, real disposable database tests, quick checks, screen/accessibility acceptance, and exact-head CI/review are all verified. In particular, registration abuse limits, audit on approval, and token/consent edge cases still require verification and repair.

@@ -1,3 +1,12 @@
+## October 27 — MCP-3 OAuth hardening checkpoint (still unshipped)
+
+PR #611 MCP-2 is merged with final-head green CI; MCP-3 remains in its separate
+branch. MCP-3 now denies stale-owner/admin grants, revokes refresh/access/consent
+records atomically and tests those rules on disposable PostgreSQL (3/3 passing).
+Its bearer/request/issuer tests and stream-size tests passed (17 focused tests).
+The complete OAuth client handshake and CI are NOT yet verified. No live issuer,
+customer email/SMS/payment or production database change was made.
+
 ## October 27 — Lane 2 MCP-3 secure assistant connection (in progress, not shipped)
 
 Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Thirteen focused tests passed; scoped TypeScript checking exposed three fixable errors. New OAuth revocation tests require disposable PostgreSQL verification. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 merged at bc204189 after exact-head CI and resolved reviews. No customer data, hosting settings, production keys or live communications changed.

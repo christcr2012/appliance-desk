@@ -1,15 +1,13 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateMcpRequest } from "@/domains/agent-control/authorization";
 import { buildMcpServer } from "@/mcp/server";
+import { mcpPostBodyTooLarge } from "@/mcp/request-size";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function handle(request: Request): Promise<Response> {
-  if (request.method === "POST") {
-    const length = Number(request.headers.get("content-length") ?? "0");
-    if (length > 1_048_576) return new Response("Request too large.", { status: 413 });
-  }
+  if (await mcpPostBodyTooLarge(request)) return new Response("Request too large.", { status: 413 });
   const context = await authenticateMcpRequest(request);
   if (context instanceof Response) return context;
   const server = buildMcpServer(context);
