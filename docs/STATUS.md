@@ -1,3 +1,7 @@
+## October 27 — MCP-3 backup recovery compatibility, CI follow-up (unmerged)
+
+The OAuth tables are deliberately excluded from business backup. The backup restore dependency scanner previously rejected ANY `@@map` model, even an excluded OAuth model, which caused CI unit/restore failures. The parser now allows excluded mapped tables but still rejects restoring mapped business tables. Backup policy test fixtures list the OAuth exclusions explicitly. Focused backup tests passed 15/15, and real disposable-PostgreSQL restore drill passed 1/1; changed-file ESLint, secret/migration and route checks passed. All three reviewer threads on PR #692 have a code fix, reply and resolution. Final-head CI and Reviewgate remain before auto-merge.
+
 ## October 27 — MCP-3 PR #692 review fixes (in progress, not merged)
 
 GitHub PR #692 was published through the documented sandbox-transfer route with auto-merge enabled. Three reviewer findings are being fixed: disconnected signed tokens must stay invalid after reconnect, consent/disconnect must serialize, and older active assistants must remain visible to disconnect. The owner-triggered GitHub CI run and `review-gate` must pass at the final head; no deployment settings were changed.

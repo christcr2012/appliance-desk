@@ -25,6 +25,10 @@ MCP-3 ships `appliance_whoami` only, so the full sign-in → call → disconnect
 ## Owner checklist
 "Connect Claude to Appliance Desk" (spec section 9). Never blocks merging.
 
+## October 27 backup restore compatibility proof
+
+Follow-up fixes backup order introspection to skip excluded mapped OAuth models without allowing mapped business tables into restore; the backup-test independent exclusion list now enumerates all eight OAuth secret/token models. `tests/backup-table-order.test.ts` and `tests/backup.test.ts` passed 15/15, and `tests/backup-restore-integration.test.ts` passed 1/1 against migrated disposable PostgreSQL. Three Codex review findings were replied to and marked resolved after corresponding regression tests. Final merged-head CI and browser proof still pending.
+
 ## October 27 review regression evidence (PR #692)
 
 The locally tested security patch rotates a signed-token connection generation on re-approval and rejects all old JWTs. Disposable-PostgreSQL `tests/mcp-oauth-roundtrip-integration.test.ts` now exercises approval → PKCE → token/refresh → MCP SDK → concurrent Disconnect → refused stale Allow → re-approval → old JWT still refused (1/1 passed); `tests/mcp-revocation-integration.test.ts` passed 3/3 with real database and concurrent revocation. `tests/mcp-oauth-security.test.ts` plus `tests/mcp-assistant-connections.test.tsx` passed 11/11 (including hidden active connection beyond 30 old history items); changed-file ESLint and migration-safety checker passed. The first owner-dispatched CI run on pre-review head failed typechecking because a `vitest it.each` callback inferred an incompatible tuple type; that test definition is corrected in this patch. Full final-head CI, browser/axe, and Reviewgate still pending; no live provider/owner acceptance claimed.
