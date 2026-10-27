@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { useOptimisticAction } from "@/components/kit/use-optimistic-action";
 import { clearToasts, TOAST_UNDO_MS, Toaster } from "@/components/kit/toaster";
 import type { ActionSpec } from "@/components/kit/types";
@@ -75,14 +75,8 @@ describe("AR-11 useOptimisticAction", () => {
       action,
       confirm: { title: "Take payment?", summary: "This can't be undone.", confirmLabel: "Pay" },
     };
-    let run!: ReturnType<typeof useOptimisticAction<string, string>>["run"];
-    function Guarded() {
-      const result = useOptimisticAction<string, string>([], (all, key) => [...all, key], formSpec);
-      run = result.run;
-      return <p>{result.items.join(",")}</p>;
-    }
-    render(<Guarded />);
-    expect(() => run("charge", new FormData(), { success: "Paid" })).toThrow(/cannot run optimistically/);
+    const { result } = renderHook(() => useOptimisticAction<string, string>([], (all, key) => [...all, key], formSpec));
+    expect(() => result.current.run("charge", new FormData(), { success: "Paid" })).toThrow(/cannot run optimistically/);
     expect(action).not.toHaveBeenCalled();
   });
 

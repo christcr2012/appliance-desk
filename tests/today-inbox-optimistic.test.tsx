@@ -36,7 +36,7 @@ function Harness({
 async function openAndSubmit() {
   await act(async () => fireEvent.click(screen.getByRole("link", { name: "Snooze this task" })));
   expect(screen.getByRole("dialog", { name: "Snooze this item" })).toBeInTheDocument();
-  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Snooze", exact: true })));
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Snooze" })));
 }
 describe("AR-11 Today inbox shared optimistic helper", () => {
   it("sends the unchanged Snooze fields, hides immediately and offers confirmed Undo", async () => {
