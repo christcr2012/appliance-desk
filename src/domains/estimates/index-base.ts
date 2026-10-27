@@ -6,6 +6,11 @@ import { followUpEmailCopy, quoteEmailCopy } from "@/domains/language/transactio
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import { locateServiceAddress } from "@/domains/tax/locations";
 import {
+  assertDeliveryReadyInTx,
+  deliveryTaxReadinessWith,
+  recordReadinessOverrideInTx,
+} from "@/domains/tax/delivery-readiness";
+import {
   createLeadManually,
   convertLeadToCustomerInTx,
   sendCustomerActivationEmail,
@@ -642,6 +647,21 @@ export async function approveEstimate(
       throw new Error("This estimate's verified all-in order has changed or was never reviewed. Request an updated estimate before approval.");
     }
 
+    // FEETAX-2: the customer-facing delivery-area refusal. The quote
+    // gate above already keeps unready addresses out of a READY quote;
+    // this names the real reason in the words the spec sets for
+    // customers instead of the generic change message.
+    const preparedForReadiness = await tx.rentalAgreement.findMany({
+      where: { sourceEstimateId: id },
+      select: { serviceAddressId: true },
+    });
+    for (const prepared of preparedForReadiness) {
+      const readiness = await deliveryTaxReadinessWith(tx, prepared.serviceAddressId);
+      if (!readiness.ready) {
+        throw new Error("We don't deliver there yet — call us.");
+      }
+    }
+
     // The offered option is validated under the same row lock as the final quote:
     // stale/replaced options cannot be accepted and no scheduling occurs here.
     const { readOfferedSlots, recordEstimateDeliverySelectionInTx } =
@@ -757,8 +777,43 @@ export async function requestEstimateChanges(id: string, message: string) {
 }
 
 export type ConvertEstimateInput =
-  | { mode: "single"; serviceAddressId: string }
-  | { mode: "per-property" };
+  | { mode: "single"; serviceAddressId: string; overrideReason?: string }
+  | { mode: "per-property"; overrideReason?: string };
+
+/**
+ * FEETAX-2: conversion creates real orders, so every resulting
+ * agreement's address must be ready to deliver to. The owner may
+ * override a "rules not decided" refusal per agreement with a reason
+ * (audited); anything else refuses the conversion.
+ */
+async function assertConversionReadinessInTx(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  agreementIds: string[],
+  overrideReason: string | undefined,
+): Promise<void> {
+  const agreements = await tx.rentalAgreement.findMany({
+    where: { id: { in: agreementIds } },
+    select: { id: true, serviceAddressId: true },
+    orderBy: [{ id: "asc" }],
+  });
+  for (const agreement of agreements) {
+    const readiness = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId);
+    if (readiness.ready) continue;
+    if (overrideReason?.trim()) {
+      await recordReadinessOverrideInTx(tx, {
+        agreementId: agreement.id,
+        actorUserId: userId,
+        reason: overrideReason,
+        serviceAddressId: agreement.serviceAddressId,
+      });
+    }
+    await assertDeliveryReadyInTx(tx, {
+      serviceAddressId: agreement.serviceAddressId,
+      agreementId: agreement.id,
+    });
+  }
+}
 
 export function resolveConversionAddresses(
   lineItems: { description: string; serviceAddressId: string | null }[],
@@ -857,6 +912,7 @@ export async function convertEstimateToAgreements(
         estimateDepositCents: estimate.depositCents,
         estimateDepositPaidAt: estimate.depositPaidAt, quote: reviewedQuote,
       });
+      await assertConversionReadinessInTx(tx, userId, evidence.agreementIds, input.overrideReason);
       await tx.estimate.update({
         where: { id: estimateId }, data: { status: "CONVERTED", convertedAt: new Date() },
       });
@@ -898,6 +954,7 @@ export async function convertEstimateToAgreements(
           customerId: estimate.customerId,
           serviceAddressId,
           depositCents: estimate.depositCents,
+          overrideReason: input.overrideReason,
         },
         { sourceEstimateId: estimate.id, settings },
       );
@@ -918,6 +975,7 @@ export async function convertEstimateToAgreements(
       where: { id: estimateId },
       data: { status: "CONVERTED", convertedAt: new Date() },
     });
+    await assertConversionReadinessInTx(tx, userId, createdAgreementIds, input.overrideReason);
     await tx.auditLog.create({
       data: {
         userId,
