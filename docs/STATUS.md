@@ -1,4 +1,11 @@
 ## October 26 — OPS-7: privacy and security duties (built, PR pending)
+## October 26 — AR-11 mobile refresh and safe-area chrome (PR pending)
+
+Branch `ai/chatgpt/ar-11-mobile-pull-refresh`: touch-only 72px downward pull refresh on Today, Bills and Customers,
+with cancelled/sideways/scrolled/dirty/offline and reduced-motion guards plus a manual
+Refresh button when motion is reduced. Phone chrome respects safe areas; static form and
+server-action paths are untouched. Unit/browser proof and exact-head CI still required.
+React transitions, swipe row actions, remembered lists, optimistic helper and bundle budget remain.
 ## October 26 — Lane 3 complete: automatic Books, setup and monthly review
 
 BA-1 PR #610, BA-2 PR #613 and BA-3 PR #624 are merged into main. The final PR heads passed CI:
