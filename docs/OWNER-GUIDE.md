@@ -395,6 +395,14 @@ Only the OWNER can open `/desk/books/setup` and finish four steps. Choose when t
 
 If a starting value was wrong, OWNER opens **Your books → Correct my starting balances**, enters the corrected checking/Stripe/card balances and a short reason. The app adds a separate, numbered difference entry, never edits or deletes the first. For an already locked month, the correction is visibly dated late in the next open month. An ADMIN may read the Books page but must ask OWNER for setup or corrections. A setup reminder on the owner's To do list disappears once Books has been started.
 
+## Review a completed Books month (BA-3)
+
+Open **Your books → Review this month** and pick a month that has ended. The four checks show whether each source was recorded, whether expenses have a receipt or a written explanation, whether configured bank/Stripe evidence reconciles, and whether equipment depreciation is complete. A bank or Stripe connection that has never been activated is labeled **Not set up**, not a confirmed balance. The page also shows billed, collected, spent and profit amounts and the largest expense categories. This is an accounting review, not accountant-certified tax advice.
+
+The **OWNER** can lock a reviewed month. Missing source journals and equipment depreciation **cannot be overridden**. If expenses or reconciliation remain incomplete, the owner must write a specific reason; the audit trail records that exception. A month lock exports the underlying journal atomically and keeps previous entries unchanged. Any later transaction for a closed month uses the established late-entry rule. **ADMIN** may view the private review but cannot lock, reopen or email. **STAFF/CUSTOMER** cannot view the monthly financial report.
+
+The **Accountant package** offers private read-only journal and profit CSVs. Under **Accountant and reminder settings**, the owner can enter an accountant's address and choose the monthly reminder day (default 15). **Email it to my accountant** sends only when the OWNER presses it. If the email outcome is unknown, check with the accountant rather than retrying blindly. No account is connected and no real email is sent merely by setting up Books. Owners and authorized team members can document a specific **No receipt** explanation on an expense rather than inventing a receipt.
+
 ## Books — journal and accounting months
 
 **What it's for.** Open Money > Books. The owner enters a checked accounting start day plus bank, Stripe and card balances once; this creates a journal, not a new payment. OWNER and ADMIN can inspect source-linked balanced journal entries, source dates, accounts, and the unposted-source issue list. The accounting journal may be brought up to date with an explicit button.

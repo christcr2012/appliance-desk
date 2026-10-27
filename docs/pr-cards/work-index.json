@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "IN REVIEW — PR #613; full CI green at implementation head 72ac47ff; final docs-only CI pending",
+      "status": "MERGED — PR #613, CI green 40357496526",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4065,7 +4065,7 @@
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
@@ -4075,7 +4075,7 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #624, full CI 40441051070 green at reconciled implementation head (docs-only exact-head gate follows)",
       "migration": "month_review",
       "budget": 480,
       "units": [
@@ -4087,9 +4087,12 @@
       ],
       "tests": [
         "tests/ba3-month-review-integration.test.ts",
-        "e2e/books-month-review.spec.ts"
+        "e2e/books-month-review.spec.ts",
+        "tests/ba3-accountant-send.test.ts",
+        "tests/ba3-month-review.test.ts",
+        "tests/ba3-month-actions.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-3.md"
     },
     {
