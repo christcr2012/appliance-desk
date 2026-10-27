@@ -3,18 +3,19 @@ import { requireRole } from "@/lib/session";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { Card, PageHeader } from "@/components/ui";
 import { businessDateKey } from "@/lib/business-date";
-import { readLadder } from "@/domains/collections/engine";
+import { readLadder, readNoticeWording } from "@/domains/collections/engine";
 import { listCollectionWork } from "@/domains/collections/reads";
 import { daysPastDue } from "@/domains/collections/rules";
 import { skipNoticeAction, sendNoticeAction } from "./actions";
-import { LadderForm, NoteAction } from "./controls";
+import { DEFAULT_HELP_TEXT, DEFAULT_PAY_HOW } from "@/domains/collections/templates";
+import { LadderForm, NoteAction, WordingForm } from "./controls";
 
 export const metadata = { title: "Past-due follow-up" };
 
 
 export default async function CollectionsPage() {
   const session = await requireRole("OWNER", "ADMIN");
-  const [work, ladder] = await Promise.all([listCollectionWork(), readLadder()]);
+  const [work, ladder, wording] = await Promise.all([listCollectionWork(), readLadder(), readNoticeWording()]);
   const nowKey = businessDateKey(new Date());
   const notices = work.filter((s) => s.kind === "SECOND_NOTICE" || s.kind === "FINAL_NOTICE");
   const others = work.filter((s) => s.kind === "DECISION" || s.kind === "SMALL_CLAIMS");
@@ -65,6 +66,9 @@ export default async function CollectionsPage() {
       </Card>
       <Card title="When each step comes up" description="Counted in days after a bill's due date.">
         <LadderForm secondNotice={ladder.secondNotice} finalNotice={ladder.finalNotice} decision={ladder.decision} editable={session.user.role === "OWNER"} />
+      </Card>
+      <Card title="Wording of the notices" description="Two lines you can change.">
+        <WordingForm payHowText={wording.payHowText ?? ""} helpText={wording.helpText ?? ""} defaultPayHow={DEFAULT_PAY_HOW} defaultHelp={DEFAULT_HELP_TEXT} editable={session.user.role === "OWNER"} />
       </Card>
     </div>
   );

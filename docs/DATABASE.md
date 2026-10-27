@@ -1422,7 +1422,7 @@ All three tables are in the backup manifest.
 - `CollectionCase` — one per rental that reached the decision step: the customer's recorded pickup agreement (when, how, who
   recorded it), the court order (date, court and case number), the pickup visit, the objection, and when it was resolved.
 - `SmallClaimsFiling` — a filing Chris says he made (county, date, amount, fee); used only to count the court's limits.
-- `BusinessSettings.collectionSecondNoticeDay` / `collectionFinalNoticeDay` / `collectionDecisionDay` (10 / 20 / 30).
+- `BusinessSettings.collectionSecondNoticeDay` / `collectionFinalNoticeDay` / `collectionDecisionDay` (10 / 20 / 30); `collectionPayHowText` / `collectionHelpText` (nullable owner wording for the two editable lines in notices; empty = recommended text).
 - Three seeded rule-book rows: `co.small_claims_limit` ($7,500), `co.small_claims_filing_limits` (2 a month, 18 a year per
   county) and `co.small_claims_fees` ($31 up to $500, otherwise $55), from the Colorado Judicial Branch pages, accessed 2026-10-26.
 - The "on active military duty" flag already existed (`Customer.activeMilitary`); collections reads it.

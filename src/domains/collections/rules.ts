@@ -85,3 +85,5 @@ export function pickupGate(input: { consentAt: Date | null; activeDuty: boolean;
   }
   return { ok: true };
 }
+
+export { wordingProblem, MAX_WORDING_CHARS } from "./wording-guard";

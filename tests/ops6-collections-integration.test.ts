@@ -14,7 +14,7 @@ vi.mock("@/domains/messaging/deliver", () => ({
 import { runCollectionsPass } from "@/domains/collections/engine";
 import {
   createCollectionPickup, customerObjected, recordCourtOrder, recordDecision, recordPickupConsent,
-  recordSmallClaimsFiling, saveLadder, sendNotice, skipNotice,
+  recordSmallClaimsFiling, saveLadder, saveNoticeWording, sendNotice, skipNotice,
 } from "@/domains/collections/actions";
 import { gatherSmallClaimsFacts } from "@/domains/collections/packet";
 import { listCollectionAttention } from "@/domains/exceptions/collection-attention";
@@ -101,6 +101,41 @@ describe.skipIf(!enabled)("collections (real Postgres, fake message path)", () =
     const result = await sendNotice(ownerId, step.id);
     expect(result.sent).toBe(false);
     expect((await prisma.collectionStep.findUniqueOrThrow({ where: { id: step.id } })).state).toBe("WAITING");
+  });
+
+  it("does not call an uncertain or pending message \"sent\"", async () => {
+    const step = await prisma.collectionStep.findFirstOrThrow({ where: { invoiceId, kind: "FINAL_NOTICE" } });
+    for (const state of ["UNKNOWN", "PENDING"]) {
+      sent.state = state;
+      const result = await sendNotice(ownerId, step.id);
+      expect(result.sent).toBe(false);
+      expect(result.message).toMatch(/can't confirm/i);
+      const after = await prisma.collectionStep.findUniqueOrThrow({ where: { id: step.id } });
+      expect(after.state).toBe("WAITING");
+      expect(after.deliveryId).toBe(`del-collection-${step.id}`);
+    }
+  });
+
+  it("rewrites a waiting notice with the new balance after a part payment, and asks to read it again", async () => {
+    const step = await prisma.collectionStep.findFirstOrThrow({ where: { invoiceId, kind: "FINAL_NOTICE" } });
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { amountPaidCents: 10_000 } });
+    await expect(sendNotice(ownerId, step.id)).rejects.toThrow(/paid part|new amount/i);
+    const after = await prisma.collectionStep.findUniqueOrThrow({ where: { id: step.id } });
+    expect(after.amountOwedCents).toBe(2_500);
+    expect(after.body).toContain("$25.00");
+    expect(after.body).not.toContain("$125.00");
+    expect(sent.calls).toHaveLength(0);
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { amountPaidCents: 0 } });
+  });
+
+  it("saves notice wording as an owner setting, refuses ownership language, and uses it in new notices only", async () => {
+    await expect(saveNoticeWording(staffId, { payHowText: "Pay at the shop.", helpText: "" })).rejects.toThrow();
+    await expect(saveNoticeWording(ownerId, { payHowText: "Keep paying and you will own it.", helpText: "" })).rejects.toThrow(/own/i);
+    await saveNoticeWording(ownerId, { payHowText: "Pay at our shop on 8th Street.", helpText: "" });
+    const row = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    expect(row.collectionPayHowText).toBe("Pay at our shop on 8th Street.");
+    await saveNoticeWording(ownerId, { payHowText: "", helpText: "" });
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).collectionPayHowText).toBeNull();
   });
 
   it("needs a reason to skip a notice", async () => {

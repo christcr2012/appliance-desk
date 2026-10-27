@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useState, useTransition } from "react";
-import { ladderAction, type CollectionActionState } from "./actions";
+import { ladderAction, wordingAction, type CollectionActionState } from "./actions";
 import { RECOMMENDED_LADDER } from "@/domains/collections/rules";
 
 type Run = (note: string) => Promise<CollectionActionState>;
@@ -67,6 +67,31 @@ export function FilingForm({ defaultAmount, defaultFee, run }: { defaultAmount: 
       <label className="grid gap-1 text-sm font-medium">Amount you claimed ($)<input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className={input} /></label>
       <label className="grid gap-1 text-sm font-medium">Filing fee you paid ($)<input inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} className={input} /></label>
       <button type="button" disabled={pending || !county.trim() || !filedOn} onClick={() => start(async () => setState(await run({ county, filedOn, amountDollars: amount, feeDollars: fee })))} className="min-h-11 rounded-control border border-line px-4 font-medium disabled:opacity-60">I filed it — record it</button>
+      <Result state={state} />
+    </div>
+  );
+}
+
+export function WordingForm({ payHowText, helpText, defaultPayHow, defaultHelp, editable }: { payHowText: string; helpText: string; defaultPayHow: string; defaultHelp: string; editable: boolean }) {
+  const [state, action, pending] = useActionState(wordingAction, { status: "idle" } as CollectionActionState);
+  const field = "min-h-24 rounded-control border border-line p-2";
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-ink-soft">
+        Two lines in every past-due notice are yours to change. Leave one empty to use the recommended text (starting value — not confirmed). Notices already written keep their words, and you read every notice before it goes. Don&apos;t promise ownership of the appliance or mention a collection agency.
+      </p>
+      <form action={action} className="grid gap-3 md:max-w-xl">
+        <label className="grid gap-1 text-sm font-medium">How to pay
+          <textarea name="payHowText" maxLength={600} defaultValue={payHowText} placeholder={defaultPayHow} disabled={!editable} className={field} />
+        </label>
+        <label className="grid gap-1 text-sm font-medium">If something has gone wrong (second notice)
+          <textarea name="helpText" maxLength={600} defaultValue={helpText} placeholder={defaultHelp} disabled={!editable} className={field} />
+        </label>
+        <div className="flex flex-wrap gap-3">
+          <button disabled={!editable || pending} type="submit" className="min-h-11 rounded-control border border-line px-4 font-medium">Save wording</button>
+          <button disabled={!editable || pending} name="operation" value="restore" formNoValidate type="submit" className="min-h-11 rounded-control border border-line px-4 text-sm">Restore recommended</button>
+        </div>
+      </form>
       <Result state={state} />
     </div>
   );

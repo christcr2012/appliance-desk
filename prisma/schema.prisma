@@ -3534,6 +3534,8 @@ model BusinessSettings {
   // OPS-6: days past due when each step of the past-due ladder comes up (starting values 10 / 20 / 30).
   collectionSecondNoticeDay Int @default(10)
   collectionFinalNoticeDay Int @default(20)
+  collectionPayHowText String?
+  collectionHelpText String?
   collectionDecisionDay Int @default(30)
 }
 

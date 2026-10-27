@@ -13,15 +13,16 @@ import { CourtOrderForm, FilingForm, NoteAction } from "../controls";
 
 export const metadata = { title: "Past-due account" };
 
-export default async function CollectionCasePage({ params }: { params: Promise<{ agreementId: string }> }) {
+export default async function CollectionCasePage({ params, searchParams }: { params: Promise<{ agreementId: string }>; searchParams: Promise<{ county?: string }> }) {
   await requireRole("OWNER", "ADMIN");
   const { agreementId } = await params;
+  const county = ((await searchParams).county ?? "").trim().slice(0, 80) || null;
   const id = decodeURIComponent(agreementId);
   const kase = await getCase(id);
   if (!kase) notFound();
   const [steps, facts] = await Promise.all([
     prisma.collectionStep.findMany({ where: { invoice: { agreementId: id } }, orderBy: { cameUpOn: "asc" }, select: { id: true, kind: true, state: true, note: true, amountOwedCents: true, cameUpOn: true, invoice: { select: { invoiceNumber: true } } } }),
-    gatherSmallClaimsFacts(id, null),
+    gatherSmallClaimsFacts(id, county),
   ]);
   const decision = steps.find((s) => s.kind === "DECISION" && s.state === "WAITING");
   const gate = pickupGate({ consentAt: kase.pickupConsentAt, activeDuty: kase.customer.activeMilitary, courtOrderOn: kase.courtOrderOn });
@@ -68,7 +69,13 @@ export default async function CollectionCasePage({ params }: { params: Promise<{
       <Card title="Small claims">
         <p className="text-sm text-ink-soft">The app builds the packet; you file it yourself with the court. Limit {formatMoney(facts.limitCents)}; filing fee {formatMoney(facts.feeCents)} for this amount. The court allows 2 small-claims cases a month and 18 a year in one county.</p>
         {!facts.eligible.ok && facts.eligible.reason && <p role="status" className="mt-2 text-sm font-medium">{facts.eligible.reason}</p>}
-        <p className="mt-3 text-sm"><a className="font-semibold underline" href={`/desk/collections/${id}/packet`} target="_blank" rel="noopener noreferrer">Open the packet (PDF)</a> — then fill in {COURT_FORM_NAME} from the court&apos;s site.</p>
+        <form method="get" className="mt-3 flex flex-wrap items-end gap-2 text-sm">
+          <label className="grid gap-1 font-medium">Which county will you file in?
+            <input name="county" defaultValue={county ?? ""} maxLength={80} className="min-h-11 rounded-control border border-line p-2" />
+          </label>
+          <button type="submit" className="min-h-11 rounded-control border border-line px-4 font-medium">Check the limit</button>
+        </form>
+        <p className="mt-3 text-sm"><a className="font-semibold underline" href={`/desk/collections/${id}/packet${county ? `?county=${encodeURIComponent(county)}` : ""}`} target="_blank" rel="noopener noreferrer">Open the packet (PDF)</a> — then fill in {COURT_FORM_NAME} from the court&apos;s site.</p>
         <div className="mt-4"><FilingForm defaultAmount={moneyInputValue(facts.owedCents)} defaultFee={moneyInputValue(facts.feeCents)} run={filingAction.bind(null, id)} /></div>
       </Card>
     </div>

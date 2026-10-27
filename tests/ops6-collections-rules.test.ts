@@ -111,3 +111,17 @@ describe("small-claims packet", () => {
     expect(notReady.byteLength).toBeGreaterThan(500);
   });
 });
+
+import { wordingProblem as __wordingProblem } from "@/domains/collections/rules";
+describe("owner-editable notice wording", () => {
+  it("accepts ordinary wording and an empty line", () => {
+    expect(__wordingProblem("")).toBeNull();
+    expect(__wordingProblem("Pay at our shop or by card on the website.")).toBeNull();
+  });
+  it("refuses ownership, purchase-option, collection-agency and threatening wording", () => {
+    for (const bad of ["Make 12 payments and you will own it", "Ask about our rent-to-own plan", "We act on behalf of Robinson", "A collection agency will call", "We will have you arrested"]) {
+      expect(__wordingProblem(bad), bad).not.toBeNull();
+    }
+  });
+  it("refuses very long text", () => { expect(__wordingProblem("x".repeat(601))).not.toBeNull(); });
+});

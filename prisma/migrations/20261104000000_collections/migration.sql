@@ -7,6 +7,8 @@ CREATE TYPE "CollectionStepState" AS ENUM ('WAITING', 'SENT', 'SKIPPED', 'DONE')
 ALTER TABLE "BusinessSettings" ADD COLUMN "collectionSecondNoticeDay" INTEGER NOT NULL DEFAULT 10;
 ALTER TABLE "BusinessSettings" ADD COLUMN "collectionFinalNoticeDay" INTEGER NOT NULL DEFAULT 20;
 ALTER TABLE "BusinessSettings" ADD COLUMN "collectionDecisionDay" INTEGER NOT NULL DEFAULT 30;
+ALTER TABLE "BusinessSettings" ADD COLUMN "collectionPayHowText" TEXT;
+ALTER TABLE "BusinessSettings" ADD COLUMN "collectionHelpText" TEXT;
 
 CREATE TABLE "CollectionStep" (
     "id" TEXT NOT NULL,

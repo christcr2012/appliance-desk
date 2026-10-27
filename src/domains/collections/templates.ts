@@ -12,11 +12,14 @@ export type NoticeFacts = {
   daysPastDue: number;
   finalDeadlineText?: string | null;
   payHowText?: string;
+  helpText?: string;
   businessName?: string;
 };
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
-const payHow = (f: NoticeFacts) => f.payHowText ?? "You can pay from your account on our website, or reply to this message and we will help.";
+export const DEFAULT_PAY_HOW = "You can pay from your account on our website, or reply to this message and we will help.";
+export const DEFAULT_HELP_TEXT = "If something has gone wrong, such as a problem with the appliance or a hard month, please tell us. We would rather work it out with you.";
+const payHow = (f: NoticeFacts) => f.payHowText?.trim() || DEFAULT_PAY_HOW;
 
 export function renderSecondNotice(f: NoticeFacts): { subject: string; body: string } {
   const who = f.businessName ?? COLLECTION_BUSINESS_NAME;
@@ -26,7 +29,7 @@ export function renderSecondNotice(f: NoticeFacts): { subject: string; body: str
       `Hello ${f.customerName},`,
       `This is ${who}. Bill #${f.invoiceNumber} for ${money(f.owedCents)} was due on ${f.dueOnText} and is now ${f.daysPastDue} days past due.`,
       payHow(f),
-      `If something has gone wrong, such as a problem with the appliance or a hard month, please tell us. We would rather work it out with you.`,
+      f.helpText?.trim() || DEFAULT_HELP_TEXT,
       `Thank you,`,
       who,
     ].join("\n\n"),

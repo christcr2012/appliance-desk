@@ -10,6 +10,11 @@ import { renderFinalNotice, renderSecondNotice } from "./templates";
 const OPEN_STATUSES = ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] as const;
 const MAX_BILLS_PER_PASS = 500;
 
+export async function readNoticeWording(): Promise<{ payHowText?: string; helpText?: string }> {
+  const row = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { collectionPayHowText: true, collectionHelpText: true } });
+  return { payHowText: row?.collectionPayHowText?.trim() || undefined, helpText: row?.collectionHelpText?.trim() || undefined };
+}
+
 export async function readLadder(): Promise<LadderDays> {
   const row = await prisma.businessSettings.findUnique({
     where: { id: "singleton" },
@@ -29,6 +34,7 @@ export type PassResult = { checked: number; created: number; skipped: number };
 
 export async function runCollectionsPass(now: Date = new Date()): Promise<PassResult> {
   const ladder = await readLadder();
+  const wording = await readNoticeWording();
   const nowKey = businessDateKey(now);
   const bills = await prisma.invoice.findMany({
     where: {
@@ -59,6 +65,7 @@ export async function runCollectionsPass(now: Date = new Date()): Promise<PassRe
       owedCents: owed,
       dueOnText: longDate(bill.dueDate),
       daysPastDue: past,
+      ...wording,
     };
     for (const kind of came) {
       const draft = kind === "SECOND_NOTICE" ? renderSecondNotice(facts) : kind === "FINAL_NOTICE" ? renderFinalNotice(facts) : null;

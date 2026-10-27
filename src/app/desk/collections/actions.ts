@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import {
   createCollectionPickup, customerObjected, recordCourtOrder, recordDecision, recordPickupConsent,
-  recordSmallClaimsFiling, saveLadder, sendNotice, skipNotice,
+  recordSmallClaimsFiling, saveLadder, saveNoticeWording, sendNotice, skipNotice,
 } from "@/domains/collections/actions";
 import { RECOMMENDED_LADDER } from "@/domains/collections/rules";
 
@@ -130,6 +130,18 @@ export async function ladderAction(_previous: CollectionActionState, form: FormD
     refresh();
     revalidatePath("/desk/settings");
     return { status: "success", message: `Saved: second notice on day ${days.secondNotice}, final notice on day ${days.finalNotice}, your decision on day ${days.decision}.` };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function wordingAction(_previous: CollectionActionState, form: FormData): Promise<CollectionActionState> {
+  const session = await requireRole("OWNER");
+  try {
+    const restore = form.get("operation") === "restore";
+    await saveNoticeWording(session.user.id, restore ? { payHowText: "", helpText: "" } : { payHowText: String(form.get("payHowText") ?? ""), helpText: String(form.get("helpText") ?? "") });
+    refresh();
+    return { status: "success", message: restore ? "Back to the recommended wording." : "Saved. New notices use this wording; notices already written keep theirs." };
   } catch (error) {
     return fail(error);
   }

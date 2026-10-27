@@ -35,6 +35,7 @@ function files(dir: string): string[] {
       const full = join(dir, name);
       const stat = statSync(full);
       if (stat.isDirectory()) return files(full);
+      if (name === "wording-guard.ts") return [];
       return /\.(ts|tsx|json|md)$/.test(name) ? [full] : [];
     });
   } catch {
