@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     changed: 0,
     recovered: 0,
     failed: 0,
+    observations: 0,
   })),
   runRates: vi.fn(async () => ({
     status: "UNSUPPORTED" as const,
@@ -67,6 +68,7 @@ describe("Batch T tax-address re-check cron route", () => {
       changed: 0,
       recovered: 0,
       failed: 0,
+      observations: 0,
     });
     mocks.runAutomation.mockClear();
   });

@@ -40,7 +40,11 @@ vi.mock("@/lib/sms", () => ({
   getSmsProviderState: vi.fn(async () => "UNKNOWN"),
 }));
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { getExceptionOverview } from "@/domains/exceptions";
+import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import {
   acknowledgeOfficialSourceChange,
   buildOfficialSourceChangeExcerpt,
@@ -66,6 +70,7 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
     suffix: string,
     data: {
       active?: boolean;
+      parserKey?: string | null;
       lastHash?: string | null;
       lastText?: string | null;
       lastExcerpt?: string | null;
@@ -80,6 +85,7 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
         label: `Colorado source ${suffix}`,
         url: `https://source-${suffix}-${tag}.example.gov/page`,
         active: data.active ?? true,
+        parserKey: data.parserKey ?? null,
         lastHash: data.lastHash ?? null,
         lastText: data.lastText ?? null,
         lastExcerpt: data.lastExcerpt ?? null,
@@ -90,6 +96,20 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
     });
   }
 
+  // The migration-managed watch ids (TFA-3 activates the six seeded rows
+  // and adds three parser rows); restored in afterAll.
+  const SEEDED_WATCH_IDS = [
+    "official-source-colorado-rate-changes",
+    "official-source-colorado-dr1002",
+    "official-source-colorado-retail-delivery-fee",
+    "official-source-colorado-suts-jurisdictions",
+    "official-source-colorado-sales-tax-changes",
+    "official-source-greeley-sales-tax",
+    "official-source-colorado-retail-delivery-fee-rates",
+    "official-source-irs-1099-instructions",
+    "official-source-colorado-penalties-interest",
+  ];
+
   beforeAll(async () => {
     const owner = await prisma.user.findFirstOrThrow({
       where: { role: "OWNER", archivedAt: null },
@@ -99,6 +119,12 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
     ownerId = owner.id;
     mocks.requireRole.mockResolvedValue({
       user: { id: ownerId, role: "OWNER" },
+    });
+    // TFA-3 turned the seeded watches on; these tests scope the runner to
+    // their own watches so the real official URLs are never fetched here.
+    await prisma.officialSourceWatch.updateMany({
+      where: { active: true, id: { not: { startsWith: prefix } } },
+      data: { active: false },
     });
   });
 
@@ -140,13 +166,20 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
     await prisma.staffTask.deleteMany({
       where: { sourceKey: { startsWith: "tax-cpa-annual-review:2099" } },
     });
+    await prisma.legalRuleObservation.deleteMany({
+      where: { watchId: { startsWith: prefix } },
+    });
     await prisma.officialSourceWatch.deleteMany({
       where: { id: { startsWith: prefix } },
     });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     mocks.requireRole.mockReset();
+    await prisma.officialSourceWatch.updateMany({
+      where: { id: { in: SEEDED_WATCH_IDS } },
+      data: { active: true },
+    });
   });
 
   it("centers a long-line excerpt on the actual changed characters", () => {
@@ -177,6 +210,7 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
       changed: 0,
       recovered: 0,
       failed: 0,
+      observations: 0,
     });
     const stored = await prisma.officialSourceWatch.findUniqueOrThrow({
       where: { id: watch.id },
@@ -231,6 +265,7 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
       changed: 0,
       recovered: 0,
       failed: 0,
+      observations: 0,
     });
     expect(mocks.fetchPage).not.toHaveBeenCalled();
   });
@@ -508,6 +543,133 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
     expect(
       overview.items.some((item) => item.title.includes(watch.label)),
     ).toBe(false);
+  });
+
+  it("TFA-3: a parser watch is read daily inside its window and stores readings", async () => {
+    const watch = await createWatch("interest-window", { parserKey: "CO_INTEREST" });
+    const hashOnly = await createWatch("hash-only-wednesday");
+    const fixture = readFileSync(
+      path.join(__dirname, "fixtures", "official-pages", "co-interest.html"), "utf8",
+    );
+    mocks.fetchPage.mockImplementation(async (sourceUrl: string) => ({
+      finalUrl: sourceUrl,
+      contentType: "text/html" as const,
+      text: sourceUrl === watch.url ? fixture : "Other page",
+      hash: sourceUrl === watch.url ? "interest-hash" : "other-hash",
+    }));
+
+    // Wednesday Nov 4, 2026: inside the Nov 1 - Jan 31 interest window,
+    // not a Monday, so the hash-only watch is not due.
+    const wednesday = new Date("2026-11-04T18:00:00.000Z");
+    const result = await runOfficialSourceWatch(wednesday);
+
+    expect(result.checked).toBe(1);
+    expect(result.observations).toBe(4);
+    expect(mocks.fetchPage).not.toHaveBeenCalledWith(hashOnly.url);
+    const stored = await prisma.legalRuleObservation.findMany({
+      where: { watchId: watch.id },
+      select: { value: true, effectiveFrom: true },
+    });
+    expect(stored).toHaveLength(4);
+    expect(stored.some((row) => {
+      const value = row.value as { regular?: number; discounted?: number };
+      return value.regular === 11 && value.discounted === 8;
+    })).toBe(true);
+  });
+
+  it("TFA-3: a parser watch outside its window is not read on a weekday", async () => {
+    await createWatch("interest-outside", { parserKey: "CO_INTEREST" });
+    // Wednesday Mar 4, 2026: outside Nov 1 - Jan 31 and not a Monday.
+    const result = await runOfficialSourceWatch(new Date("2026-03-04T18:00:00.000Z"));
+    expect(result.checked).toBe(0);
+    expect(mocks.fetchPage).not.toHaveBeenCalled();
+  });
+
+  it("TFA-3: an unreadable parser page records a failure and stores no reading", async () => {
+    const watch = await createWatch("rdf-broken", { parserKey: "RDF_RATES" });
+    mocks.fetchPage.mockResolvedValue({
+      finalUrl: watch.url,
+      contentType: "text/html",
+      text: "<html><body><p>The page was redesigned.</p></body></html>",
+      hash: "broken-hash",
+    });
+
+    const result = await runOfficialSourceWatch(MONDAY);
+
+    expect(result.failed).toBe(1);
+    const stored = await prisma.officialSourceWatch.findUniqueOrThrow({
+      where: { id: watch.id },
+    });
+    expect(stored.lastError).toContain("Couldn't read the page");
+    expect(stored.consecutiveFailures).toBe(1);
+    expect(
+      await prisma.legalRuleObservation.count({ where: { watchId: watch.id } }),
+    ).toBe(0);
+  });
+
+  it("TFA-3: the owner watch switch off means no fetches at all", async () => {
+    await createWatch("switch-off");
+    await prisma.businessSettings.update({
+      where: { id: "singleton" },
+      data: { watchOfficialTaxPages: false },
+    });
+    try {
+      const result = await runOfficialSourceWatch(MONDAY);
+      expect(result.checked).toBe(0);
+      expect(mocks.fetchPage).not.toHaveBeenCalled();
+    } finally {
+      await prisma.businessSettings.update({
+        where: { id: "singleton" },
+        data: { watchOfficialTaxPages: true },
+      });
+    }
+  });
+
+  it("TFA-3: a Greeley reading goes through the rate review path, never a rule observation", async () => {
+    const jurisdiction = await prisma.taxJurisdiction.create({
+      data: {
+        code: `GREELEY-TFA3-${tag}`,
+        name: `City of Greeley ${tag}`,
+        level: "CITY",
+        administration: "SELF_COLLECTED",
+        reviewStatus: "REVIEWED",
+      },
+    });
+    try {
+      const watch = await createWatch("greeley", { parserKey: "GREELEY_RATE" });
+      const fixture = readFileSync(
+        path.join(__dirname, "fixtures", "official-pages", "greeley-rate-dated.html"), "utf8",
+      );
+      mocks.fetchPage.mockResolvedValue({
+        finalUrl: watch.url,
+        contentType: "text/html",
+        text: fixture,
+        hash: "greeley-hash",
+      });
+
+      const monday1 = new Date("2026-10-26T18:00:00.000Z");
+      await runOfficialSourceWatch(monday1);
+      expect(
+        await prisma.taxRateObservation.count({
+          where: { jurisdictionId: jurisdiction.id, rateMilliPercent: 4710 },
+        }),
+      ).toBe(1);
+      expect(
+        await prisma.legalRuleObservation.count({ where: { watchId: watch.id } }),
+      ).toBe(0);
+
+      // Read the same way on a second day: the review item appears.
+      const monday2 = new Date("2026-11-02T18:00:00.000Z");
+      await runOfficialSourceWatch(monday2);
+      const attention = await listOfficialRateAttention(monday2);
+      expect(attention.some((item) =>
+        item.kind === "REVIEW_REQUIRED" && item.jurisdictionName === jurisdiction.name)).toBe(true);
+    } finally {
+      await prisma.taxRateObservation.deleteMany({
+        where: { jurisdictionId: jurisdiction.id },
+      });
+      await prisma.taxJurisdiction.delete({ where: { id: jurisdiction.id } });
+    }
   });
 
   it("December CPA reminder is once per Colorado year", async () => {
