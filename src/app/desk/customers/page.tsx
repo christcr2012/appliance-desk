@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RecordTitleTransition } from "@/components/kit/record-title-transition";
 import { getCustomersPage, getCustomersCount } from "@/domains/customers";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
@@ -33,13 +34,19 @@ export default async function CustomersPage({
       key: "customer",
       header: "Customer",
       primary: true,
-      cell: (customer) => (
+      cell: (customer, surface) => (
         <div>
           <Link
             href={`/desk/customers/${customer.id}`}
             className="font-semibold text-ink underline-offset-4 hover:underline"
           >
-            {customer.user.name ?? customer.user.email}
+            {surface === "mobile" ? (
+              <RecordTitleTransition id={customer.id}>
+                <span>{customer.user.name ?? customer.user.email}</span>
+              </RecordTitleTransition>
+            ) : (
+              <span>{customer.user.name ?? customer.user.email}</span>
+            )}
           </Link>
           {customer.companyName && (
             <span className="mt-1 block text-sm font-normal text-ink-soft">

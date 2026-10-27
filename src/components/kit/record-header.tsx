@@ -1,5 +1,6 @@
 // AR-0 kit 4.7: the top of a record page, and the strip of key numbers under it.
 import Link from "next/link";
+import { RecordTitleTransition } from "./record-title-transition";
 import { ActionButton } from "./action-button";
 import { GlossaryPopover } from "./glossary-popover";
 import { Icon } from "./icons";
@@ -9,6 +10,8 @@ import type { ActionSpec, GlossaryKey, MenuItem, Tone } from "./types";
 
 export type RecordHeaderProps = {
   title: string;
+  /** Matches the list row id for native page-to-page title motion; no animation without a matching row. */
+  transitionId?: string;
   pills?: { label: string; tone: Tone; info?: GlossaryKey }[];
   subtitle?: string;
   contact?: { phone?: string; email?: string; address?: string };
@@ -33,7 +36,7 @@ export function recordBarActions(primary: ActionSpec | undefined, actions: Actio
   return [...(primary ? [{ ...primary, primary: true }] : []), ...actions].slice(0, 2);
 }
 
-export function RecordHeader({ title, pills = [], subtitle, contact, primary, actions = [], overflow = [], back }: RecordHeaderProps) {
+export function RecordHeader({ title, transitionId, pills = [], subtitle, contact, primary, actions = [], overflow = [], back }: RecordHeaderProps) {
   const all = [...(primary ? [primary] : []), ...actions];
   // Phones show at most two actions in the bottom bar; any others join the phone ⋯ menu.
   const phoneOverflow: MenuItem[] = [...all.slice(2), ...overflow];
@@ -64,9 +67,17 @@ export function RecordHeader({ title, pills = [], subtitle, contact, primary, ac
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 tabIndex={-1} className="text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink lg:text-[30px] lg:leading-9">
-              {title}
-            </h1>
+            {transitionId ? (
+              <RecordTitleTransition id={transitionId}>
+                <h1 tabIndex={-1} className="text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink lg:text-[30px] lg:leading-9">
+                  {title}
+                </h1>
+              </RecordTitleTransition>
+            ) : (
+              <h1 tabIndex={-1} className="text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink lg:text-[30px] lg:leading-9">
+                {title}
+              </h1>
+            )}
             {pills.map((pill) => (
               <StatusPill key={pill.label} label={pill.label} tone={pill.tone} info={pill.info} />
             ))}
