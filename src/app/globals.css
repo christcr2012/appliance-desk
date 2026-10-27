@@ -675,3 +675,6 @@ h4 {
 @media (prefers-reduced-motion: no-preference) {
   .desk-app button:active { transform: scale(0.98); }
 }
+
+/* Keep the browser's native pull-to-refresh from taking over authenticated desk pages. */
+html:has(.desk-app) { overscroll-behavior-y: contain; }
