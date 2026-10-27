@@ -656,4 +656,68 @@ maybeDescribe("FEETAX-2 delivery readiness (real Postgres)", () => {
       listDeliveryReadinessAttention(NOW, ghostDb as never),
     ).resolves.toEqual([]);
   });
+
+  it("the To do attention read pages past a full page of ready addresses to find a place that needs setup", async () => {
+    const readyPlace = await makeJurisdiction("pagingready", {
+      administration: "STATE_COLLECTED",
+    });
+    const problemPlace = await makeJurisdiction("pagingproblem", {
+      readiness: { licenseRequired: "ALWAYS" },
+      rentalRule: "TAXABLE",
+    });
+    // More ready addresses than one scan page (50), so a capped scan
+    // would never reach the problem address below.
+    for (let i = 0; i < 51; i += 1) {
+      const { addressId } = await makeAddress();
+      await locate(addressId, [readyPlace]);
+    }
+    const { addressId } = await makeAddress();
+    await locate(addressId, [problemPlace]);
+    // The problem address was looked up last, so it sorts after every
+    // ready one.
+    await prisma.addressTaxLocation.updateMany({
+      where: { serviceAddressId: addressId },
+      data: { lookedUpAt: new Date(NOW.getTime() + 60 * 60 * 1000) },
+    });
+
+    const attention = await listDeliveryReadinessAttention(NOW);
+    expect(attention.map((entry) => entry.jurisdictionId)).toContain(problemPlace);
+  });
+
+  it("two deliveries to the same count city cannot both go out when only one slot is left", async () => {
+    const { customerId, addressId } = await makeAddress();
+    const city = await makeJurisdiction("dispatchrace", {
+      readiness: {
+        licenseRequired: "AFTER_SECOND_DELIVERY_IN_12_MONTHS",
+      },
+      rentalRule: "TAXABLE",
+    });
+    await locate(addressId, [city]);
+
+    const first = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+    });
+    const second = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+    });
+
+    // Started at the same moment: the place lock serializes the two
+    // dispatch checks, so the second one sees the first already on the
+    // truck and is refused — exactly one may go out.
+    const results = await Promise.allSettled([
+      updateJobStatus(ownerId, first.id, "IN_PROGRESS"),
+      updateJobStatus(ownerId, second.id, "IN_PROGRESS"),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(String((rejected[0] as PromiseRejectedResult).reason)).toMatch(
+      /needs a city license first/,
+    );
+  });
 });

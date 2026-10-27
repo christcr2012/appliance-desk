@@ -309,6 +309,30 @@ export async function assertDeliveryReadyInTx(
   },
   now = new Date(),
 ): Promise<void> {
+  if (input.countDispatchedForJobId) {
+    // Dispatch consumes a delivery-count slot, so two dispatches to the
+    // same taxing place must not both read the counts before either
+    // lands. Lock the place rows (in id order, so competing dispatches
+    // queue instead of deadlocking) and hold them for the rest of the
+    // caller's transaction; the count read below then sees any delivery
+    // already on the truck.
+    const location = await tx.addressTaxLocation.findFirst({
+      where: { serviceAddressId: input.serviceAddressId, isCurrent: true },
+      select: {
+        jurisdictions: {
+          select: { jurisdictionId: true },
+          orderBy: { jurisdictionId: "asc" },
+        },
+      },
+      orderBy: [{ lookedUpAt: "desc" }, { id: "desc" }],
+    });
+    const jurisdictionIds = [
+      ...new Set((location?.jurisdictions ?? []).map((row) => row.jurisdictionId)),
+    ].sort();
+    for (const jurisdictionId of jurisdictionIds) {
+      await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${jurisdictionId} FOR UPDATE`;
+    }
+  }
   const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, {
     countDispatchedForJobId: input.countDispatchedForJobId,
   });
@@ -677,58 +701,86 @@ export async function listDeliveryReadinessAttention(
   now = new Date(),
   db: Db = prisma,
 ): Promise<DeliveryReadinessAttention[]> {
-  const locations = await db.addressTaxLocation.findMany({
-    where: { isCurrent: true, status: "VERIFIED", serviceAddressId: { not: null } },
-    select: {
-      serviceAddressId: true,
-      lookedUpAt: true,
-      jurisdictions: { select: { jurisdictionId: true } },
-    },
-    orderBy: [{ lookedUpAt: "asc" }, { id: "asc" }],
-    take: 50,
-  });
-
   const byPlace = new Map<string, DeliveryReadinessAttention>();
   const seenAddresses = new Set<string>();
-  for (const location of locations) {
-    if (!location.serviceAddressId || seenAddresses.has(location.serviceAddressId)) continue;
-    seenAddresses.add(location.serviceAddressId);
-    // The To do list is a reporting read over live data: an address another
-    // part of the app deleted after the location lookup above must not fail
-    // the whole list. Skip an address that is confirmed gone; a read that
-    // fails for any other reason still throws.
-    let readiness: DeliveryReadiness;
-    try {
-      readiness = await deliveryTaxReadinessWith(db, location.serviceAddressId, now);
-    } catch (error) {
-      const stillThere = await db.serviceAddress.findUnique({
-        where: { id: location.serviceAddressId },
-        select: { id: true },
-      });
-      if (stillThere) throw error;
-      continue;
-    }
-    for (const place of readiness.places) {
-      if (!place.problem || !place.jurisdictionId || byPlace.has(place.jurisdictionId)) {
-        continue;
+  // A place's problems never depend on which of its addresses is
+  // evaluated — delivery counts, the license rule and the rent rule are
+  // all per place — so each place is evaluated once per call, however
+  // many customer addresses it has.
+  const placeCache = new Map<string, PlaceReadiness>();
+
+  // Page through every verified location instead of capping the scan
+  // itself: a capped scan silently dropped newer addresses' problems
+  // once more than a page of addresses existed, so a place that needed
+  // setup produced no To do item at all. The cap belongs on the items
+  // this returns, which the caller applies.
+  const PAGE = 50;
+  for (let skip = 0; ; skip += PAGE) {
+    const locations = await db.addressTaxLocation.findMany({
+      where: { isCurrent: true, status: "VERIFIED", serviceAddressId: { not: null } },
+      select: {
+        serviceAddressId: true,
+        lookedUpAt: true,
+        jurisdictions: { select: { jurisdictionId: true } },
+      },
+      orderBy: [{ lookedUpAt: "asc" }, { id: "asc" }],
+      skip,
+      take: PAGE,
+    });
+    if (locations.length === 0) break;
+
+    for (const location of locations) {
+      if (!location.serviceAddressId || seenAddresses.has(location.serviceAddressId)) continue;
+      seenAddresses.add(location.serviceAddressId);
+
+      const jurisdictionIds = location.jurisdictions.map((row) => row.jurisdictionId);
+      let places: PlaceReadiness[];
+      if (jurisdictionIds.every((id) => placeCache.has(id))) {
+        places = jurisdictionIds.map((id) => placeCache.get(id)!);
+      } else {
+        // The To do list is a reporting read over live data: an address
+        // another part of the app deleted after the location lookup
+        // above must not fail the whole list. Skip an address that is
+        // confirmed gone; a read that fails for any other reason still
+        // throws.
+        let readiness: DeliveryReadiness;
+        try {
+          readiness = await deliveryTaxReadinessWith(db, location.serviceAddressId, now);
+        } catch (error) {
+          const stillThere = await db.serviceAddress.findUnique({
+            where: { id: location.serviceAddressId },
+            select: { id: true },
+          });
+          if (stillThere) throw error;
+          continue;
+        }
+        places = readiness.places;
+        for (const place of places) {
+          if (place.jurisdictionId) placeCache.set(place.jurisdictionId, place);
+        }
       }
-      const row = await db.jurisdictionReadiness.findUnique({
-        where: { jurisdictionId: place.jurisdictionId },
-        select: { sourceUrl: true, filesThrough: true, licenseRequired: true, reviewStatus: true },
-      });
-      byPlace.set(place.jurisdictionId, {
-        jurisdictionId: place.jurisdictionId,
-        name: place.name,
-        problems: readiness.places
-          .filter((entry) => entry.jurisdictionId === place.jurisdictionId && entry.problem)
-          .map((entry) => entry.problem!.message),
-        sourceUrl: row?.sourceUrl ?? null,
-        filesThrough: row?.filesThrough ?? "UNKNOWN",
-        licenseRequired: row?.licenseRequired ?? "UNKNOWN",
-        reviewStatus: row?.reviewStatus ?? "NEEDS_REVIEW",
-        since: location.lookedUpAt,
-      });
+
+      for (const place of places) {
+        if (!place.problem || !place.jurisdictionId || byPlace.has(place.jurisdictionId)) {
+          continue;
+        }
+        const row = await db.jurisdictionReadiness.findUnique({
+          where: { jurisdictionId: place.jurisdictionId },
+          select: { sourceUrl: true, filesThrough: true, licenseRequired: true, reviewStatus: true },
+        });
+        byPlace.set(place.jurisdictionId, {
+          jurisdictionId: place.jurisdictionId,
+          name: place.name,
+          problems: [place.problem.message],
+          sourceUrl: row?.sourceUrl ?? null,
+          filesThrough: row?.filesThrough ?? "UNKNOWN",
+          licenseRequired: row?.licenseRequired ?? "UNKNOWN",
+          reviewStatus: row?.reviewStatus ?? "NEEDS_REVIEW",
+          since: location.lookedUpAt,
+        });
+      }
     }
+    if (locations.length < PAGE) break;
   }
   return [...byPlace.values()].sort((a, b) => a.since.getTime() - b.since.getTime());
 }
