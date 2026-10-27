@@ -3582,6 +3582,52 @@ model BusinessSettings {
   achDisputeWindowDays Int @default(60)
 }
 
+model ComplianceProfile {
+  // CMP-1: the owner's business facts for compliance, one row ("singleton").
+  // entityType is a Decisions question (CMP-ENTITY, CPA) — SINGLE_MEMBER_LLC
+  // is the starting value, not a confirmed answer.
+  id             String   @id @default("singleton")
+  entityType     String   @default("SINGLE_MEMBER_LLC")
+  // The EIN itself is never stored in plain text: einEncrypted holds the
+  // AES-256-GCM value from src/lib/field-crypto.ts; only the last 4 show.
+  einLast4       String?  @db.Char(4)
+  einEncrypted   String?
+  sosReportMonth Int?
+  truckGvwrLbs   Int?
+  employees      Int      @default(0)
+  hasHomeOffice  Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
+}
+
+model ComplianceFiling {
+  // CMP-1: one row per obligation period, moved by the filing flow
+  // (prepare → approve → submit). The approval binds preparedHash, and the
+  // APPROVED → SUBMITTED step happens once only under the row lock.
+  id               String    @id @default(cuid())
+  obligationKey    String    @db.VarChar(60)
+  periodKey        String    @db.VarChar(20)
+  state            String    @db.VarChar(20)
+  dueOn            DateTime
+  actOn            DateTime
+  preparedData     Json?
+  preparedHash     String?   @db.Char(64)
+  outputFileUrl    String?
+  approvedByUserId String?
+  approvedAt       DateTime?
+  submittedAt      DateTime?
+  confirmation     String?   @db.VarChar(200)
+  note             String?   @db.VarChar(1000)
+  version          Int       @default(1)
+  // True only while a NOT_APPLICABLE state came from the sync's automatic
+  // retirement (the facts stopped generating the period). An owner's own
+  // "not needed" decision never sets it, and the sync reactivates an
+  // auto-retired row when its period is generated again.
+  autoRetired      Boolean   @default(false)
+
+  @@unique([obligationKey, periodKey])
+  @@index([state, actOn])
+}
+
 model MonthToMonthTermsVersion {
   id                String   @id @default(cuid())
   version           Int      @unique
