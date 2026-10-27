@@ -112,3 +112,8 @@ e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-a
 # landed as squash commit 50e265e (PR #625), which re-committed the file, so
 # the same comment needs a fingerprint under that commit too.
 50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# TFA-3 false positives: the generic-api-key heuristic reads the rule-book
+# key assignment `ruleKey: "us.1099.threshold"` as a credential. It is a tax
+# rule identifier in the parser and its integration test, not a secret.
+585b1bb93a2067a2366ea60689a03a5915c4232b:src/domains/rules/parsers/irs-1099-threshold.ts:generic-api-key:52
+2af71a0ab9b7435edb2bfcce2a9ce2ba6f8360c9:tests/rules-observation-integration.test.ts:generic-api-key:170
