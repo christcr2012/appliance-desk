@@ -4,8 +4,8 @@
 // is a real link (?snooze=<key>) so it also works before this script loads; here the click is caught and the sheet
 // opens in place without leaving the page.
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useId, useOptimistic, useState, useTransition, type FormEvent, type MouseEvent, type ReactNode } from "react";
-import { Sheet, plainError, toast } from "@/components/kit";
+import { useId, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { Sheet, useOptimisticAction } from "@/components/kit";
 import { businessDateFromKey, formatShortDate } from "@/lib/business-date";
 
 export type InboxEntry = { key: string; todoKey?: string; title: string; node: ReactNode };
@@ -32,8 +32,11 @@ export function TodayInbox({
   const router = useRouter();
   const pathname = usePathname() ?? "/desk/today";
   const search = useSearchParams()?.toString() ?? "";
-  const [hidden, hide] = useOptimistic<string[], string>([], (current, key) => [...current, key]);
-  const [, startTransition] = useTransition();
+  const { items: hidden, run: runSnooze } = useOptimisticAction<string, string>(
+    [],
+    (current, key) => [...current, key],
+    snoozeAction ?? (async () => { throw new Error("Snooze is unavailable."); }),
+  );
   const known = (key: string | undefined) => (key ? entries.find((entry) => entry.todoKey === key) : undefined);
   const [snoozing, setSnoozing] = useState<InboxEntry | null>(() => (snoozeAction ? (known(initialSnoozeKey) ?? null) : null));
 
@@ -73,26 +76,18 @@ export function TodayInbox({
     form.set("reason", reason);
     setSnoozing(null);
     clearSnoozeParam();
-    startTransition(async () => {
-      hide(entry.key);
-      try {
-        await snoozeAction(form);
-        const day = businessDateFromKey(until);
-        toast({
-          message: `Snoozed until ${day ? formatShortDate(day) : until}`,
-          tone: "good",
-          undo: resumeAction
-            ? async () => {
-                const back = new FormData();
-                back.set("key", entry.todoKey!);
-                await resumeAction(back);
-                router.refresh();
-              }
-            : undefined,
-        });
-      } catch (error) {
-        toast({ message: plainError(error), tone: "danger" });
-      }
+    const day = businessDateFromKey(until);
+    runSnooze(entry.key, form, {
+      success: `Snoozed until ${day ? formatShortDate(day) : until}`,
+      undo: resumeAction
+        ? async () => {
+            const back = new FormData();
+            back.set("key", entry.todoKey!);
+            const result = await resumeAction(back);
+            router.refresh();
+            return result;
+          }
+        : undefined,
     });
   }
 
