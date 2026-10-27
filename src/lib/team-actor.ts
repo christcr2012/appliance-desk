@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 
-export type TeamRole = "OWNER" | "ADMIN" | "STAFF";
+// ACCT-1: ACCOUNTANT joins the union so call sites may name it explicitly. The DEFAULT allowed set below
+// stays OWNER/ADMIN/STAFF — an accountant is refused everywhere a call site does not list the role on purpose.
+export type TeamRole = "OWNER" | "ADMIN" | "STAFF" | "ACCOUNTANT";
 
 /**
  * Re-check a team actor inside the same database transaction as a business
@@ -23,13 +25,15 @@ export async function assertActiveTeamActor(
 
   const user = await tx.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, archivedAt: true },
+    select: { id: true, role: true, archivedAt: true, accessEndsOn: true },
   });
 
   if (
     !user ||
     user.archivedAt ||
-    !allowedRoles.includes(user.role as TeamRole)
+    !allowedRoles.includes(user.role as TeamRole) ||
+    // ACCT-1: an accountant whose access end date has passed can do nothing, even with a live session.
+    (user.role === "ACCOUNTANT" && user.accessEndsOn !== null && user.accessEndsOn.getTime() <= Date.now())
   ) {
     throw new Error("This account no longer has access to make that change.");
   }
