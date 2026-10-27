@@ -75,9 +75,13 @@ function notesFor(card: Card, tab: DecisionsTab, now: Date): string[] {
 }
 
 export default async function DecisionsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const isOwner = session.user.role === "OWNER";
+  const isAccountant = session.user.role === "ACCOUNTANT";
   const params = decisionsParams(await searchParams);
+  // ACCT-1: an accountant only ever sees the CPA questions (the domain filters their list too);
+  // land them on that tab whatever the link said, except the Answered tab.
+  if (isAccountant && params.tab !== "ANSWERED") params.tab = "CPA";
   const now = new Date();
   const today = businessDateKey(now);
   const all = await listDecisions(session.user.id);
@@ -100,7 +104,7 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
       <Toaster />
       <ScreenHeader
         title="Decisions & reviews"
-        back={{ href: "/desk/settings", label: "Back to settings" }}
+        back={isAccountant ? { href: "/desk/books", label: "Back to books" } : { href: "/desk/settings", label: "Back to settings" }}
         overflow={isOwner ? [{ kind: "link", label: "Import a completed form", href: "/desk/settings/decisions/import" }] : undefined}
       />
       {isOwner && unreviewedStarting > 0 ? (
@@ -126,7 +130,7 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
         <div className="min-w-0 flex-1">
           <Toolbar filters={params.tab === "ANSWERED" ? FILTERS.slice(0, 1) : FILTERS} />
         </div>
-        {professional && inTab.length > 0 ? (
+        {!isAccountant && professional && inTab.length > 0 ? (
           <div className="flex flex-wrap gap-2" aria-label="Download questions" role="group">
             <a href={`/desk/settings/decisions/form?for=${params.tab}&format=docx`} download className={DOWNLOAD_BUTTON}>Download questions (Word)</a>
             <a href={`/desk/settings/decisions/form?for=${params.tab}&format=pdf`} download className={DOWNLOAD_BUTTON}>Download questions (PDF)</a>
@@ -151,8 +155,31 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
                   why={{ text: card.recommended?.why ?? NO_SOURCE_WHY, sources: card.recommended?.sources ?? [] }}
                   affects={card.affects}
                   notes={notesFor(card, params.tab, now)}
-                  actions={isOwner || card.last?.hasAttachment ? (
+                  actions={isOwner || isAccountant || card.last?.hasAttachment ? (
                     <>
+                      {isAccountant && !answered ? (
+                        <DecisionActions
+                          id={card.id}
+                          title={card.title}
+                          options={card.options.map((option) => ({ label: option.label }))}
+                          currentIndex={currentIndex}
+                          expected={JSON.stringify(card.current.value)}
+                          allowOther={card.allowOther}
+                          today={today}
+                          show={{
+                            keep: false,
+                            change: false,
+                            ask: false,
+                            answer: professional,
+                            reopen: false,
+                          }}
+                          professionals={[]}
+                          answerLabel="Answer this question"
+                          selfAnswer={{ name: session.user.name || session.user.email, firm: (session.user as { firm?: string | null }).firm ?? null }}
+                          actions={{ keep: keepDecisionAction, change: changeDecisionAction, ask: askProfessionalAction,
+                            reopen: reopenDecisionAction }}
+                        />
+                      ) : null}
                       {isOwner ? (
                         <DecisionActions
                           id={card.id}
