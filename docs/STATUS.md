@@ -22,8 +22,6 @@ Nothing is filed or calculated; payroll stays with the service. Proof: `tests/hi
 `tests/compliance-registry.test.ts` (23 obligations), `tests/payroll-import-integration.test.ts`
 (real Postgres on the lane's own cluster: wake + 20-day deadline, balanced journals, duplicate and
 gate refusals). With CMP-5 merged, Lane 5's compliance line (CMP-1…CMP-5) is complete.
-||||||| c28cc9ff
-||||||| 25add66a
 ## October 27 — Lane 7 follow-up: your emergency contact can pause charges (branch `ai/claude/successor-pause`)
 
 The last Lane 7 piece, blocked until now on the logins vault (VAULT-1 and VAULT-2 are merged), is built. On the
