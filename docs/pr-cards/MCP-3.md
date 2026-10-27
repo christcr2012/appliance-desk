@@ -26,4 +26,20 @@ MCP-3 ships `appliance_whoami` only, so the full sign-in → call → disconnect
 "Connect Claude to Appliance Desk" (spec section 9). Never blocks merging.
 
 ## Progress
-Not started.
+
+**Engineering acceptance plan — 2026-10-26 (before code).** Ship an independent OAuth
+connection/consent/revoke PR (auth boundary), after first reading the installed SDK
+type definitions and the repo's identity/2FA rules. Acceptance requires:
+- Issuer and redirect/PKCE/registration validate fail-closed in every environment.
+- Additive OAuth tables and connection ledger with **no OAuth secrets in backups**;
+  restored connections are revoked.
+- A real SDK client completes sign-in → token → refresh → whoami on disposable
+  Postgres. Role downgrade/archiving/revocation, token replay, spoofing and
+  concurrency reject; no previous sign-in pathway changes.
+- Owner/admin can approve and revoke on a working phone/desktop connection UI,
+  with keyboard and axe coverage. Staff/customer cannot.
+- CI green and every PR review thread addressed before merge; no real credentials,
+  live-provider operation or manual deployment.
+
+This card and plan commit are not proof of implementation. Nothing is released yet.
+
