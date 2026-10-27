@@ -11,6 +11,17 @@ type ModelDelegate = {
 // business-critical recovery state so provider events are not applied twice
 // after a restore.
 export const BACKUP_MODEL_POLICY = {
+  // MCP-3: OAuth secrets, access/refresh tokens, registered clients and signing keys are never restored.
+  Jwks: null,
+  OauthClient: null,
+  OauthResource: null,
+  OauthClientResource: null,
+  OauthRefreshToken: null,
+  OauthAccessToken: null,
+  OauthConsent: null,
+  OauthClientAssertion: null,
+  // Connection labels are business evidence, but a restore must leave all disconnected.
+  McpConnection: "mcpConnection",
   User: "user",
   Session: null,
   Account: null,
