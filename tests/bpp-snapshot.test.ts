@@ -4,6 +4,7 @@ import {
   bppSpreadsheetCsv,
   type BppSnapshot,
 } from "@/domains/compliance/bpp";
+import { assertNoFullTaxId } from "@/domains/compliance/filings";
 
 // CMP-4: the Weld declaration spreadsheet and the prepared-data readers.
 // The snapshot itself is built from the database (see the integration
@@ -74,6 +75,22 @@ describe("BPP spreadsheet", () => {
   it("quotes cells that carry commas", () => {
     const csv = bppSpreadsheetCsv(snapshot);
     expect(csv).toContain('"Casey Renter, 12 Oak St, Greeley, CO 80631"');
+  });
+});
+
+describe("the full-tax-ID guard and serial numbers (PR #668 review)", () => {
+  it("lets a nine-digit appliance serial number through preparation", () => {
+    expect(() =>
+      assertNoFullTaxId({ snapshot: { items: [{ assetNumber: "W-9", serialNumber: "123456789" }] } }),
+    ).not.toThrow();
+  });
+
+  it("still refuses a real tax ID anywhere else in the prepared data", () => {
+    expect(() => assertNoFullTaxId({ payer: { tin: "123456789" } })).toThrow(/full tax ID/);
+    expect(() => assertNoFullTaxId({ note: "SSN 123-45-6789" })).toThrow(/full tax ID/);
+    expect(() => assertNoFullTaxId({ items: [{ serialNumber: "OK123", other: "12-3456789" }] })).toThrow(
+      /full tax ID/,
+    );
   });
 });
 

@@ -58,7 +58,8 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
   const appSet2 = `cmp4-app3-${tag}`;
   const appDisposed = `cmp4-app4-${tag}`;
   const appLater = `cmp4-app5-${tag}`;
-  const applianceIds = [appRented, appSet1, appSet2, appDisposed, appLater];
+  const appPreBooks = `cmp4-app6-${tag}`;
+  const applianceIds = [appRented, appSet1, appSet2, appDisposed, appLater, appPreBooks];
   const ruleIds: string[] = [];
 
   function unit(id: string, assetNumber: string, manufacturer: string, model: string, serial?: string) {
@@ -103,6 +104,15 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
     await unit(appSet2, `C4C-${tag}`, "Samsung", "DV46");
     await unit(appDisposed, `C4D-${tag}`, "LG", "WM22");
     await unit(appLater, `C4E-${tag}`, "LG", "DLEX");
+    // Bought in December 2025, before the books opened: Books clamps
+    // its in-service date to the books start (February 2026), but the
+    // county cares about ownership — the purchase date rules (PR #668).
+    await prisma.appliance.create({
+      data: {
+        id: appPreBooks, assetNumber: `C4F-${tag}`, applianceTypeId: typeId, status: "RENTED",
+        manufacturer: "Samsung", model: "WA47", purchaseDate: day("2025-12-15"),
+      },
+    });
     const book = (applianceId: string, costCents: number, placed: string, disposed?: string) =>
       prisma.bookAsset.create({
         data: {
@@ -115,6 +125,7 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
     await book(appSet2, 21000, "2026-04-01");
     await book(appDisposed, 99000, "2026-01-15", "2026-12-01");
     await book(appLater, 30000, "2027-02-01");
+    await book(appPreBooks, 15000, "2026-02-01");
     const line1 = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId } });
     const line2 = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId: setAgreementId } });
     await prisma.applianceAssignment.create({
@@ -153,7 +164,10 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
   it("the January 1 snapshot counts what was owned, rented and priced — and only that", async () => {
     const snapshot = await computeBppSnapshot(2027);
     const mine = snapshot.items.filter((i) => i.assetNumber.endsWith(tag));
-    expect(mine.map((i) => i.assetNumber).sort()).toEqual([`C4A-${tag}`, `C4B-${tag}`, `C4C-${tag}`]);
+    expect(mine.map((i) => i.assetNumber).sort()).toEqual([`C4A-${tag}`, `C4B-${tag}`, `C4C-${tag}`, `C4F-${tag}`]);
+    const preBooks = mine.find((i) => i.assetNumber === `C4F-${tag}`)!;
+    expect(preBooks.yearAcquired).toBe(2025); // the purchase year, not the clamped books year
+    expect(preBooks.placedInService).toBe("Dec 2025");
     const rented = mine.find((i) => i.assetNumber === `C4A-${tag}`)!;
     expect(rented.rentedOut).toBe(true);
     expect(rented.userName).toBe("Casey Renter");
@@ -278,6 +292,6 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
     const closed = await prisma.complianceFiling.findUniqueOrThrow({ where: { id: filing.id } });
     expect(closed.state).toBe("NOT_APPLICABLE");
     const kept = closed.preparedData as { snapshot?: { totalCostCents?: number } } | null;
-    expect(kept?.snapshot?.totalCostCents).toBeGreaterThanOrEqual(86000);
+    expect(kept?.snapshot?.totalCostCents).toBeGreaterThanOrEqual(101000);
   });
 });

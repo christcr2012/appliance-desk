@@ -6,6 +6,7 @@ import {
   fillDr0104EpVoucher,
   fillDs056,
   fillDs060,
+  vendoredDsForm,
   fillEstimatedTaxVoucher,
   fillForm8300,
   fillW9,
@@ -171,14 +172,23 @@ describe("Weld declaration schedules (CMP-4)", () => {
 
   it("the manifest pins both Weld forms to their county sources and hashes", () => {
     const forms = formManifest().forms;
-    expect(forms["co/ds056.pdf"]!.sha256).toBe("15575c69dfd98232c2a5569da98a84254fcb7f9fccdfe4bcc5d7e76418d1d5ce");
-    expect(forms["co/ds056.pdf"]!.source).toContain("weld.gov");
-    expect(forms["co/ds060.pdf"]!.sha256).toBe("1b126326757d97c04fd9546d00ee8940803c73bb01cf49d87015017307ca8bc3");
-    expect(forms["co/ds060.pdf"]!.source).toContain("weld.gov");
+    expect(forms["co/ds056_2022.pdf"]!.sha256).toBe("15575c69dfd98232c2a5569da98a84254fcb7f9fccdfe4bcc5d7e76418d1d5ce");
+    expect(forms["co/ds056_2022.pdf"]!.source).toContain("weld.gov");
+    expect(forms["co/ds060_2022.pdf"]!.sha256).toBe("1b126326757d97c04fd9546d00ee8940803c73bb01cf49d87015017307ca8bc3");
+    expect(forms["co/ds060_2022.pdf"]!.source).toContain("weld.gov");
+    // Every vendored DS printing is keyed by its own assessment year:
+    // the year is printed on the form, so a mismatched year must never
+    // be servable for a filing.
+    for (const key of Object.keys(forms).filter((k) => /ds0(56|60)/.test(k))) {
+      expect(key).toMatch(/^co\/ds0(56|60)_\d{4}\.pdf$/);
+    }
+    expect(vendoredDsForm("ds056", 2022)).toBe("co/ds056_2022.pdf");
+    expect(vendoredDsForm("ds056", 2027)).toBeNull();
   });
 
   it("fills the DS 056 identity, new-business box and item rows — never the FEIN field", async () => {
     const bytes = await fillDs056({
+      year: 2022,
       identity,
       newBusiness: true,
       rows: [
@@ -212,14 +222,19 @@ describe("Weld declaration schedules (CMP-4)", () => {
       placedInService: "Mar 2026",
     };
     const withRenter = await PDFDocument.load(
-      await fillDs060({ identity, singleRenter: "Casey Renter\n12 Oak St, Greeley, CO 80631", rows: [row] }),
+      await fillDs060({ year: 2022, identity, singleRenter: "Casey Renter\n12 Oak St, Greeley, CO 80631", rows: [row] }),
     );
     const formA = withRenter.getForm();
     expect(formA.getTextField(DS060_FIELDS.userShared).getText()).toContain("Casey Renter");
     expect(formA.getTextField(DS060_ROW_FIELDS[0].monthlyRent).getText()).toBe("45.00");
     expect(formA.getTextField(DS060_ROW_FIELDS[0].originalCost).getText()).toBe("450.00");
 
-    const without = await PDFDocument.load(await fillDs060({ identity, rows: [row] }));
+    const without = await PDFDocument.load(await fillDs060({ year: 2022, identity, rows: [row] }));
     expect(without.getForm().getTextField(DS060_FIELDS.userShared).getText() ?? "").toBe("");
+  });
+
+  it("refuses to fill a year whose printing is not vendored (PR #668 review)", async () => {
+    await expect(fillDs056({ year: 2027, identity, newBusiness: false, rows: [] })).rejects.toThrow(/not vendored yet/);
+    await expect(fillDs060({ year: 2027, identity, rows: [] })).rejects.toThrow(/not vendored yet/);
   });
 });

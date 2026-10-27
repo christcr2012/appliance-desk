@@ -308,6 +308,19 @@ export async function fillDr0104EpVoucher(
 import { DS056_FIELDS, DS056_ROW_FIELDS } from "./forms/ds056.fields";
 import { DS060_FIELDS, DS060_ROW_FIELDS } from "./forms/ds060.fields";
 
+/**
+ * The DS 056 / DS 060 are re-issued per assessment year — the printed
+ * year, the January 1 date and the April 15 deadline are part of the
+ * form itself, not fillable fields. A filled form is therefore only
+ * honest for the filing whose year matches the vendored printing, so
+ * vendored copies are keyed by year (`co/ds056_2027.pdf`) and this
+ * resolver is the single gate: no year-matched printing, no download.
+ */
+export function vendoredDsForm(kind: "ds056" | "ds060", year: number): string | null {
+  const file = `co/${kind}_${year}.pdf`;
+  return formManifest().forms[file] ? file : null;
+}
+
 /** The business identity both Weld declaration schedules print. */
 export interface DsIdentity {
   /** Legal name + mailing address, lines joined with \n. */
@@ -334,17 +347,25 @@ export interface Ds056Row {
  * the "new business" box for a first-time filer, and up to five item
  * rows (the form's Section D additions table). The FEIN/SSN field and
  * the signature are never filled: the owner writes and signs at filing.
+ * `year` is the filing's assessment year: the vendored printing must
+ * be that year's own, or the fill is refused (see vendoredDsForm).
  */
 export async function fillDs056(
-  input: { identity: DsIdentity; newBusiness: boolean; rows: Ds056Row[] },
+  input: { year: number; identity: DsIdentity; newBusiness: boolean; rows: Ds056Row[] },
   dir = COMPLIANCE_FORMS_DIR,
 ): Promise<Uint8Array> {
+  const file = vendoredDsForm("ds056", input.year);
+  if (!file) {
+    throw new FormLayoutError(
+      `The ${input.year} DS 056 is not vendored yet — the county re-issues it per assessment year, and only that year's printing is safe to file.`,
+    );
+  }
   const rowFields = DS056_ROW_FIELDS.slice(0, input.rows.length);
   const names = [
     ...Object.values(DS056_FIELDS),
     ...rowFields.flatMap((row) => Object.values(row)),
   ];
-  const { pdf, form } = await loadVerifiedForm("co/ds056.pdf", names, dir);
+  const { pdf, form } = await loadVerifiedForm(file, names, dir);
   const set = (fieldName: string, value: string | undefined) => {
     if (value !== undefined && value !== "") form.getTextField(fieldName).setText(value);
   };
@@ -383,17 +404,24 @@ export interface Ds060Row {
  * user field only when every rented unit shares that one renter (see
  * the field map for why); the lease term column stays blank because the
  * rentals are month-to-month and the form asks for a from-to range.
+ * `year` gates the fill exactly as on the DS 056 (see vendoredDsForm).
  */
 export async function fillDs060(
-  input: { identity: DsIdentity; singleRenter?: string; rows: Ds060Row[] },
+  input: { year: number; identity: DsIdentity; singleRenter?: string; rows: Ds060Row[] },
   dir = COMPLIANCE_FORMS_DIR,
 ): Promise<Uint8Array> {
+  const file = vendoredDsForm("ds060", input.year);
+  if (!file) {
+    throw new FormLayoutError(
+      `The ${input.year} DS 060 is not vendored yet — the county re-issues it per assessment year, and only that year's printing is safe to file.`,
+    );
+  }
   const rowFields = DS060_ROW_FIELDS.slice(0, input.rows.length);
   const names = [
     ...Object.values(DS060_FIELDS),
     ...rowFields.flatMap((row) => Object.values(row)),
   ];
-  const { pdf, form } = await loadVerifiedForm("co/ds060.pdf", names, dir);
+  const { pdf, form } = await loadVerifiedForm(file, names, dir);
   const set = (fieldName: string, value: string | undefined) => {
     if (value !== undefined && value !== "") form.getTextField(fieldName).setText(value);
   };
