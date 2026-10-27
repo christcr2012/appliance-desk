@@ -433,11 +433,13 @@ export async function registerUploadedRecordFile(
 export async function removeRecordFile(userId: string, recordId: string, fileId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
-    const file = await tx.businessRecordFile.findFirst({
-      where: { id: fileId, recordId, deletedAt: null },
-      select: { id: true },
-    });
-    if (!file) return;
+    // Lock the file row first: two removals racing each other must not both
+    // pass the "not yet removed" check and write two history entries for one
+    // removal. The second waits on the lock, then sees deletedAt set.
+    const rows = await tx.$queryRaw<{ id: string; deletedAt: Date | null }[]>`
+      SELECT "id", "deletedAt" FROM "BusinessRecordFile" WHERE "id" = ${fileId} AND "recordId" = ${recordId} FOR UPDATE`;
+    const file = rows[0];
+    if (!file || file.deletedAt) return;
     await tx.businessRecordFile.update({ where: { id: fileId }, data: { deletedAt: new Date() } });
     await audit(tx, userId, "records.file_removed", recordId, [fileId]);
   });

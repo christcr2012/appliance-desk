@@ -248,6 +248,22 @@ describe.skipIf(!enabled)("VAULT-1 business records (real Postgres)", () => {
     expect(historyRow.deletedAt).not.toBeNull();
   });
 
+  it("records only one removal when two removals of the same file race", async () => {
+    const id = await createPaperwork(ownerId, input({ title: `Race doc ${tag}` }));
+    createdRecordIds.push(id);
+    const fileId = await attachRecordFile(ownerId, id, { fileName: "race.pdf", bytes: PDF_BYTES });
+    await Promise.all([
+      removeRecordFile(ownerId, id, fileId),
+      removeRecordFile(ownerId, id, fileId),
+    ]);
+    const removals = await prisma.auditLog.count({
+      where: { action: "records.file_removed", entityId: id },
+    });
+    expect(removals).toBe(1);
+    const row = await prisma.businessRecordFile.findUniqueOrThrow({ where: { id: fileId } });
+    expect(row.deletedAt).not.toBeNull();
+  });
+
   it("registers a large PDF uploaded straight to the store, after verifying its bytes", async () => {
     const id = await createPaperwork(ownerId, input({ title: `Big scan ${tag}` }));
     createdRecordIds.push(id);
