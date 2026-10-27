@@ -35,6 +35,12 @@ exceptions and setup suites. All six Codex findings on PR #696 were fixed in one
 facts, de minimis units in the mid-quarter basis, the derived began date, and the renewal
 link's year), each with a regression test; local suites 55/55 green before the push.
 exceptions and setup suites.
+## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
+
+A repair visit can be marked "sealed refrigerant system". Only a person with a refrigerant (Type I) certification on file can be
+given it, you included; certifications are entered by the owner in Settings > Team. The rule applies when the visit is created,
+when it comes from a maintenance request, and when it is reassigned. Question DQ-OPS2-2 filed (starting value, not confirmed).
+Tests on real Postgres pass. This was the last unbuilt OPS-2 item.
 ## October 27 — Fast-lane execution rules alignment (branch `ai/chatgpt/fast-lane-protocol`)
 
 Aligned session instructions with the already-approved squash auto-merge, final-head `ci` and `review-gate`,

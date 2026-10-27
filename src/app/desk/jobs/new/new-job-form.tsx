@@ -84,6 +84,7 @@ export function NewJobForm({
   const [durationText, setDurationText] = useState("");
   const [conflicts, setConflicts] = useState<ScheduleConflictView[]>([]);
   const [notes, setNotes] = useState("");
+  const [sealedSystem, setSealedSystem] = useState(false);
   const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>(
     agreement?.appliances.map((a) => a.id) ??
       (maintenanceContext?.defaultApplianceId
@@ -122,6 +123,7 @@ export function NewJobForm({
         applianceIds: selectedApplianceIds,
         notes,
         assignedToUserId,
+        sealedSystem: type === "MAINTENANCE_VISIT" && sealedSystem,
         durationMinutes,
         confirmedConflictJobIds,
       });
@@ -355,6 +357,16 @@ export function NewJobForm({
           </div>
         </div>
       )}
+
+      {type === "MAINTENANCE_VISIT" ? (
+        <label className="flex min-h-11 items-start gap-3 text-sm">
+          <input type="checkbox" checked={sealedSystem} onChange={(e) => setSealedSystem(e.target.checked)} className="mt-1 h-5 w-5" />
+          <span>
+            <span className="font-medium">This repair is on the sealed refrigerant system</span> (compressor, coils, refrigerant lines).
+            <span className="block text-ink-soft">Only someone with a refrigerant (Type I) certification on file can be given it. Add certifications in Settings &gt; Team.</span>
+          </span>
+        </label>
+      ) : null}
 
       <div>
         <label
