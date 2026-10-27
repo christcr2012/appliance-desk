@@ -10,7 +10,7 @@ beforeEach(() => {
   resetNav();
   coarse = true; reduced = false;
   window.matchMedia = ((q: string) => ({ matches: q.includes("pointer: coarse") ? coarse :
-    q.includes("prefers-reduced-motion") ? reduced : false, media: q, addEventListener() {}, removeEventListener() {} })) as typeof window.matchMedia;
+    q.includes("prefers-reduced-motion") ? reduced : false, media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   document.body.dataset.offline = "false";
