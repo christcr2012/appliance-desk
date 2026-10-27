@@ -12,7 +12,7 @@ const label: Record<TaxAttentionKind, string> = {
   NOT_READY: "Filing not ready", SETUP: "Setup", INFO: "Review",
 };
 export default async function SalesTaxRootPage() {
-  const actor = await requireRole("OWNER", "ADMIN");
+  const actor = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   // CMP-1: this page shows Today attention too — keep the filing rows fresh,
   // and never let a sync failure take the Taxes home down.
   await syncComplianceFilings().catch(() => undefined);
