@@ -2,6 +2,18 @@
 
 A new access level, **Accountant**, gives Chris's CPA/tax professional their own sign-in instead of ever sharing his. Only the owner can invite one (Settings → Team), with their firm and an **access ends on** date (starting value the next May 1; or keep-until-removed with a six-month re-check reminder); sign-in refuses after the end date and a daily sweep revokes leftover sessions. The accountant sees **only** the books, sales tax, compliance, money reports, the CPA questions in Decisions & reviews, and business records the owner shares (numbers still masked) — everything else is refused, pinned by an exact inventory test (`tests/accountant-allowlist.test.ts`) over app routes, shell gates and domain functions. They always need a second sign-in step and never get a remembered device. They can prepare filings and mark them **Reviewed** (only the owner approves/files), post adjusting entries (new `ADJUSTMENT` source type on the existing journal machinery; only the owner reverses), map accounts to Schedule C lines, confirm/void bank matches, answer CPA decision questions under their own name and firm, and add files to shared records. Books home gains a **"Changes by your accountant"** plain-words feed for the owner, with Today reminders for unseen changes and upcoming end dates. Remove / reset / change end date / replace all live on the team row; restoring an accountant always needs a fresh end date.
 
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
+
+
+
 ## October 27 — VAULT-2: Logins vault and emergency access (PR #667 merged)
 
 Merged 2026-10-27 (squash `5aadc888`; successor to #664 after a phantom-dirty rebuild; two Codex rounds, six real findings, all fixed with regression tests — the second round: the emergency code now honours the owner's security-texting switch, the export PDF wrap is character-exact including repeated spaces, and characters the PDF fonts cannot print are substituted there while a new `logins.txt` in the export ZIP carries every login exactly as saved). New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
