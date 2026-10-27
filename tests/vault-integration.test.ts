@@ -808,6 +808,9 @@ describe.skipIf(!enabled)("VAULT-2 logins vault and emergency access (real Postg
     const second = await verifyFresh();
     await denyEmergencyRequest(ownerId, second.requestId);
     await expect(pauseChargesAsContact(second.token)).rejects.toThrow(/can't pause/i);
+    // Exactly at the closing instant the power is already gone (this used to pass or fail depending on the millisecond).
+    const closed = await prisma.emergencyAccessRequest.findUniqueOrThrow({ where: { id: second.requestId }, select: { exportExpiresAt: true } });
+    await expect(pauseChargesAsContact(second.token, closed.exportExpiresAt!)).rejects.toThrow(/can't pause/i);
     expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).chargesPausedAt).toBeNull();
     await prisma.auditLog.deleteMany({ where: { entityType: "EmergencyAccess", entityId: { in: [first.requestId, second.requestId] } } });
   });
