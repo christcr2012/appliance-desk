@@ -19,6 +19,10 @@ test("the owner changes a price, publishes site words, schedules a delivery, rec
   const customerUser = await prisma.user.create({ data: { id: `e10-user-${tag}`, email: `e10-${tag}@example.test`, name: `Workflow ${tag}`, role: "CUSTOMER", emailVerified: true } });
   const customer = await prisma.customer.create({ data: { id: `e10-cust-${tag}`, userId: customerUser.id, referralCode: `E${tag.slice(0, 18)}` } });
   const address = await prisma.serviceAddress.create({ data: { id: `e10-addr-${tag}`, customerId: customer.id, line1: "10 Workflow St", city: "Greeley", state: "CO", zip: "80631" } });
+  // FEETAX-2: scheduling a delivery refuses an address whose tax places
+  // are not confirmed yet, so the address is confirmed into the
+  // state-collected state jurisdiction (ready: no city license rule).
+  await prisma.addressTaxLocation.create({ data: { serviceAddressId: address.id, status: "VERIFIED", source: "MANUAL", lookedUpAt: new Date(), isCurrent: true, jurisdictions: { create: [{ jurisdictionId: "tax-jurisdiction-co" }] } } });
   const applianceType = await prisma.applianceType.create({ data: { id: `e10-type-${tag}`, name: `Workflow washer ${tag}`, slug: `e10-${tag}`, monthlyPriceCents: 4000 } });
   const agreement = await prisma.rentalAgreement.create({ data: { id: `e10-agr-${tag}`, customerId: customer.id, serviceAddressId: address.id, status: "ACTIVE", termMonths: 12 } });
   const job = await prisma.job.create({ data: { id: `e10-job-${tag}`, type: "DELIVERY", status: "SCHEDULED", customerId: customer.id, serviceAddressId: address.id } });
@@ -122,6 +126,7 @@ test("the owner changes a price, publishes site words, schedules a delivery, rec
     await gone(() => prisma.job.deleteMany({ where: { id: job.id } }));
     await gone(() => prisma.auditLog.deleteMany({ where: { entityId: { in: [deposit.id, job.id, agreement.id, ...invoiceIds] } } }));
     await gone(() => prisma.rentalAgreement.deleteMany({ where: { id: agreement.id } }));
+    await gone(() => prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId: address.id } }));
     await gone(() => prisma.serviceAddress.deleteMany({ where: { id: address.id } }));
     await gone(() => prisma.customer.deleteMany({ where: { id: customer.id } }));
     await gone(() => prisma.user.deleteMany({ where: { id: customerUser.id } }));

@@ -147,12 +147,18 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
   push the **complete** tree once and let Actions run the full suites.
 - PR body in plain English: what changed, how verified, what Chris must decide, what is next. If a **blocking** finding
   (security, permissions, money, data integrity) is not fixed in the same PR, tell Chris before merging.
-- Automated review: Codex comments on PR open; Copilot review is not available (never wait for it). If no review
-  appears, read the diff yourself and write "automated review unavailable — waived; self-reviewed". Record a
-  disposition (fixed / already fixed / superseded / still open) for every finding and resolve threads only after
-  checking the fix at the exact head.
-- **Merge (authorized by Chris):** the `ci` check green at the exact head, acceptance met with evidence, all review
-  comments read → merge with the expected-head SHA. A merge never covers a hard limit in section 1.
+- Automated review: Codex comments on PR open; Copilot review is not available (never wait for it). Record a
+  disposition (fixed / already fixed / superseded / still open) as a **reply on every Codex finding** and resolve
+  threads only after checking the fix at the exact head. If Codex is unavailable (usage limit, or no answer in 25
+  minutes), read the diff yourself and post **one comment containing "self-reviewed" and the short commit sha you reviewed** (what you checked) after your
+  last push. The `review-gate` status (`.github/workflows/review-gate.yml`, `scripts/review-gate.mjs`) reads exactly
+  that: it fails while a Codex finding has no reply (from the PR author or a collaborator, saying fixed / already fixed / superseded / still open) or while neither Codex nor a self-review note exists, and passes
+  by itself the moment they do. A clean sync with main does not erase a self-review note that names your last real commit.
+- **Merge (authorized by Chris):** the `ci` and `review-gate` checks green at the exact head and acceptance met with
+  evidence → merge. **Turn on auto-merge (squash) as soon as the PR is open** and keep working: GitHub merges it the
+  moment both checks pass, and **main moving does not force a re-sync** (the "branch must be up to date" rule is off,
+  Chris 2026-10-27; CI runs again on `main` after every merge and the nightly release only takes checked commits).
+  Sync with main yourself only when GitHub reports a real conflict. A merge never covers a hard limit in section 1.
 - A security or money hole already on `main` is fixed immediately in its own PR.
 - **Never delete remote branches, tags or PRs without asking Chris.** Park or list stale ones instead.
 
@@ -181,7 +187,8 @@ The repository is **public**: Actions minutes are free and anything committed is
 typecheck + lint, 3 unit shards on throwaway Postgres, production build + 5 browser shards (docs-only changes skip
 the heavy jobs but never the secret scan). `.github/workflows/ci.yml` keeps `permissions: contents: read`, uses no
 repository secrets, never `pull_request_target`, never echoes environment values. Only `sandbox-publish.yml`,
-`daily-live.yml` and the checked `testing-deploy.yml` promoter have write access; keep them that narrow. Prefer unit tests (`tests/`) over browser tests (`e2e/`);
+`daily-live.yml` and the checked `testing-deploy.yml` promoter have write access (plus `review-gate.yml`, which can
+only write one commit status and never checks out a pull request); keep them that narrow. Prefer unit tests (`tests/`) over browser tests (`e2e/`);
 every new `e2e/*.spec.ts` goes in a group in `e2e/shards.json`; reuse `e2e/global-setup.ts` sessions.
 
 ## 9. Ending a session

@@ -18,7 +18,7 @@ const STATUS_WORDS: Record<string, string> = {
   CODE_SENT: "The wait is over and a code was sent to your contact's saved details.",
   VERIFIED: "Your contact confirmed the code. Their one-time download is ready.",
   DENIED: "You denied the last request. Nothing was shared.",
-  CONSUMED: "The export was downloaded. The link is finished.",
+  CONSUMED: "The export was downloaded. The link is finished, except that your contact can still pause automatic charges for 24 hours after confirming their code.",
 };
 
 /**
@@ -120,10 +120,10 @@ export function EmergencyPanel({ view }: { view: EmergencyOwnerView }) {
         ) : (
           <p className="text-sm text-ink-soft">Turn emergency access on and save the contact to create a link.</p>
         )}
-        {active && ["WAITING", "CODE_SENT", "VERIFIED"].includes(active.status) && (
+        {active && (["WAITING", "CODE_SENT", "VERIFIED"].includes(active.status) || (active.status === "CONSUMED" && active.pauseOpen)) && (
           <form action={denyEmergencyRequestAction.bind(null, active.id)} className="mt-4">
             <Button type="submit" variant="danger">
-              Deny this request
+              {active.status === "CONSUMED" ? "Close this link now" : "Deny this request"}
             </Button>
           </form>
         )}

@@ -52,6 +52,37 @@ export async function setChargesPaused(userId: string, paused: boolean, note: st
   });
 }
 
+/**
+ * VAULT-2 + OPS-8: the emergency contact's pause. Called only from the emergency flow, inside its transaction, after
+ * the contact has proved themselves with the code sent to the saved phone or email. It can only turn the pause ON
+ * (turning charges back on stays an owner decision), never refunds or cancels, and is idempotent: a second press
+ * changes nothing and writes no second audit line. No signed-in user exists, so the audit row has no user and names
+ * the access request instead.
+ */
+export async function pauseChargesForEmergencyContact(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  input: { requestId: string; contactName: string | null },
+  now = new Date(),
+): Promise<PauseResult> {
+  const name = (input.contactName ?? "").replace(/\s+/g, " ").trim().slice(0, 100) || "the emergency contact";
+  const note = `Paused by ${name} through emergency access`;
+  await tx.businessSettings.upsert({ where: { id: "singleton" }, create: { id: "singleton" }, update: {} });
+  await lock(tx);
+  const before = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" }, select: { chargesPausedAt: true } });
+  if (before.chargesPausedAt !== null) return { changed: false, paused: true };
+  await tx.businessSettings.update({
+    where: { id: "singleton" },
+    data: { chargesPausedAt: now, chargesPausedByUserId: null, chargesPausedNote: note },
+  });
+  await tx.auditLog.create({
+    data: {
+      action: "continuity.charges_paused_emergency", entityType: "EmergencyAccess", entityId: input.requestId,
+      oldValue: { paused: false }, newValue: { paused: true, note },
+    },
+  });
+  return { changed: true, paused: true };
+}
+
 /** Finish this year's December check-up. Records which items were looked at; changes nothing else. Once per year. */
 export async function completeYearlyCheckup(userId: string, ticked: readonly string[], note: string | null, now = new Date()): Promise<{ year: number }> {
   const keys = cleanTicked(ticked);

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { parseDollarInput } from "@/lib/money-ui";
-import { archivePolicy, requestCertificate, savePolicy, saveReminderDays, saveWorkersComp } from "@/domains/insurance/actions";
+import { archivePolicy, keepCertificateOnRecord, requestCertificate, savePolicy, saveReminderDays, saveWorkersComp } from "@/domains/insurance/actions";
 import { REMIND_FIRST_DEFAULT, REMIND_SECOND_DEFAULT, type InsuranceKindValue, type WorkersCompStatusValue } from "@/domains/insurance/rules";
 
 export type InsuranceActionState =
@@ -67,5 +67,16 @@ export async function certificateAction(policyId: string, _: InsuranceActionStat
     });
     refresh();
     return { status: "success", message: "Recorded. Open the email below, read it, and send it to your agent yourself.", mailto: draft.mailto };
+  } catch (error) { return fail(error); }
+}
+
+export async function keepCertificateAction(policyId: string, _: InsuranceActionState): Promise<InsuranceActionState> {
+  void _;
+  const session = await requireRole("OWNER");
+  try {
+    const { created } = await keepCertificateOnRecord(session.user.id, policyId);
+    refresh();
+    revalidatePath("/desk/paperwork");
+    return { status: "success", message: created ? "Done. Open the certificate record to upload the PDF." : "That policy already has a certificate record." };
   } catch (error) { return fail(error); }
 }

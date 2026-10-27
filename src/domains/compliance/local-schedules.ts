@@ -100,6 +100,21 @@ export function greeleyPeriods(year: number, licenseDate: Date | null): LocalPer
   ];
 }
 
+/**
+ * CMP-5: the Colorado new-hire report for the FIRST hire — one period in
+ * the hire's year, due 20 calendar days after the start date (the
+ * verified Colorado rule). Later hires ride the payroll routine; this
+ * filing exists so the first deadline is never missed.
+ */
+export function newHirePeriods(year: number, firstHireDate: Date | null): LocalPeriod[] {
+  if (!firstHireDate) return [];
+  const hireKey = businessDateKey(firstHireDate);
+  if (Number(hireKey.slice(0, 4)) !== year) return [];
+  return [
+    { periodKey: hireKey, opens: dateOf(hireKey), dueOn: dateOf(shiftKeyDays(hireKey, 20)), effect: "COSTS" },
+  ];
+}
+
 /** The truck registration renewal for `year`: due the last day of the registration month, open from the month before. */
 export function vehiclePeriods(year: number, registrationMonth: number | null): LocalPeriod[] {
   if (!registrationMonth || registrationMonth < 1 || registrationMonth > 12) return [];

@@ -33,6 +33,10 @@ export interface BusinessFactsInput {
     businessZip: string | null;
     businessPhone: string | null;
   };
+  /** CMP-5: the hiring fact; undefined = leave as-is. The date travels as a YYYY-MM-DD key. */
+  hiring?: {
+    firstHireDate: string | null;
+  };
   /** CMP-4: the local-filing facts; undefined = leave as-is. The license date travels as a YYYY-MM-DD key. */
   local?: {
     tradeName: string | null;
@@ -70,6 +74,7 @@ export async function getComplianceProfile(): Promise<ComplianceProfile> {
     usdotNumber: null,
     truckRegistrationMonth: null,
     greeleyLicenseDate: null,
+    firstHireDate: null,
     registeredAgentName: null,
     registeredAgentAddress: null,
     registeredAgentCity: null,
@@ -97,6 +102,7 @@ export function profileContext(
     usdotNumber: profile.usdotNumber,
     truckRegistrationMonth: profile.truckRegistrationMonth,
     greeleyLicenseDate: profile.greeleyLicenseDate,
+    firstHireDate: profile.firstHireDate,
   };
 }
 
@@ -149,6 +155,13 @@ export function missingFacts(profile: ComplianceProfile): MissingFact[] {
       key: "greeleyLicenseDate",
       label: "Your Greeley license date",
       why: "The city license renews every two years on the date it was issued. The date is on the license from the city's sales tax portal.",
+    });
+  }
+  if (profile.employees > 0 && profile.firstHireDate === null) {
+    missing.push({
+      key: "firstHireDate",
+      label: "Your first employee's start date",
+      why: "The Colorado new-hire report is due 20 days after your first employee starts. Until the date is recorded, that deadline can't be scheduled.",
     });
   }
   return missing;
@@ -221,6 +234,18 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
     };
   }
 
+  let hiringPatch: { firstHireDate: Date | null } | undefined;
+  if (input.hiring !== undefined) {
+    let firstHireDate: Date | null = null;
+    if (input.hiring.firstHireDate) {
+      firstHireDate = businessDateFromKey(input.hiring.firstHireDate);
+      if (!firstHireDate) {
+        throw new Error("Enter the first employee's start date like 2026-05-01.");
+      }
+    }
+    hiringPatch = { firstHireDate };
+  }
+
   let einPatch: { einEncrypted: string | null; einLast4: string | null } | undefined;
   if (input.ein !== undefined) {
     if (input.ein === null || input.ein.trim() === "") {
@@ -262,6 +287,7 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
       ...(einPatch ?? {}),
       ...(input.payer ?? {}),
       ...(localPatch ?? {}),
+      ...(hiringPatch ?? {}),
     };
     await tx.complianceProfile.upsert({
       where: { id: "singleton" },

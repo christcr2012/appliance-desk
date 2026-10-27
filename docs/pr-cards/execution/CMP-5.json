@@ -1,0 +1,99 @@
+{
+  "acceptance": [
+    "Payroll obligations wake only when employees > 0: with the employees fact set to 1 and a first-hire date saved, sync creates filings for Form 941, Form 940, W-2s, Colorado withholding, Colorado UI, FAMLI and the new Colorado new-hire report; at employees 0 none of them apply or create filings.",
+    "Colorado new-hire report (co.payroll.new_hire): due the first employee's start date plus 20 calendar days, GUIDED_WEB with the federal state-directory link; with employees > 0 but no start date recorded it stays unscheduled with the reason printed, never an invented date.",
+    "Hiring checklist on the Compliance screen (employees > 0 only): EIN, W-4, I-9, new hire report, Colorado withholding account, UI account, FAMLI registration, workers' comp policy, workplace posters, paid sick leave \u2014 each with plain words, the official link, and dates where a date exists; state derives from the business facts and filings (EIN recorded, new-hire filing state), never honor-system ticks.",
+    "Decisions question DQ-CMP-PAYROLL-HOW filed (starting value: payroll service \u2014 the careful choice, tax tables change often and payroll errors carry penalties); the in-app payroll engine is designed only if Chris chooses it.",
+    "Payroll provider CSV import: a summary file (pay_date, gross_wages, employer_taxes, amount_withdrawn, optional employee_taxes and provider) posts one balanced books journal per pay run through writeJournal as source type PAYROLL \u2014 Dr wages, Dr employer payroll taxes, Cr bank \u2014 against new system accounts WAGES (Schedule C line 26) and EMPLOYER_PAYROLL_TAXES (line 23); unbalanced rows refuse the file with plain words and post nothing; re-importing the same file is stopped by the (fileHash, rowIndex) uniqueness and posts nothing twice; importing before the books start date refuses with a plain message; a PayrollImport record keeps each row's totals with no employee-level personal data anywhere.",
+    "ci green at the exact head; every review comment read and answered."
+  ],
+  "baseline": "c28cc9ffcf653921571f37cbce05b9a6ada32984",
+  "card": "docs/pr-cards/CMP-5.md",
+  "checks": {
+    "browser": [],
+    "db": [
+      "tests/payroll-import-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/hiring-readiness.test.ts",
+      "tests/compliance-registry.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "CMP-5",
+  "invariants": [
+    "Payroll obligations apply only when the employees fact is > 0; at 0 they stay dormant with the CMP-1 'wakes up when you hire' wording and create no filings.",
+    "The new-hire report deadline is the first employee's start date plus 20 calendar days (the verified Colorado rule); no date is ever invented \u2014 employees > 0 without a start date leaves the obligation unscheduled with the reason printed.",
+    "The hiring checklist stores no checkbox state; every status shown derives from facts or filings.",
+    "The payroll CSV import posts only balanced journals through the books engine (writeJournal) as source type PAYROLL: Dr wages (gross), Dr employer payroll taxes, Cr bank (amount withdrawn). A row that cannot balance \u2014 the provider's one withdrawal must equal gross + employer taxes, the employee share riding inside the gross \u2014 posts nothing and names the line.",
+    "Re-importing the same file never double-posts: (fileHash, rowIndex) is unique and writeJournal is idempotent per (sourceType, sourceId, eventKind).",
+    "New system accounts WAGES and EMPLOYER_PAYROLL_TAXES come from the system chart with Schedule C lines 26 and 23; the migration adds them to existing installs guarded by account role, never duplicating.",
+    "Nothing is filed or submitted to any agency, and no payroll is calculated in the app; DQ-CMP-PAYROLL-HOW governs that future build. No SSN or employee-level personal data is accepted, stored or logged \u2014 provider summary totals only."
+  ],
+  "next": "Full local verification, one push, CI green at the exact head, review dispositions, squash merge; Lane 5's compliance line is then complete (CMP-1 through CMP-5).",
+  "outcome": "Hiring readiness, built ahead of the first hire by owner decision: the six dormant payroll obligations wake from the employees fact, the Colorado new-hire report obligation joins them with its 20-day deadline from the first employee's start date, the Compliance screen shows a fact-driven hiring checklist with official links and computed dates, DQ-CMP-PAYROLL-HOW is filed with the payroll-service starting value, and a payroll provider's summary CSV imports into the books as balanced payroll journals so Schedule C and the 941 numbers tie out.",
+  "parent": "CMP-5",
+  "proposedFiles": [
+    "docs/DATABASE.md",
+    "docs/OWNER-GUIDE.md",
+    "docs/OWNER-INPUTS.md",
+    "docs/STATUS.md",
+    "docs/pr-cards/CMP-5.md",
+    "docs/pr-cards/execution/CMP-5.json",
+    "docs/pr-cards/work-index.json",
+    "prisma/migrations/20261112000000_cmp5_hiring/migration.sql",
+    "prisma/schema.prisma",
+    "src/app/desk/compliance/actions.ts",
+    "src/app/desk/compliance/facts/facts-form.tsx",
+    "src/app/desk/compliance/facts/page.tsx",
+    "src/app/desk/compliance/page.tsx",
+    "src/app/desk/compliance/payroll-import-form.tsx",
+    "src/domains/backup/manifest.ts",
+    "src/domains/books/system-chart.json",
+    "src/domains/compliance/hiring.ts",
+    "src/domains/compliance/local-schedules.ts",
+    "src/domains/compliance/payroll-import.ts",
+    "src/domains/compliance/profile.ts",
+    "src/domains/compliance/registry.ts",
+    "src/domains/compliance/schedule-c.ts",
+    "tests/compliance-registry.test.ts",
+    "tests/hiring-readiness.test.ts",
+    "tests/local-filings.test.ts",
+    "tests/payroll-import-integration.test.ts",
+    "vitest.config.mts"
+  ],
+  "references": [
+    {
+      "anchor": "## CMP-5 \u2014 Hiring readiness (dormant until employees > 0)",
+      "path": "docs/build-specs/engines/COMPLIANCE.md",
+      "purpose": "The build spec: payroll obligations wake on employees > 0, the hiring checklist contents, DQ-CMP-PAYROLL-HOW with the payroll-service starting value, and payroll totals recorded to books from the provider CSV."
+    },
+    {
+      "anchor": "New hire report within 20 days",
+      "path": "docs/research/2026-10-25-federal-colorado-compliance.md",
+      "purpose": "The verified (V) hiring facts this card builds on: new-hire report within 20 days, UI wage base 2026 $30,600, FAMLI 2026 0.88% with the small-employer rule, workers' comp required with any employee, paid sick leave 1 hour per 30 up to 48."
+    },
+    {
+      "anchor": "ctx.employees > 0",
+      "path": "src/domains/compliance/registry.ts",
+      "purpose": "The CMP-1 wake helper (whenEmployees) and the six dormant payroll obligations; CMP-5 adds co.payroll.new_hire beside them and the firstHireDate context fact."
+    },
+    {
+      "anchor": "export async function writeJournal(tx: Tx, sourceType: JournalSourceType, sourceId: string,",
+      "path": "src/domains/books/post.ts",
+      "purpose": "The books posting engine the payroll import posts through: role-based lines, balanced-journal refusal, idempotent per (sourceType, sourceId, eventKind), closed-month placement."
+    }
+  ],
+  "risk": "Payroll money figures enter the books from an owner-supplied CSV: a wrong file would post wrong journals. Mitigated by strict balance validation per row, whole-file duplicate protection, the books engine's own balanced-journal refusal, and journal memos naming the import; entries stay reversible through the books like any other journal. No tax is calculated, withheld, deposited or filed by this card.",
+  "sequence": [
+    "Execution packet + work-index registration; branch ai/vivienne/cmp-5 from origin/main",
+    "Additive schema + migration: ComplianceProfile.firstHireDate, JournalSourceType PAYROLL, PayrollImport model (+ backup manifest), WAGES and EMPLOYER_PAYROLL_TAXES system accounts in the chart and seeded for existing installs",
+    "Facts + registry: firstHireDate through profile input/context/facts form; co.payroll.new_hire obligation with the 20-day schedule in local-schedules.ts",
+    "Hiring checklist domain (hiring.ts) + Compliance screen section with the payroll CSV import form and past-imports list",
+    "Payroll import domain (payroll-import.ts): strict CSV parse, balance validation, duplicate protection, writeJournal posting",
+    "Tests: hiring-readiness unit (schedule, checklist, parser, balance math), registry additions, payroll-import integration on the lane's own database",
+    "Docs: DATABASE.md, OWNER-GUIDE, OWNER-INPUTS (DQ-CMP-PAYROLL-HOW), card, STATUS, work-index"
+  ],
+  "version": 1
+}
