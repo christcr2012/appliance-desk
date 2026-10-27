@@ -14,9 +14,10 @@ beforeEach(() => {
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   document.body.dataset.offline = "false";
+  Object.defineProperty(document, "scrollingElement", { configurable: true, value: document.documentElement });
   Object.defineProperty(document.documentElement, "scrollTop", { configurable: true, writable: true, value: 0 });
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); delete document.body.dataset.offline; });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); delete document.body.dataset.offline; Reflect.deleteProperty(document, "scrollingElement"); });
 
 function swipe(element: HTMLElement, distance: number, drift = 0) {
   fireEvent.pointerDown(element, { pointerType: "touch", pointerId: 1, clientX: 0, clientY: 10 });

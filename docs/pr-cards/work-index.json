@@ -4715,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — merged #608 and #647; loading sweep in review",
+      "status": "IN PROGRESS — merged #608/#647/#649; mobile pull refresh PR pending",
       "migration": "none",
       "budget": 480,
       "units": [
