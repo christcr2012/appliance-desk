@@ -1,25 +1,9 @@
-## October 27 — Lane 1 AR-11 swipe-to-reveal actions (in review)
-Branch `ai/chatgpt/ar-11-swipe-actions-20261027` adds touch-only left-swipe shortcuts to the first two existing list-card actions,
-with 64px threshold, tap-away, reduced-motion and the same safeguarded form/confirmation path as ⋯.
-Unit and authenticated mobile browser regressions added. Full CI and review not yet observed; do not
-mark AR-11 complete. Still remaining: React 19.3/title transitions, optimistic snooze and bundle budget.
-No money, role, provider, database or live-setting changes. Next: finish these AR-11 outcomes, then AR-12.
-
-## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
-
-Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
-walkthroughs for the real-world accounts — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley
-license, Weld assessor, IRS accounts, the IRIS TCC, insurance, the vehicle, email domain, texting, the
-encryption keys, the CPA and backups. Each has plain steps with official links, what to have ready, and the
-VAULT-1 record it fills; where a step produces a number or a file, saving it lands on that record through
-the VAULT-1 rules (encrypted, masked, sniffed). Steps the app can verify check themselves — presence only
-for keys (`ENV_PRESENT` allowlist), a saved number or file on a record, a set-up filing account. Progress is
-the audit log folded on read (no new table); "Not for me" dismisses a walkthrough. The suggested next is the
-one whose needed-by date comes soonest (the IRIS TCC before January 31), and one To do names it until all
-are done or dismissed. The OWNER-CHECKLIST rows for the keys, the TCC and backups now link here. This branch
-also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthroughs.test.ts` (data + order),
-`tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
-saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
+## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
+GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
+selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings
+(portalled Confirm interactions and long labels) were fixed and regression-tested; replies posted.
+Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
+optimistic Snooze and bundle budget remain. No user payment or permission path changed.
 
 ## October 27 — CMP-3 merged (PR #656); CMP-2 in progress
 
