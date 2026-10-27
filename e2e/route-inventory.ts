@@ -13,6 +13,11 @@ export type AccessibilityRoute = {
 };
 
 export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
+  {
+    path: "/connect/consent", role: "OWNER",
+    fixture: "A registered SDK OAuth client with a valid pending authorization code and active owner login",
+    manualOnlyReason: "A live client approval request and a time-limited OAuth authorization code are required.",
+  },
   { path: "/", role: "PUBLIC", fixture: "/" },
   { path: "/accessibility", role: "PUBLIC", fixture: "/accessibility" },
   { path: "/contact", role: "PUBLIC", fixture: "/contact" },
