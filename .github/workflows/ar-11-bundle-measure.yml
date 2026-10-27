@@ -1,0 +1,53 @@
+name: AR-11 measure desk JS (temporary, test data only)
+on:
+  push:
+    branches: ['ai/chatgpt/ar-11-bundle-budget-20261027']
+    paths:
+      - 'scripts/check-desk-bundle.mjs'
+      - '.github/workflows/ar-11-bundle-measure.yml'
+permissions:
+  contents: read
+jobs:
+  measure:
+    name: Build with isolated Postgres and measure actual gzip JS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: appliance_desk_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U test -d appliance_desk_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      DIRECT_URL: postgresql://test:test@localhost:5432/appliance_desk_test
+      BETTER_AUTH_SECRET: ci-test-secret-not-for-production-use-only
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      OWNER_EMAIL: ci-owner@example.test
+      OWNER_PASSWORD: Ci-Test-Owner-Password-Not-Real-1!
+      TEST_CUSTOMER_EMAIL: ci-customer@example.test
+      TEST_CUSTOMER_PASSWORD: Ci-Test-Customer-Password-Not-Real-1!
+      TEST_STAFF_EMAIL: ci-staff@example.test
+      TEST_STAFF_PASSWORD: Ci-Test-Staff-Password-Not-Real-1!
+      TEST_ADMIN_EMAIL: ci-admin@example.test
+      TEST_ADMIN_PASSWORD: Ci-Test-Admin-Password-Not-Real-1!
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-deps
+      - name: Disposable database and app build
+        run: |
+          npm run db:migrate:deploy
+          npm run db:seed
+          npm run build
+      - name: Measure every desk route, print encoded baseline
+        run: |
+          node --test scripts/check-desk-bundle.test.mjs
+          node scripts/check-desk-bundle.mjs --baseline
