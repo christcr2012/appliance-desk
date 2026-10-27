@@ -3731,6 +3731,22 @@ model ComplianceProfile {
   updatedAt      DateTime @updatedAt
 }
 
+// CMP-2: what the owner (or the CPA) recorded about one finished tax
+// year — the figures the safe-harbor estimates are computed from, plus
+// the 1099-K gross typed from Stripe's form for the tie-out. Every field
+// is optional: a missing figure means the app shows words ("ask your
+// CPA"), never an invented number. Entered on the business-facts screen.
+model TaxYearFacts {
+  id                   String   @id @default(cuid())
+  year                 Int      @unique
+  federalTaxCents      Int? // that year's total federal tax (Form 1040)
+  federalAgiCents      Int? // that year's federal adjusted gross income
+  coloradoTaxCents     Int? // that year's total Colorado tax (DR 0104)
+  form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
 model ComplianceFiling {
   // CMP-1: one row per obligation period, moved by the filing flow
   // (prepare → approve → submit). The approval binds preparedHash, and the
@@ -5039,6 +5055,10 @@ model LedgerAccount {
   description     String // plain words, shown on screen
   isPaymentSource Boolean                @default(false)
   filingAccountId String? // set for per-filing-account tax payable accounts
+  // CMP-2: the Schedule C line this account's year totals land on
+  // (src/domains/compliance/schedule-c.ts); null = not yet mapped, which
+  // the packet treats as line 27a (Other expenses) listed by name.
+  scheduleCLine   String?
   active          Boolean                @default(true)
   sortOrder       Int                    @default(0)
   mappings        AccountExportMapping[]

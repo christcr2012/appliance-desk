@@ -1,3 +1,9 @@
+## November 10 — Income tax helpers (CMP-2, additive)
+
+Migration `20261110000000_cmp2_income_tax`.
+- `LedgerAccount.scheduleCLine` — the Schedule C line this account's year totals land on (a line code like `1`, `20b`, `27a`). The migration fills it for every system account from the system chart (`src/domains/books/system-chart.json`, the same values); owner-added accounts stay null, which the accountant packet reads as line 27a (Other expenses), listed by name — an account is never dropped or guessed into a more specific line.
+- `TaxYearFacts` — one row per finished tax year (`year` unique): `federalTaxCents`, `federalAgiCents`, `coloradoTaxCents` (what that year's returns said — the quarterly estimates' safe-harbor basis) and `form1099KGrossCents` (the 1099-K box 1a typed from Stripe's form, for the tie-out). All nullable: a missing figure means the app shows words ("ask your CPA"), never an invented number. Entered by the owner on Business facts; registered in the backup manifest.
+
 ## November 7 — Supplier tax IDs, W-9s and 1099 preparation (CMP-3, additive)
 
 Migrations `20261107000000_supplier_tin_w9` and `20261107010000_filing_period_key_widen`.
