@@ -1,3 +1,10 @@
+## October 26 — AR-11 desktop shortcuts and idle-safe freshness (PR #647, in review)
+
+Branch `ai/chatgpt/ar-11-keyboard-freshness`, head after latest main merge. Adds on-desktop
+navigation keys and a searchable help dialog, plus guarded refresh on Today, Bills and Customers.
+The old CI found a shifted-key ordering issue, now fixed; new exact-head CI and review verification
+remain required. AR-11 is not yet complete (touch, view transitions, skeletons, bundle budget).
+
 ## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
 ## October 26 — TFA-3: official-page watches with strict parsers (in progress)
 
