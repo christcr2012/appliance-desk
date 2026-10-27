@@ -1,5 +1,5 @@
 import { businessDateFromKey } from "@/lib/business-date";
-import { greeleyPeriods, usdotPeriods, vehiclePeriods } from "./local-schedules";
+import { greeleyPeriods, newHirePeriods, usdotPeriods, vehiclePeriods } from "./local-schedules";
 
 /**
  * CMP-1: the compliance obligation registry — a pure module, seeded exactly
@@ -38,6 +38,8 @@ export interface ComplianceContext {
   usdotNumber: string | null;
   truckRegistrationMonth: number | null; // 1-12
   greeleyLicenseDate: Date | null;
+  /** CMP-5 fact: the first employee's start date (schedules the new-hire report). */
+  firstHireDate: Date | null;
 }
 
 export interface ObligationPeriod {
@@ -412,6 +414,20 @@ export const OBLIGATIONS: Obligation[] = [
     periods: (year, ctx) => vehiclePeriods(year, ctx.truckRegistrationMonth),
     unscheduledReason:
       "The renewal month comes from the truck's current registration. Add it in Business facts and the yearly renewal is scheduled — no date is guessed.",
+  },
+  {
+    key: "co.payroll.new_hire",
+    title: "Report a new hire (Colorado)",
+    agency: "Colorado Child Support Services",
+    explain:
+      "Colorado employers report each new hire to the State Directory of New Hires within 20 days of their start date. This filing covers your first hire; later hires ride the same routine (your payroll service usually files it). Dormant until you hire.",
+    sourceUrl: "https://childsupport.state.co.us/new-hire-reporting",
+    channel: "GUIDED_WEB",
+    unit: "CMP-5",
+    applies: whenEmployees("new-hire reporting"),
+    periods: (year, ctx) => newHirePeriods(year, ctx.firstHireDate),
+    unscheduledReason:
+      "The 20-day deadline runs from your first employee's start date. Add it in Business facts and the report is scheduled — no date is guessed.",
   },
   {
     key: "co.payroll.withholding",

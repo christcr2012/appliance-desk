@@ -29,6 +29,7 @@ const base: ComplianceContext = {
   usdotNumber: null,
   truckRegistrationMonth: null,
   greeleyLicenseDate: null,
+  firstHireDate: null,
 };
 const ctx = (patch: Partial<ComplianceContext>): ComplianceContext => ({ ...base, ...patch });
 

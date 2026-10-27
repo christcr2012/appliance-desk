@@ -10,6 +10,7 @@ type Props = {
   sosReportMonth: number | null;
   truckGvwrLbs: number | null;
   employees: number;
+  firstHireDate: string;
   hasHomeOffice: boolean;
   payer: {
     businessLegalName: string;
@@ -189,6 +190,22 @@ export function FactsForm(props: Props) {
           className={inputCls}
         />
         <p className={helpCls}>Payroll taxes stay asleep until this is more than zero.</p>
+      </div>
+
+      <div>
+        <label className={labelCls} htmlFor="firstHireDate">
+          First employee&apos;s start date
+        </label>
+        <input
+          id="firstHireDate"
+          name="firstHireDate"
+          type="date"
+          defaultValue={props.firstHireDate}
+          className={inputCls}
+        />
+        <p className={helpCls}>
+          The Colorado new-hire report is due 20 days after this date. Leave it blank until you hire.
+        </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm font-medium text-ink">
