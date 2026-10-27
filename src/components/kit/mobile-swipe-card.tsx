@@ -36,6 +36,9 @@ export function MobileSwipeCard({
   useEffect(() => {
     if (!open) return;
     const closeOutside = (event: PointerEvent) => {
+      // The ConfirmDialog is portalled outside this row. Keep the action mounted
+      // while the user taps its Confirm or Cancel button.
+      if ((event.target as Element).closest?.('[role="alertdialog"]')) return;
       if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
     };
     document.addEventListener("pointerdown", closeOutside);
@@ -100,7 +103,7 @@ export function MobileSwipeCard({
               key={`${action.kind}-${action.label}-${index}`}
               spec={action}
               variant="secondary"
-              className="min-w-0 flex-1 text-center text-xs"
+              className="min-w-0 flex-1 whitespace-normal! break-words px-2! text-center text-xs leading-tight"
             />
           ))}
         </div>
