@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
+import { getRecord } from "@/domains/paperwork/records";
 import { checkRefrigerantInput, keepUntil, refrigerantRecordRequired, type RefrigerantInput } from "./rules";
 import type { StatementFacts } from "./statement";
 
@@ -77,7 +78,8 @@ export async function keepReceiptOnRecord(actorUserId: string, applianceId: stri
   });
 }
 
-export async function loadRefrigerantPanel(applianceId: string, now: Date) {
+/** `role` is the viewer's: the receipt record is shown only when the vault would show it to them. */
+export async function loadRefrigerantPanel(applianceId: string, now: Date, role: string | undefined) {
   const appliance = await prisma.appliance.findUnique({
     where: { id: applianceId },
     select: { applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true } }, refrigerantRecord: true },
@@ -86,10 +88,8 @@ export async function loadRefrigerantPanel(applianceId: string, now: Date) {
   if (!refrigerantRecordRequired(true, appliance.retiredPlan)) return null;
   const years = (await ruleAsOf<number>("records.refrigerant_keep_years", now)).value;
   const record = appliance.refrigerantRecord;
-  const receiptRecord = record?.receiptRecordId
-    ? await prisma.businessPaperwork.findUnique({ where: { id: record.receiptRecordId }, select: { id: true, recordFiles: { where: { deletedAt: null }, select: { id: true } } } })
-    : null;
-  return { receiptRecord: receiptRecord ? { id: receiptRecord.id, fileCount: receiptRecord.recordFiles.length } : null, record, locked: appliance.retiredPlan.doneOn !== null, years, keepUntil: record ? keepUntil(record.recoveredOn, years) : null };
+  const receiptRecord = record?.receiptRecordId ? await getRecord(role, record.receiptRecordId) : null;
+  return { receiptRecord: receiptRecord ? { id: receiptRecord.id, fileCount: receiptRecord.files.length } : null, record, locked: appliance.retiredPlan.doneOn !== null, years, keepUntil: record ? keepUntil(record.recoveredOn, years) : null };
 }
 
 export async function loadStatementFacts(applianceId: string): Promise<StatementFacts | null> {

@@ -74,7 +74,7 @@ export default async function ApplianceDetailPage({
   const retiredPlan = appliance.status === "RETIRED"
     ? await prisma.retiredAppliancePlan.findUnique({ where: { applianceId: id } })
     : null;
-  const refrigerantPanel = appliance.status === "RETIRED" ? await loadRefrigerantPanel(id, new Date()) : null;
+  const refrigerantPanel = appliance.status === "RETIRED" ? await loadRefrigerantPanel(id, new Date(), session.user.role) : null;
   const retiredPanel = appliance.status === "RETIRED"
     ? {
         salvaged: (await getSalvagedParts(id)).map((m) => ({

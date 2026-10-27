@@ -113,7 +113,7 @@ describe.skipIf(!enabled)("refrigerant records (real Postgres)", () => {
     await saveRefrigerantRecord(adminId, id, good);
     const facts = await loadStatementFacts(id);
     expect(facts).toMatchObject({ refrigerantType: "R-134a", outcome: "RECOVERED", recoveredByName: "Cool Repair LLC", assetNumber: `OPS2-${tag}-${created.indexOf(id)}` });
-    const panel = await loadRefrigerantPanel(id, new Date());
+    const panel = await loadRefrigerantPanel(id, new Date(), "OWNER");
     expect(panel?.years).toBe(6);
     expect(panel?.keepUntil && panel.keepUntil.getUTCFullYear()).toBe(new Date().getUTCFullYear() + 6);
   });
@@ -141,8 +141,19 @@ describe.skipIf(!enabled)("refrigerant records (real Postgres)", () => {
     expect(record.referenceNumber).toBe("RC-77");
     expect(record.notes).toMatch(/Keep until \d{4}-\d{2}-\d{2}/);
     expect(await prisma.auditLog.count({ where: { action: "appliance.refrigerant_receipt_record_created", entityId: id } })).toBe(1);
-    const panel = await loadRefrigerantPanel(id, new Date());
+    const panel = await loadRefrigerantPanel(id, new Date(), "OWNER");
     expect(panel?.receiptRecord).toEqual({ id: record.id, fileCount: 0 });
+    // An admin sees it only while the vault lets admins see documents; staff never do.
+    const settings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" }, select: { paperworkAdminKinds: true } });
+    try {
+      await prisma.businessSettings.update({ where: { id: "singleton" }, data: { paperworkAdminKinds: ["DOCUMENT"] } });
+      expect((await loadRefrigerantPanel(id, new Date(), "ADMIN"))?.receiptRecord?.id).toBe(record.id);
+      await prisma.businessSettings.update({ where: { id: "singleton" }, data: { paperworkAdminKinds: ["LICENSE"] } });
+      expect((await loadRefrigerantPanel(id, new Date(), "ADMIN"))?.receiptRecord).toBeNull();
+      expect((await loadRefrigerantPanel(id, new Date(), "STAFF"))?.receiptRecord).toBeNull();
+    } finally {
+      await prisma.businessSettings.update({ where: { id: "singleton" }, data: { paperworkAdminKinds: settings.paperworkAdminKinds } });
+    }
     // Re-saving the signed record keeps the receipt link.
     await saveRefrigerantRecord(adminId, id, { ...good, recyclerName: "Front Range Metals", receiptReference: "RC-78" });
     expect((await prisma.refrigerantRecord.findUniqueOrThrow({ where: { applianceId: id } })).receiptRecordId).toBe(record.id);
