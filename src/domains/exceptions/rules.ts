@@ -469,6 +469,52 @@ export function ruleChangeReviewException(input: {
   };
 }
 
+/**
+ * FEETAX-2 section 9: a place a real delivery address needs is not set
+ * up yet. The detail walks the owner through getting ready; the setup
+ * itself happens on Taxes > Delivery area, so this item is link-only.
+ */
+export function deliveryReadinessException(input: {
+  jurisdictionId: string;
+  name: string;
+  problems: string[];
+  sourceUrl: string | null;
+  filesThrough: string;
+  licenseRequired: string;
+  since: Date;
+}): ExceptionItem {
+  const filing =
+    input.filesThrough === "SUTS"
+      ? "Returns for this place are filed through SUTS."
+      : input.filesThrough === "CITY_PORTAL"
+        ? "Returns for this place are filed on the city's own portal."
+        : input.filesThrough === "STATE_RETURN"
+          ? "Returns for this place are filed on the state return."
+          : "How returns are filed for this place is not recorded yet.";
+  const licenseStep =
+    input.licenseRequired === "ALWAYS"
+      ? " The city requires a license before delivering there. Getting one can cost money — that choice is yours."
+      : input.licenseRequired === "AFTER_FIRST_DELIVERY"
+        ? " The city requires a license after the first delivery there."
+        : input.licenseRequired === "AFTER_SECOND_DELIVERY_IN_12_MONTHS"
+          ? " The city requires a license once you deliver there more than once in 12 months."
+          : input.licenseRequired === "UNKNOWN"
+            ? " Whether the city requires a license is not checked yet — its own page is the source."
+            : "";
+  return {
+    category: "SALES_TAX",
+    severity: "high",
+    title: `Get ready to deliver in ${input.name}`,
+    detail: `${input.problems.join(" ")}${licenseStep} ${filing} When the setup is done, add any license in Business records and link it on Taxes > Delivery area, then mark the place reviewed there.`,
+    href: "/desk/sales-tax/area",
+    ...(input.sourceUrl
+      ? { sourceHref: input.sourceUrl, sourceLabel: "City page" }
+      : {}),
+    todoKey: `delivery-readiness:${input.jurisdictionId}`,
+    since: input.since,
+  };
+}
+
 export function officialRateReviewException(input: {
   observationId: string;
   jurisdictionName: string;
