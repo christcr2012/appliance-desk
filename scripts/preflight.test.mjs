@@ -64,6 +64,17 @@ test('test/CI drift: route, schema and backup changes retain affected legacy tes
   assert.ok(adjacentRegressions(['prisma/schema.prisma']).includes('tests/backup.test.ts'));
   assert.deepEqual(adjacentRegressions(['docs/PLAN.md']), []);
 });
+test('menu and job-role rule edits run permission-map regression before expensive CI', () => {
+ for (const file of ['src/lib/desk-navigation.ts','src/domains/team/job-role-rules.ts']) {
+  const quick = commands(parse(['--quick']), [file]);
+  const expected = 'npx --no-install vitest run tests/acc5-job-role-rules.test.ts';
+  assert.ok(quick.some(s => s.join(' ') === expected), file);
+  const full = commands(parse(['--unit','tests/desk-navigation.test.ts']), [file]);
+  assert.ok(full.some(s => s.join(' ') === expected), file);
+  assert.equal(full.filter(s => s.join(' ') === expected).length, 1);
+ }
+ assert.ok(!commands(parse(['--quick']), ['src/domains/tax/engine.ts']).some(s => s.includes('tests/acc5-job-role-rules.test.ts')));
+});
 test('quick pre-push gate runs cheap checks without requiring selectors', () => {
   const steps = commands(parse(['--quick']), ['src/domains/tax/engine.ts']);
   assert.ok(steps.some(s => s.join(' ') === 'npm run typecheck'));

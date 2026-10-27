@@ -19,6 +19,8 @@ import {
 import { badDebtTaxRecoveryProblem } from "@/domains/books/bad-debt-policy";
 import { setupTaxPlanningProblem } from "@/domains/billing/setup-tax-planning";
 import { retentionYearsProblem } from "@/domains/tax/retention-rules";
+import { validateTrustedDeviceDays } from "@/domains/security/trusted-devices";
+import { STARTING_VALUES, isNoSource } from "./starting-values-data";
 
 /**
  * Decisions & reviews registry (DEC-1a, docs/build-specs/engines/DECISIONS-CENTER.md section 2). One entry per open
@@ -46,9 +48,14 @@ export type DecisionContext = {
     setupFeeTaxPlanningTreatment: string;
     setupFeeTaxTreatment: string;
     recordRetentionYears: number;
+    trustedDeviceDays: number;
+    /** The flat late fee new agreements start with (cents). Optional: older callers and tests leave it out. */
+    lateFeeFlatCents?: number;
   };
   taxCells: { jurisdictionId: string | null; category: TaxChargeCategory; taxability: string; provisional: boolean }[];
   greeleyJurisdictionId: string | null;
+  /** Greeley's city rate in thousandths of a percent (4110 = 4.11%) as of today; null before the area exists. */
+  greeleyRateMilliPercent?: number | null;
   filingBases: string[];
 };
 
@@ -92,12 +99,20 @@ export type DecisionSubject = {
   describe: (value: Prisma.JsonValue) => string;
   /** Runs after the transaction commits (e.g. re-check purchases waiting on use tax). */
   afterCommit?: () => Promise<void>;
-  recommended: { value: Prisma.JsonValue; why: string; sources: DecisionSourceRef[] } | null;
+  recommended: {
+    value: Prisma.JsonValue; why: string; sources: DecisionSourceRef[];
+    /** CONFIRMED when the owner already answered this question (DEC-2); otherwise a starting value. */
+    kind?: "STARTING_VALUE_APPLIED" | "CONFIRMED";
+  } | null;
+  /** For a setting whose untouched default is not "UNDECIDED" (e.g. the late fee amount starts at 0). */
+  untouchedDefault?: Prisma.JsonValue;
+  /** YES: bills and returns use the value. ESTIMATE_ONLY: shown as "Estimate — your CPA confirms"; nothing is filed from it. */
+  liveUse?: "YES" | "ESTIMATE_ONLY";
   affects: { label: string; href: string }[];
   reviewGate?: string;
 };
 
-const BUSINESS_FACTS =
+export const BUSINESS_FACTS =
   "Robinson Appliance Rentals is a new, one-owner business in Greeley (Weld County), Colorado. It rents household " +
   "appliances (washers, dryers, refrigerators, ranges) to homes and property managers, usually month to month or " +
   "for 6 or 12 months, delivers and installs them with its own truck, and sometimes sells used appliances and parts.";
@@ -404,6 +419,112 @@ const RETENTION_SUBJECT: DecisionSubject = {
   affects: [{ label: "How long tax records are kept", href: "/desk/sales-tax/record-retention" }],
 };
 
+const TRUSTED_DEVICE_DAYS_OPTIONS: DecisionOption[] = [0, 7, 14, 30, 60, 90].map((days) => ({
+  value: days,
+  label: days === 0 ? "Always ask for the code" : `Remember for ${days} days`,
+}));
+
+const TRUSTED_DEVICE_DAYS_SUBJECT: DecisionSubject = {
+  id: "TRUSTED-DEVICE-DAYS",
+  legacyIds: ["TRUSTED-DEVICE-DAYS"],
+  area: "BUSINESS",
+  audience: "OWNER",
+  title: "How long a remembered device skips the code",
+  question: "When someone ticks \"Remember this device\" at sign-in, for how many days should the app skip the code on that device?",
+  facts: BUSINESS_FACTS,
+  options: TRUSTED_DEVICE_DAYS_OPTIONS,
+  allowOther: true,
+  covers: ["BusinessSettings.trustedDeviceDays"],
+  read: async (ctx) => ctx.settings.trustedDeviceDays,
+  write: async (tx, actorId, value) => {
+    const { updateTrustedDeviceSettingsInTx } = await import("@/domains/security/trusted-devices");
+    await updateTrustedDeviceSettingsInTx(tx, actorId, Number(value));
+  },
+  validate: (value) => {
+    try {
+      validateTrustedDeviceDays(value);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "That number of days is not allowed.";
+    }
+  },
+  describe: (value) => typeof value === "number"
+    ? (value === 0 ? "Always ask for the code" : `Remember for ${value} days`)
+    : "Unknown",
+  // ACC-6: the 30-day starting value lives in the setting itself and on the Settings screen, and Chris approved
+  // 30 days on 2026-10-25. `recommended` stays null until DEC-2 adds researched values with sources.
+  recommended: null,
+  affects: [{ label: "Settings", href: "/desk/settings" }, { label: "My account", href: "/desk/account" }],
+};
+
+
+const LATE_FEE_OPTIONS: DecisionOption[] = [0, 500, 1000, 1500].map((cents) => ({
+  value: cents, label: cents === 0 ? "No late fee" : `$${cents / 100} once per overdue bill`,
+}));
+
+const LATE_FEE_AMOUNT_SUBJECT: DecisionSubject = {
+  id: "LATE-FEE-AMOUNT",
+  legacyIds: ["IN-84"],
+  area: "MONEY",
+  audience: "OWNER",
+  title: "Late fee amount on new rental agreements",
+  question: "How much should a new rental agreement charge as a late fee when a bill is more than 10 days late?",
+  facts: BUSINESS_FACTS + " Colorado's rule: a late fee only after 10 days late, never more than $15, once per bill, and only after " +
+    "the customer was told. Agreements already signed keep the fee they show; a change only applies to agreements made from then on.",
+  options: LATE_FEE_OPTIONS,
+  allowOther: false,
+  covers: ["BusinessSettings.lateFeeFlatCents"],
+  untouchedDefault: 0,
+  read: async (ctx) => ctx.settings.lateFeeFlatCents ?? 0,
+  write: async (tx, actorId, value) => {
+    const { updateBusinessSettingsInTx } = await import("@/domains/settings");
+    await updateBusinessSettingsInTx(tx, actorId, { lateFeeFlatCents: Number(value) });
+  },
+  validate: (value) => typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 1500
+    ? null : "A late fee can be at most $15.",
+  describe: (value) => typeof value === "number" ? (value === 0 ? "No late fee" : `$${value / 100} once per overdue bill`) : "Unknown",
+  recommended: null,
+  affects: [{ label: "Settings", href: "/desk/settings" }, { label: "New rental agreements", href: "/desk/agreements/new" }],
+};
+
+const GREELEY_RATE_OPTIONS: DecisionOption[] = [
+  { value: 4110, label: "No change — Greeley's city rate stays 4.11%" },
+  { value: 4710, label: "Measure 2F passed — the city rate becomes 4.71% (4.11% + 0.6%)" },
+];
+
+function describeRate(value: Prisma.JsonValue) {
+  return typeof value === "number" ? `Greeley's city rate is ${(value / 1000).toFixed(2)}%` : "Greeley's tax area isn't set up yet";
+}
+
+const GREELEY_RATE_SUBJECT: DecisionSubject = {
+  id: "GREELEY-RATE-2F",
+  legacyIds: [],
+  area: "TAX",
+  audience: "OWNER",
+  title: "Did Greeley's ballot measure 2F pass, changing the city rate?",
+  question: "Did Greeley's ballot measure 2F pass, changing the city sales tax rate?",
+  facts: BUSINESS_FACTS + " Measure 2F (+0.6%) is on the 3 November 2026 ballot. A new rate starts on the date you choose " +
+    "and only applies to bills made from then on; bills already sent are never changed. Pick \"Other\" for any rate not listed.",
+  options: GREELEY_RATE_OPTIONS,
+  allowOther: true,
+  covers: ["TaxRateVersion.rateMilliPercent"],
+  read: async (ctx) => ctx.greeleyRateMilliPercent ?? null,
+  write: async (tx, actorId, value, _effectiveFrom, meta) => {
+    if (typeof value !== "number") throw new Error("Choose a rate.");
+    const jurisdictionId = await greeleyId(tx);
+    const setup = await import("@/domains/tax/setup");
+    await setup.addManualTaxRateVersionInTx(tx, actorId, {
+      jurisdictionId, effectiveFrom: meta.effectiveFrom, rateMilliPercent: value,
+      sourceNote: meta.reason.replace(/[\r\n<>]+/g, " ").trim().slice(0, 500) || "Decided in Decisions & reviews",
+    });
+  },
+  validate: (value) => typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 15_000
+    ? null : "Enter a city rate between 0% and 15%.",
+  describe: describeRate,
+  recommended: null,
+  affects: [{ label: "Tax rates", href: "/desk/sales-tax/areas" }],
+};
+
 // ---------------------------------------------------------------------------------------------------------------
 // Answers the app follows in its code (no stored setting): the only option is "keep what the app does now". Any
 // other answer is recorded and turned into a change to the app by the coding agent (spec section 4, "Other").
@@ -538,6 +659,14 @@ const AS_BUILT_SUBJECTS: DecisionSubject[] = [
   }),
 ];
 
+/** DEC-2: attach the researched starting value (and say whether a figure from it is only an estimate). */
+function withStartingValue(subject: DecisionSubject): DecisionSubject {
+  const entry = STARTING_VALUES[subject.id];
+  const liveUse = subject.id === "IN-56" ? "ESTIMATE_ONLY" as const : "YES" as const;
+  if (!entry || isNoSource(entry)) return { ...subject, recommended: null, liveUse };
+  return { ...subject, recommended: entry, liveUse };
+}
+
 export const DECISION_SUBJECTS: DecisionSubject[] = [
   ELECTION_SUBJECT,
   ...STATE_CELL_CATEGORIES.map((category) => taxCellSubject("STATE", category)),
@@ -548,8 +677,11 @@ export const DECISION_SUBJECTS: DecisionSubject[] = [
   BAD_DEBT_SUBJECT,
   SETUP_FEE_SUBJECT,
   RETENTION_SUBJECT,
+  TRUSTED_DEVICE_DAYS_SUBJECT,
+  GREELEY_RATE_SUBJECT,
+  LATE_FEE_AMOUNT_SUBJECT,
   ...AS_BUILT_SUBJECTS,
-];
+].map(withStartingValue);
 
 const BY_ID = new Map(DECISION_SUBJECTS.map((subject) => [subject.id, subject]));
 

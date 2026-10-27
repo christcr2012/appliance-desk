@@ -1462,3 +1462,6 @@ charges on a sale follow their own existing rules. Recorded on OWNER-CHECKLIST.
   portal translation set would switch Spanish customers back to English pending review.
 - Pictures upload through the server, never with a browser storage token; 900 KB per picture is the transport cap
   (the app-wide 1 MB server-action limit stays as it is), so `feedbackMaxAttachmentMb` was dropped as the spec says.
+
+## 2026-10-26 — DEC-2: starting values applied inside the existing nightly books run
+The researched starting values are applied by `applyStartingValues`, called at the top of `/api/cron/books-nightly` before the "Books paused" check, so they never wait on Books and no new scheduled job is added (cost). The old `Invoice.lateFeeWaivedAt` idea is superseded: FEE-1 already waives a late fee on the pending charge. The $5 late fee is recorded as owner-confirmed (Chris's rule) and starts the next Denver business day; signed agreements keep their own terms.

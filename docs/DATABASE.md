@@ -1,3 +1,21 @@
+## November 2 — Compliance center (CMP-1, additive)
+
+Migration `20261102000000_compliance`.
+- `ComplianceProfile` — the owner's business facts, one row (`id` = "singleton"): `entityType` (starting value SINGLE_MEMBER_LLC, a Decisions question), `einEncrypted` (the EIN under AES-256-GCM from `src/lib/field-crypto.ts`; the value itself is never logged or shown) with `einLast4` the only clear digits, `sosReportMonth`, `truckGvwrLbs`, `employees`, `hasHomeOffice`.
+- `ComplianceFiling` — one row per obligation period: `obligationKey` + `periodKey` (unique together), `state` (NOT_APPLICABLE, UPCOMING, READY_FOR_REVIEW, APPROVED, SUBMITTED, ACCEPTED, REJECTED, DONE_ELSEWHERE), `dueOn` / `actOn`, `preparedData` (JSON, never a full tax id) with `preparedHash` binding the owner's approval to the prepared numbers, `outputFileUrl`, approval/submission stamps, `note`, `version`, and `autoRetired` (true only while a NOT_APPLICABLE state came from the filing sync's automatic retirement when the facts stopped generating the period; the sync reactivates such a row when its period is generated again, and never reactivates an owner's own not-needed decision). Index on (`state`, `actOn`). Both models are in `BACKUP_MODEL_POLICY`.
+
+## November 2 — Tax and fee autopilot switches (TFA-2, additive)
+
+Migrations `20261102000000_tfa2_switches` and `20261103000000_tfa2_filing_advice`.
+- `RetailDeliveryFeeSwitch` — one prepared delivery-fee switch: `kind` (START/STOP, new enum `RdfSwitchKind`), `startsOn`, `basisRetailCents` (the prior-year Colorado retail total behind a Jan 1 switch; null for the new-business start), `approvedAt` / `approvedByUserId`, `createdAt`. Unique on (`kind`, `startsOn`); index on `startsOn`. The app prepares and dates each switch; it changes a customer bill only after the owner approves it on Today, and until then the fee is owed but not billed. In `BACKUP_MODEL_POLICY`.
+- `Invoice.replacementOfInvoiceId` — nullable, no foreign key: the original bill a replacement (exchange) sale replaces, so the exchange charges no second delivery fee.
+- `FilingFrequencyAdvice` — one filing-frequency advice: `filingAccountId` (FK to `TaxFilingAccount`, restrict on delete), `currentFrequency` / `advisedFrequency` (`TaxFilingFrequency`), `averageMonthlyCents` (trailing-12-month average of state and state-collected tax), `computedOn`, `confirmedAt` / `confirmedByUserId`. Index on (`filingAccountId`, `computedOn`). The app never changes frequency itself; the owner's confirm sets the account frequency for future periods and marks the advice. In `BACKUP_MODEL_POLICY`.
+
+
+## October 26 — Remember this device (ACC-6, additive)
+
+`KnownDevice` — one row per person per device cookie: `deviceHash` (SHA-256 of the device cookie value; the value itself is never stored), `label` (kind of device and browser, for the list only), first/last seen, `trustedUntil` (set when the person ticks "Remember this device", never extended by later sign-ins) and `forgottenAt`. Unique on (`userId`, `deviceHash`); rows are removed with the user and left out of backups (a restore re-records devices as people sign in). `BusinessSettings.trustedDeviceDays` (30, CHECK 0–90; 0 = always ask for the code). The library's own trust rows live in the existing `Verification` table (`trust-device-…` identifiers, user id as the value) and are clamped to the device's remembered-until date. Migration `20261030010000_known_devices`.
+
 ## November 1 — Tax and fee rule book (TFA-1, additive)
 
 Migration `20261101000000_legal_rules`.
@@ -13,7 +31,7 @@ was put on, `providerOperationId`, `waivedAt` / `waivedReason` / `waivedByUserId
 to once per overdue bill. New enums `LateFeeClass` (CONSUMER_LEASE, CONSUMER_SHORT, BUSINESS) and `PendingChargeKind`; provider
 operation kind `LATE_FEE_INVOICE_ITEM`. `Invoice.lateNoticeDeliveryId`, `lateNoticeCount`, `lateFeeDate`, `lateFeeToldOn`,
 `lateFeeToldByUserId`. `RentalAgreement.lateFeeClass` (set when sent for signature). `Customer.activeMilitary`.
-`BusinessSettings.lateFeeNoticeDaysBefore` (default 2, CHECK 1–5), `ucccNotificationFiledOn`; the late-fee grace days now default to 10
+`BusinessSettings.decisionsReviewedAt` (nullable; DEC-2: when the owner last marked the researched starting values reviewed — the To do item counts `STARTING_VALUE_APPLIED` records made through `MIGRATION` after it; migration `20261103000000_starting_values_reviewed`), `BusinessSettings.lateFeeNoticeDaysBefore` (default 2, CHECK 1–5), `ucccNotificationFiledOn`; the late-fee grace days now default to 10
 (CHECK at least 10 on the settings row) and the flat fee is at most 1500 cents (CHECK). The migration moves an older settings row
 below those limits up to them; signed agreements and billed history are not rewritten. Covered by backups (`PendingCharge`). `PendingCharge` also keeps the autopay notice (`autopayNoticeDeliveryId`, `autopayNoticedAt`, `autopayChargeOn`): a fee only joins an automatic charge after a delivered notice naming that charge date.
 
@@ -1388,6 +1406,34 @@ null for background operations; automatic audit records explicitly say `by: auto
 `BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
 Existing financial entries remain append-only and closed months stay immutable.
 
+### OPS-5: payment disputes (additive migration `20261103000000_disputes`)
+
+- `PaymentDispute` — one row per Stripe dispute (unique `stripeDisputeId`): amount, reason, Stripe status, our state
+  (`DisputeState`: NEEDS_RESPONSE, UNDER_REVIEW, WON, LOST, CLOSED), `isBank`, `dueBy`, links to the payment, bill and
+  customer (all Restrict), who sent the one evidence answer and when (`evidenceSubmittedAt`, `evidenceFileId`), and for bank
+  disputes whether the owner marked it handled. In the backup manifest.
+- `Customer.bankDebitBlockedAt` / `bankDebitBlockedReason` — set by a bank dispute (the saved bank method is also cleared);
+  only the owner or an admin clears it.
+- `BusinessSettings.achDisputeWindowDays` (default 60) — days a deposit paid by bank debit waits before it can be refunded.
+
+
+### OPS-1: recalls (additive migration `20261102000000_recalls`)
+
+- `ApplianceType.recallProductTerms` (search words, starting values for washer and dryer) and `Appliance.recallHold`
+  (true while any CONFIRMED recall covers the machine).
+- `RecallMatch` — one row per (recall, appliance), unique. States POSSIBLE, CONFIRMED, NOT_OURS, REMEDIED (REMEDIED is added
+  beyond the spec so a hold can end). Appliance link is Restrict. Who decided, when, and the note are kept.
+- `RecallWatchState` — one row ("singleton"): last good check, whole-fleet request and progress, last error.
+- `SafetyIncident` — a marked injury or safety event (appliance, repair request or job), decision PENDING / REPORTED /
+  NOT_REPORTED with the owner's note.
+All three tables are in the backup manifest.
+
+### OPS-2: refrigerant records (additive migration `20261106000000_refrigerant`)
+
+- `ApplianceType.hasRefrigerant` — set true at migration time for types whose name or slug mentions refrigerator, fridge or freezer; new appliance types get the same starting value when they are added; the owner can change it on Retired appliances.
+- `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
+- One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
+`RefrigerantRecord` is in the backup manifest.
 
 ### BA-3 review evidence (implementation branch)
 

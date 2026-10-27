@@ -12,12 +12,11 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 
 ## A. Quick things only you can do (minutes each)
 
-- [ ] **Start the automatic checks on the leads change (PR #618).** Steps: open
-  github.com/christcr2012/appliance-desk/actions/workflows/ci.yml → "Run workflow" → branch
-  `ai/marley/ld-1` → Run workflow. Ready when: now (the fix is already uploaded). You'll know it worked: a new
-  run appears on that page and turns green in about 10 minutes; tell the agent and it will finish the review
-  and merge. Why this is needed: the checks never started on the fixed code by themselves — the way the fix was
-  uploaded doesn't start them — so they need this one manual start.
+- [ ] **Set the compliance encryption key (CMP-1).** Steps: have your developer generate a random 32-byte key
+  (base64) and save it in Vercel as `COMPLIANCE_ENCRYPTION_KEY` (Production and Preview) — never in a chat,
+  email or GitHub. Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
+  worked: the EIN box on Business facts is enabled and saving an EIN shows "ending" plus its last 4 digits.
+  Until then the EIN box stays off on purpose, so a tax ID is never stored unprotected.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
@@ -195,11 +194,22 @@ Agents will do the parts they safely can and record what they saw; the rest need
   clean-up" and confirm its last run shows one file deleted. Agents tested the waiting list and the rules against a stand-in
   for the storage company; the real private store was not touched. Worked: the run shows "deleted" and nothing else is missing.
 
+- [ ] **Add three dispute events to your Stripe webhook** (test mode now, live later). Steps: Stripe dashboard → Developers →
+  Webhooks → open the app's endpoint → add `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` →
+  Update endpoint. Ready when: OPS-5 is merged and deployed. Worked if: in Stripe test mode, the "Send test webhook"
+  button for `charge.dispute.created` makes a row appear under **Money › Disputes** within a minute. The agent also
+  checks one real test-mode dispute (Stripe's test card 4000 0000 0000 0259) to confirm the real payload matches what the app reads.
 - [ ] **Add three payment events to your Stripe webhook** (test mode now, live later). Steps: Stripe dashboard → Developers →
   Webhooks → your appliance-desk endpoint → Update details → Select events → add `payment_intent.processing`,
   `payment_intent.payment_failed`, `payment_intent.canceled` → Update endpoint. Ready when: BILL-1 is merged. Worked if: a
   test bank payment (Stripe's test bank account) shows **Being confirmed** on the bill within a minute, and **Paid** after
   Stripe settles it. Until you do this, bank payments are only noticed from events already sent.
+
+- [ ] **Check the recall list answers the way the app expects.** The build machine could not reach the government's recall
+  site, so the reader was tested on sample data shaped from the published field names. Steps: ask your agent to open
+  **Equipment › Recalls** after the first night, and look at "Recall check": it should say the last check worked and show
+  how many appliances were checked. Then press **Check my whole fleet**. Ready when: OPS-1 is merged and deployed. Worked if:
+  the page shows a recent good check with no error, and any listed recall opens its government page.
 
 - [ ] **Turn on late fees for real card customers (only when you are ready).** Late fees are recorded and shown, and customers are
   warned first, but a fee only goes onto a customer's real automatic charge when you switch it on. In Stripe test mode it
@@ -277,4 +287,6 @@ on readiness).
 | 2026-10-25 | UCCC consumer-lease notification | Late-fee law research: Colorado's UCCC covers household rentals over 4 months. |
 | 2026-10-26 | Turn on late fees for real card customers | FEE-1: fees only reach a customer's real automatic charge when you switch it on. |
 | 2026-10-26 | Add three payment events to your Stripe webhook | BILL-1: the app can only show "Being confirmed" for bank payments if Stripe sends those events. |
+| 2026-10-26 | Add three dispute events to your Stripe webhook | OPS-5: the app only hears about disputes if Stripe sends those events. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |
+| 2026-10-26 | Check the recall list answers as expected | OPS-1: the live government recall answer could not be fetched while building. |

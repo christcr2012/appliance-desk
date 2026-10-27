@@ -44,11 +44,14 @@ export type ExceptionCategory =
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "BANK_PAYMENT_SLOW"
+  | "PAYMENT_DISPUTE"
   | "LATE_FEE_REVIEW"
+  | "DECISIONS_STARTING_VALUES"
   | "HELD_PAYMENT_DECISION"
   | "DEPOSIT_DECISION"
   | "NEW_LEAD_CONTACT"
   | "LEAD_FOLLOW_UP"
+  | "COMPLIANCE_DUE"
   | "APPROVED_QUOTE"
   | "SIGNING_PAYMENT_DUE"
   | "UNSIGNED_AGREEMENT"
@@ -57,6 +60,8 @@ export type ExceptionCategory =
   | "RENTAL_ENDING_SOON"
   | "PICKUP_UNSCHEDULED"
   | "RETIRED_APPLIANCE_PLAN"
+  | "RECALL_POSSIBLE"
+  | "SAFETY_INCIDENT"
   | "RETIRED_SALE_TAX_REVIEW"
   | "APPROVAL_REQUEST"
   | "GOAL_BEHIND"
@@ -110,6 +115,18 @@ export type ExceptionItem = {
       }
     | {
         type: "APPLY_OFFICIAL_RATE";
+        id: string;
+        label: string;
+      }
+    | {
+        /** TFA-2: approve a prepared delivery-fee switch (id = the switch row). */
+        type: "APPROVE_RDF_SWITCH";
+        id: string;
+        label: string;
+      }
+    | {
+        /** TFA-2 §8: confirm a filing-frequency advice (id = the advice row). */
+        type: "CONFIRM_FILING_FREQUENCY";
         id: string;
         label: string;
       }
@@ -403,6 +420,111 @@ export function officialRateReviewException(input: {
       label: "Apply this rate",
     },
     since: input.since,
+  };
+}
+
+/** TFA-2 §6.3: a delivery-fee switch the app prepared and dated, waiting for the owner's approval. */
+export function rdfSwitchException(input: {
+  switchId: string;
+  kind: "START" | "STOP";
+  startsOn: Date;
+  basisRetailCents: number | null;
+  since: Date;
+  now: Date;
+}): ExceptionItem {
+  const startsKey = businessDateKey(input.startsOn);
+  // Spec §6.3: if the date arrives unapproved, the item turns high severity.
+  const due = input.startsOn.getTime() <= input.now.getTime();
+  const basis = input.basisRetailCents != null
+    ? ` Last year's Colorado retail sales were ${formatMoney(input.basisRetailCents)}.`
+    : "";
+  return {
+    category: "SALES_TAX",
+    severity: due ? "high" : "medium",
+    title: input.kind === "START"
+      ? `Delivery fee turns on ${startsKey}`
+      : `Delivery fee turns off ${startsKey}`,
+    detail: input.kind === "START"
+      ? `The retail delivery fee starts on ${startsKey}.${basis} Until you approve, the fee is owed but not billed to customers.${due ? " The law requires the fee from this date, so approve as soon as you can." : ""}`
+      : `The retail delivery fee stops on ${startsKey}.${basis} It stays on bills dated before ${startsKey}.`,
+    href: "/desk/sales-tax/setup#fee",
+    action: {
+      type: "APPROVE_RDF_SWITCH",
+      id: input.switchId,
+      label: input.kind === "START" ? "Approve: fee on" : "Approve: fee off",
+    },
+    since: input.since,
+  };
+}
+
+/** TFA-2 §8: filing-frequency advice from the trailing-12-month average. */
+export function filingFrequencyAdviceException(input: {
+  adviceId: string;
+  accountName: string;
+  currentFrequency: "ANNUAL" | "QUARTERLY" | "MONTHLY";
+  advisedFrequency: "ANNUAL" | "QUARTERLY" | "MONTHLY";
+  averageMonthlyCents: number;
+  since: Date;
+}): ExceptionItem {
+  const rank = { ANNUAL: 1, QUARTERLY: 2, MONTHLY: 3 } as const;
+  const word = { ANNUAL: "yearly", QUARTERLY: "quarterly", MONTHLY: "monthly" } as const;
+  const lessOften = rank[input.advisedFrequency] < rank[input.currentFrequency];
+  const average = formatMoney(input.averageMonthlyCents);
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: lessOften
+      ? `You may file ${word[input.advisedFrequency]}: ${input.accountName}`
+      : `Colorado may move you to ${word[input.advisedFrequency]} on Jan 1: ${input.accountName}`,
+    detail: lessOften
+      ? `State and state-collected tax for ${input.accountName} averaged ${average} a month over the last 12 months, under the ${word[input.advisedFrequency]} limit. Colorado has to agree before you switch: in Revenue Online, ask to change this account's filing frequency. Then confirm here and future returns use the new schedule.`
+      : `State and state-collected tax for ${input.accountName} averaged ${average} a month over the last 12 months, over the limit for ${word[input.currentFrequency]} filing. Colorado may move this account to ${word[input.advisedFrequency]} filing on Jan 1. Check Revenue Online; if Colorado moved you, confirm here so future returns use the new schedule. If Colorado kept your current frequency, snooze this instead.`,
+    href: "/desk/sales-tax/setup#accounts",
+    todoKey: `filing-frequency-advice:${input.adviceId}`,
+    action: {
+      type: "CONFIRM_FILING_FREQUENCY",
+      id: input.adviceId,
+      label: `Confirm: file ${word[input.advisedFrequency]}`,
+    },
+    since: input.since,
+  };
+}
+
+/** TFA-2 §7: the January 1 use-tax reset, shown until it is old news or the year switches to monthly. */
+export function useTaxResetException(input: {
+  accountId: string;
+  accountName: string;
+  year: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Use tax is back to one yearly return for ${input.year}`,
+    detail: `${input.accountName}: Colorado consumer use tax starts each year as one yearly return, due Jan 20 next year. It switches to monthly only if this year's use tax passes the limit.`,
+    href: "/desk/sales-tax/setup#accounts",
+    todoKey: `use-tax-reset:${input.accountId}:${input.year}`,
+    since: input.since,
+  };
+}
+
+/** TFA-2 §9: a certificate expired and the customer has been billed (so taxed) since. */
+export function expiredExemptionException(input: {
+  customerId: string;
+  customerName: string;
+  expiresOn: Date;
+  contact?: ExceptionItem["contact"];
+}): ExceptionItem {
+  const expiredOn = businessDateKey(input.expiresOn);
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `${input.customerName}'s exemption certificate expired on ${expiredOn}`,
+    detail: `Bills since then charge tax again. Ask for a new one (Colorado form DR 0715 or DR 5002, or the multistate MTC form). Draft message: "Hi, this is Robinson Appliance Rentals. The tax-exemption certificate we have on file for you expired on ${expiredOn}, so recent bills include sales tax. Please send a current certificate and we will credit the tax charged since the new one took effect." Send it only through the customer's usual email or text switch.`,
+    href: `/desk/customers/${input.customerId}?tab=billing`,
+    todoKey: `exemption-expired:${input.customerId}:${expiredOn}`,
+    contact: input.contact,
+    since: input.expiresOn,
   };
 }
 
@@ -744,6 +866,18 @@ export function lateFeeReviewException(row: {
     amountCents: row.amountCents,
     since: row.dueOn ?? new Date(0),
     ...(row.dueOn ? { dueOn: row.dueOn, dueDateOnly: true } : {}),
+  };
+}
+
+/** DEC-2: researched starting values now run the app; the owner reviews them or sends the tax ones to the CPA. */
+export function startingValuesAppliedException(input: { count: number; newest: Date }): ExceptionItem {
+  return {
+    category: "DECISIONS_STARTING_VALUES",
+    severity: "medium",
+    title: `${input.count} starting value${input.count === 1 ? " is" : "s are"} now in use`,
+    detail: "Researched answers for tax and rental questions. Review them, or send the tax ones to your CPA.",
+    href: "/desk/settings/decisions?state=starting_value",
+    since: input.newest,
   };
 }
 

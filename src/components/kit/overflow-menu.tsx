@@ -16,10 +16,13 @@ export function OverflowMenu({
   items,
   label = "More actions",
   triggerClassName,
+  triggerText,
 }: {
   items: MenuItem[];
   label?: string;
   triggerClassName?: string;
+  /** A worded menu button ("Ask my…") instead of ⋯; the words are its accessible name. */
+  triggerText?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState<Extract<ActionSpec, { kind: "form" }> | null>(null);
@@ -39,14 +42,16 @@ export function OverflowMenu({
       <DropdownMenu.Root open={open} onOpenChange={setOpen}>
         <DropdownMenu.Trigger
           ref={triggerRef}
-          aria-label={label}
+          aria-label={triggerText ? undefined : label}
           aria-busy={pending || undefined}
           className={
             triggerClassName ??
-            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-field border border-line-strong bg-surface text-ink hover:bg-tint lg:min-h-10 lg:min-w-10"
+            (triggerText
+              ? "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-field border border-line-strong bg-surface px-4 text-[15px] font-bold text-ink hover:bg-tint lg:min-h-10"
+              : "inline-flex min-h-11 min-w-11 items-center justify-center rounded-field border border-line-strong bg-surface text-ink hover:bg-tint lg:min-h-10 lg:min-w-10")
           }
         >
-          <Icon name="more" />
+          {triggerText ? <><span>{triggerText}</span><Icon name="down" /></> : <Icon name="more" />}
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content

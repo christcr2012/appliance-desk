@@ -72,11 +72,14 @@ export async function createDraftAgreementAction(
       damageWaiverCents: data.damageWaiverDollars
         ? dollarsToCents(data.damageWaiverDollars)
         : 0,
-      lateFeeGraceDays: data.lateFeeGraceDays ?? 10,
-      lateFeeCents: data.lateFeeDollars
-        ? dollarsToCents(data.lateFeeDollars)
-        : 0,
-      lateFeePercent: data.lateFeePercent ?? 0,
+      // DEC-2: a box the form leaves out takes its value from Settings; a box the person cleared is zero.
+      lateFeeGraceDays: data.lateFeeGraceDays,
+      lateFeeCents: data.lateFeeDollars === undefined
+        ? undefined
+        : data.lateFeeDollars
+          ? dollarsToCents(data.lateFeeDollars)
+          : 0,
+      lateFeePercent: data.lateFeePercent,
       paidInFullInAdvance: data.paidInFullInAdvance ?? false,
     });
   } catch (error) {

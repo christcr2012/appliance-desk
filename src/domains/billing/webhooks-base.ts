@@ -1,3 +1,4 @@
+import { handleDisputeEvent } from "@/domains/disputes/webhook";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { postPaidInvoiceAfterWebhook, postCheckoutPaymentAfterWebhook,
  postRefundsAfterWebhook } from "@/domains/books/immediate";
@@ -7,7 +8,7 @@ import { isLocalInvoiceSession, recordLocalInvoiceCheckoutFailure, recordLocalIn
 import { signingInvoiceMirrorProof } from "./signing-invoice-mirror";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { RDF_LINE_DESCRIPTION } from "@/domains/tax/rdf-charges";
+import { RDF_LINE_DESCRIPTION, RDF_LINE_DESCRIPTION_LEGACY } from "@/domains/tax/rdf-charges";
 import { completeProviderOperation } from "./provider-ops";
 import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
 import {
@@ -80,7 +81,8 @@ export async function attachRdfInvoiceLineInTx(
 ): Promise<void> {
   const recordId = stripeLine.metadata?.rdf_record_id;
   if (!recordId) return;
-  if (stripeLine.description !== RDF_LINE_DESCRIPTION)
+  // Lines sent before the TFA-2 wording change carry the legacy text.
+  if (stripeLine.description !== RDF_LINE_DESCRIPTION && stripeLine.description !== RDF_LINE_DESCRIPTION_LEGACY)
     throw new Error("Stripe RDF line description does not match its provider intent.");
   const op = await db.providerOperation.findUnique({
     where: { idempotencyKey: `rdf-${recordId}` },
@@ -506,6 +508,9 @@ async function recordSigningPaymentMethod(
   paymentMethodId: string | null,
 ): Promise<void> {
   if (!paymentMethodId) return;
+  // OPS-5: after a disputed bank payment, autopay stays off until the owner clears the block.
+  const blocked = await db.customer.findUnique({ where: { id: customerId }, select: { bankDebitBlockedAt: true } });
+  if (blocked?.bankDebitBlockedAt) return;
   await db.customer.update({
     where: { id: customerId },
     data: { stripeDefaultPaymentMethodId: paymentMethodId },
@@ -1232,6 +1237,12 @@ async function processLockedEvent(
       break;
     case "charge.refunded":
       await handleChargeRefunded(db, event.data.object as Stripe.Charge);
+      break;
+    // OPS-5: a card or bank dispute. Recorded and flagged for the owner; it never moves money.
+    case "charge.dispute.created":
+    case "charge.dispute.updated":
+    case "charge.dispute.closed":
+      await handleDisputeEvent(db, event);
       break;
     case "customer.subscription.deleted":
       await handleSubscriptionDeleted(db, event.data.object as Stripe.Subscription);

@@ -225,6 +225,16 @@ export const RULES = {
     fields: [integerField("value", "Keep records for (years)", 1, 50)],
     decisionId: "IN-71",
   }),
+  "records.refrigerant_keep_years": defineRule({
+    key: "records.refrigerant_keep_years",
+    title: "Years to keep refrigerant records",
+    explain: "How long to keep the signed statement that the refrigerant was removed before an appliance was scrapped. The federal rule asks for 3 years; 6 matches your tax records.",
+    area: "RECORDS",
+    schema: z.number().int().min(1).max(30),
+    describe: (v: number) => `${v} years`,
+    change: "ANY_DATE",
+    fields: [integerField("value", "Years to keep", 1, 30)],
+  }),
   "greeley.sales_rate": defineRule({
     key: "greeley.sales_rate",
     title: "Greeley sales-tax rate",

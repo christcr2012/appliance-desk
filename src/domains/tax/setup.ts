@@ -6,6 +6,8 @@ import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
 import { subjectForTaxCell } from "@/domains/decisions/tax-cells";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { saveRuleVersion, saveRuleVersionInTx } from "@/domains/rules/changes";
+import { assertRdfHandlingChangeable } from "./rdf-handling-lock";
+import { licenseDefaultExpiry, nextLicenseExpiry } from "./license-dates";
 
 function textField(value: string | null, max: number, name: string) {
   if (value !== null && (value.length > max || /[\r\n<>]/.test(value)))
@@ -70,6 +72,8 @@ export async function saveTaxSettings(
     });
     if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
       throw new Error("Settings changed in another session. Refresh before saving.");
+    // TFA-2 §6.7: once the fee applies to a sale, who pays it is locked.
+    if (changed.rdfHandling !== before.rdfHandling) await assertRdfHandlingChangeable(tx);
     const beforeThreshold = (await ruleAsOf<number>("co.rdf.qualified_threshold", new Date(), tx)).value;
     if (beforeThreshold !== thresholdCents) {
       await saveRuleVersionInTx(tx, actorId, {
@@ -170,6 +174,23 @@ function safeDeductionLabels(value: FilingAccountInput["deductionLabels"]) {
   return out;
 }
 
+/**
+ * TFA-2 §10: while the dated rule says the state license ends Dec 31 of odd
+ * years, a sales account saved with no license date gets that date (Dec 31,
+ * 2027 for the current cycle). Any other rule value, or a rule that cannot
+ * be read, leaves the date for the owner to enter.
+ */
+async function licenseExpiryDefaultInTx(
+  tx: Prisma.TransactionClient, now: Date,
+): Promise<Date | null> {
+  try {
+    const rule = await ruleAsOf<{ rule?: unknown }>("co.license.expiry", now, tx);
+    return rule.value?.rule === "DEC_31_ODD_YEARS" ? licenseDefaultExpiry(now) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveTaxFilingAccount(
   actorId: string, input: FilingAccountInput, expectedUpdatedAt: Date | null,
 ): Promise<{ id: string }> {
@@ -221,7 +242,7 @@ export async function saveTaxFilingAccount(
       await tx.$queryRaw`SELECT "id" FROM "TaxFilingAccount" WHERE "id" = ${input.id} FOR UPDATE`;
       const before = await tx.taxFilingAccount.findUniqueOrThrow({
         where: { id: input.id },
-        select: { updatedAt: true, kind: true, basis: true, _count: { select: { periods: true } } },
+        select: { updatedAt: true, kind: true, basis: true, licenseExpiresOn: true, _count: { select: { periods: true } } },
       });
       if (before.kind !== data.kind && before._count.periods > 0)
         throw new Error("Filing accounts with recorded returns cannot change return type.");
@@ -230,10 +251,16 @@ export async function saveTaxFilingAccount(
       if (before.basis !== data.basis)
         await cancelPendingDecisionChangesInTx(tx, actorId, ["IN-35-BASIS"],
           "A newer reporting basis was saved for a filing account.");
+      // TFA-2 §10: an empty license date on a sales account that has none
+      // gets the rule's date instead of staying blank.
+      if (data.kind === "SALES_RETURN" && data.licenseExpiresOn === null && before.licenseExpiresOn === null)
+        data.licenseExpiresOn = await licenseExpiryDefaultInTx(tx, new Date());
       await tx.taxFilingAccount.update({ where: { id: input.id }, data });
       id = input.id;
     } else {
       if (expectedUpdatedAt) throw new Error("A new account cannot have an old version.");
+      if (data.kind === "SALES_RETURN" && data.licenseExpiresOn == null)
+        data.licenseExpiresOn = await licenseExpiryDefaultInTx(tx, new Date());
       id = (await tx.taxFilingAccount.create({ data, select: { id: true } })).id;
     }
     if (input.areaAssignments !== undefined) {
@@ -316,6 +343,37 @@ export async function saveTaxFilingAccount(
           configured: Boolean(data.accountNumber && data.firstPeriodStart && data.basis !== "UNDECIDED") } },
     });
     return { id };
+  });
+}
+
+/**
+ * TFA-2 §10: the owner renewed the state license. The stored expiry rolls
+ * to Dec 31 of the next odd year (2027 becomes 2029), and the renewal is
+ * audited. The current date must be on file first: renewing extends a real
+ * license, it does not invent one.
+ */
+export async function markLicenseRenewed(
+  actorId: string, accountId: string,
+): Promise<{ licenseExpiresOn: Date }> {
+  return prisma.$transaction(async tx => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "TaxFilingAccount" WHERE "id" = ${accountId} FOR UPDATE`;
+    const account = await tx.taxFilingAccount.findUniqueOrThrow({
+      where: { id: accountId }, select: { licenseExpiresOn: true },
+    });
+    if (!account.licenseExpiresOn)
+      throw new Error("Enter the current license expiration first, then mark it renewed.");
+    const next = nextLicenseExpiry(account.licenseExpiresOn);
+    await tx.taxFilingAccount.update({
+      where: { id: accountId }, data: { licenseExpiresOn: next },
+    });
+    await tx.auditLog.create({
+      data: { userId: actorId, action: "tax.license.renewed",
+        entityType: "TaxFilingAccount", entityId: accountId,
+        oldValue: { licenseExpiresOn: account.licenseExpiresOn.toISOString() },
+        newValue: { licenseExpiresOn: next.toISOString() } },
+    });
+    return { licenseExpiresOn: next };
   });
 }
 
@@ -514,6 +572,11 @@ export async function addManualTaxRateVersion(actorId: string, input: {
   rateMilliPercent: number;
   sourceNote: string;
 }): Promise<string> {
+  checkManualRateInput(input);
+  return prisma.$transaction(tx => addManualTaxRateVersionInTx(tx, actorId, input));
+}
+
+function checkManualRateInput(input: { effectiveFrom: Date; rateMilliPercent: number; sourceNote: string }) {
   date(input.effectiveFrom, "effective date");
   const key = businessDateKey(input.effectiveFrom);
   const effectiveFrom = businessDateFromKey(key);
@@ -521,31 +584,39 @@ export async function addManualTaxRateVersion(actorId: string, input: {
   const rateMilliPercent = cents(input.rateMilliPercent, 100_000, "rate");
   const sourceNote = textField(input.sourceNote, 500, "official rate evidence");
   if (!sourceNote) throw new Error("Explain the official rate evidence.");
-  return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
-    const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
-      where: { id: input.jurisdictionId }, select: { id: true },
-    });
-    const latest = await tx.taxRateVersion.findFirst({
-      where: { jurisdictionId: jurisdiction.id }, orderBy: { effectiveFrom: "desc" },
-    });
-    if (latest && effectiveFrom <= latest.effectiveFrom)
-      throw new Error("New rate must follow the existing history; review corrections separately.");
-    const row = await tx.taxRateVersion.create({
-      data: {
-        jurisdictionId: jurisdiction.id, effectiveFrom, rateMilliPercent,
-        source: "MANUAL", sourceNote, recordedByUserId: actorId,
-      }, select: { id: true },
-    });
-    await tx.auditLog.create({
-      data: {
-        userId: actorId, action: "tax.setup.rate_version_appended",
-        entityType: "TaxRateVersion", entityId: row.id,
-        newValue: { jurisdictionId: jurisdiction.id, effectiveDate: key, rateMilliPercent },
-      },
-    });
-    return row.id;
+  return { key, effectiveFrom, rateMilliPercent, sourceNote };
+}
+
+/** The same save inside a caller's transaction (Decisions & reviews: the city rate answer, DEC-2). */
+export async function addManualTaxRateVersionInTx(
+  tx: Prisma.TransactionClient,
+  actorId: string,
+  input: { jurisdictionId: string; effectiveFrom: Date; rateMilliPercent: number; sourceNote: string },
+): Promise<string> {
+  const { key, effectiveFrom, rateMilliPercent, sourceNote } = checkManualRateInput(input);
+  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
+  const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
+    where: { id: input.jurisdictionId }, select: { id: true },
   });
+  const latest = await tx.taxRateVersion.findFirst({
+    where: { jurisdictionId: jurisdiction.id }, orderBy: { effectiveFrom: "desc" },
+  });
+  if (latest && effectiveFrom <= latest.effectiveFrom)
+    throw new Error("New rate must follow the existing history; review corrections separately.");
+  const row = await tx.taxRateVersion.create({
+    data: {
+      jurisdictionId: jurisdiction.id, effectiveFrom, rateMilliPercent,
+      source: "MANUAL", sourceNote, recordedByUserId: actorId,
+    }, select: { id: true },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId: actorId, action: "tax.setup.rate_version_appended",
+      entityType: "TaxRateVersion", entityId: row.id,
+      newValue: { jurisdictionId: jurisdiction.id, effectiveDate: key, rateMilliPercent },
+    },
+  });
+  return row.id;
 }
 

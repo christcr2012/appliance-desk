@@ -20,6 +20,7 @@ export const DESK_SECTIONS: Record<DeskSectionKey, { label: string; tabs: DeskSe
     tabs: [
       { href: "/desk/inventory", label: "Inventory" },
       { href: "/desk/inventory/retired", label: "Retired", restriction: "finance" },
+      { href: "/desk/recalls", label: "Recalls", restriction: "finance" },
       { href: "/desk/parts", label: "Parts" },
       { href: "/desk/purchases", label: "Purchases", restriction: "finance" },
       { href: "/desk/purchase-orders", label: "Purchase orders", restriction: "finance" },
@@ -29,6 +30,7 @@ export const DESK_SECTIONS: Record<DeskSectionKey, { label: string; tabs: DeskSe
     label: "Money",
     tabs: [
       { href: "/desk/billing", label: "Billing", restriction: "finance" },
+      { href: "/desk/disputes", label: "Disputes", restriction: "finance" },
       { href: "/desk/sales", label: "Shop sales", restriction: "finance" },
       { href: "/desk/revenue", label: "Revenue", restriction: "finance" },
       { href: "/desk/books", label: "Books", restriction: "finance" },

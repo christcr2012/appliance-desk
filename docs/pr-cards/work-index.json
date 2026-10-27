@@ -4827,8 +4827,8 @@
         "DEC-1",
         "FEE-1"
       ],
-      "status": "DESIGNED — build spec ready 2026-10-25",
-      "migration": "additive (Invoice.lateFeeWaivedAt, BusinessSettings.decisionsReviewedAt)",
+      "status": "DONE — PR #635",
+      "migration": "additive (BusinessSettings.decisionsReviewedAt; Invoice.lateFeeWaivedAt dropped, FEE-1 waiver replaced it)",
       "budget": 460,
       "units": [
         "DEC-2"
@@ -5172,7 +5172,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR #616 open. CI all green at head beb787c4; Codex review dispositions: P2 (two-step page prerender) already fixed via force-dynamic, P1 (forget action actor recheck) fixed with an in-transaction assertActiveTeamActor + 3 unit tests, typecheck clean. Awaiting ci at the new exact head, then reply/resolve threads and merge.",
       "units": [
         "ACC-6"
       ]
@@ -5184,7 +5184,7 @@
       "dependencies": [
         "DEC-1"
       ],
-      "status": "MERGED — PR #617, squash merge cb1c3618 (2026-10-26); fingerprint refresh PR pending (3 rule-key lines need cb1c3618 fingerprints)",
+      "status": "MERGED — PR #617, squash merge cb1c3618 (2026-10-26); fingerprint refresh PR #622 merged as 38e92a98 (2026-10-26), main's secret scan green",
       "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
       "budget": 500,
       "units": [
@@ -5211,7 +5211,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — branch ai/vivienne/tfa-2, main merged in at 50e265e (2026-10-26); PR, exact-head CI and merge next",
       "migration": "additive (Invoice.replacementOfInvoiceId)",
       "budget": 500,
       "units": [
@@ -5265,7 +5265,7 @@
         "TFA-1",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS",
       "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
       "budget": 550,
       "units": [
@@ -5280,7 +5280,8 @@
         "tests/compliance-registry.test.ts",
         "tests/field-crypto.test.ts",
         "tests/compliance-forms.test.ts",
-        "e2e/compliance.spec.ts"
+        "e2e/compliance.spec.ts",
+        "tests/compliance-filings-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-1.md"
@@ -5496,7 +5497,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-1",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5508,7 +5509,7 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-1-integration.test.ts"
+        "tests/ops1-recalls-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-1.md"
@@ -5521,7 +5522,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-2)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5533,7 +5534,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-2-integration.test.ts"
+        "tests/ops2-refrigerant-rules.test.ts",
+        "tests/ops2-refrigerant-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-2.md"
@@ -5595,7 +5597,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-5",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5607,7 +5609,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-5-integration.test.ts"
+        "tests/ops5-dispute-rules.test.ts",
+        "tests/ops5-disputes-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-5.md"
@@ -6044,6 +6047,14 @@
     {
       "id": "K-CASH-7",
       "path": "docs/pr-cards/execution/K-CASH-7.json"
+    },
+    {
+      "id": "CMP-1",
+      "path": "docs/pr-cards/execution/CMP-1.json"
+    },
+    {
+      "id": "TFA-2",
+      "path": "docs/pr-cards/execution/TFA-2.json"
     }
   ]
 }

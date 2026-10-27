@@ -1,7 +1,27 @@
-# gitleaks configuration. This repository is public: CI scans the whole git
-# history for credentials on every run. Default rules plus the allowlist of
-# reviewed fake test strings in .gitleaksignore (by fingerprint).
+# gitleaks configuration for this public repository. PR/push CI scans new
+# commits, nightly CI scans the history reachable from main (not all branches),
+# and scripts/check-secrets.mjs checks every current file. Default rules plus
+# reviewed fake test strings in .gitleaksignore (by fingerprint), plus one
+# shape allowlist below for registry identifier keys.
 title = "appliance-desk"
 
 [extend]
 useDefault = true
+
+# Obligation and rule keys are public identifiers, not credentials: the tax
+# rules registry and the compliance registry name every rule with a lowercase
+# dotted key (a jurisdiction prefix, then dotted lowercase segments of letters,
+# digits and underscores). The generic-api-key rule flags the higher-entropy
+# ones, and until now each commit touching those lines needed a new per-commit
+# fingerprint in .gitleaksignore. This allowlist matches the identifier SHAPE
+# in the secret itself, so those keys are allowed once, durably, in any file.
+# Deliberately NO path condition: in gitleaks 8.28 an allowlist's paths and
+# regexes are alternatives (either one suppresses a finding), so adding paths
+# would blind the scanner to real credentials in the listed files. A real key
+# (mixed case, symbols, or one long token) never matches this shape and still
+# flags — verified against planted real-shaped keys, including inside the
+# registry files themselves.
+[allowlist]
+description = "Obligation/rule identifier keys are public names, not credentials."
+regexTarget = "secret"
+regexes = ['''^[a-z]{2,7}\.[a-z0-9_]{1,24}(\.[a-z0-9_]{1,24}){0,3}$''']

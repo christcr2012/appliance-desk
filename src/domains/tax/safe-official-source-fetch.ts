@@ -6,6 +6,8 @@ import { isIP } from "node:net";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 1024 * 1024;
 const STORED_TEXT_MAX_BYTES = 200 * 1024;
+const JSON_MAX_BYTES = 4 * 1024 * 1024;
+type PageType = "text/html" | "text/plain" | "application/json";
 
 export type OfficialSourceFetchResult = {
   finalUrl: string;
@@ -157,8 +159,13 @@ async function resolvePublicAddresses(
   }
 }
 
-function mediaType(value: string | null): "text/html" | "text/plain" | null {
+function mediaType(value: string | null, json = false): PageType | null {
   const type = value?.split(";", 1)[0]?.trim().toLowerCase();
+  if (json) {
+    // A JSON data source (OPS-1 recall list) must answer with JSON; an HTML error page is not data.
+    if (type === "application/json" || type === "text/json") return "application/json";
+    return null;
+  }
   if (type === "text/html" || type === "text/plain") return type;
   return null;
 }
@@ -217,7 +224,8 @@ function requestPinnedOfficialSource(
   addresses: ResolvedAddress[],
   timeoutMs: number,
   maxBytes: number,
-): Promise<{ contentType: "text/html" | "text/plain"; body: string }> {
+  json = false,
+): Promise<{ contentType: PageType; body: string }> {
   const selected = addresses[0];
   if (!selected) {
     throw new Error("Official source host did not resolve.");
@@ -230,7 +238,7 @@ function requestPinnedOfficialSource(
 
     const finish = (
       result:
-        | { ok: true; value: { contentType: "text/html" | "text/plain"; body: string } }
+        | { ok: true; value: { contentType: PageType; body: string } }
         | { ok: false; error: Error },
     ) => {
       if (settled) return;
@@ -252,7 +260,7 @@ function requestPinnedOfficialSource(
         family: selected.family,
         lookup: createPinnedLookup(selected.address, selected.family),
         headers: {
-          accept: "text/html,text/plain;q=0.9",
+          accept: json ? "application/json" : "text/html,text/plain;q=0.9",
           "accept-encoding": "identity",
           "user-agent": "ApplianceDesk-OfficialTaxSourceWatch/1.0",
         },
@@ -295,13 +303,16 @@ function requestPinnedOfficialSource(
         const rawContentType = response.headers["content-type"];
         const contentType = mediaType(
           Array.isArray(rawContentType) ? rawContentType[0] ?? null : rawContentType ?? null,
+          json,
         );
         if (!contentType) {
           response.destroy();
           request?.destroy();
           finish({
             ok: false,
-            error: new Error("Official source response was not HTML or plain text."),
+            error: new Error(
+              json ? "Official source response was not JSON." : "Official source response was not HTML or plain text.",
+            ),
           });
           return;
         }
@@ -414,8 +425,36 @@ export async function fetchOfficialSourcePage(
 
   return {
     finalUrl: parsed.toString(),
-    contentType: response.contentType,
+    contentType: response.contentType as "text/html" | "text/plain",
     text: truncateUtf8(normalized, STORED_TEXT_MAX_BYTES),
     hash,
   };
+}
+
+/**
+ * The same safe fetch (HTTPS only, public addresses only, pinned address, no redirects, size and time limits) for a
+ * JSON data source. The caller must pass the one host it is allowed to read (OPS-1: www.saferproducts.gov).
+ */
+export async function fetchOfficialSourceJson(
+  url: string,
+  options: { allowedHost: string; timeoutMs?: number; maxBytes?: number },
+): Promise<{ finalUrl: string; json: unknown }> {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:") throw new Error("Official source URLs must use HTTPS.");
+  if (parsed.username || parsed.password) throw new Error("Official source URLs cannot include credentials.");
+  if (parsed.hostname.toLowerCase() !== options.allowedHost.toLowerCase()) {
+    throw new Error("This data source is not on the approved list.");
+  }
+  const timeoutMs = boundedOption(options.timeoutMs, DEFAULT_TIMEOUT_MS, "timeoutMs");
+  const maxBytes = boundedOption(options.maxBytes, JSON_MAX_BYTES, "maxBytes");
+  const deadlineMs = Date.now() + timeoutMs;
+  const addresses = await resolvePublicAddresses(parsed.hostname, deadlineMs);
+  const remainingMs = deadlineMs - Date.now();
+  if (remainingMs <= 0) throw new Error("Official source request timed out.");
+  const response = await requestPinnedOfficialSource(parsed, addresses, remainingMs, maxBytes, true);
+  try {
+    return { finalUrl: parsed.toString(), json: JSON.parse(response.body) as unknown };
+  } catch {
+    throw new Error("Official source response was not valid JSON.");
+  }
 }

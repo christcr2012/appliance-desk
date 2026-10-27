@@ -1,3 +1,5 @@
+import { MISSING_RECORD_MESSAGE, refrigerantRecordRequired } from "@/domains/refrigerant/rules";
+import { assertNotRecalledForSale } from "@/domains/recalls/guard";
 import type { Prisma, RetiredPlanChoice } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -153,6 +155,14 @@ async function completeInTx(tx: Tx, actorUserId: string, applianceId: string, in
     if (input.remainder !== "SCRAPPED" && input.remainder !== "THROWN_AWAY") throw new RetiredPlanError("Say what happened to the rest: scrapped or thrown away.");
     remainder = input.remainder;
   }
+  // OPS-2: a refrigerator-type appliance can't be scrapped or thrown away until its refrigerant statement is on file.
+  const refrigerant = await tx.appliance.findUnique({
+    where: { id: applianceId },
+    select: { assetNumber: true, applianceType: { select: { hasRefrigerant: true } }, refrigerantRecord: { select: { applianceId: true } } },
+  });
+  if (refrigerantRecordRequired(refrigerant?.applianceType.hasRefrigerant === true, { choice: plan.choice, remainder: remainder ?? plan.remainder }) && !refrigerant?.refrigerantRecord) {
+    throw new RetiredPlanError(`${MISSING_RECORD_MESSAGE}${bulk ? ` (${refrigerant?.assetNumber ?? "one of the appliances"})` : ""}`);
+  }
   await tx.retiredAppliancePlan.update({
     where: { applianceId },
     data: { doneOn, doneNote: note, doneByUserId: actorUserId, remainder: remainder ?? plan.remainder, reopenedAt: null, reopenReason: null },
@@ -250,6 +260,8 @@ export async function addSalvagedParts(
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     const appliance = await lockRetired(tx, applianceId);
+    // OPS-1: parts from a recalled machine are not listed for sale.
+    await assertNotRecalledForSale(tx, applianceId, "listed for parts");
     const plan = appliance.retiredPlan;
     if (!plan || plan.choice !== "STRIP") throw new RetiredPlanError("Choose “Strip it for parts” for this appliance first.");
 

@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-export const policy = {"gate": "ci", "parallel": ["secrets", "static", "unit", "e2e"], "allowedPrerequisites": ["classify"], "matrices": {"unit": 3, "e2e": 4}, "maxTimeouts": {"classify": 5, "secrets": 5, "static": 10, "unit": 15, "e2e": 20, "ci": 5}, "timedJobs": ["unit", "e2e"]};
+export const policy = {"gate": "ci", "parallel": ["secrets", "static", "unit", "e2e"], "allowedPrerequisites": ["classify"], "matrices": {"unit": 3, "e2e": 5}, "maxTimeouts": {"classify": 5, "secrets": 5, "static": 10, "unit": 15, "e2e": 20, "ci": 5}, "timedJobs": ["unit", "e2e"]};
 
 export function checkLayout(source, expected = policy) {
   const body = source.split(/^jobs:\s*$/m)[1];
@@ -42,9 +42,13 @@ export function checkLayout(source, expected = policy) {
   for (const [id,count] of Object.entries(expected.matrices ?? {})) {
     const block = jobs.get(id);
     if (!/fail-fast:\s*false/.test(block)) throw Error('Collect all shard failures: ' + id);
-    const values = /shard:\s*\[([^\]]+)\]/.exec(block)?.[1].split(',').filter(v=>v.trim());
+    const values = /shard:\s*\[([^\]]+)\]/.exec(block)?.[1].split(',').map(v=>v.trim()).filter(Boolean);
     const max = /max-parallel:\s*(\d+)/.exec(block)?.[1];
-    if (!values || values.length < count || (max && Number(max) < values.length)) throw Error('Required shards may not collapse or serialize: ' + id);
+    const expectedValues = id === 'unit'
+      ? Array.from({ length: count }, (_, i) => String(i + 1))
+      : Array.from({ length: count }, (_, i) => 'browser-' + String.fromCharCode(97 + i));
+    if (!values || values.join(',') !== expectedValues.join(',') || (max && Number(max) < values.length))
+      throw Error('Required shards may not collapse, disappear, duplicate or serialize: ' + id);
   }
   return { gate: expected.gate, independentFamilies: expected.parallel, jobs: jobs.size,
     note: 'Topology/timeout guard only; real exact-head CI must pass. Review job/step timings and rebalance growing cohorts, never weaken coverage.' };

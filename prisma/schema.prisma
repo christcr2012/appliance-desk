@@ -64,6 +64,8 @@ model User {
   sessions  Session[]
   accounts  Account[]
   twoFactor TwoFactor?
+  // ACC-6: devices this person has signed in from (one row per device cookie).
+  knownDevices KnownDevice[] @relation("KnownDevices")
 
   customer Customer?
 
@@ -162,11 +164,36 @@ model TwoFactor {
   lockedUntil             DateTime?
 }
 
+// ACC-6: devices a person has signed in from, keyed by a device cookie.
+// The cookie value itself is never stored — only its SHA-256 hash — and the
+// cookie is only an identifier: it never signs anyone in on its own.
+// trustedUntil is set when the person ticks "Remember this device" and is
+// never extended by later sign-ins; forgottenAt marks a device the person
+// (or the owner, or a security change) has forgotten.
+model KnownDevice {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation("KnownDevices", fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash   String   @db.Char(64)
+  label        String   @db.VarChar(80)
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  trustedUntil DateTime?
+  forgottenAt  DateTime?
+
+  @@unique([userId, deviceHash])
+  @@index([userId, lastSeenAt])
+}
+
 // ---------------------------------------------------------------------------
 // Customers & service addresses
 // ---------------------------------------------------------------------------
 
 model Customer {
+  // OPS-5: set when a bank debit from this customer was disputed. Autopay stays off until the owner clears it.
+  bankDebitBlockedAt DateTime?
+  bankDebitBlockedReason String?
+  paymentDisputes PaymentDispute[]
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
@@ -538,6 +565,13 @@ model ApplianceType {
   // until Chris supplies one — the site falls back to a generic icon.
   photoUrl String?
 
+  // OPS-1: words used to search the government recall list for this kind of appliance ("washer", "washing machine").
+  // Empty means the nightly check falls back to the type's own name.
+  recallProductTerms String[] @default([])
+
+  // OPS-2: appliances of this type have a sealed refrigerant system, so scrapping or throwing one away needs a refrigerant record.
+  hasRefrigerant Boolean @default(false)
+
   // Soft-delete: an appliance type is never hard-deleted once it's been
   // referenced by a Lead/PricingRule/Appliance (that would break history).
   // Retiring a category sets isActive=false instead, which hides it from
@@ -658,9 +692,14 @@ model Appliance {
   staffTasks  StaffTask[]
   // Batch M-2: what the owner decided to do with it after retiring it, and parts taken from it.
   retiredPlan RetiredAppliancePlan?
+  refrigerantRecord RefrigerantRecord?
   saleLines InvoiceLineItem[] @relation("ApplianceSaleLine")
   saleDispositions RetiredSaleDisposition[]
   salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
+  // OPS-1: true while a CONFIRMED safety recall covers this machine. Blocks renting, reserving, swapping, selling and parts listing.
+  recallHold Boolean @default(false)
+  recallMatches RecallMatch[]
+  safetyIncidents SafetyIncident[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -2530,6 +2569,7 @@ model CreditApplication {
 }
 
 model Invoice {
+  paymentDisputes PaymentDispute[]
   rdfShopRecords RetailDeliveryFeeRecord[] @relation("RdfShopInvoice")
   id          String        @id @default(cuid())
   invoiceNumber Int         @unique @default(autoincrement())
@@ -2564,6 +2604,9 @@ model Invoice {
   saleServiceAddressId String?
   walkInName           String?
   saleOperationKey     String? @unique
+  // TFA-2: a replacement sale (an exchange) points at the sale it replaces, so
+  // the delivery fee is never charged twice for one purchase.
+  replacementOfInvoiceId String?
   // Stripe: finalized_at from the signed provider invoice, never webhook-receipt time.
   // Local: issue time is its original creation time. Null means evidence is incomplete.
   issuedAt           DateTime?
@@ -2698,6 +2741,7 @@ model InvoiceLineItem {
 }
 
 model Payment {
+  disputes PaymentDispute[]
   id          String   @id @default(cuid())
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
@@ -2811,6 +2855,7 @@ model TaxFilingAccount {
   jurisdictions            TaxJurisdiction[]     @relation("SalesTaxFilingAccount")
   useTaxJurisdictions      TaxJurisdiction[]     @relation("UseTaxFilingAccount")
   periods                  TaxFilingPeriod[]
+  filingFrequencyAdvices   FilingFrequencyAdvice[]
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
 }
@@ -3149,6 +3194,49 @@ model RetailDeliveryFeeRecord {
   @@index([filingPeriodId])
 }
 
+enum RdfSwitchKind {
+  START
+  STOP
+}
+
+// TFA-2: one prepared delivery-fee switch. The app prepares and dates it; it
+// changes a customer bill only after the owner approves it on Today. A START
+// with no approval yet means the fee is owed but not billed to customers.
+model RetailDeliveryFeeSwitch {
+  id               String        @id @default(cuid())
+  kind             RdfSwitchKind
+  startsOn         DateTime
+  // The prior-year Colorado retail total the Jan 1 test used (null for the
+  // new-business start, which is dated from the crossing instead).
+  basisRetailCents Int?
+  approvedAt       DateTime?
+  approvedByUserId String?
+  createdAt        DateTime      @default(now())
+
+  @@unique([kind, startsOn])
+  @@index([startsOn])
+}
+
+// TFA-2 §8: one filing-frequency advice. The monthly job computes the
+// trailing-12-month average of state and state-collected tax and compares it
+// with the rule-book limits; the app never changes the frequency itself. The
+// To do offers a one-tap confirm once Colorado has agreed (Revenue Online),
+// and the confirm marks this row and sets the account frequency, which only
+// future periods pick up.
+model FilingFrequencyAdvice {
+  id                  String             @id @default(cuid())
+  filingAccountId     String
+  filingAccount       TaxFilingAccount   @relation(fields: [filingAccountId], references: [id])
+  currentFrequency    TaxFilingFrequency
+  advisedFrequency    TaxFilingFrequency
+  averageMonthlyCents Int
+  computedOn          DateTime           @default(now())
+  confirmedAt         DateTime?
+  confirmedByUserId   String?
+
+  @@index([filingAccountId, computedOn])
+}
+
 model TaxFilingAmendment {
   id                 String             @id @default(cuid())
   periodId           String
@@ -3368,6 +3456,8 @@ model BusinessSettings {
   lateFeeNoticeDaysBefore Int @default(2)
   // FEE-1: the day Chris confirmed the Colorado consumer-lease notification was filed (before the first household rental over 4 months). Null = not yet.
   ucccNotificationFiledOn DateTime?
+  // DEC-2: when the owner last marked the researched starting values as reviewed (To do item until then).
+  decisionsReviewedAt     DateTime?
   taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
   taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)
@@ -3478,6 +3568,8 @@ model BusinessSettings {
   // ACC-4: wrong passwords allowed on one account inside the window, and how long the account waits afterwards.
   signInPauseAttempts      Int     @default(10)
   signInPauseMinutes       Int     @default(15)
+  // ACC-6: days a ticked "Remember this device" skips the sign-in code (0-90; 0 = always ask). Starting value 30.
+  trustedDeviceDays        Int     @default(30)
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 
@@ -3486,6 +3578,56 @@ model BusinessSettings {
   // COM-L2 additive communication lineage.
   communicationsPolicy Json @default("{}")
   communicationsPolicyVersion Int @default(1)
+
+  // OPS-5: how long after a bank debit a customer can still dispute it (starting value 60 days, from the NACHA rules
+  // via Stripe's documentation). Deposit refunds for bank payments wait this long.
+  achDisputeWindowDays Int @default(60)
+}
+
+model ComplianceProfile {
+  // CMP-1: the owner's business facts for compliance, one row ("singleton").
+  // entityType is a Decisions question (CMP-ENTITY, CPA) — SINGLE_MEMBER_LLC
+  // is the starting value, not a confirmed answer.
+  id             String   @id @default("singleton")
+  entityType     String   @default("SINGLE_MEMBER_LLC")
+  // The EIN itself is never stored in plain text: einEncrypted holds the
+  // AES-256-GCM value from src/lib/field-crypto.ts; only the last 4 show.
+  einLast4       String?  @db.Char(4)
+  einEncrypted   String?
+  sosReportMonth Int?
+  truckGvwrLbs   Int?
+  employees      Int      @default(0)
+  hasHomeOffice  Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
+}
+
+model ComplianceFiling {
+  // CMP-1: one row per obligation period, moved by the filing flow
+  // (prepare → approve → submit). The approval binds preparedHash, and the
+  // APPROVED → SUBMITTED step happens once only under the row lock.
+  id               String    @id @default(cuid())
+  obligationKey    String    @db.VarChar(60)
+  periodKey        String    @db.VarChar(20)
+  state            String    @db.VarChar(20)
+  dueOn            DateTime
+  actOn            DateTime
+  preparedData     Json?
+  preparedHash     String?   @db.Char(64)
+  outputFileUrl    String?
+  approvedByUserId String?
+  approvedAt       DateTime?
+  submittedAt      DateTime?
+  confirmation     String?   @db.VarChar(200)
+  note             String?   @db.VarChar(1000)
+  version          Int       @default(1)
+  // True only while a NOT_APPLICABLE state came from the sync's automatic
+  // retirement (the facts stopped generating the period). An owner's own
+  // "not needed" decision never sets it, and the sync reactivates an
+  // auto-retired row when its period is generated again.
+  autoRetired      Boolean   @default(false)
+
+  @@unique([obligationKey, periodKey])
+  @@index([state, actOn])
 }
 
 model MonthToMonthTermsVersion {
@@ -5640,4 +5782,162 @@ enum FeedbackState {
   DUPLICATE
   DECLINED
   CLOSED
+}
+
+// OPS-5: a card or bank dispute raised through Stripe. One row per Stripe dispute; the webhook only records and flags,
+// it never moves money. Chris decides what to send, and sends it once.
+enum DisputeState {
+  NEEDS_RESPONSE
+  UNDER_REVIEW
+  WON
+  LOST
+  CLOSED
+}
+
+model PaymentDispute {
+  id               String       @id @default(cuid())
+  stripeDisputeId  String       @unique
+  stripeChargeId   String?
+  stripePaymentIntentId String?
+  paymentId        String?
+  payment          Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoiceId        String?
+  invoice          Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customerId       String?
+  customer         Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amountCents      Int
+  reason           String
+  stripeStatus     String
+  state            DisputeState @default(NEEDS_RESPONSE)
+  // A bank (ACH) debit dispute is final: it cannot be contested.
+  isBank           Boolean      @default(false)
+  dueBy            DateTime?
+  outcome          String?
+  openedAt         DateTime
+  closedAt         DateTime?
+  // The newest Stripe event applied, so an older event arriving late never undoes a newer one.
+  lastEventAt      DateTime
+  lastEventId      String
+  evidenceSubmittedAt DateTime?
+  evidenceSubmittedByUserId String?
+  evidenceFileId   String?
+  evidencePacketBytes Int?
+  evidenceSummary  Json?
+  // The To do for "collect directly" after a bank dispute, once Chris says it is handled.
+  handledAt        DateTime?
+  handledByUserId  String?
+  handledNote      String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([state])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([paymentId])
+}
+
+// ---------------------------------------------------------------------------
+// OPS-1 (docs/build-specs/engines/OWNER-OPERATIONS.md): product recalls.
+// The nightly check only ever creates POSSIBLE matches. Only Chris confirms one (CONFIRMED puts the machine on hold).
+// REMEDIED is the one state beyond the spec: without it a hold could never end after the maker's fix is done.
+// ---------------------------------------------------------------------------
+enum RecallMatchState {
+  POSSIBLE
+  CONFIRMED
+  NOT_OURS
+  REMEDIED
+}
+
+model RecallMatch {
+  id           String           @id @default(cuid())
+  recallId     String
+  recallNumber String
+  title        String
+  url          String
+  hazard       String?
+  remedy       String?
+  publishedAt  DateTime?
+  applianceId  String
+  appliance    Appliance        @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  matchReason  String
+  state        RecallMatchState @default(POSSIBLE)
+  decidedByUserId String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([recallId, applianceId])
+  @@index([state])
+  @@index([applianceId])
+}
+
+// One row: when the nightly recall check last finished, and whether Chris asked for a whole-fleet check.
+model RecallWatchState {
+  id                    String    @id @default("singleton")
+  lastSuccessAt         DateTime?
+  fullFleetRequestedAt  DateTime?
+  fullFleetCheckedAt    DateTime?
+  fullFleetCursor       Int       @default(0)
+  lastError             String?
+  updatedAt             DateTime  @updatedAt
+}
+
+enum SafetyIncidentDecision {
+  PENDING
+  REPORTED
+  NOT_REPORTED
+}
+
+// An injury or safety incident Chris marked on a repair request or visit. Stays on his To do until he decides about CPSC.
+model SafetyIncident {
+  id          String   @id @default(cuid())
+  applianceId String?
+  appliance   Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  maintenanceRequestId String?
+  jobId       String?
+  description String
+  markedByUserId String
+  decision    SafetyIncidentDecision @default(PENDING)
+  decidedByUserId String?
+  decidedAt   DateTime?
+  decisionNote String?
+  createdAt   DateTime @default(now())
+
+  @@index([decision])
+  @@index([applianceId])
+  @@index([maintenanceRequestId])
+  @@index([jobId])
+}
+
+enum RefrigerantOutcome {
+  RECOVERED
+  LEAKED_BEFORE
+}
+
+// OPS-2: what happened to the refrigerant in a retired appliance before it was scrapped or thrown away (40 CFR 82.155:
+// the scrap yard must get a signed statement). Kept for the rule-book number of years (records.refrigerant_keep_years).
+model RefrigerantRecord {
+  applianceId      String   @id
+  appliance        Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  refrigerantType  String
+  outcome          RefrigerantOutcome
+  recoveredByName  String
+  recoveredByAddress String
+  certificationNumber String?
+  equipmentUsed    String?
+  recoveredOn      DateTime
+  recyclerName     String?
+  receiptReference String?
+  statementSignedAt DateTime
+  statementSignedByUserId String
+  // What the statement said when it was signed. Reprints use these, so later edits to a name or appliance never change a signed statement.
+  signedByName     String
+  assetNumberSnapshot String
+  applianceDescriptionSnapshot String
+  serialNumberSnapshot String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([recoveredOn])
 }

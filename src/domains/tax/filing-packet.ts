@@ -8,6 +8,7 @@ import { assignDueUseTaxRowsToPeriod } from "./use-tax";
 import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { legalDueOn } from "./filing-calendar";
 import { buildRdfPacketInTx, type RdfPacket } from "./rdf-filing";
+import { shopSaleFeeKeptOnReturnInTx } from "./rdf-shop-sale";
 import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 
 export type FilingPacketRow = {
@@ -500,11 +501,18 @@ export async function loadFilingPacketInTx(
       const lines = invoice.taxLines;
       const totalTax = sum(lines.map(t => t.taxCents));
       const invoiceAmount = invoice.amountDueCents;
+      // TFA-2 §6.5: a returned shop sale keeps its delivery fee — the fee
+      // is never part of any refund, so it leaves the allocation base.
+      // Without this, a $54 refund of a $54.37 sale ($50 goods, $4 tax,
+      // $0.37 fee) reads as refunding only $3.97 of tax and leaves three
+      // cents of tax payable on a sale that was fully taken back.
+      const keptFeeCents = await shopSaleFeeKeptOnReturnInTx(tx, invoice.id);
+      const basisCents = invoiceAmount - keptFeeCents;
       const allRefunds = [...invoice.refunds].sort((a,b) => a.id.localeCompare(b.id));
       const totalRefunds = sum(allRefunds.map(r => r.amountCents));
-      if (invoiceAmount <= 0 || totalTax < 0 || totalTax > invoiceAmount ||
+      if (basisCents <= 0 || totalTax < 0 || totalTax > basisCents ||
           lines.some(t => t.taxCents < 0 || t.taxableCents < 0 || t.exemptCents < 0) ||
-          totalRefunds > invoiceAmount || totalRefunds <= 0) {
+          totalRefunds > basisCents || totalRefunds <= 0) {
         problems.push("Refund invoice " + invoice.invoiceNumber +
           " needs reconciliation before tax may be reported.");
         continue;
@@ -516,19 +524,19 @@ export async function loadFilingPacketInTx(
       }
       const weights = allRefunds.map(r => r.amountCents);
       const totalTaxRefund = allocateAcrossLines(totalRefunds,
-        [totalTax, invoiceAmount - totalTax])[0]!;
+        [totalTax, basisCents - totalTax])[0]!;
       const perLineTax = allocateAcrossLines(totalTaxRefund, lines.map(l => l.taxCents));
       for (const [index, line] of lines.entries()) {
         if (line.jurisdiction.filingAccountId !== account.id) continue;
         const tax = allocateAcrossLines(perLineTax[index]!, weights)[refundIndex]!;
         const principal = line.taxableCents + line.exemptCents;
-        if (principal > invoiceAmount) {
+        if (principal > basisCents) {
           problems.push("Refund invoice " + invoice.invoiceNumber +
             " has principal that cannot be allocated.");
           continue;
         }
         const grossRefund = allocateAcrossLines(totalRefunds,
-          [principal, invoiceAmount - principal])[0]!;
+          [principal, basisCents - principal])[0]!;
         const [totalTaxable, totalExempt] = principal > 0
           ? allocateAcrossLines(grossRefund, [line.taxableCents, line.exemptCents])
           : [0, 0];

@@ -43,7 +43,7 @@ export default async function NewAgreementPage({
   const serviceAddressId = draft?.serviceAddressId ?? query.serviceAddressId;
   const [customers, availableAppliances, packages, businessSettings] = await Promise.all([
     getCustomers(),
-    getAppliances({ status: "AVAILABLE" }),
+    getAppliances({ status: "AVAILABLE", rentableOnly: true }),
     listPackagesForLines(),
     getBusinessSettings(),
   ]);
@@ -66,6 +66,11 @@ export default async function NewAgreementPage({
       <div className="mt-6">
         <RentalWizard
           ucccFilingNeeded={!businessSettings.ucccNotificationFiledOn}
+          lateFeeDefaults={{
+            graceDays: businessSettings.lateFeeGraceDays,
+            cents: businessSettings.lateFeeFlatCents,
+            percent: businessSettings.lateFeePercent,
+          }}
           initialRequestKey={requestKey}
           initialDraft={
             draft

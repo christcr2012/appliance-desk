@@ -14,6 +14,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/acc3-second-step-integration.test.ts", // ACC-3 changes and restores the shared sign-in method rules and text-code switch.
   "tests/acc4-recovery-integration.test.ts", // ACC-4 changes and restores the shared wrong-password pause numbers and invitation link days.
   "tests/acc5-job-roles-integration.test.ts", // ACC-5 edits the shared starting job roles and the invitation settings.
+  "tests/trusted-devices-integration.test.ts", // ACC-6 changes and restores the remember-days setting, the customer-email switch and the text-code switch.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.
@@ -23,6 +24,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/stored-file-cleanup-integration.test.ts", // Older findings: changes and restores the shared file-keeping days settings.
   "tests/scheduled-prices-integration.test.ts", // O-4 the nightly job applies every due change in the database; it must not overlap the set-price suite.
   "tests/scheduled-package-prices-integration.test.ts", // O-4 same nightly job as above, for rental sets.
+  "tests/starting-values-integration.test.ts", // DEC-2 archives other owners and looks at every question; must not overlap other tests.
   "tests/decisions-integration.test.ts", // DEC-1a changes/restores shared tax settings and an all-state default tax rule; runs the same nightly job.
   "tests/settings-undo-integration.test.ts", // O-1 changes and restores shared BusinessSettings fields and reads the settings audit history.
   "tests/bank-reconciliation-integration.test.ts",
@@ -117,6 +119,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/purchase-tax-recalculate-integration.test.ts",
   "tests/rdf-filing-integration.test.ts",
   "tests/rdf-threshold-integration.test.ts",
+  "tests/rdf-autopilot-integration.test.ts", // TFA-2 changes and restores the shared crossing date on the settings row.
   "tests/retail-delivery-fee-integration.test.ts",
   "tests/subscription-end-integration.test.ts",
   "tests/system-issue-sweep-integration.test.ts",
@@ -133,6 +136,10 @@ const SHARED_SETTINGS_TESTS = [
   "tests/voice-webhooks-integration.test.ts",
   "tests/voice-voicemail-integration.test.ts",
   "tests/use-tax-frequency-transition-integration.test.ts",
+  "tests/use-tax-year-reset.test.ts", // TFA-2 creates Colorado use-tax filing accounts and periods.
+  "tests/license-renewal.test.ts", // TFA-2 creates and edits shared filing accounts.
+  "tests/filing-frequency-advice.test.ts", // TFA-2 creates filing accounts, periods and advice.
+  "tests/exemption-expiry-flow-integration.test.ts", // TFA-2 creates customers, certificates and credits.
   "tests/use-tax-unlinked-account-integration.test.ts",
   // Added 2026-10-17 (F2-A/F2-B): the integrated scenarios seed the shared tax settings, switch shared business settings
   // on and off, and work through whole-database queues (billing hand-offs, waiting notices, due terminations), so they
