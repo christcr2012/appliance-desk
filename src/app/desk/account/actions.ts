@@ -50,7 +50,7 @@ async function currentPasswordIsRight(password: string): Promise<boolean> {
 }
 
 export async function saveProfileAction(input: { name: string; phone: string }): Promise<AccountActionResult> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   try {
     const result = await updateMyProfile(session.user.id, { name: String(input.name ?? ""), phone: String(input.phone ?? "") });
     revalidatePath("/desk/account");
@@ -68,7 +68,7 @@ export async function changePasswordAction(input: {
   newPassword: string;
   signOutOthers: boolean;
 }): Promise<AccountActionResult> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const currentPassword = String(input.currentPassword ?? "");
   const newPassword = String(input.newPassword ?? "");
   if (newPassword.length < 10 || newPassword.length > 128) return fail("Choose a password between 10 and 128 characters.");
@@ -98,7 +98,7 @@ export async function changePasswordAction(input: {
 }
 
 export async function requestEmailChangeAction(input: { newEmail: string; currentPassword: string }): Promise<AccountActionResult> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const newEmail = String(input.newEmail ?? "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(newEmail) || newEmail.length > 200) return fail("Enter a full email address.");
   if (newEmail === session.user.email.toLowerCase()) return fail("That is already your sign-in email.");
@@ -118,7 +118,7 @@ export async function requestEmailChangeAction(input: { newEmail: string; curren
 }
 
 export async function makeBackupCodesAction(input: { currentPassword: string }): Promise<AccountActionResult> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { twoFactorEnabled: true } });
   if (!user?.twoFactorEnabled) return fail("Set up two-step sign-in first.");
   try {
@@ -135,7 +135,7 @@ export async function makeBackupCodesAction(input: { currentPassword: string }):
 }
 
 export async function turnOffTwoStepAction(input: { currentPassword: string }): Promise<AccountActionResult> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   if (await twoFactorRequiredFor(session.user.role)) {
     return fail("Your role has to keep two-step sign-in on. The owner can change that in Settings.");
   }
@@ -156,7 +156,7 @@ export async function turnOffTwoStepAction(input: { currentPassword: string }): 
 }
 
 export async function signOutOtherDevicesAction(): Promise<AccountActionResult> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   try {
     const count = await revokeOtherSessions(session.user.id, session.session.token);
     revalidatePath("/desk/account");
@@ -167,7 +167,7 @@ export async function signOutOtherDevicesAction(): Promise<AccountActionResult> 
 }
 
 export async function forgetRememberedDevicesAction(): Promise<AccountActionResult> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   try {
     const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
     // Re-check the actor inside the forget's transaction: if the person was deactivated after the role

@@ -33,7 +33,7 @@ async function command(accountId:string,name:string,cb:()=>Promise<unknown>){
  finish(accountId,message);
 }
 export async function confirmMatchAction(form:FormData){
- const user=await requireRole("OWNER","ADMIN"),accountId=field(form,"accountId");
+ const user=await requireRole("OWNER","ADMIN","ACCOUNTANT"),accountId=field(form,"accountId");
  await command(accountId,"Match",()=>confirmBankMatch(user.user.id,{
   accountId,observationIds:choices(form,"observationIds"),journalLineIds:choices(form,"journalLineIds"),
   observationVersions:Object.fromEntries(choices(form,"observationVersions")
@@ -42,7 +42,7 @@ export async function confirmMatchAction(form:FormData){
  }));
 }
 export async function voidMatchAction(form:FormData){
- const user=await requireRole("OWNER","ADMIN"),accountId=field(form,"accountId");
+ const user=await requireRole("OWNER","ADMIN","ACCOUNTANT"),accountId=field(form,"accountId");
  await command(accountId,"Void match",()=>voidBankMatch(user.user.id,
    field(form,"groupId"),number(form,"version"),field(form,"reason")));
 }
