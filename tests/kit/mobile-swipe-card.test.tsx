@@ -106,8 +106,19 @@ describe("AR-11 safe phone swipe actions", () => {
     expect(charge).not.toHaveBeenCalled();
     expect(li).toHaveAttribute("data-swipe-open", "true");
     await act(async () => tap(screen.getByRole("button", { name: "Take payment" })));
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Take $70.00" })));
+    const confirmation = screen.getByRole("button", { name: "Take $70.00" });
+    fireEvent.pointerDown(confirmation, { pointerType: "touch", pointerId: 99 });
+    expect(li).toHaveAttribute("data-swipe-open", "true");
+    await act(async () => fireEvent.click(confirmation));
     expect(charge).toHaveBeenCalledTimes(1);
+  });
+
+  it("wraps long action labels in the narrow revealed strip", () => {
+    card([{ kind: "link", label: "Record cash or check", href: "/desk/billing/abc/cash" }]);
+    gesture(screen.getByRole("listitem"), -85);
+    const button = screen.getByRole("link", { name: "Record cash or check" });
+    expect(button.className).toContain("whitespace-normal!");
+    expect(button.className).toContain("break-words");
   });
 
   it("closes when someone taps outside; a right swipe can also close it", () => {
