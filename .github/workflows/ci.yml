@@ -419,6 +419,13 @@ jobs:
         # when NO key is configured — so browser-e must not get one.
         if: matrix.shard != 'browser-e'
         run: echo "COMPLIANCE_ENCRYPTION_KEY=$(printf '0123456789abcdef0123456789abcdef' | base64)" >> "$GITHUB_ENV"
+      - name: Set the test-only vault encryption key
+        # Same throwaway construction, a different string so the two keys
+        # really are different keys in tests. Every shard gets this one: the
+        # vault spec (browser-e) saves and reveals logins, and no spec needs
+        # the vault key absent (the compliance spec's no-key check is about
+        # the compliance key only).
+        run: echo "VAULT_ENCRYPTION_KEY=$(printf 'fedcba9876543210fedcba9876543210' | base64)" >> "$GITHUB_ENV"
       - name: Apply database migrations
         run: npm run db:migrate:deploy
 
