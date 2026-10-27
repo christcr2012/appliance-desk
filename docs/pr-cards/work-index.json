@@ -5825,7 +5825,7 @@
         "docs/build-specs/screens/SERVICE-AREA-MAP.md"
       ],
       "tests": [
-        "tests/delivery-readiness.test.ts",
+        "tests/delivery-readiness-integration.test.ts",
         "e2e/delivery-area.spec.ts"
       ],
       "readiness": "CARD_READY",
@@ -5897,8 +5897,12 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-CASH-7",
+  "activeExecution": "FEETAX-2",
   "executionPackets": [
+    {
+      "id": "FEETAX-2",
+      "path": "docs/pr-cards/execution/FEETAX-2.json"
+    },
     {
       "id": "W-22D12",
       "path": "docs/pr-cards/execution/W-22D12.json"

@@ -62,7 +62,8 @@
       "customer-record.spec.ts",
       "books-month-review.spec.ts",
       "business-records.spec.ts",
-      "setup-guide.spec.ts"
+      "setup-guide.spec.ts",
+      "delivery-area.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",
