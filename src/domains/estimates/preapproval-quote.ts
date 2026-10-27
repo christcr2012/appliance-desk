@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getReviewedSigningOrderReadbackInTx } from "@/domains/billing/signing-order-readback";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
+import { assertDeliveryReadyInTx } from "@/domains/tax/delivery-readiness";
 import { computeTax } from "@/domains/tax/engine";
 import { effectiveMandatorySigningPolicy } from "@/domains/billing/signing-mandatory-policy";
 import { verifyPreparedEstimateScope } from "./preapproval-agreements";
@@ -212,6 +213,22 @@ export async function getPreparedEstimateQuoteInTx(
       });
       if (verifiedLocation?.status !== "VERIFIED")
         return rejected(["Verify all service address tax jurisdictions before quoting rental tax."]);
+      // FEETAX-2: an address that isn't ready to deliver to (undecided
+      // rules, a missing city license, out of state) can't be quoted.
+      // A prepared agreement already carrying the owner's override for
+      // an undecided-rules problem passes, as it does at order save.
+      try {
+        await assertDeliveryReadyInTx(tx, {
+          serviceAddressId: agreement.serviceAddressId,
+          agreementId: agreement.id,
+        }, effectiveOn);
+      } catch (error) {
+        return rejected([
+          error instanceof Error
+            ? error.message
+            : "That address isn't ready for delivery.",
+        ]);
+      }
       const monthlyRentCents = total(agreement.lines.map(line => line.monthlyPriceCents));
       const context = await getAgreementTaxContext(tx, agreement.id, effectiveOn);
       if (!context.jurisdictions.length ||

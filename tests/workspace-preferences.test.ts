@@ -26,12 +26,25 @@ describe("workspace preferences: strict check on anything submitted", () => {
     for (const c of OPTIONAL_TODAY_CARDS) expect(validatePreferences({ ...base, hiddenOptionalCardIds: [c.id] }).ok).toBe(true);
   });
   it("saved views: allowlisted screens and filter values only", () => {
-    expect(validatePreferences({ ...base, savedViews: [view({ routeKey: "billing" as never })] }).ok).toBe(false);
+    expect(validatePreferences({ ...base, savedViews: [view({ routeKey: "unknown" as never })] }).ok).toBe(false);
     expect(validatePreferences({ ...base, savedViews: [view({ filters: { status: "DROP TABLE" } })] }).ok).toBe(false);
     expect(validatePreferences({ ...base, savedViews: [view({ filters: { search: "Jane Smith" } })] }).ok).toBe(false);
     expect(validatePreferences({ ...base, savedViews: [view({ filters: {} })] }).ok).toBe(false);
     expect(validatePreferences({ ...base, savedViews: [view({ routeKey: "jobs", filters: { status: "RENTED" } })] }).ok).toBe(false);
     expect(validatePreferences({ ...base, savedViews: [view({ filters: { __proto__: "x" } as never })] }).ok).toBe(false);
+  });
+  it("accepts actual Bills and Customers filters but not unknown inputs", () => {
+    const bill = view({ routeKey: "billing", filters: { status: "past-due", due: "this-month", autopay: "off" } });
+    const customer = view({ id: "v-customer123", routeKey: "customers", filters: { status: "active", kind: "pm" } });
+    expect(validatePreferences({ ...base, savedViews: [bill, customer] }).ok).toBe(true);
+    expect(savedViewHref(bill)).toBe("/desk/billing?status=past-due&due=this-month&autopay=off");
+    expect(savedViewHref(customer)).toBe("/desk/customers?status=active&kind=pm");
+    for (const invalid of [
+      view({routeKey:"billing", filters:{q:"alice"}}),
+      view({routeKey:"billing", filters:{status:"paid",view:"deposits"}}),
+      view({routeKey:"billing", filters:{status:"paid",autopay:"unknown"}}),
+      view({routeKey:"customers",filters:{owes:"yes"}}),
+    ]) expect(validatePreferences({...base,savedViews:[invalid]}).ok).toBe(false);
   });
   it("saved views: names 1-60 characters, unique ids, at most 20", () => {
     expect(validatePreferences({ ...base, savedViews: [view({ label: "   " })] }).ok).toBe(false);

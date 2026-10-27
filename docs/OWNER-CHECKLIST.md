@@ -12,6 +12,17 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 
 ## A. Quick things only you can do (minutes each)
 
+- [ ] **Set the compliance encryption key (CMP-1).** Follow the walkthrough: More → Set up your business →
+  Encryption keys (it shows how to make the key and where it goes — never paste it in a chat, email or GitHub).
+  Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
+  worked: the EIN box on Business facts is enabled and saving an EIN shows "ending" plus its last 4 digits.
+  Until then the EIN box stays off on purpose, so a tax ID is never stored unprotected.
+- [ ] **GitHub: let pull requests merge themselves (2 settings, about 3 minutes).** Agents are blocked from editing the
+  repository's merge rules, so this one needs your hands. Steps: GitHub → christcr2012/appliance-desk → Settings → Rules →
+  Rulesets → "Ci and deploy" → under "Require status checks to pass" (a) turn OFF "Require branches to be up to date
+  before merging" and (b) add the check named `review-gate` (it is already running on every open pull request). Save.
+  Ready when: now (the check is on main). You'll know it worked: a pull request with auto-merge turned on merges by
+  itself once `ci` and `review-gate` are green, even if main moved. Until then agents re-sync and merge by hand.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
@@ -39,21 +50,42 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   codes or the app; staff may use any method). It's a setting you can change later.
 - [x] **Decision: when should accounts and sign-in (ACC-1…ACC-5) be built?** Answered 2026-10-23 in chat: **right after
   O-2B** (the admin-limits piece now in review).
+- [ ] **Confirm your private backup storage (MCP-2).** When the recovery update reaches the testing app,
+  open Desk → System health → Backup and recovery; confirm it says **backup store** or **private photo store**
+  (never public pictures), and the private photo check says Connected. If it says not set up, ask whoever manages
+  Vercel to connect a private store using only the setting names the screen needs — do not paste any storage
+  credential in chat or source control. Ready when: the checked nightly release has installed MCP-2.
+  You'll know it worked when a daily backup has a checked date and the last complete recovery set shows a date;
+  do not tick this for a local test or until that hosted evidence appears.
+- [ ] **Connect your preferred AI assistant to Appliance Desk (MCP-3).** After the checked release makes the
+  System health → Connect an AI assistant card available, open your assistant's Settings → Connectors → Add custom
+  connector. Copy the address from that card, sign in to Appliance Desk with your usual second step, read the
+  requested permissions, and tap Allow only for an assistant you trust. Ready when MCP-3/4 are released and the
+  app displays its MCP address. You'll know it worked when the app lists the assistant as Connected and the assistant
+  can report its own connected identity. To test instant disconnect, use the app's Disconnect button and confirm the
+  next assistant request is refused. Do not check this row from local developer tests alone.
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 
 - [ ] **IRS filing code for 1099s (IRIS TCC, about 20 minutes, free).** Needed before your first 1099s (due Jan 31
-  after a year you pay a contractor $2,000+). Steps: irs.gov/iris → "Apply for an IRIS TCC" → sign in with ID.me → choose
-  "Taxpayer Portal" for the business. Ready when the app's Compliance screen shows the 1099 upload file (CMP-3). Worked
+  after a year you pay a contractor $2,000+). Follow the walkthrough: More → Set up your business → IRIS
+  transmitter code (1099 e-file). Ready when the app's Compliance screen shows the 1099 upload file (CMP-3). Worked
   when IRS shows the TCC as active. Later, for filing straight from the app: apply for an **A2A** TCC the same way.
-- [ ] **Encryption key for tax ids (about 5 minutes).** When CMP-1 ships, add `COMPLIANCE_ENCRYPTION_KEY` (the app's
-  setup page shows how to make one; 32 random bytes) in Vercel → Settings → Environment Variables (Production and
-  Preview). Never paste it in a chat or GitHub. Worked when Compliance › Business facts lets you enter your EIN.
+- [ ] **Encryption key for tax ids (about 5 minutes).** Follow the walkthrough: More → Set up your business →
+  Encryption keys (same key as the CMP-1 row above). Never paste it in a chat or GitHub. Worked when
+  Compliance › Business facts lets you enter your EIN.
 
-- [ ] **Vault encryption key (about 5 minutes).** When VAULT-2 ships, add `VAULT_ENCRYPTION_KEY` (a different key from
-  the compliance key; the Set up your business guide shows how to make one) in Vercel → Settings → Environment
-  Variables (Production and Preview). Never paste it in a chat or GitHub. Worked when Business › Logins lets you save
-  one login.
+- [ ] **Vault encryption key (about 5 minutes).** Follow the same walkthrough: More → Set up
+  your business → Encryption keys (the second step — a different key from the compliance key). Never paste it in a
+  chat or GitHub. Worked when More → Logins vault lets you save one login (until the key is set, that page says
+  "Not set up yet").
+- [ ] **Fill in "If something happens to me" and ask your attorney about a successor member (about 15 minutes).** Open
+  More › If something happens to me and type who to call, who would keep the business running, your CPA and attorney, and
+  where records are kept (never passwords). Then ask your attorney whether your LLC agreement names a successor member
+  (a Colorado LLC with no members dissolves 91 days later, C.R.S. 7-80-801; Decisions question DQ-OPS8-1). Ready when
+  OPS-8 is live. Worked when the page's "Still missing" note is gone. The page's pause switch works for you today,
+  and your emergency contact can press it too from their emergency-access link (after the waiting period and a code sent to
+  their saved phone or email); emergency access ships switched off, see More › Logins vault.
 - [ ] **If you have no employees: send the workers' comp rejection form (Colorado).** As an LLC member you may reject
   coverage by sending the state's form by certified mail (C.R.S. 8-41-202). The Insurance screen (OPS-4) will hold the
   date and the certified-mail number. Worked when the Division or your insurer confirms.
@@ -61,12 +93,14 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 - [ ] **Before your first 6- or 12-month household rental: Colorado consumer-lease notification (UCCC).** Colorado
   asks businesses that make consumer leases (household rentals over 4 months) to file a notification with the UCCC
   administrator (Attorney General) within 30 days and every July 1 (C.R.S. 5-6-202; fee set by the state). Ask your
-  attorney first (Decisions question FEE-UCCC-FILING). The rental wizard warns until this is marked done.
+  attorney first (Decisions question FEE-UCCC-FILING). Then enter the day it was filed in Settings › Colorado consumer lease filing; the rental wizard warns until you do.
 - [ ] **Ask Greeley Sales Tax in writing how it taxes rentals and fees.** The app drafts the email (Settings › Taxes →
   "Email Greeley"): does Greeley tax rentals of 36 months or less when you paid tax buying the appliance, and are
   optional, separately listed delivery, installation, pickup and haul-away charges taxed? Send it from your own email to
   Greeley.SalesTax@greeleygov.com (or call 970-350-9733). Ready: you have their written reply. Worked: you record the
   answer on Taxes › Rules and the questions FEETAX-GREELEY-* show "Confirmed". Until then the app taxes them (safe side).
+
+- [ ] **Install the desk app on your phone (AR-11).** Steps: after the full AR-11 card is merged and the nightly testing release runs, open the testing app's `/desk/today` in Chrome (Android: Install app) or Safari (iPhone: Share → Add to Home Screen). Worked when the round green R opens Today without browser bars, navigation never flashes blank, and Android icon long-press shows New quote, Take a payment, Today's route and Add an expense. Not ready until all AR-11 work is merged.
 
 ## B. Before real customers (money, email, texts, legal, accounts)
 
@@ -148,7 +182,7 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   `BETTER_AUTH_URL` set to the real domain and emailed links checked.
 - [ ] **Accounts and platform:** your real owner login works and test/seed accounts are removed from production (with your OK);
   `BETTER_AUTH_SECRET`/`CRON_SECRET` are long unique values; nightly jobs show green history in Vercel Cron; private photo
-  storage tokens set; a daily backup restore was rehearsed (agent does it, you read the proof).
+  storage tokens set (confirm them in More → Set up your business → Backups and private storage); a daily backup restore was rehearsed (agent does it, you read the proof).
 - [ ] **Spanish (IN-83):** a fluent reviewer you trust checks translations; attorney approves the controlling agreement text.
 - [ ] **Launch day, in this order:** every box above ticked or marked "skip for now"; automated checks green on the exact
   version; one real $1 payment, a refund, a renewal reminder and a customer login tested; then you say "launch" in writing.
@@ -186,6 +220,30 @@ Agents will do the parts they safely can and record what they saw; the rest need
   receipt page on a purchase that is allowed to lose a page, then 30 days later open Desk → Automations → "Stored file
   clean-up" and confirm its last run shows one file deleted. Agents tested the waiting list and the rules against a stand-in
   for the storage company; the real private store was not touched. Worked: the run shows "deleted" and nothing else is missing.
+
+- [ ] **Add three dispute events to your Stripe webhook** (test mode now, live later). Steps: Stripe dashboard → Developers →
+  Webhooks → open the app's endpoint → add `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` →
+  Update endpoint. Ready when: OPS-5 is merged and deployed. Worked if: in Stripe test mode, the "Send test webhook"
+  button for `charge.dispute.created` makes a row appear under **Money › Disputes** within a minute. The agent also
+  checks one real test-mode dispute (Stripe's test card 4000 0000 0000 0259) to confirm the real payload matches what the app reads.
+- [ ] **Add three payment events to your Stripe webhook** (test mode now, live later). Steps: Stripe dashboard → Developers →
+  Webhooks → your appliance-desk endpoint → Update details → Select events → add `payment_intent.processing`,
+  `payment_intent.payment_failed`, `payment_intent.canceled` → Update endpoint. Ready when: BILL-1 is merged. Worked if: a
+  test bank payment (Stripe's test bank account) shows **Being confirmed** on the bill within a minute, and **Paid** after
+  Stripe settles it. Until you do this, bank payments are only noticed from events already sent.
+
+- [ ] **Check the recall list answers the way the app expects.** The build machine could not reach the government's recall
+  site, so the reader was tested on sample data shaped from the published field names. Steps: ask your agent to open
+  **Equipment › Recalls** after the first night, and look at "Recall check": it should say the last check worked and show
+  how many appliances were checked. Then press **Check my whole fleet**. Ready when: OPS-1 is merged and deployed. Worked if:
+  the page shows a recent good check with no error, and any listed recall opens its government page.
+
+- [ ] **Turn on late fees for real card customers (only when you are ready).** Late fees are recorded and shown, and customers are
+  warned first, but a fee only goes onto a customer's real automatic charge when you switch it on. In Stripe test mode it
+  already works. Steps: ask your agent to set `LATE_FEE_CUSTOMER_CHARGING_ENABLED` to `true` for the live site, after you have
+  read the late-fee wording on a signed agreement and confirmed the Decisions questions (warning days, fee tax). Ready when:
+  FEE-1 is merged and live customer email is on (a fee needs a delivered warning). Worked if: a test customer who ignores a
+  warning gets a "Late fee" line on the next bill and nothing on the overdue bill.
 
 ## D. Other people's systems (trial companies, provider reviews)
 
@@ -246,6 +304,7 @@ on readiness).
 
 | Date | Row added | Why |
 |---|---|---|
+| 2026-10-27 | GitHub merge rules for auto-merge | Agents cannot edit repository rules; Chris asked for automatic merging. |
 | 2026-10-23 | Business paperwork list | Chris asked for one place for LLC/EIN/licenses with renewal reminders (built in the app). |
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
@@ -262,5 +321,10 @@ on readiness).
 | 2026-10-25 | IRS IRIS TCC, compliance encryption key | Chris asked the app to file and fill federal and state forms (CMP-1, CMP-3). |
 | 2026-10-25 | Vault encryption key, workers' comp rejection form | Records vault (VAULT-2) and insurance (OPS-4). |
 | 2026-10-25 | UCCC consumer-lease notification | Late-fee law research: Colorado's UCCC covers household rentals over 4 months. |
+| 2026-10-26 | Turn on late fees for real card customers | FEE-1: fees only reach a customer's real automatic charge when you switch it on. |
+| 2026-10-26 | Add three payment events to your Stripe webhook | BILL-1: the app can only show "Being confirmed" for bank payments if Stripe sends those events. |
+| 2026-10-26 | Add three dispute events to your Stripe webhook | OPS-5: the app only hears about disputes if Stripe sends those events. |
+| 2026-10-26 | Fill in "If something happens to me", successor-member question | OPS-8: the page only helps if the contacts are real, and only your attorney can answer the successor question. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |
 | 2026-10-26 | Delivery zones: privacy re-approval, live address check, website prices switch | ZONE-1 changed the privacy wording and calls the Census lookup, which agent sandboxes can't reach. |
+| 2026-10-26 | Check the recall list answers as expected | OPS-1: the live government recall answer could not be fetched while building. |

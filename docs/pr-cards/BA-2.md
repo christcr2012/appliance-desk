@@ -6,9 +6,24 @@ entries (money records)** — never edit or delete entries; corrections are new 
 Depends on BA-1 (actor refactor and autopilot).
 
 ## Acceptance
-- [ ] Every test listed in spec section 2 passes on throwaway Postgres.
-- [ ] People-facing behavior of existing Books actions unchanged except where the spec says.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] All BA-2 acceptance tests, including disposable PostgreSQL corrections and replay cases, passed at implementation head `72ac47ff` in CI run 40355797414.
+- [x] Existing non-setup Books actions retained; new setup and correction screens covered by repo CI and role tests.
+- [x] Final exact-head CI run 40357496521 passed at `6337a754`; the corrected Stripe opening was integration-tested, review thread resolved, and PR #613 merged.
+
+## BA-2 implementation and evidence plan
+- [x] Provide the owner-only four-step setup wizard; an admin sees an owner-help message.
+- [x] Derive the recommended start date from the first purchase, invoice, expense or today; default zero opening balances for a new business and accept verified nonzero balances for an existing one.
+- [x] Show the owner-contribution path and preselect the matching expense account without taking or sending money.
+- [x] Initialize exactly once using the existing authenticated Books command; kick off bounded, best-effort catch-up without blocking the successful setup.
+- [x] Add a Books setup To do item for the owner only, with urgency rising after the first invoice, and clear it on successful setup.
+- [x] Support owner-only, locked, append-only corrections to opening balances, numbered by correction cycle, safe across retries and across closed periods.
+- [x] Replace old irreversible-opening wording on Books home and add a correction form with a reason.
+- [x] Cover authorization, defaults, zero and nonzero opening, corrections, double-submit, closed periods and Today with throwaway PostgreSQL tests.
+- [x] Exact-head CI and review-thread resolution completed. PR #613 merged after BA-1.
+
+**Dependency:** BA-1 merged as PR #610. BA-2 PR #613 now targets `main`; the current branch contains a merge of the latest main.
 
 ## Progress
-Not started.
+All BA-2 feature screens, finance rules, real-Postgres tests, owner guidance and latest main reconciliation are implemented. Full CI passed at `72ac47ff` (run 40355797414, typecheck/lint, all unit/database shards and browser shards). Codex found a missing corrected-opening Stripe reconciliation baseline; fixed and tested at that passing head. This documentation update awaits its own exact-head CI before merge. No production finance data or provider settings touched.
+
+**Lane 3 closeout (2026-10-26):** PR #613 merged into `main` with final CI green at `6337a754`. Older pending descriptions above are historic checkpoints.

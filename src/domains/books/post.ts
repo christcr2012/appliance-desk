@@ -370,31 +370,76 @@ function stripeExpectedEvents(x:{type:string;reportingCategory:string;feeCents:n
   if(!kinds.length&&!["charge","payment","refund","payment_refund","transfer"].includes(x.type))kinds.push("STRIPE_UNMAPPED");
   return kinds;
 }
-export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
-  const settings=await prisma.businessSettings.findFirst({select:{booksStartDate:true}});
+export function selectFairBooksCandidates<T extends {type:string;id:string;at:Date}>(
+  input: readonly T[], limit: number,
+): T[] {
+  const ordered=[...input].sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
+  if(limit<=0)return [];
+  const types=[...new Set(ordered.map(x=>x.type))];
+  // Reserve a single newest item per type only when capacity is ample;
+  // do not displace the oldest financial evidence in tiny focused batches.
+  if(limit < types.length*2)return ordered.slice(0,limit);
+  // Give each category enough current source slots to avoid a large historical
+  // backlog hiding an invoice adjustment or today's multiple real payments.
+  // At least half the batch remains available for oldest-first catch-up.
+  const fresh=new Set<string>();
+  const recentPerType=Math.max(1,Math.floor(limit/(Math.max(1,types.length)*2)));
+  for(const type of types){
+    const newest=ordered.filter(x=>x.type===type).slice(-recentPerType);
+    for(const x of newest)fresh.add(type+"\0"+x.id);
+  }
+  const picked=ordered.filter(x=>fresh.has(x.type+"\0"+x.id));
+  for(const x of ordered){
+    if(picked.length>=limit)break;
+    if(!fresh.has(x.type+"\0"+x.id))picked.push(x);
+  }
+  return picked.sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
+}
+
+/** A later void/refund/write-off is due in its own month, not in the source's first month. */
+/** Align the funding liability with the original receipt, not deposit creation. */
+export function depositBookEventDates(source:{
+ createdAt:Date; sourceReceipt: {receivedOn:Date}|null; refundedAt:Date|null;
+}):Record<string,Date|null>{
+ return {DEPOSIT_FUNDED:source.sourceReceipt?.receivedOn??source.createdAt,
+  DEPOSIT_REFUNDED:source.refundedAt,DEPOSIT_RETAINED:source.refundedAt};
+}
+export function missingBookEventsInMonth(row:{
+ at:Date;required:string[];eventDates?:Record<string,Date|null|undefined>;
+},already:ReadonlySet<string>,month:string):string[]{
+ return row.required.filter(kind=>!already.has(kind)&&
+  businessDateKey(row.eventDates?.[kind]??row.at).slice(0,7)===month);
+}
+/** `inspectMonth` is a strictly read-only snapshot for the owner's review page. */
+export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:Tx}):Promise<BooksResult> {
+  const db=opts?.tx??prisma;
+  if(opts?.inspectMonth&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(opts.inspectMonth))
+   throw new Error("Choose a real accounting month.");
+  const settings=await db.businessSettings.findFirst({select:{booksStartDate:true}});
   if(!settings?.booksStartDate)return {posted:0,problems:[]};
   const limit=Math.max(1,Math.min(500,opts?.limit??500));
   const since=settings.booksStartDate;
-  type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[]};
+  type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[];
+    eventDates?:Record<string,Date|null|undefined>};
   const querySources: { type: JournalSourceType; load: (skip:number,take:number)=>Promise<Candidate[]> }[] = [
-    {type:"CASH_EVENT",load:async(skip,take)=>(await prisma.bookCashEvent.findMany({
+    {type:"CASH_EVENT",load:async(skip,take)=>(await db.bookCashEvent.findMany({
       where:{occurredOn:{gte:since}},orderBy:[{occurredOn:"asc"},{id:"asc"}],skip,take,
       select:{id:true,occurredOn:true,reversalOfId:true},
     })).map(x=>({type:"CASH_EVENT",id:x.id,at:x.occurredOn,
       required:[x.reversalOfId?"CASH_EVENT_REVERSED":"CASH_EVENT_POSTED"]}))},
 
     {type:"INVOICE",load:async(skip,take)=>{
-      const invoices=await prisma.invoice.findMany({
+      const invoices=await db.invoice.findMany({
       where:{status:{not:"DRAFT"},OR:[
         {createdAt:{gte:since}},{issuedAt:{gte:since}},
         {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
         {writtenOffAt:{gte:since}},
-      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true,amountDueCents:true},
+      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true,updatedAt:true,amountDueCents:true},
       orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
       // Invoices whose amount due no longer matches what the books recorded (a late fee, waiver or new tax added after
       // posting) need a difference entry. The next entry's name is used as the "still to do" marker.
       const live=invoices.filter(i=>i.status!=="VOID");
-      const bookedRows=live.length?await prisma.journalLine.findMany({
+      const bookedRows=live.length?await db.journalLine.findMany({
         where:{entry:{sourceType:"INVOICE",sourceId:{in:live.map(i=>i.id)},
           OR:[{eventKind:"INVOICE_RECOGNIZED"},{eventKind:{startsWith:"INVOICE_ADJUSTED_"}}]},
           ledgerAccount:{systemRole:"RECEIVABLES"}},
@@ -402,122 +447,193 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
       const bookedReceivable=new Map<string,number>(), adjustments=new Map<string,number>();
       for(const row of bookedRows)
         bookedReceivable.set(row.entry.sourceId,(bookedReceivable.get(row.entry.sourceId)??0)+row.debitCents-row.creditCents);
-      if(live.length)for(const e of await prisma.journalEntry.findMany({
+      if(live.length)for(const e of await db.journalEntry.findMany({
         where:{sourceType:"INVOICE",sourceId:{in:live.map(i=>i.id)},eventKind:{startsWith:"INVOICE_ADJUSTED_"}},select:{sourceId:true}}))
         adjustments.set(e.sourceId,(adjustments.get(e.sourceId)??0)+1);
       const needsAdjustment=(i:{id:string;amountDueCents:number})=>bookedReceivable.has(i.id)&&bookedReceivable.get(i.id)!==i.amountDueCents;
-      const writtenOffBooks=new Set((await prisma.journalEntry.findMany({
+      const writtenOffBooks=new Set((await db.journalEntry.findMany({
         where:{sourceType:"INVOICE",eventKind:"INVOICE_WRITTEN_OFF",sourceId:{in:invoices.filter(i=>!i.writtenOffAt).map(i=>i.id)}},
         select:{sourceId:true}})).map(e=>e.sourceId));
       return invoices.map(x=>({type:"INVOICE" as const,id:x.id,
       at:x.billingPeriodStart??x.issuedAt??x.createdAt,
+      eventDates:{"INVOICE_VOIDED":x.cancelledAt??x.updatedAt,
+       "INVOICE_WRITTEN_OFF":x.writtenOffAt??x.updatedAt,
+       "INVOICE_WRITE_OFF_REVERSED":x.updatedAt,
+       ["INVOICE_ADJUSTED_"+((adjustments.get(x.id)??0)+1)]:x.updatedAt},
       required:["INVOICE_RECOGNIZED",...(x.status==="VOID"?["INVOICE_VOIDED"]:[]),
         ...(x.writtenOffAt?["INVOICE_WRITTEN_OFF"]:[]),
         ...(!x.writtenOffAt&&writtenOffBooks.has(x.id)?["INVOICE_WRITE_OFF_REVERSED"]:[]),
         ...(needsAdjustment(x)?["INVOICE_ADJUSTED_"+((adjustments.get(x.id)??0)+1)]:[])]}));}},
-    {type:"RECEIPT",load:async(skip,take)=>(await prisma.receipt.findMany({
+    {type:"RECEIPT",load:async(skip,take)=>(await db.receipt.findMany({
       where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true},
       orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"RECEIPT",id:x.id,at:x.receivedOn,required:["RECEIPT_RECEIVED"]}))},
-    {type:"PAYMENT",load:async(skip,take)=>(await prisma.payment.findMany({
+    {type:"PAYMENT",load:async(skip,take)=>(await db.payment.findMany({
       where:{createdAt:{gte:since},status:{in:[...SUCCESSFUL_PAYMENT_STATUSES]}},
       select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
       .map(x=>({type:"PAYMENT",id:x.id,at:x.createdAt,required:["PAYMENT_APPLIED"]}))},
-    {type:"DEPOSIT",load:async(skip,take)=>(await prisma.deposit.findMany({
-      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceReceiptId:true,amountCents:true,refundedAt:true,refundedAmountCents:true},
+    {type:"DEPOSIT",load:async(skip,take)=>(await db.deposit.findMany({
+      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceReceiptId:true,
+        sourceReceipt:{select:{receivedOn:true}},
+        amountCents:true,refundedAt:true,refundedAmountCents:true},
       orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"DEPOSIT",id:x.id,at:x.createdAt,
+      eventDates:depositBookEventDates(x),
       required:[...(x.sourceReceiptId?["DEPOSIT_FUNDED"]:["DEPOSIT_FUNDED"]),
         ...(x.refundedAt&&((x.refundedAmountCents??0)>0)?["DEPOSIT_REFUNDED"]:[]),
         ...(x.refundedAt&&(x.amountCents-(x.refundedAmountCents??0))>0?["DEPOSIT_RETAINED"]:[])]}))},
     {type:"CUSTOMER_CREDIT",load:async(skip,take)=>{
-      const rows=await prisma.customerCredit.findMany({
+      const rows=await db.customerCredit.findMany({
         where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceType:true},
         orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
       // Held-payment credits posted before the correction keep their original goodwill entry.
-      const legacyHeld=new Set((await prisma.journalEntry.findMany({
+      const legacyHeld=new Set((await db.journalEntry.findMany({
         where:{sourceType:"CUSTOMER_CREDIT",eventKind:"CREDIT_GRANTED",
           sourceId:{in:rows.filter(r=>r.sourceType?.toUpperCase()==="HELD_PAYMENT").map(r=>r.id)}},
         select:{sourceId:true}})).map(e=>e.sourceId));
       return rows.map(x=>({type:"CUSTOMER_CREDIT",id:x.id,at:x.createdAt,
         required:[isCreditFromReceipt(x.sourceType)&&!legacyHeld.has(x.id)?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}));}},
-    {type:"CREDIT_APPLICATION",load:async(skip,take)=>(await prisma.creditApplication.findMany({
+    {type:"CREDIT_APPLICATION",load:async(skip,take)=>(await db.creditApplication.findMany({
       where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
       .map(x=>({type:"CREDIT_APPLICATION",id:x.id,at:x.createdAt,required:["CREDIT_APPLIED"]}))},
     {type:"REFUND",load:async(skip,take)=>{
-      const rows=await prisma.refund.findMany({
+      const rows=await db.refund.findMany({
         where:{createdAt:{gte:since}},select:{id:true,createdAt:true,stripeRefundId:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
-      const awaitingStripe=new Set((await prisma.providerOperation.findMany({
+      const awaitingStripe=new Set((await db.providerOperation.findMany({
         where:{kind:"REFUND_CREATE",subjectType:"Refund",subjectId:{in:rows.filter(r=>!r.stripeRefundId).map(r=>r.id)}},select:{subjectId:true}})).map(o=>o.subjectId));
-      const creditBackedRefunds=new Set((await prisma.customerCredit.findMany({
+      const creditBackedRefunds=new Set((await db.customerCredit.findMany({
         where:{sourceType:"REFUND_TO_CREDIT",sourceId:{in:rows.map(r=>r.id)}},select:{sourceId:true}})).map(c=>c.sourceId));
       return rows.map(x=>({type:"REFUND",id:x.id,at:x.createdAt,required:creditBackedRefunds.has(x.id)||awaitingStripe.has(x.id)?[]:["REFUND_ISSUED"]}));}},
-    {type:"EXPENSE",load:async(skip,take)=>(await prisma.expense.findMany({
-      where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true},
+    {type:"EXPENSE",load:async(skip,take)=>(await db.expense.findMany({
+      where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true,voidedAt:true},
       orderBy:[{spentOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"EXPENSE",id:x.id,at:x.spentOn,
+      eventDates:{"EXPENSE_VOIDED":x.voidedAt},
       required:x.status==="VOID"?["EXPENSE_POSTED","EXPENSE_VOIDED"]:["EXPENSE_POSTED"]}))},
-    {type:"SCRAP_PAYMENT",load:async(skip,take)=>(await prisma.scrapPayment.findMany({
+    {type:"SCRAP_PAYMENT",load:async(skip,take)=>(await db.scrapPayment.findMany({
       where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true,voidedAt:true},
       orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"SCRAP_PAYMENT",id:x.id,at:x.receivedOn,
+      eventDates:{"SCRAP_VOIDED":x.voidedAt},
       required:x.voidedAt?["SCRAP_RECEIVED","SCRAP_VOIDED"]:["SCRAP_RECEIVED"]}))},
-    {type:"USE_TAX",load:async(skip,take)=>(await prisma.purchaseUseTax.findMany({
+    {type:"USE_TAX",load:async(skip,take)=>(await db.purchaseUseTax.findMany({
       where:{purchasedOn:{gte:since},useTaxDueCents:{gt:0}},select:{id:true,purchasedOn:true},
       orderBy:[{purchasedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"USE_TAX",id:x.id,at:x.purchasedOn,required:["USE_TAX_ACCRUED"]}))},
-    {type:"APPLIANCE",load:async(skip,take)=>(await prisma.appliance.findMany({
-      where:{acquisitionCostCents:{gt:0}},select:{id:true,createdAt:true,purchaseDate:true},
-      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"APPLIANCE",id:x.id,
-      at:x.purchaseDate??x.createdAt,required:["APPLIANCE_CONTRIBUTED"]}))},
-    {type:"TAX_FILING",load:async(skip,take)=>(await prisma.taxFilingPeriod.findMany({
+    {type:"APPLIANCE",load:async(skip,take)=>{
+      const appliances=await db.appliance.findMany({
+        where:{acquisitionCostCents:{gt:0}},
+        select:{id:true,createdAt:true,purchaseDate:true},
+        orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take,
+      });
+      if(!appliances.length)return [];
+      // sourceEvents deliberately avoids a second acquisition when the purchase
+      // was already posted as a capitalized expense. Match that same rule here,
+      // otherwise a perfectly booked machine blocks monthly closing forever.
+      const capitalized=await db.expense.findMany({where:{
+        applianceId:{in:appliances.map(a=>a.id)},capitalizeToAppliance:true,status:"POSTED",
+      },select:{applianceId:true}});
+      const capitalizedIds=new Set(capitalized.map(e=>e.applianceId));
+      return appliances.map(x=>({type:"APPLIANCE" as const,id:x.id,
+        at:x.purchaseDate??x.createdAt,
+        required:capitalizedIds.has(x.id)?[]:["APPLIANCE_CONTRIBUTED"]}));
+    }},
+    {type:"TAX_FILING",load:async(skip,take)=>(await db.taxFilingPeriod.findMany({
       where:{status:"FILED",filedOn:{gte:since}},select:{id:true,filedOn:true},
       orderBy:[{filedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"TAX_FILING",id:x.id,
       at:x.filedOn!,required:["TAX_FILED"]}))},
-    {type:"STRIPE_BALANCE_TXN",load:async(skip,take)=>(await prisma.stripeBalanceTransaction.findMany({
+    {type:"STRIPE_BALANCE_TXN",load:async(skip,take)=>(await db.stripeBalanceTransaction.findMany({
       where:{createdAtStripe:{gte:since}},select:{id:true,createdAtStripe:true,type:true,reportingCategory:true,amountCents:true,feeCents:true},
       orderBy:[{createdAtStripe:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"STRIPE_BALANCE_TXN",id:x.id,at:x.createdAtStripe,
       required:stripeExpectedEvents(x)}))},
   ];
   const sources:Candidate[]=[];
   const problems:BooksProblem[]=[];
-  // A bounded anti-join scans past already posted rows instead of always replaying
-  // the first 500 and starving later invoices. Never materialize the full table.
+  // A successfully posted source can still carry a durable unresolved issue.
+  // During month inspection, match that issue to the original source date
+  // instead of silently reporting a complete month or flagging other months.
+  const unresolved = opts?.inspectMonth ? await db.booksProblem.findMany({
+    where:{kind:"SOURCE_NOT_RECORDED",resolvedAt:null},
+    select:{subjectType:true,subjectId:true},take:1001,
+  }) : [];
+  if(unresolved.length>1000)throw new Error("Too many unresolved Books source issues for one review.");
+  const unresolvedKeys=new Set(unresolved.map(x=>x.subjectType+"\\0"+x.subjectId));
+  // Bounded anti-join: keep oldest unfinished records for catch-up and
+  // independently check the invoice tail so new bills aren't hidden
+  // behind hundreds of older pending invoices. Every source is deduped.
+  const queuedIds=new Set<string>();
   for(const source of querySources) {
-    let scanned=0, queuedForSource=0;
-    // Keep each source type independently bounded. The global oldest-first
-    // ranking must not be defeated by invoices filling the whole limit.
-    while(scanned<10000 && queuedForSource<limit) {
-      const page=await source.load(scanned,Math.min(200,10000-scanned));
-      if(!page.length)break;
-      scanned+=page.length;
-      const existing=await prisma.journalEntry.findMany({where:{sourceType:source.type,sourceId:{in:page.map(x=>x.id)}},
-        select:{sourceId:true,eventKind:true}});
+    let scanned=0,queuedForSource=0;
+    const collect=async(page:Candidate[])=>{
+      if(!page.length)return;
+      const existing=await db.journalEntry.findMany({where:{
+        sourceType:source.type,sourceId:{in:page.map(x=>x.id)},
+      },select:{sourceId:true,eventKind:true}});
       const byId=new Map<string,Set<string>>();
-      for(const row of existing) {
+      for(const row of existing){
         if(!byId.has(row.sourceId))byId.set(row.sourceId,new Set());
         byId.get(row.sourceId)!.add(row.eventKind);
       }
-      const unresolvedStripe = source.type === "STRIPE_BALANCE_TXN"
-        ? new Set((await prisma.systemIssue.findMany({where:{
-            kind:"BOOKS_POSTING_FAILURE",status:"OPEN",
-            fingerprint:{in:page.map(x=>"books-post:STRIPE_BALANCE_TXN:"+x.id)},
-          },select:{fingerprint:true}})).map(x=>x.fingerprint))
-        : new Set<string>();
-      for(const candidate of page) {
-        const complete=candidate.required.length>0 &&
-          candidate.required.every(kind=>byId.get(candidate.id)?.has(kind));
-        if(complete && unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
+      const unresolvedStripe=source.type==="STRIPE_BALANCE_TXN"
+        ?new Set((await db.systemIssue.findMany({where:{
+          kind:"BOOKS_POSTING_FAILURE",status:"OPEN",
+          fingerprint:{in:page.map(x=>"books-post:STRIPE_BALANCE_TXN:"+x.id)},
+        },select:{fingerprint:true}})).map(x=>x.fingerprint))
+        :new Set<string>();
+      for(const candidate of page){
+        const key=candidate.type+"\\0"+candidate.id;
+        if(opts?.inspectMonth&&unresolvedKeys.has(key)&&
+          businessDateKey(candidate.at).slice(0,7)===opts.inspectMonth){
+          problems.push({sourceType:candidate.type,sourceId:candidate.id,
+            message:"A previous accounting source problem still needs review."});
+          unresolvedKeys.delete(key);
+        }
+        const prior=byId.get(candidate.id)??new Set<string>();
+        const missing=candidate.required.filter(kind=>!prior.has(kind));
+        const complete=candidate.required.length>0&&!missing.length;
+        if(!opts?.inspectMonth&&complete&&unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
           await resolveSystemIssue("books-post:STRIPE_BALANCE_TXN:"+candidate.id,"SOURCE_SUCCEEDED");
-        if(candidate.required.length&&!complete) {
-          sources.push(candidate);
-          queuedForSource++;
-          if(queuedForSource>=limit)break;
+        if(candidate.required.length&&missing.length&&!queuedIds.has(key)){
+          queuedIds.add(key);
+          const relevant=opts?.inspectMonth
+           ?missingBookEventsInMonth(candidate,prior,opts.inspectMonth):missing;
+          if(relevant.length){
+            sources.push(opts?.inspectMonth?{...candidate,required:relevant,
+              at:candidate.eventDates?.[relevant[0]!]??candidate.at}:candidate);
+            queuedForSource++;
+          }
         }
       }
+    };
+    while(scanned<10000&&queuedForSource<limit) {
+      const page=await source.load(scanned,Math.min(200,10000-scanned));
+      if(!page.length)break;
+      scanned+=page.length;
+      await collect(page);
       if(page.length<200)break;
+    }
+    // A second, small window at the newest end is essential for a
+    // bounded backlog: fresh invoices and corrections cannot depend
+    // on clearing 500 old invoices in previous nightly runs.
+    if(source.type==="INVOICE"){
+      const invoiceWhere={status:{not:"DRAFT" as const},OR:[
+        {createdAt:{gte:since}},{issuedAt:{gte:since}},
+        {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
+        {writtenOffAt:{gte:since}},
+      ]};
+      const total=await db.invoice.count({where:invoiceWhere});
+      const recent=Math.min(limit,200);
+      const skip=Math.max(0,total-recent);
+      if(skip>0)await collect(await source.load(skip,recent));
     }
     if(scanned>=10000)problems.push({sourceType:source.type,sourceId:"backlog",
       message:"Accounting backlog scan cap reached; continue the next bounded run."});
   }
-  sources.sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
+  // Reserve a fresh candidate of each source type so a persistent old
+  // equipment backlog cannot hide today's invoice/payment from the nightly
+  // bounded pass. Fill the rest oldest-first for fair backlog catch-up.
+  const selected=selectFairBooksCandidates(sources,limit);
+  if(opts?.inspectMonth)return {posted:0,problems:[
+   ...problems,...selected.map(row=>({sourceType:row.type,sourceId:row.id,
+    message:"This record is not fully posted for the reviewed month."})),
+  ]};
   let posted=0;
-  for(const x of sources.slice(0,limit)) {
+  for(const x of selected) {
     try {
       const result=await prisma.$transaction(async tx=>{
         const before=await tx.journalEntry.count({where:{sourceType:x.type,sourceId:x.id}});

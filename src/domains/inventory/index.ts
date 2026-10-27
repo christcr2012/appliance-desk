@@ -87,9 +87,12 @@ export async function getApplianceCountsByStatus(): Promise<
   return result;
 }
 
-export async function getAppliances(filter?: { status?: ApplianceStatus }) {
+export async function getAppliances(filter?: { status?: ApplianceStatus; rentableOnly?: boolean }) {
   return prisma.appliance.findMany({
-    where: filter?.status ? { status: filter.status } : undefined,
+    // OPS-1: a machine on a recall hold is never offered to rent.
+    where: filter?.status || filter?.rentableOnly
+      ? { ...(filter.status ? { status: filter.status } : {}), ...(filter.rentableOnly ? { recallHold: false } : {}) }
+      : undefined,
     include: { applianceType: true },
     orderBy: [{ createdAt: "desc" }],
   });

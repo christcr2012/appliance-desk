@@ -40,5 +40,47 @@ export async function recordLeadMessageContactInTx(
   contactedAt: Date,
 ): Promise<boolean> {
   if (delivery.recipientType !== "Lead" || !delivery.recipientId) return false;
-  return recordRealContactInTx(tx, delivery.recipientId, contactedAt);
+  const recorded = await recordRealContactInTx(tx, delivery.recipientId, contactedAt);
+  // A message that reached the lead is also their first contact when nobody
+  // has contacted them before (the same transaction, so the stored status,
+  // the stage and follow-up eligibility always agree).
+  await markFirstContactInTx(tx, delivery.recipientId, contactedAt);
+  return recorded;
+}
+
+/**
+ * LD-1: records the first real outbound contact with a lead. Sets
+ * `firstContactedAt` only when it is still null, and in the same statement
+ * moves a NEW lead's stored status to CONTACTED, so the stored status, the
+ * screen's stage, follow-up eligibility and Today's follow-ups always agree.
+ * A second call for the same lead changes nothing. Audited `lead.first_contact`.
+ */
+export async function markFirstContactInTx(
+  tx: Prisma.TransactionClient,
+  leadId: string,
+  at: Date = new Date(),
+): Promise<boolean> {
+  const changed = await tx.$executeRaw`
+    UPDATE "Lead"
+    SET "firstContactedAt" = ${at},
+        "status" = CASE WHEN "status" = 'NEW' THEN 'CONTACTED' ELSE "status" END
+    WHERE "id" = ${leadId} AND "firstContactedAt" IS NULL
+  `;
+  if (changed !== 1) return false;
+  await tx.auditLog.create({
+    data: {
+      action: "lead.first_contact",
+      entityType: "Lead",
+      entityId: leadId,
+      newValue: { firstContactedAt: at.toISOString() },
+    },
+  });
+  return true;
+}
+
+export async function markFirstContact(
+  leadId: string,
+  at: Date = new Date(),
+): Promise<boolean> {
+  return prisma.$transaction((tx) => markFirstContactInTx(tx, leadId, at));
 }

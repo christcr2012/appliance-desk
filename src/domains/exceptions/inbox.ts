@@ -8,7 +8,20 @@ export type InboxGroup = "money" | "sales" | "rentals" | "equipment" | "taxes" |
 
 /** Every category in exactly one group. A category added later fails the build here until it is placed. */
 export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
+  BOOKS_NOT_UP_TO_DATE: "taxes",
+  BOOKS_NEEDS_FIX: "taxes",
+  BOOKS_SETUP: "taxes",
+  BOOKS_MONTH_REVIEW: "taxes",
   PAST_DUE_INVOICE: "money",
+  BANK_PAYMENT_SLOW: "money",
+  PAYMENT_DISPUTE: "money",
+  COLLECTION_STEP: "money",
+  CONTINUITY: "system",
+  SETUP_GUIDE: "system",
+  VAULT: "system",
+  PRIVACY_DUTY: "system",
+  LATE_FEE_REVIEW: "money",
+  DECISIONS_STARTING_VALUES: "taxes",
   HELD_PAYMENT_DECISION: "money",
   DEPOSIT_DECISION: "money",
   CANCELLATION_REFUND_DUE: "money",
@@ -16,6 +29,8 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   BILLING_BLOCKED: "money",
   SUBSCRIPTION_UPDATE_PENDING: "money",
   APPROVAL_REQUEST: "money",
+  COMPLIANCE_DUE: "money",
+  SUPPLIER_TAX_ID: "money",
   NEW_LEAD_CONTACT: "sales",
   LEAD_FOLLOW_UP: "sales",
   APPROVED_QUOTE: "sales",
@@ -47,7 +62,11 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   IDLE_APPLIANCES: "equipment",
   LOW_UTILIZATION: "equipment",
   RETIRED_APPLIANCE_PLAN: "equipment",
+  RECALL_POSSIBLE: "equipment",
+  SAFETY_INCIDENT: "equipment",
   RETIRED_SALE_TAX_REVIEW: "equipment",
+  VEHICLE_DUE: "equipment",
+  INSURANCE_RENEWAL: "system",
   SALES_TAX: "taxes",
   TAX_RETURN_DUE: "taxes",
   TAX_LICENSE_RENEWAL: "taxes",
@@ -107,6 +126,11 @@ export type InboxHandlers = {
   acknowledgeTaxSource?: FormAction;
   applyOfficialRate?: FormAction;
   undoOfficialRate?: FormAction;
+  recordBankPayment?: FormAction;
+  approveRdfSwitch?: FormAction;
+  confirmFilingFrequency?: FormAction;
+  approveRuleChange?: FormAction;
+  dismissRuleChange?: FormAction;
 };
 
 export type InboxActionOptions = {
@@ -126,6 +150,22 @@ function formPrimary(item: ExceptionItem, handlers: InboxHandlers | undefined): 
     case "APPLY_OFFICIAL_RATE":
       return handlers?.applyOfficialRate
         ? { kind: "form", label: action.label, action: handlers.applyOfficialRate, fields: { observationId: action.id }, primary: true }
+        : null;
+    case "APPROVE_RULE_CHANGE":
+      return handlers?.approveRuleChange
+        ? { kind: "form", label: action.label, action: handlers.approveRuleChange, fields: { observationId: action.id }, primary: true, pendingLabel: "Approving…", successMessage: "Rule updated from the official page" }
+        : null;
+    case "APPROVE_RDF_SWITCH":
+      return handlers?.approveRdfSwitch
+        ? { kind: "form", label: action.label, action: handlers.approveRdfSwitch, fields: { switchId: action.id }, primary: true, pendingLabel: "Approving…", successMessage: "Switch approved" }
+        : null;
+    case "CONFIRM_FILING_FREQUENCY":
+      return handlers?.confirmFilingFrequency
+        ? { kind: "form", label: action.label, action: handlers.confirmFilingFrequency, fields: { adviceId: action.id }, primary: true, pendingLabel: "Confirming…", successMessage: "Filing frequency updated" }
+        : null;
+    case "RECORD_BANK_PAYMENT":
+      return handlers?.recordBankPayment
+        ? { kind: "form", label: action.label, action: handlers.recordBankPayment, fields: { rowId: action.id }, primary: true, pendingLabel: "Recording…", successMessage: "Payment recorded" }
         : null;
     case "UNDO_OFFICIAL_RATE":
       return handlers?.undoOfficialRate
@@ -148,6 +188,14 @@ export function inboxActions(item: ExceptionItem, options: InboxActionOptions = 
   const link = todoAction(item);
   const primary: ActionSpec = form ?? { kind: "link", label: link.label, href: link.href, primary: true };
   const actions: ActionSpec[] = [primary];
+  // TFA-3: a rule reading is answered Approve / Not right — the dismiss
+  // rides as a second form button beside Approve (owner handlers only).
+  if (item.action?.type === "APPROVE_RULE_CHANGE" && options.handlers?.dismissRuleChange) {
+    actions.push({
+      kind: "form", label: "Not right", action: options.handlers.dismissRuleChange,
+      fields: { observationId: item.action.id }, pendingLabel: "Marking…", successMessage: "Marked not right — it will not ask again",
+    });
+  }
   if (item.contact?.phone) actions.push({ kind: "tel", label: "Call", phone: item.contact.phone });
   else if (item.contact?.email) actions.push({ kind: "mailto", label: "Email", email: item.contact.email });
 

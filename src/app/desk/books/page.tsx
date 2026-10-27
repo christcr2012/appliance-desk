@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { getBooksWorkspace } from "@/domains/books/management";
+import { getBooksWorkspace, currentOpeningBalances } from "@/domains/books/management";
+import { OpeningCorrectionSheet } from "./opening-correction-sheet";
 import { formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import {
-  initializeBooksAction, renameAccountAction, createAccountAction, mapExportAccountAction,
-  postBooksAction, closeMonthAction, reopenMonthAction,
+  renameAccountAction, createAccountAction, mapExportAccountAction,
+  postBooksAction,
 } from "./actions";
 
 export const metadata={title:"Your books"};
@@ -26,6 +27,8 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
     month:params.month,page:Number(params.page)||1,
   });
   const selected=params.month??new Date().toISOString().slice(0,7);
+  const opening=owner&&model.settings?.booksStartDate
+    ? await currentOpeningBalances({id:session.user.id,role:"OWNER"}):null;
   const notice=params.notice?.slice(0,200);
   return <div className="space-y-6">
     <header className="space-y-2">
@@ -43,17 +46,15 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
     </header>
     {!model.settings?.booksStartDate ? <section className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Start your books</h2>
-      <p>Pick the first day you want the books to cover, then type in what you had that day: the balance in your checking account, your Stripe balance, and any credit card you owe. Check these against your bank and Stripe statements first, because the app will not guess them and this starting entry cannot be redone once saved.</p>
-      {owner?<form action={initializeBooksAction} className="grid gap-3 sm:grid-cols-2">
-        <label>Start date<input type="date" name="startDate" required className={input}/></label>
-        <label>Stripe opening balance ($)<input type="text" inputMode="decimal" name="stripe" defaultValue="0.00" required className={input}/></label>
-        <label>Checking account ($)<input type="text" inputMode="decimal" name="bank" defaultValue="0.00" required className={input}/></label>
-        <label>Credit card owed ($)<input type="text" inputMode="decimal" name="card" defaultValue="0.00" required className={input}/></label>
-        <button className={button} type="submit">Confirm and start my books</button>
-      </form>:<p>Only the owner can choose the start date and starting balances.</p>}
+      <p>Get the business&apos;s starting date and balances in order using four simple steps. You can correct an opening balance later without changing the original record.</p>
+      {owner?<Link href="/desk/books/setup" className={button}>Set up my books</Link>:
+       <p>Ask the owner to set up the books. Your existing access stays unchanged.</p>}
     </section>:<section className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Money in and out, month by month</h2>
       <p>Started {formatBusinessDate(model.settings.booksStartDate)}. Entries are never edited or deleted. If something was wrong, the app adds a second entry that cancels it, so there is always a clear trail.</p>
+      {opening&&<OpeningCorrectionSheet
+        opening={{bankCents:opening.bankCents,stripeCents:opening.stripeCents,
+          cardCents:opening.cardCents}}/>}
       <form action={postBooksAction}><button type="submit" className={button}>Bring the books up to date</button></form>
       <form method="GET" className="flex flex-wrap items-end gap-3">
         <label>Month <input className={input} type="month" name="month" defaultValue={selected}/></label>
@@ -76,19 +77,11 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
         {model.page*30<model.total&&<Link className="underline" href={`/desk/books?month=${model.month??""}&page=${model.page+1}`}>Next</Link>}
       </nav>
       <p className="text-sm text-muted-foreground">Months you have locked: {model.periods.length?model.periods.map(p=>p.periodKey+" "+(p.status==="CLOSED"?"locked":"open")).join(" · "):"none yet, every month is still open"}</p>
-      {owner&&<div className="grid gap-4 sm:grid-cols-2">
-        <form action={closeMonthAction} className="space-y-2 rounded border border-border p-3">
-          <h3 className="font-semibold">Lock a month once you have checked it</h3>
-          <p>Download the month for your accountant first. After you lock it, anything that turns up late is recorded in the next open month instead.</p>
-          <input type="hidden" name="month" value={selected}/><button className={button} type="submit">Lock {selected}</button>
-        </form>
-        <form action={reopenMonthAction} className="space-y-2 rounded border border-border p-3">
-          <h3 className="font-semibold">Unlock a month</h3>
-          <input type="hidden" name="month" value={selected}/>
-          <label>Why are you unlocking this month? (kept in the activity log)<input className={input} name="reason" required maxLength={300}/></label>
-          <button className={button} type="submit">Unlock {selected}</button>
-        </form>
-      </div>}
+      <div className="space-y-2 rounded border border-border p-3">
+        <h3 className="font-semibold">Review this month before locking it</h3>
+        <p>Check source records, receipts, payments and depreciation. The owner can lock a completed month after its required checks. Admins can review it.</p>
+        <Link className={button} href={"/desk/books/months/"+selected}>Review {selected}</Link>
+      </div>
     </section>}
     {model.issues.length>0&&<section className="rounded-lg border border-border p-4 space-y-2">
       <h2 className="text-lg font-semibold">Things the books could not record</h2>

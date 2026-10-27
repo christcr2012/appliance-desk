@@ -7,6 +7,7 @@ import { createTrustedCredentialUserInTx, normalizeAccountEmail } from "@/lib/ac
 import { CAPABILITY_KEYS, isCapability } from "@/domains/capabilities";
 import { cleanName, normalizePhone, noticeWarning } from "@/domains/account";
 import { applyCapabilityLimits, assertJobRoleFits, JobRoleError } from "./job-roles";
+import { forgetTrustedDevicesInTx } from "@/domains/security/trusted-devices";
 import {
   ACCESS_LEVEL_LABEL, INVALID_LINK_MESSAGE, INVITATION_LINK_DAYS_DEFAULT, TeamError, assertMayInvite,
   assertMayRemoveOrRestore, clampLinkDays, effectiveInvitationState, hashInvitationCode, invitationExpiry,
@@ -297,6 +298,8 @@ export async function removeTeamMember(actorId: string, targetId: string) {
     if (target.role === "OWNER" && (await activeOwnerCount(tx)) <= 1) throw new TeamError("The last owner cannot be removed.");
     await tx.user.update({ where: { id: targetId }, data: { archivedAt: new Date() } });
     await tx.session.deleteMany({ where: { userId: targetId } });
+    // ACC-6: removing someone forgets their remembered devices too.
+    await forgetTrustedDevicesInTx(tx, targetId);
     await tx.auditLog.create({ data: { userId: actorId, action: "team.remove", entityType: "User", entityId: targetId, oldValue: { role: target.role } } });
   });
   return noticeWarning(targetId, "team_removed");
@@ -348,6 +351,8 @@ export async function changeAccessLevel(ownerId: string, targetId: string, newLe
       }
     }
     await tx.session.deleteMany({ where: { userId: targetId } });
+    // ACC-6: changing someone's access level forgets their remembered devices, so they prove a code again.
+    await forgetTrustedDevicesInTx(tx, targetId);
     await tx.auditLog.create({
       data: { userId: ownerId, action: "team.role_change", entityType: "User", entityId: targetId, oldValue: { role: target.role }, newValue: { role: level, allowed: level === "ADMIN" ? [...ticked] : [] } },
     });
@@ -395,6 +400,8 @@ export async function resetTeamSignIn(ownerId: string, targetId: string) {
     await tx.twoFactor.deleteMany({ where: { userId: targetId } });
     await tx.user.update({ where: { id: targetId }, data: { twoFactorEnabled: false, secondStepMethod: null, failedSignInCount: 0, failedSignInWindowStartedAt: null, signInPausedUntil: null } });
     await tx.session.deleteMany({ where: { userId: targetId } });
+    // ACC-6: resetting someone's sign-in forgets their remembered devices too.
+    await forgetTrustedDevicesInTx(tx, targetId);
     // The old password stops working right now (it is swapped for a random one nobody knows), so nobody who holds it can
     // walk in with password alone while the reset link is waiting. Choosing a new password through the link, or
     // "Forgot password", sets a real one.

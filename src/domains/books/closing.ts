@@ -9,6 +9,7 @@ import { profitAndLoss } from "./reports";
 import { budgetSnapshotInTx } from "@/domains/budget/protected";
 import { toCsv } from "@/lib/csv";
 import { disposedValueBefore } from "./fixed-assets";
+import { ruleAsOf } from "@/domains/rules/reads";
 import {
  BooksClosingError,whole,add,calendarKey,futureBillingDates,recurringDates,
  refundAdjustedCollection,avgRentalMonths,cashTotals,type CashLine,
@@ -19,7 +20,7 @@ const CAP=5000;
 const scoped=async(tx:Tx,userId:string)=>{
  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
  return tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{
-  booksStartDate:true,vendor1099ThresholdCents:true,
+  booksStartDate:true,
  }});
 };
 const within=(rows:number,label:string)=>{if(rows>CAP)throw new BooksClosingError("Too many "+label+" sources; choose a smaller reporting period.");};
@@ -365,10 +366,11 @@ export async function yearEndPackage(userId:string,year:number,requestedFile:Yea
    if(!paid){unsupported.add(e.supplierId);continue;}
    totals.set(e.supplierId,add(totals.get(e.supplierId)??0,paid));
   }
-  const threshold=num(settings.vendor1099ThresholdCents);
+  // TFA-1: the 1099 limit is a dated rule; the payment year's January 1 value applies.
+  const threshold=(await ruleAsOf<number>("us.1099.threshold",date(year+"-01-01"),tx)).value;
   return moneyCsv("books-"+year+"-1099-review.csv",col(
    ["supplier","1099-marked supplier"],["postedPaidCents","Source-confirmed paid cents"],
-   ["thresholdCents","Owner-set review threshold cents"],["reviewStatus","Review status"],
+   ["thresholdCents","Rule review threshold cents"],["reviewStatus","Review status"],
    ["taxIdOnFile","Tax ID recorded"]),suppliers.map(s=>{
     const value=totals.get(s.id)??0;
     return {supplier:s.name,postedPaidCents:value,thresholdCents:threshold,

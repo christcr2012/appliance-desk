@@ -4,8 +4,8 @@
 //
 //   node scripts/check-secrets.mjs          scan tracked + non-ignored new files
 //
-// It complements gitleaks (which scans credentials across the whole git
-// history, see .gitleaks.toml). This script adds repo-specific rules gitleaks
+// It complements gitleaks (PR/push commit ranges, nightly main history;
+// see scripts/gitleaks-range.mjs). This script adds repo-specific rules gitleaks
 // cannot know about:
 //   - Neon / Vercel infrastructure identifiers other than the ones allowed below
 //   - database URLs that embed a password and point somewhere other than the

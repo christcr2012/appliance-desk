@@ -1,3 +1,4 @@
+import { setActiveMilitaryAction } from "../military-actions";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
@@ -103,7 +104,7 @@ function stats(summary: CustomerSummary, withOnTime: boolean): StatItem[] {
   if (summary.monthlyRentCents > 0) items.push({ label: "Monthly rent", value: formatMoney(summary.monthlyRentCents) });
   items.push({
     label: "Owes now",
-    value: formatMoney(summary.owedCents),
+    value: summary.beingConfirmedCents > 0 ? `${formatMoney(summary.owedCents)} · ${formatMoney(summary.beingConfirmedCents)} being confirmed` : formatMoney(summary.owedCents),
     tone: summary.owedCents > 0 ? "attention" : "good",
     info: "owes-now",
   });
@@ -509,6 +510,14 @@ export default async function CustomerDetailPage({
           <SectionCard title="Account">
             {customer.archivedAt ? <p className="text-sm font-semibold text-ink">This customer is archived.</p> : null}
             {summary.hasPortalLogin ? <ResendActivationButton customerId={id} /> : null}
+            <form action={setActiveMilitaryAction} className="mt-3 flex flex-wrap items-center gap-3">
+              <input type="hidden" name="customerId" value={id} />
+              <label className="flex min-h-11 items-center gap-2 text-sm font-medium text-ink">
+                <input type="checkbox" name="activeMilitary" defaultChecked={customer.activeMilitary} className="size-5" />
+                Active-duty military (no automatic late fee)
+              </label>
+              <button type="submit" className="min-h-11 rounded-control border border-line px-4 text-sm font-medium">Save</button>
+            </form>
           </SectionCard>
         </div>
         <RecordConnections kind="customer" id={id} />
@@ -551,6 +560,7 @@ export default async function CustomerDetailPage({
       <div className="lg:flex lg:items-start lg:gap-5">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <RecordHeader
+            transitionId={id}
             title={name}
             pills={[
               { label: statusPill.label, tone: statusPill.tone },

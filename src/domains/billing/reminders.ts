@@ -39,6 +39,11 @@ export async function sendUpcomingBillingReminders(): Promise<{
         take: 1,
         select: { amountDueCents: true },
       },
+      // FEE-1: a late fee already sent to Stripe for this upcoming bill is named in the reminder.
+      pendingCharges: {
+        where: { kind: "LATE_FEE", waivedAt: null, appliedToInvoiceId: null, providerOperationId: { not: null } },
+        select: { id: true, amountCents: true, forInvoice: { select: { invoiceNumber: true } } },
+      },
     },
   });
 
@@ -110,6 +115,16 @@ export async function sendUpcomingBillingReminders(): Promise<{
       day: "numeric",
     });
 
+      const sentFees = agreement.pendingCharges.length
+        ? await prisma.providerOperation.findMany({
+            where: { kind: "LATE_FEE_INVOICE_ITEM", status: "SUCCEEDED", subjectId: { in: agreement.pendingCharges.map((charge) => charge.id) } },
+            select: { subjectId: true },
+          })
+        : [];
+      const feeLines = agreement.pendingCharges
+        .filter((charge) => sentFees.some((op) => op.subjectId === charge.id))
+        .map((charge) => t("billingLateFee", { fee: formatCents(charge.amountCents), number: String(charge.forInvoice.invoiceNumber) }));
+
       const delivery = await deliverMessage({
         idempotencyKey: `billing-reminder-${agreement.id}-${agreement.nextBillingDate.getTime()}`,
         channel: "EMAIL",
@@ -126,6 +141,7 @@ export async function sendUpcomingBillingReminders(): Promise<{
           subject: t("billingSubject"),
           text: [t("quoteHello", {name: agreement.customer.user.name ? " "+agreement.customer.user.name : ""}),
             t("billingIntro",{date:dateLabel,amount:approxAmountCents !== null ? t("billingApprox",{amount:formatCents(approxAmountCents)}) : ""}),
+            ...feeLines,
             t("billingReply")].join("\n\n"),
         }),
       });

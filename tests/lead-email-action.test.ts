@@ -14,7 +14,7 @@ beforeEach(() => {
 });
 it("saves a missing normalized email and its audit together", async () => {
   expect(await addLeadEmailAction("l1", " Customer@Example.com ")).toEqual({ status: "success" });
-  expect(m.claim).toHaveBeenCalledWith({ where: { id: "l1", status: { not: "CONVERTED" }, OR: [{ email: null }, { email: "" }] }, data: { email: "customer@example.com" } });
+  expect(m.claim).toHaveBeenCalledWith({ where: { id: "l1", status: { not: "CONVERTED" }, OR: [{ email: null }, { email: "" }] }, data: { email: "customer@example.com", emailLower: "customer@example.com" } });
   expect(m.audit).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: "owner", entityId: "l1", newValue: { email: "customer@example.com" } }) });
 });
 it("rejects invalid input before database writes", async () => {

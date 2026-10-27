@@ -21,6 +21,24 @@ const opts = (values: readonly string[]) => values.map((v) => ({ value: v, label
 
 /** Only filters the real screens understand. A saved view is a link with these choices, never a stored URL. */
 export const SAVED_VIEW_ROUTES = {
+  // Only filter keys and values that the real page parser/DB query understands may be persisted.
+  billing: { label: "Bills", path: "/desk/billing", filters: {
+    status: { label: "Status", options: [
+      { value: "open", label: "Open" }, { value: "past-due", label: "Past due" },
+      { value: "being-confirmed", label: "Being confirmed" }, { value: "paid", label: "Paid" },
+      { value: "closed", label: "Closed" }, { value: "drafts", label: "Drafts" },
+    ] },
+    due: { label: "Due", options: [
+      { value: "this-month", label: "This month" },
+      { value: "last-month", label: "Last month" },
+      { value: "last-30", label: "Last 30 days" },
+    ] },
+    autopay: { label: "Autopay", options: [{ value: "on", label: "On" }, { value: "off", label: "Off" }] },
+  } },
+  customers: { label: "Customers", path: "/desk/customers", filters: {
+    status: { label: "Status", options: [{ value: "active", label: "Renting now" }] },
+    kind: { label: "Kind", options: [{ value: "pm", label: "Property managers" }] },
+  } },
   inventory: { label: "Equipment", path: "/desk/inventory", filters: { status: { label: "Status", options: opts(Object.values(ApplianceStatus)) } } },
   jobs: { label: "Visits", path: "/desk/jobs", filters: { status: { label: "Status", options: opts(Object.values(JobStatus)) } } },
   tasks: {
@@ -35,7 +53,17 @@ export type SavedViewRoute = keyof typeof SAVED_VIEW_ROUTES;
 export const SAVED_VIEW_ROUTE_KEYS = Object.keys(SAVED_VIEW_ROUTES) as SavedViewRoute[];
 
 export type SavedView = { id: string; label: string; routeKey: SavedViewRoute; filters: Record<string, string> };
-export type WorkspacePreferences = { pinnedActionIds: string[]; hiddenOptionalCardIds: string[]; savedViews: SavedView[] };
+export type WorkspacePreferences = {
+  pinnedActionIds: string[]; hiddenOptionalCardIds: string[]; savedViews: SavedView[];
+  /** DEC-1b: the Colorado date the weekly "Decisions waiting" Today card was last shown (YYYY-MM-DD). */
+  decisionsCardShownOn?: string;
+};
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+function shownOn(raw: Record<string, unknown>): { decisionsCardShownOn?: string } {
+  const value = raw.decisionsCardShownOn;
+  return typeof value === "string" && DATE_KEY.test(value) ? { decisionsCardShownOn: value } : {};
+}
 
 export const EMPTY_PREFERENCES: WorkspacePreferences = { pinnedActionIds: [], hiddenOptionalCardIds: [], savedViews: [] };
 const ACTION_IDS: ReadonlySet<string> = new Set(OWNER_ACTIONS.map((a) => a.id));
@@ -85,7 +113,7 @@ export function validatePreferences(input: unknown): { ok: true; value: Workspac
     seen.add(r.id);
     savedViews.push({ id: r.id, label, routeKey: r.routeKey as SavedViewRoute, filters: checked.filters });
   }
-  return { ok: true, value: { pinnedActionIds: [...pinned] as string[], hiddenOptionalCardIds: [...hidden] as string[], savedViews } };
+  return { ok: true, value: { pinnedActionIds: [...pinned] as string[], hiddenOptionalCardIds: [...hidden] as string[], savedViews, ...shownOn(raw) } };
 }
 
 /** Lenient read of what is stored: anything unreadable is dropped so a bad row can never break a page. */
@@ -104,6 +132,7 @@ export function readPreferences(stored: unknown): WorkspacePreferences {
     pinnedActionIds: [...new Set(pinned)].slice(0, MAX_PINNED),
     hiddenOptionalCardIds: [...new Set(hidden)],
     savedViews: views.slice(0, MAX_SAVED_VIEWS),
+    ...shownOn(raw),
   };
 }
 

@@ -229,6 +229,7 @@ describe("automation rule registry", () => {
     const keys = AUTOMATION_RULES.map((rule) => rule.ruleKey);
     expect(keys.filter((key) => key.startsWith("billing-reconcile:")).sort()).toEqual([
       "billing-reconcile:provider-ops",
+      "billing-reconcile:bank-in-flight",
       "billing-reconcile:job-handoffs",
       "billing-reconcile:invoice-artifacts",
       "billing-reconcile:message-deliveries",

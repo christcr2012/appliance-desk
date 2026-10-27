@@ -162,6 +162,20 @@ async function createCustomerFixture(label: "a" | "b"): Promise<Fixture> {
     },
   });
 
+  // FEETAX-2: saving a draft agreement refuses an address whose tax
+  // places are not confirmed yet, so the address is confirmed into the
+  // state-collected state jurisdiction (ready: no city license rule).
+  await prisma.addressTaxLocation.create({
+    data: {
+      serviceAddressId: serviceAddress.id,
+      status: "VERIFIED",
+      source: "MANUAL",
+      lookedUpAt: new Date(),
+      isCurrent: true,
+      jurisdictions: { create: [{ jurisdictionId: "tax-jurisdiction-co" }] },
+    },
+  });
+
   const agreement = await prisma.rentalAgreement.create({
     data: {
       customerId: customer.id,
@@ -251,6 +265,9 @@ async function deleteFixture(fixture: Fixture) {
   await prisma.appliance.delete({ where: { id: fixture.applianceId } });
   await prisma.rentalLine.delete({ where: { id: fixture.lineId } });
   await prisma.rentalAgreement.delete({ where: { id: fixture.agreementId } });
+  await prisma.addressTaxLocation.deleteMany({
+    where: { serviceAddressId: fixture.serviceAddressId },
+  });
   await prisma.serviceAddress.delete({
     where: { id: fixture.serviceAddressId },
   });

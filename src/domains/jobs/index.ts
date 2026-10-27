@@ -1,3 +1,4 @@
+import { assertSealedSystemAssignee } from "@/domains/certifications/actions";
 import { requireRole } from "@/lib/session";
 import { assertValidRepairCostCents } from "./repair-costs";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,7 @@ import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "./scope";
 import { assertNotFeedbackPicture } from "@/lib/photo-storage";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
+import { assertDeliveryReadyInTx } from "@/domains/tax/delivery-readiness";
 import { assertSigningPaymentReadyForDispatchInTx } from "@/domains/billing/signing-dispatch-readiness";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
@@ -165,6 +167,8 @@ export type NewJobInput = {
   applianceIds?: string[];
   notes?: string | null;
   assignedToUserId?: string | null;
+  /** A repair on a sealed refrigerant system: only a certified person may be assigned. */
+  sealedSystem?: boolean;
   durationMinutes?: number | null;
   /** Visits the person has already agreed to overlap; anything else that conflicts is refused. */
   confirmedConflictJobIds?: readonly string[];
@@ -186,6 +190,10 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
     if (input.type === "DELIVERY" && input.agreementId) {
       const { isAgreementPickupInTx, PICKUP_NO_DELIVERY_MESSAGE } = await import("@/domains/delivery/pickup-guard");
       if (await isAgreementPickupInTx(tx, input.agreementId)) throw new Error(PICKUP_NO_DELIVERY_MESSAGE);
+    }
+    if (input.sealedSystem) {
+      if (input.type !== "MAINTENANCE_VISIT") throw new Error("Only a repair visit can be marked as a sealed-system repair.");
+      await assertSealedSystemAssignee(tx, input.assignedToUserId);
     }
     if (input.assignedToUserId) {
       const assignee = await tx.user.findUnique({
@@ -277,11 +285,41 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
       }
     }
 
+    // FEETAX-2: delivery, installation and removal visits may only be
+    // put on the schedule for an address that is ready to deliver to.
+    // The agreement's own owner override (recorded at order save) is
+    // honoured; there is no override at the schedule itself.
+    if (["DELIVERY", "INSTALLATION", "REMOVAL"].includes(input.type)) {
+      const readinessAddressId =
+        input.serviceAddressId ??
+        (input.agreementId
+          ? (
+              await tx.rentalAgreement.findUnique({
+                where: { id: input.agreementId },
+                select: { serviceAddressId: true },
+              })
+            )?.serviceAddressId
+          : null);
+      if (readinessAddressId) {
+        // Evaluate readiness at the visit's own date: a license that
+        // expires before the scheduled day must not satisfy the gate.
+        await assertDeliveryReadyInTx(
+          tx,
+          {
+            serviceAddressId: readinessAddressId,
+            agreementId: input.agreementId ?? null,
+          },
+          input.scheduledAt ?? new Date(),
+        );
+      }
+    }
+
     const job = await tx.job.create({
       data: {
         type: input.type,
         scheduledAt: input.scheduledAt ?? null,
         assignedToUserId: input.assignedToUserId || null,
+        sealedSystem: input.sealedSystem === true,
         durationMinutes,
         customerId: input.customerId || null,
         serviceAddressId: input.serviceAddressId || null,
@@ -345,6 +383,35 @@ export async function updateJobStatus(
     const before = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
     const check = canTransitionJobStatus(before.status, newStatus);
     if (!check.ok) throw new Error(check.reason);
+
+    // FEETAX-2: starting a delivery-type visit re-checks delivery
+    // readiness inside this transaction. Two orders booked in advance
+    // for a delivery-count city both pass at booking; once the first
+    // delivery crosses the license threshold, this gate stops the
+    // second from going out without the license. Deliveries already
+    // on the truck count toward the threshold for this check.
+    if (
+      newStatus === "IN_PROGRESS" &&
+      ["DELIVERY", "INSTALLATION", "REMOVAL"].includes(before.type)
+    ) {
+      const readinessAddressId =
+        before.serviceAddressId ??
+        (before.agreementId
+          ? (
+              await tx.rentalAgreement.findUnique({
+                where: { id: before.agreementId },
+                select: { serviceAddressId: true },
+              })
+            )?.serviceAddressId
+          : null);
+      if (readinessAddressId) {
+        await assertDeliveryReadyInTx(tx, {
+          serviceAddressId: readinessAddressId,
+          agreementId: before.agreementId,
+          countDispatchedForJobId: jobId,
+        });
+      }
+    }
 
     if (newStatus === "CANCELLED") {
       // A cancelled swap gives back the replacement it reserved.

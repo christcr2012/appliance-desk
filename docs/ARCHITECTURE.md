@@ -1,3 +1,7 @@
+## Optional AI assistant connection (MCP-3, in development)
+
+`MCP_ISSUER_URL` is the canonical HTTPS origin of the app authorized to issue assistant access tokens. If unset or malformed, the OAuth plugin and assistant endpoints remain unavailable. Never derive the issuer from incoming host headers or reuse public photo-storage credentials. Authentication relies on the existing invitation-only owner/admin sign-in and second step, an explicit consent screen, and persisted connections. A connection is denied immediately after revocation or a role/archive change. This section describes the proposed feature under construction, not a deployed or verified working connection.
+
 ## Dedicated testing environment (owner-approved October 24)
 
 [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) is authoritative for the hosted testing app, reset/seed contract,
@@ -36,7 +40,7 @@ See `.env.example` for the full list with comments. The short version:
 - `RESEND_FROM_EMAIL` / `LEAD_NOTIFICATION_EMAIL` / `MAINTENANCE_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #69)**, real `robinsonappliancerentals.com` addresses. See "Email addresses (Google Workspace)" below.
 - `BILLING_NOTIFICATION_EMAIL` — **set (2026-09-28, Task #72)**, `billing@robinsonappliancerentals.com` (an alias reserved since Task #69 but unused until now). Where the automated-late-fee digest email goes — see docs/BUSINESS-RULES.md's "Consolidated statements, manual payments, and automated late fees."
 - `PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN` / `PRIVATE_PHOTO_BLOB_STORE_ID` — the **private** production file store for photos, signed documents and receipts (Batch A private media). `src/lib/photo-storage.ts` refuses to use a token whose embedded store id does not match the store id, so a wrong pairing fails closed instead of writing to the wrong store.
-- `PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN` / `PREVIEW_PRIVATE_BLOB_STORE_ID` — Preview-only private store (owner-approved 2026-10-01). Used only when `VERCEL_ENV=preview` and the id equals the reviewed constant in `src/domains/preview-storage/index.ts`; never falls back to production.
+- `PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN` / `PREVIEW_PRIVATE_BLOB_STORE_ID` — Preview-only private store (owner-approved 2026-10-01). Used only when `VERCEL_ENV=preview`; the credential's embedded store ID must match the separately configured private store ID. A missing or mismatched pair fails closed; never falls back to production. Do not record the private store ID in source or documentation.
 - `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` — build-time only (source-map upload in `next.config.ts`); not needed at runtime.
 - Set by Vercel automatically, never by hand: `VERCEL`, `VERCEL_ENV`, `NEXT_PUBLIC_VERCEL_ENV`, `VERCEL_URL` (fallback base URL for auth and privacy links when `BETTER_AUTH_URL` is unset). `NODE_ENV` and `NEXT_RUNTIME` are set by Next.js.
 - Planned, not yet used by code: `COLORADO_GIS_API_KEY` (Batch T, `docs/designs/BATCH-T.md`).
@@ -501,7 +505,7 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run these checks (secret scan, static checks, three unit/integration shards and four browser shards, then one final `ci` gate):
+`.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run these checks (secret scan, static checks, three unit/integration shards and five browser shards, then one final `ci` gate):
 
 - **static checks** — install → type-check → lint (no database).
 - **Local Vercel Sandbox integration tests** — run
@@ -512,15 +516,14 @@ Never rely on hiding a nav link as the only protection for anything.
   never substitute Neon or preview data. CI's PostgreSQL 17 job remains
   authoritative.
 - **migrations and unit/integration tests** — throwaway Postgres → check for un-reviewed destructive migrations → apply migrations → verify schema health (the same check production runs before building) → prove schema health rejects a missing column → prove a populated historical database upgrades → seed business content and test-only OWNER/CUSTOMER/STAFF accounts → unit and real-Postgres integration tests.
-- **production build and browser acceptance** — sharded across 4 runners (browser-a to browser-d, groups in `e2e/shards.json`). Each shard gets its own throwaway Postgres, applies migrations, verifies schema health, seeds, runs the production build, installs the Playwright browser, then runs the Playwright/axe accessibility, security and end-to-end spec files assigned to it. The assignment lives in `e2e/shards.json` (named groups → spec files) and is run by `scripts/e2e-shard.mjs <group>`. Playwright's own `--shard` was tried first and rejected: it balances by test *count*, and this suite's test durations are so uneven that one runner got ~4x the runtime of the others. The groups are balanced by measured duration instead; after each shard runs, the script prints a per-file duration notice (from Playwright's JSON reporter, CI-only) that is readable from the Checks API — use those numbers to rebalance. The script refuses to run, and the static-checks job fails (`--check`), if any `e2e/*.spec.ts` is unassigned, double-assigned, or missing, so a new spec file can never silently stop running. Every spec still runs exactly once per CI run. Each shard uploads its own Playwright report (`playwright-report-<group>`).
+- **production build and browser acceptance** — sharded across 5 runners (browser-a to browser-e, groups in `e2e/shards.json`). Each shard gets its own throwaway Postgres, applies migrations, verifies schema health, seeds, runs the production build, installs the Playwright browser, then runs the Playwright/axe accessibility, security and end-to-end spec files assigned to it. The assignment lives in `e2e/shards.json` (named groups → spec files) and is run by `scripts/e2e-shard.mjs <group>`. Playwright's own `--shard` was tried first and rejected: it balances by test *count*, and this suite's test durations are so uneven that one runner got ~4x the runtime of the others. The groups are balanced by measured duration instead; after each shard runs, the script prints a per-file duration notice (from Playwright's JSON reporter, CI-only) that is readable from the Checks API — use those numbers to rebalance. The script refuses to run, and the static-checks job fails (`--check`), if any `e2e/*.spec.ts` is unassigned, double-assigned, or missing, so a new spec file can never silently stop running. Every spec still runs exactly once per CI run. Each shard uploads its own Playwright report (`playwright-report-<group>`).
 
 A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel builds only `live`; automatic previews are disabled. Daily checked promotion is independent of development PR batch counts; no deployment is required to merge a green development PR.
 
 ## CI layout and speed
 
-**2026-10-09 additions (#367).** CI's Postgres service image is the Docker Official `postgres:17` pulled from its Amazon
-ECR Public copy (`public.ecr.aws/docker/library/postgres:17`) — anonymous Docker Hub pulls hit a rate limit on shared
-runners. Real-database tests that write records existing once for the whole database (the business-settings row,
+**2026-10-09 additions (#367); updated 2026-10-26.** CI uses the Docker Official `postgres:17` image.
+An earlier ECR Public mirror hit a data limit, so the workflow now uses `postgres:17` directly on GitHub-hosted runners. Real-database tests that write records existing once for the whole database (the business-settings row,
 Colorado filing accounts) run one at a time in the `node-shared-settings` Vitest project; `tests/shared-state-tests-listed.test.ts`
 fails when a new one is not listed.
 
@@ -531,10 +534,10 @@ fails when a new one is not listed.
 | Job | What it does | Expected |
 |---|---|---|
 | classify | decides docs-only vs code (checkout only, no install) | ~6s |
-| secret scan | `scripts/check-secrets.mjs` + gitleaks (pinned, checksum-verified) over the full git history; always runs | ~10s |
+| secret scan | `scripts/check-secrets.mjs` on current files + gitleaks (pinned, checksum-verified) on new PR/push commits; nightly covers complete main history; always runs | ~10s |
 | type-check, lint and repo checks | dependencies (cached), then typecheck and lint at the same time, browser-group check, migration check | ~1–1.3 min |
-| unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | ~1.3–1.8 min |
-| browser tests ×4 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | ~2–2.5 min |
+| unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | record timings each run; rebalance only for sustained slowdown |
+| browser tests ×5 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | review current measurements, not historical averages |
 | ci (gate) | passes only if everything required passed | ~3s |
 
 Wall-clock for a full run is the slowest browser shard: about a minute of fixed setup (container, dependencies, build,
@@ -581,17 +584,17 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 
 - `scripts/check-secrets.mjs` (tests: `tests/check-secrets.test.ts`) flags live/real-length Stripe keys, webhook secrets, GitHub/AWS/Google/Slack/Resend/Twilio/Anthropic/OpenAI/Vercel tokens, private keys, database URLs with embedded passwords to non-local hosts, Neon/Vercel production identifiers, and committed `.env` files. It prints only a label, file, line, and the first 6 characters.
 - Intentional exceptions (the verified preview endpoint in `src/lib/preview-database-safety.ts`, obviously fake test values) are listed inside the script; fake-looking test strings reviewed once are in `.gitleaksignore`. Adding to either needs a stated reason in the PR.
-- gitleaks (`.gitleaks.toml`, default rules) scans every commit, because a secret removed in a later commit is still public.
+- gitleaks (`.gitleaks.toml`, default rules) scans commits introduced by a PR or push, plus full main history nightly; it never sweeps unrelated branch histories for every PR. A removed secret is still public, so newly introduced secrets block CI even if deleted in a later commit; the current tree is independently scanned by `scripts/check-secrets.mjs`.
 - **Owner-only settings GitHub requires a person to set** (agents cannot): Settings → Code security → enable *Secret scanning* and *Push protection* (free for public repos); Settings → Actions → General → *Fork pull request workflows* → require approval for all outside contributors.
 
 ### Keeping CI fast — checklist (target: a full run in about 3 minutes; investigate at 5)
 
 1. **Measure before changing anything.** `gh api repos/<owner>/<repo>/actions/runs?per_page=10` gives start and finish times; per-job times are in the run's jobs list; browser shards print per-spec durations.
 2. **Never make jobs wait for each other.** The wall-clock of a run is its slowest job. New checks join the `static` or `secrets` job, or become a new parallel job; they never chain after the browser shards.
-3. **Keep the slowest job the browser shard, and keep shards even.** Rebalance `e2e/shards.json` from the printed durations whenever one group is clearly longest; add a group (one entry in `shards.json` plus one in the workflow matrix) rather than letting a shard pass about 2 minutes of test time.
+3. **Treat 180 seconds as a performance target, not a test gate.** `scripts/ci-phase.mjs` prints structured durations, a notice and a step summary when a passing command runs longer. Do **not** rerun CI, move specs or add runners after a single slow pass. Compare the same shard across its last five comparable full runs; investigate/rebalance only if **at least 3 of 5** exceed the 180-second target, or a reproducible structural cause is shown. Actual test failures or the separate 10-minute hang safety timeout remain red.
 4. **Tests go to the cheapest layer.** Business rules, money, permissions and concurrency belong in vitest against real Postgres; a browser spec is for axe, real sessions, headers and one click-through per major flow.
 5. **Protect the caches.** Do not change `package-lock.json`, `prisma/schema.prisma` or the node_modules/Next/Playwright cache keys casually; a cold dependency cache adds about 15 s to every job and a cold Next cache about a minute to every shard.
-6. **Add vitest shards before it hurts.** When a unit shard nears 2 minutes, raise the matrix size and the `--shard=N/M` denominator together.
+6. **Split Vitest only for a sustained bottleneck.** Keep the existing three independent unit groups for a one-off long run. If 3 of 5 comparable full runs of the same group are over the 180-second target, profile it and, if splitting is the measured remedy, update the matrix size and `--shard=N/M` together without dropping tests.
 7. **Parallel groups are for read-only tests only.** Before adding `mode: "parallel"` to a describe, check that no test in it saves, deletes or changes data another test reads.
 8. **No sleeps, no per-test logins, no network calls to real providers** in tests; they are the usual cause of slow or flaky suites.
 9. **Keep the gate honest.** Any new required job is added to the `ci` job's check list, and a job that is skipped for docs-only changes must still be reported as skipped, never missing.
@@ -599,8 +602,8 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 
 ### Rules when adding tests
 
-1. **Default to unit tests.** `tests/` (vitest, real Postgres) is split over three runners; browser tests carry the heavy fixed cost.
-2. **Assign every new spec file** in `e2e/shards.json` (the `static` job runs `scripts/e2e-shard.mjs --check`). Rebalance groups from real durations (printed as notices after each browser run) when one shard becomes the slowest.
+1. **Default to unit tests.** `tests/` (vitest, real Postgres) uses three independent disposable-Postgres runners; browser tests carry the heavy fixed cost.
+2. **Assign every new spec file** in `e2e/shards.json` (the `static` job runs `scripts/e2e-shard.mjs --check`). Rebalance groups using repeatable duration evidence, not one unusually slow run; compare at least five comparable runs and require 3 of 5 over target before changing assignments.
 3. **Reuse saved sessions.** `e2e/global-setup.ts` logs in once per role; tests use `test.use({ storageState })`.
 4. **Build cache and Playwright cache** are restored per run; keep `package-lock.json` changes deliberate because they invalidate both.
 5. **Artifacts** (the Playwright report) are uploaded only when a shard fails, kept 3 days.
@@ -644,9 +647,9 @@ upgrades working; a new dependency with an install script shows up as an npm war
 
 ### If a job gets slow
 
-- A browser shard is the slowest job: move a spec to the lightest group (`e2e/shards.json`) or add a fifth group; each new shard repeats about two minutes of setup in parallel, which costs nothing in a public repo.
+- A browser shard repeatedly exceeds 180 seconds in at least 3 of 5 comparable full runs: inspect per-spec notices, then move a complete spec to the lightest group in `e2e/shards.json` if timing evidence supports that. One slow pass stays green.
 - A single spec over ~60s: split it or move assertions into unit tests.
-- Unit tests: raise the shard count in the `unit` matrix and the `--shard=N/M` denominator together.
+- Unit tests: only after repeated slow results and profiling, consider raising the shard count in the `unit` matrix and the `--shard=N/M` denominator together.
 
 ## Folder layout
 

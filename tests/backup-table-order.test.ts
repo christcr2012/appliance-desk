@@ -10,6 +10,12 @@ import {
 const schema = readFileSync("prisma/schema.prisma", "utf8");
 
 describe("backup restore table order", () => {
+  it("ignores mapped OAuth credentials when excluded but rejects mapped business tables", () => {
+    expect(() => deriveRestoreTableOrder(schema, BACKUP_MODEL_POLICY)).not.toThrow();
+    const mapped = `model Custom {\n  id String @id\n  @@map("actuallyStoredElsewhere")\n}`;
+    expect(() => deriveRestoreTableOrder(mapped, { Custom: "custom" })).toThrow(/mapped Prisma table/);
+    expect(() => deriveRestoreTableOrder(mapped, { Custom: null })).not.toThrow();
+  });
   it("contains every backed-up model once and after every backed-up dependency", () => {
     const order = deriveRestoreTableOrder(schema, BACKUP_MODEL_POLICY);
     expect(order).toHaveLength(BACKUP_TABLES.length);
@@ -38,6 +44,7 @@ it("keeps posting revisions lossless and defers nullable bank history chains for
  const fields=bigIntFieldsByDelegate(schema,BACKUP_MODEL_POLICY);
  expect(fields.booksPostingRevision).toContain("revision");
  const deps=relationDependencies(schema);
+ expect(deps).not.toContainEqual({model:"BackupArtifact",dependsOn:"BackupArtifact"});
  expect(deps).not.toContainEqual({model:"BankImport",dependsOn:"BankImport"});
  expect(deps).not.toContainEqual({model:"BankReconciliation",dependsOn:"BankReconciliation"});
  expect(deps).not.toContainEqual({model:"BookCashEvent",dependsOn:"BookCashEvent"});

@@ -296,6 +296,16 @@ async function restore(file: string, target: string): Promise<void> {
       const delegate = delegates[table];
       if (!delegate?.createMany) throw new Error(`Restore delegate "${table}" is unavailable.`);
       const data = reviveRows(table, rows, dateFields, bigIntFields, nullableJsonFields);
+      if (table === "mcpConnection") {
+        for (const row of data) {
+          row.revokedAt = new Date();
+          row.revokedReason = "Restored from backup — connect again";
+        }
+      }
+      // A database backup may contain a parent DATABASE row and later a
+      // MEDIA_MANIFEST referencing it. Self-references need parent-first order.
+      if (table === "backupArtifact") data.sort((a,b) =>
+        Number(Boolean(a.databaseArtifactId)) - Number(Boolean(b.databaseArtifactId)));
       if(table === "signingBusinessReview")data.sort((a,b)=>String(a.agreementId).localeCompare(String(b.agreementId))||Number(a.revision)-Number(b.revision));
       if (table === "appliance") {
         for (const row of data) {

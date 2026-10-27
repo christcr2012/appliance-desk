@@ -1,3 +1,91 @@
+## October 27 — MCP-3 safe reconnect generation (additive)
+
+Migration `20261129000000_mcp_reconnect_generation` adds `McpConnection.grantVersion`. Each new owner approval rotates this opaque value; signed MCP access tokens carry its current version, so a disconnected token cannot be resurrected by approving the same client again. Existing connections receive a distinct version during migration; old JWTs cannot regain access. Consent activation and disconnect serialize on user and connection rows. The private backup snapshot continues to omit OAuth grants.
+
+## October 27 — MCP-3 assistant connections (development, not deployed)
+
+The additive OAuth schema adds Better Auth `jwks`, `oauthClient`, `oauthResource`, `oauthClientResource`, `oauthRefreshToken`, `oauthAccessToken`, `oauthConsent`, and `oauthClientAssertion` plus an app-owned `McpConnection` ledger. The OAuth models, private signing keys, client secrets, grants, access and refresh tokens are explicitly excluded from backup snapshots. Connection labels, scopes, last use and revocation status are retained; restore marks each restored connection revoked, requiring reconnection. The OAuth feature remains disabled unless the host explicitly sets `MCP_ISSUER_URL`. Migration and client-generation validation alone do not establish live-provider proof.
+
+## November 12 — Hiring readiness (CMP-5, additive)
+
+Migration `20261112000000_cmp5_hiring`.
+- `ComplianceProfile` gains `firstHireDate` (nullable): the first employee's start date. Colorado's new-hire report is due 20 days after it, so the date is the one fact the `co.payroll.new_hire` obligation schedules from; with employees recorded but no date, the obligation shows as unscheduled with the reason, never an invented deadline.
+- `JournalSourceType` gains `PAYROLL`, and `PayrollImport` keeps one row per imported pay run from the payroll provider's summary CSV: `payDate`, `grossWagesCents`, `employerTaxesCents`, `employeeTaxesCents` (nullable, informational — the employee share rides inside the gross), `withdrawnCents`, `providerName`, `sourceFileName`, `importedById`. The row's id is the books journal's sourceId, `(fileHash, rowIndex)` is unique so the same file can never post twice, and no employee-level data is stored. Registered in the backup manifest.
+- Two system accounts join the chart (and are inserted for existing installs, guarded by role): `WAGES` (Schedule C line 26) and `EMPLOYER_PAYROLL_TAXES` (line 23). Schedule C's line list gains line 26 ("Wages less employment credits").
+
+## November 11 — Colorado and local filings (CMP-4, additive)
+
+Migration `20261111000000_cmp4_colorado_local`.
+- `ComplianceProfile` gains the local-filing facts: `tradeName` (the name the business trades under, if any — an LLC's statement of trade name never renews, C.R.S. § 7-71-104, so it carries no dates), `usdotNumber` (digits only; the FMCSA biennial update month and odd/even years are read off its last two digits), `truckRegistrationMonth` (1–12), `greeleyLicenseDate` (the date on the city's license; renewals fall every two years on that date), and the Secretary of State registered-agent block (`registeredAgentName`, `registeredAgentAddress`, `registeredAgentCity`, `registeredAgentState`, `registeredAgentZip`) printed as exact values to type on the SOS periodic report. All nullable: a missing fact means the obligation shows without dates, never an invented deadline.
+- Two dated rules are seeded as RESEARCHED `LegalRuleVersion` rows by the migration: `co.bpp.exemption_threshold` (5,600,000 cents — the $56,000 Weld County total-actual-value exemption for 2026, compared against the fleet's total original cost, the figure the assessor's actual value derives from) and `co.bpp.extension` (the declaration extension fees, $20 for 10 days / $40 for 20 days). The Weld forms DS 056 and DS 060 are vendored as fillable PDFs under `src/domains/compliance/forms/co/` and pinned in the forms manifest; the forms are never pre-filled with the owner's tax ID or a signature.
+
+
+## November 10 — Income tax helpers (CMP-2, additive)
+
+Migration `20261110000000_cmp2_income_tax`.
+- `LedgerAccount.scheduleCLine` — the Schedule C line this account's year totals land on (a line code like `1`, `20b`, `27a`). The migration fills it for every system account from the system chart (`src/domains/books/system-chart.json`, the same values); owner-added accounts stay null, which the accountant packet reads as line 27a (Other expenses), listed by name — an account is never dropped or guessed into a more specific line.
+- `TaxYearFacts` — one row per finished tax year (`year` unique): `federalTaxCents`, `federalAgiCents`, `coloradoTaxCents` (what that year's returns said — the quarterly estimates' safe-harbor basis) and `form1099KGrossCents` (the 1099-K box 1a typed from Stripe's form, for the tie-out). All nullable: a missing figure means the app shows words ("ask your CPA"), never an invented number. Entered by the owner on Business facts; registered in the backup manifest.
+
+## November 7 — Supplier tax IDs, W-9s and 1099 preparation (CMP-3, additive)
+
+Migrations `20261107000000_supplier_tin_w9` and `20261107010000_filing_period_key_widen`.
+- `Supplier` gains the 1099 record: `tinType` (SSN or EIN), `tinEncrypted` (the tax ID under the same AES-256-GCM field crypto as the EIN; never logged, never shown) with `tinLast4` the only clear digits, `legalName` (the name on the W-9), the W-9 mailing address (`mailingAddress`, `mailingCity`, `mailingState`, `mailingZip` — the IRIS file and recipient copies are incomplete without it), `w9ReceivedOn`, `w9FileUrl` (an uploaded W-9 in the private file store), and `backupWithholding` (24% applies until a W-9 is on file).
+- `W9Request` — one row per one-time W-9 link: `supplierId`, `tokenHash` (only the SHA-256 hash of the link token is stored), `expiresAt` (14 days), `usedAt`, `createdByUserId`. A fresh request deletes the supplier's unused ones.
+- `ExpenseCategory.form1099Box` — which 1099 box the category's payments belong in (`NEC_1`, `MISC_1`, `MISC_3`, or null = not classified yet; amounts are never guessed into a box). The migration classifies only the two system categories whose meaning is certain: warehouse rent → `MISC_1`, professional fees (CPA/legal) → `NEC_1`.
+- `ComplianceProfile` gains the payer block printed on information returns: `businessLegalName`, `businessAddress`, `businessCity`, `businessState`, `businessZip`, `businessPhone`.
+- `ComplianceFiling.periodKey` widens from 20 to 40 characters: Form 8300 filings key their period by the triggering receipt (`8300-` + the receipt id).
+
+## November 2 — Compliance center (CMP-1, additive)
+
+Migration `20261102000000_compliance`.
+- `ComplianceProfile` — the owner's business facts, one row (`id` = "singleton"): `entityType` (starting value SINGLE_MEMBER_LLC, a Decisions question), `einEncrypted` (the EIN under AES-256-GCM from `src/lib/field-crypto.ts`; the value itself is never logged or shown) with `einLast4` the only clear digits, `sosReportMonth`, `truckGvwrLbs`, `employees`, `hasHomeOffice`.
+- `ComplianceFiling` — one row per obligation period: `obligationKey` + `periodKey` (unique together), `state` (NOT_APPLICABLE, UPCOMING, READY_FOR_REVIEW, APPROVED, SUBMITTED, ACCEPTED, REJECTED, DONE_ELSEWHERE), `dueOn` / `actOn`, `preparedData` (JSON, never a full tax id) with `preparedHash` binding the owner's approval to the prepared numbers, `outputFileUrl`, approval/submission stamps, `note`, `version`, and `autoRetired` (true only while a NOT_APPLICABLE state came from the filing sync's automatic retirement when the facts stopped generating the period; the sync reactivates such a row when its period is generated again, and never reactivates an owner's own not-needed decision). Index on (`state`, `actOn`). Both models are in `BACKUP_MODEL_POLICY`.
+
+## November 2 — Tax and fee autopilot switches (TFA-2, additive)
+
+Migrations `20261102000000_tfa2_switches` and `20261103000000_tfa2_filing_advice`.
+- `RetailDeliveryFeeSwitch` — one prepared delivery-fee switch: `kind` (START/STOP, new enum `RdfSwitchKind`), `startsOn`, `basisRetailCents` (the prior-year Colorado retail total behind a Jan 1 switch; null for the new-business start), `approvedAt` / `approvedByUserId`, `createdAt`. Unique on (`kind`, `startsOn`); index on `startsOn`. The app prepares and dates each switch; it changes a customer bill only after the owner approves it on Today, and until then the fee is owed but not billed. In `BACKUP_MODEL_POLICY`.
+- `Invoice.replacementOfInvoiceId` — nullable, no foreign key: the original bill a replacement (exchange) sale replaces, so the exchange charges no second delivery fee.
+- `FilingFrequencyAdvice` — one filing-frequency advice: `filingAccountId` (FK to `TaxFilingAccount`, restrict on delete), `currentFrequency` / `advisedFrequency` (`TaxFilingFrequency`), `averageMonthlyCents` (trailing-12-month average of state and state-collected tax), `computedOn`, `confirmedAt` / `confirmedByUserId`. Index on (`filingAccountId`, `computedOn`). The app never changes frequency itself; the owner's confirm sets the account frequency for future periods and marks the advice. In `BACKUP_MODEL_POLICY`.
+
+
+## October 26 — Remember this device (ACC-6, additive)
+
+`KnownDevice` — one row per person per device cookie: `deviceHash` (SHA-256 of the device cookie value; the value itself is never stored), `label` (kind of device and browser, for the list only), first/last seen, `trustedUntil` (set when the person ticks "Remember this device", never extended by later sign-ins) and `forgottenAt`. Unique on (`userId`, `deviceHash`); rows are removed with the user and left out of backups (a restore re-records devices as people sign in). `BusinessSettings.trustedDeviceDays` (30, CHECK 0–90; 0 = always ask for the code). The library's own trust rows live in the existing `Verification` table (`trust-device-…` identifiers, user id as the value) and are clamped to the device's remembered-until date. Migration `20261030010000_known_devices`.
+
+## November 1 — Tax and fee rule book (TFA-1, additive)
+
+Migration `20261101000000_legal_rules`.
+- `LegalRuleVersion` — one dated value per tax/fee rule: `ruleKey` (e.g. `co.rdf.amount`), `value` (JSON: cents, or an object for grouped numbers), `effectiveFrom` (that Colorado day's midnight), `origin` (RESEARCHED, OFFICIAL_WATCH, OWNER, PROFESSIONAL), `sourceUrl`, `sourceQuote`, `checkedOn`, `provisional` (true until confirmed), `autoApplied`, `undoneAt`, `createdByUserId`. **SQL-only index — do not drop:** `LegalRuleVersion_one_active_per_key_date_origin` (unique (`ruleKey`, `effectiveFrom`, `origin`) where `undoneAt` IS NULL — an undone version stays as history and must not block its replacement for the same start date); index on (`ruleKey`, `effectiveFrom`). Seeded with 18 researched versions from `docs/research/2026-10-25-tax-fee-rules.md` (RDF 28/29/28/31 cents by July 1, $500,000 small-seller limit, filing-frequency limits, 0 state service fee from 2026-01-01, $300 use-tax limit, penalties, 2026 interest, 36-month leases, odd-year licence expiry, $2,000 1099 limit, 1099 dates, Section 179, bonus depreciation, 7 record years, Greeley 4.11%), each with its source and checked date 2026-10-25. Existing `RetailDeliveryFeeRate` rows are copied in as OWNER versions so old rates keep their history. The owner's existing `BusinessSettings` values for the four switched fields (`recordRetentionYears`, `useTaxMonthlyThresholdCents`, `rdfThresholdCents`, `vendor1099ThresholdCents`) are carried over as OWNER versions from 2026-01-01 — but only when the owner actually changed them: the carry-over is guarded with `<> default` (7 / 30000 / 50000000 / 200000), because the first migration seeds `BusinessSettings` with the defaults, so an unguarded carry would create default-valued OWNER rows on every fresh database and block any later version for the same date. `RetailDeliveryFeeRecord_ready_requires_evidence` now accepts a rule version as evidence (`rateId` OR `ruleVersionId`), since new records cite a rule version with `rateId` null.
+- `RetailDeliveryFeeRecord.ruleVersionId` — the rule version that set the amount on new records (old rows keep `rateId`). `BusinessSettings.costlyChangeTimingPercent` (90, CHECK 85–95) and `timingSafetyMarginBusinessDays` (3, CHECK 1–10): when the app suggests acting on a change that costs the business.
+- `LedgerAccount` `TAX_ABSORBED` (expense, "Tax/fee the business paid for a late change", seed id `k_seed_tax_absorbed`; same entry in `src/domains/books/system-chart.json`). Backups include `LegalRuleVersion` (`BACKUP_MODEL_POLICY`).
+
+## November 10 — Delivery-area tax readiness (FEETAX-2, additive)
+
+Migration `20261110000000_delivery_readiness`.
+- `JurisdictionReadiness` — one row per taxing place carrying only delivery-setup facts: `licenseRequired` (`NONE`, `AFTER_FIRST_DELIVERY`, `AFTER_SECOND_DELIVERY_IN_12_MONTHS`, `ALWAYS`, `UNKNOWN`), `licenseRecordId` (the Business records item holding the city's license), `filesThrough` (`SUTS`, `CITY_PORTAL`, `STATE_RETURN`, `UNKNOWN`), `sourceUrl`, `checkedOn`, `reviewStatus`, `notes`. Whether a place taxes rentals is deliberately NOT stored here — that is the `TaxabilityRule` RENTAL cell for the jurisdiction, the one live rent decision. The migration seeds one `TaxJurisdiction` (code = uppercase place slug) plus one readiness row for each of the 58 incorporated places in `docs/research/2026-10-25-tax-jurisdictions-50mi.md`. No tax rates are seeded — rates keep coming from `TaxRateVersion`. Backups include both new models (`BACKUP_MODEL_POLICY`).
+- `JurisdictionDeliveryCount` — one row per completed delivery order into a place (`orderId` unique, so a retried completion writes once): `jurisdictionId`, `deliveredOn`. Drives the license rules that count deliveries in 12 months.
+- `RentalAgreement.readinessOverrideByUserId` / `readinessOverrideReason` / `readinessOverrideAt` — the owner's one-order override of a "rules not decided" delivery-readiness refusal. Never set for a missing license; the save is audited (`tax.delivery_readiness_override`).
+
+## November 4 — Official-page rule watches (TFA-3, additive)
+
+Migration `20261104000000_tfa3_rule_watches`.
+- `LegalRuleObservation` — one stored reading from a strict parser over an official page: `ruleKey`, `value` (JSON, same shapes as the rule registry), `effectiveFrom` (nullable: a page may state no date), `watchId` (the `OfficialSourceWatch` read), `evidence` (the page words the reading came from), `observedAt`. Approval trail: `approvedVersionId` (the `LegalRuleVersion` an approval created), dismissal trail: `dismissedAt`, `dismissNote`, `dismissedByUserId`. A reading is never applied on its own; the same reading is stored once per business day. Backups include `LegalRuleObservation` (`BACKUP_MODEL_POLICY`).
+- `OfficialSourceWatch.parserKey` — which strict parser reads the page (`RDF_RATES`, `GREELEY_RATE`, `IRS_1099_THRESHOLD`, `CO_INTEREST`); null means hash-only watching. The migration turns the six seeded watches on, sets the Greeley parser, and adds the RDF rates, IRS 1099 instructions and Colorado penalties-and-interest watches.
+- `BusinessSettings.watchOfficialTaxPages` (default true): the owner's master switch for the watches, on Taxes › Rules. `BusinessSettings.autoApplyOfficialRateChanges` default flips to false and the existing row is set false: every new rate waits for the owner's approval on To do (the auto-apply code path stays, behind the setting).
+
+## October 27 — Fair late fees (FEE-1, additive)
+
+Migration `20261027040000_fair_late_fees`. New table `PendingCharge`: a late fee recorded as its own charge (`kind` LATE_FEE,
+`amountCents`, `customerId`, `agreementId`, `forInvoiceId` = the overdue bill, `noticeDeliveryId`, `appliedToInvoiceId` = the bill it
+was put on, `providerOperationId`, `waivedAt` / `waivedReason` / `waivedByUserId`); `@@unique([forInvoiceId, kind])` is what keeps it
+to once per overdue bill. New enums `LateFeeClass` (CONSUMER_LEASE, CONSUMER_SHORT, BUSINESS) and `PendingChargeKind`; provider
+operation kind `LATE_FEE_INVOICE_ITEM`. `Invoice.lateNoticeDeliveryId`, `lateNoticeCount`, `lateFeeDate`, `lateFeeToldOn`,
+`lateFeeToldByUserId`. `RentalAgreement.lateFeeClass` (set when sent for signature). `Customer.activeMilitary`.
+`BusinessSettings.decisionsReviewedAt` (nullable; DEC-2: when the owner last marked the researched starting values reviewed — the To do item counts `STARTING_VALUE_APPLIED` records made through `MIGRATION` after it; migration `20261103000000_starting_values_reviewed`), `BusinessSettings.lateFeeNoticeDaysBefore` (default 2, CHECK 1–5), `ucccNotificationFiledOn`; the late-fee grace days now default to 10
+(CHECK at least 10 on the settings row) and the flat fee is at most 1500 cents (CHECK). The migration moves an older settings row
+below those limits up to them; signed agreements and billed history are not rewritten. Covered by backups (`PendingCharge`). `PendingCharge` also keeps the autopay notice (`autopayNoticeDeliveryId`, `autopayNoticedAt`, `autopayChargeOn`): a fee only joins an automatic charge after a delivered notice naming that charge date.
+
 ## October 27 — System health that tells the truth (MCP-1, additive)
 
 Migration `20261027031500_mcp1_automation_health`. `AutomationRun.failureCode` (≤60, a key of `FAILURE_CODES` in
@@ -7,6 +95,20 @@ recorded"). `AutomationRun.error` stays only as scrubbed legacy text: nothing sh
 `AutomationRun(ruleKey, state, startedAt)` for the bounded health read (latest, latest success, latest failure per
 rule). `BusinessSettings.automationLateGraceMinutes` (120, CHECK 15–1440): minutes after a job's usual UTC cron time
 before it shows Late. All covered by the existing backups of these three tables.
+
+## October 25 — Leads pipeline (LD-1, additive)
+
+Migration `20261026020000_leads_pipeline`. `Lead` gains `assignedToUserId` (who owns this lead; the owner's oldest
+active OWNER by default), `firstContactedAt` + `firstContactEstimated` (a real outbound contact only; older leads
+were backfilled from `lastRealContactAt` with the estimate flag), `phoneDigits` + `emailLower` (normalized contact
+keys, kept on every write of phone/email), `possibleDuplicateOfLeadId` (oldest live lead with the same phone or email,
+set at creation), `mergedIntoLeadId` + `mergedAt` (a merged lead is hidden from lists, counts, search and To do).
+`LeadNote.kind` (`NOTE` | `CONTACTED` | `ATTEMPT`). `BusinessSettings` gains `leadAssignmentMode` (`OWNER` |
+`PERSON` | `ROTATE`, default `OWNER`), `leadAssignmentUserId`, `leadRotationCursor`. Trigram indexes on
+`contactName`, `companyName`, `city`, `emailLower`, `phoneDigits` make the queue search fast; compound indexes on
+`(assignedToUserId, status, nextFollowUpOn)` and `(status, createdAt)` serve the queue. Migration
+`20261027040000_lead_followup_version` adds `Lead.version` (default 1, bumped only by `setLeadFollowUp`, the
+compare-and-set token for the follow-up date). All covered by the existing Lead and BusinessSettings backups.
 
 ## October 26 — Decisions & reviews data (DEC-1a, additive)
 
@@ -33,6 +135,15 @@ Migration `20261026030000_decision_record`. Nothing existing is changed or remov
   reads use the rule of the charge's own date (`getTaxabilityRulesAsOf` in `src/domains/tax/locations.ts`).
 - `TaxabilityRule.provisional` (false), `provisionalReason`, `provisionalSources` — a researched starting value that runs
   before the CPA confirms it; the tax engine calculates with it and labels the result "not confirmed".
+
+## October 26 — Bank payments being confirmed (BILL-1, additive)
+
+Migration `20261026010000_bank_payment_in_flight`. New table `BankPaymentInFlight`: one row per Stripe PaymentIntent for a
+bill (`paymentIntentId` unique), `invoiceId`, `stripeInvoiceId` and `agreementId` (all optional; the payment id is what identifies the row, so deleting a bill never fails), `source`,
+`amountCents`, `method`, `startedAt`, `clearedAt` / `clearedReason` / `clearedByEventAt` (a cleared row stays as a marker so a
+late older event cannot reopen it), `attempt`, `lastCheckedAt`, `settledInStripeAt` ("Stripe says paid but we have not
+recorded it"). It is a flag only: nothing reads it as money. `BusinessSettings.bankPaymentSlowBusinessDays` (6, CHECK 2–20).
+Covered by backups (`BankPaymentInFlight` in the backup manifest).
 
 ## October 24 — Job roles (ACC-5, additive)
 
@@ -1302,6 +1413,10 @@ Already deployed schema `AccountingDelivery` from the K-CASH evidence migration 
 
 New table `BusinessPaperwork` and enum `PaperworkStatus` (TO_DO, IN_PROGRESS, DONE, NOT_NEEDED): the owner's own list of business paperwork (LLC, EIN, licenses, insurance, yearly filings) with an optional due/expiry date, reminder lead days (0–365), optional repeat length in months (1–120), a free-text `referenceNumber` (EIN/license/policy number) and notes. `templateKey` is unique for the starter checklist so adding it twice does nothing; `version` supports edit-conflict checks. No foreign keys and no existing table changes; zero-data migration. Owner-only at the domain boundary; the reference number and notes are never written to the activity log. The table is in the backup manifest. Dated items feed the Today list (category `BUSINESS_PAPERWORK`).
 
+## Business records (VAULT-1, 2026-10-26, additive migration `20261103000000_business_records`)
+
+`BusinessPaperwork` gains the record fields: `kind` (TASK, LICENSE, PERMIT, REGISTRATION, TAX_ACCOUNT, INSURANCE, BANK, DOCUMENT, ACCOUNT, VEHICLE, CONTRACT; default TASK), `issuedOn`, `expiresOn` (reminders use the earlier of `expiresOn` and `dueOn`), `numberLabel`, `numberEncrypted` (the record's number, encrypted with the compliance field key — AES-256-GCM `v1:` format via `src/lib/field-crypto.ts`; never plaintext, never logged, screens and exports carry only `numberLast4`), `numberLast4`, `portalUrl`, `credentialId` (VAULT-2's vault link, plain reference), `costCents`, and `linkedObligationKeys` (compliance registry keys this record feeds). New table `BusinessRecordFile`: the index of files stored privately under `records/{recordId}/{id}.{ext}` — content type sniffed from magic bytes at attach time (PDF/PNG/JPEG/WebP), `sha256`, size, label, soft delete (`deletedAt`) so replaced files stay as history; the record FK is `onDelete: Restrict` (the domain refuses to delete a record with files, in plain words). `BusinessSettings.paperworkAdminKinds` lists which record kinds an ADMIN may read (starting value: DOCUMENT, LICENSE, PERMIT, REGISTRATION, INSURANCE, VEHICLE, CONTRACT); a record holding an encrypted number is never admin-readable whatever its kind — that rule is in the domain, not the setting. `BusinessRecordFile` rows are in the backup manifest (bytes ride the nightly private-media copy; `numberEncrypted` stays encrypted in backups). Route: `/desk/paperwork` ("Business records"); file reads go through `/api/records/files/[id]` (role-gated, `Cache-Control: private, no-store`, owner downloads audited); exports through `/api/records/export` (owner only, audited, numbers masked).
+
 ## Read-path indexes (October 23)
 
 Migration `20261023150000_read_path_indexes` adds plain indexes (no data change) on links that screens and jobs look up:
@@ -1336,7 +1451,7 @@ The starting Manager job role gains the new owner/admin `feedback` screen. All f
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
 
-## Delivery zones (ZONE-1, additive migration `20261027050000_delivery_zones`)
+## Delivery zones (ZONE-1, additive migration `20261130000000_delivery_zones`)
 
 - `BusinessSettings.deliveryZones` (JSON list of `{ name, outerMiles, deliveryCents, pickupCents, color }`, starting
   Local — free delivery 0–15 / Nearby over 15–30 $75 / Extended over 30–50 $125, IN-06), `deliveryMaxMiles` (50),
@@ -1354,3 +1469,103 @@ keeping numbers, states and dates.
   "CUSTOMER_PICKUP"), unknownReason?, confirmed?, pickupArranged?, checkedAt }] }`. Rechecked only while DRAFT /
   CHANGES_REQUESTED; frozen once sent. `RentalAgreement.deliveryZoneSnapshot` is that address's entry, copied once at
   conversion.
+
+### BA-1: books autopilot (implementation branch)
+
+The additive `20261026050000_books_autopilot` migration adds an automatic-enrollment marker,
+a completion marker for depreciation and a disposal cycle to `BookAsset`. Its actor reference may be
+null for background operations; automatic audit records explicitly say `by: automatic`.
+`BusinessSettings` records when the nightly book catch-up last ran and how many issues remain;
+`BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
+Existing financial entries remain append-only and closed months stay immutable.
+
+### OPS-3: vehicle and mileage (additive migration `20261108000000_vehicle`)
+
+- `FleetVehicle` — nickname, year, make, model, VIN, plate, `gvwrLbs` (required, > 0), `registrationMonth` (1–12), `odometerAtPurchase`, maintenance interval (miles/months) and last service, `medicalCardExpiresOn`, `archivedAt`, `insurancePolicyId` (optional link to the `OwnerInsurancePolicy` that covers it; cleared if the policy is deleted). In the backup manifest.
+- `MileageTrip` — one row per trip: vehicle (Restrict), Denver-midnight `tripDate`, start/end odometer, `miles` (database checks: end ≥ start, miles = end − start), purpose, `source` (`MileageTripSource`: ROUTE or MANUAL), stops. A partial unique index allows only one ROUTE trip per vehicle per day. In the backup manifest.
+- `BusinessSettings.mileageMethod` (`MileageMethod`, default STANDARD_RATE) and `vehicleMedicalCardRequired` (default true).
+- One seeded rule-book row: `us.mileage_rate` = 725 (tenths of a cent, 72.5¢) from 2026-01-01, from IRS Notice 2026-10 (secondary summary, checked 2026-10-26).
+### OPS-4: insurance (additive migration `20261107000000_insurance`)
+- `OwnerInsurancePolicy` — one row per policy: kind (`InsuranceKind`: GENERAL_LIABILITY, COMMERCIAL_AUTO, EQUIPMENT, WORKERS_COMP, OTHER), insurer, policy number, limits (free text), yearly premium in cents, start and end dates, agent name/email, a note on where the certificate is kept, `archivedAt`, and `recordId` (unique, optional link to the `BusinessPaperwork` record that holds the certificate file; `ON DELETE SET NULL`). In the backup manifest.
+- `InsuranceCertificateRequest` — each time a certificate was requested for someone (requester, company, email, holder wording, who asked, when); linked to the policy (Restrict). In the backup manifest.
+- `BusinessSettings.insuranceRemindFirstDays` / `insuranceRemindSecondDays` (60 / 30), `workersCompStatus` (`WorkersCompStatus`: NOT_SET, NO_EMPLOYEES_REJECTED, POLICY_IN_PLACE), `workersCompEmployees`, `workersCompNote`, `workersCompFormSentOn`, `workersCompMailNumber`.
+
+### OPS-5: payment disputes (additive migration `20261103000000_disputes`)
+
+- `PaymentDispute` — one row per Stripe dispute (unique `stripeDisputeId`): amount, reason, Stripe status, our state
+  (`DisputeState`: NEEDS_RESPONSE, UNDER_REVIEW, WON, LOST, CLOSED), `isBank`, `dueBy`, links to the payment, bill and
+  customer (all Restrict), who sent the one evidence answer and when (`evidenceSubmittedAt`, `evidenceFileId`), and for bank
+  disputes whether the owner marked it handled. In the backup manifest.
+- `Customer.bankDebitBlockedAt` / `bankDebitBlockedReason` — set by a bank dispute (the saved bank method is also cleared);
+  only the owner or an admin clears it.
+- `BusinessSettings.achDisputeWindowDays` (default 60) — days a deposit paid by bank debit waits before it can be refunded.
+
+
+### OPS-1: recalls (additive migration `20261102000000_recalls`)
+
+- `ApplianceType.recallProductTerms` (search words, starting values for washer and dryer) and `Appliance.recallHold`
+  (true while any CONFIRMED recall covers the machine).
+- `RecallMatch` — one row per (recall, appliance), unique. States POSSIBLE, CONFIRMED, NOT_OURS, REMEDIED (REMEDIED is added
+  beyond the spec so a hold can end). Appliance link is Restrict. Who decided, when, and the note are kept.
+- `RecallWatchState` — one row ("singleton"): last good check, whole-fleet request and progress, last error.
+- `SafetyIncident` — a marked injury or safety event (appliance, repair request or job), decision PENDING / REPORTED /
+  NOT_REPORTED with the owner's note.
+All three tables are in the backup manifest.
+
+### OPS-6: collections (additive migration `20261104000000_collections`)
+
+- `CollectionStep` — one row per bill per step (`SECOND_NOTICE`, `FINAL_NOTICE`, `DECISION`, `SMALL_CLAIMS`), unique on
+  (bill, step), with state WAITING / SENT / SKIPPED / DONE, the drafted subject and text, who decided and when, the message
+  delivery it produced, and the note. The nightly pass only writes WAITING rows.
+- `CollectionCase` — one per rental that reached the decision step: the customer's recorded pickup agreement (when, how, who
+  recorded it), the court order (date, court and case number), the pickup visit, the objection, and when it was resolved.
+- `SmallClaimsFiling` — a filing Chris says he made (county, date, amount, fee); used only to count the court's limits.
+- `BusinessSettings.collectionSecondNoticeDay` / `collectionFinalNoticeDay` / `collectionDecisionDay` (10 / 20 / 30); `collectionPayHowText` / `collectionHelpText` (nullable owner wording for the two editable lines in notices; empty = recommended text).
+- Three seeded rule-book rows: `co.small_claims_limit` ($7,500), `co.small_claims_filing_limits` (2 a month, 18 a year per
+  county) and `co.small_claims_fees` ($31 up to $500, otherwise $55), from the Colorado Judicial Branch pages, accessed 2026-10-26.
+- The "on active military duty" flag already existed (`Customer.activeMilitary`); collections reads it.
+All three tables are in the backup manifest.
+
+### OPS-2: refrigerant records (additive migration `20261106000000_refrigerant`)
+- `ApplianceType.hasRefrigerant` — set true at migration time for types whose name or slug mentions refrigerator, fridge or freezer; new appliance types get the same starting value when they are added; the owner can change it on Retired appliances.
+- `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed. `receiptRecordId` (optional, unique link to the `BusinessPaperwork` record that holds the recycler's receipt file; `ON DELETE SET NULL`).
+- One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
+`RefrigerantRecord` is in the backup manifest.
+
+- `TeamCertification` — a team member's refrigerant (EPA 608 Type I) certification: person (Restrict), `kind` (starts `EPA_608_TYPE_I`), certification number, optional issue date; one per person per kind. Owner-entered. A `Job` marked `sealedSystem` (repair visits only) can only be assigned to someone with a row here. In the backup manifest.
+
+## MCP-2 backup-artifact ledger (additive, 2026-10-25)
+
+`BackupArtifact` tracks the protected storage **pathname only**, file hash and size, database migration/revision,
+the source automation run, verification stage, and an optional media-manifest parent link. The database artifact and
+its latest complete media pair must be retained even when past the configured 30-day default. Never store Blob tokens,
+signed URLs or private image payloads in this table. It participates in the backup manifest and disaster restore;
+restored ledger rows are historical facts, not permission to use the restored store or automatically restart a job.
+`BusinessSettings.backupRetentionDays` defaults to 30 (owner range 7–365).
+Migration: `20261026010000_mcp2_backup_artifacts`; additive with no data rewrite.
+
+
+### OPS-8: continuity (migration `20261109000000_continuity`)
+- `BusinessSettings` gains the "If something happens to me" details (`continuityEmergencyName/Contact`, `continuitySuccessorName/Contact`, `continuityCpaName/Contact`, `continuityAttorneyName/Contact`, `continuityRecordsNote`, `continuityReviewedAt`) and the owner-only pause switch (`chargesPausedAt`, `chargesPausedByUserId`, `chargesPausedNote`). Null `chargesPausedAt` = charges run normally.
+- `YearlyCheckup` — one row per calendar year the December check-up was finished: `year` (primary key), `completedAt`, `completedByUserId`, `ticked` (list of item keys), `note`. In the backup manifest.
+### OPS-7: privacy and security (additive migration `20261105000000_privacy_security`)
+- `SecurityIncident` — one row per possible leak: what happened, when found, when decided, how many Colorado residents, the kinds of information involved (required before the notice letter opens), and the date Chris did each step (people, Attorney General, credit bureaus, service providers). Deadlines are never stored; they are computed from the dated rule book.
+- `ServiceVendor` — the providers that hold customer information (seeded: Vercel, Neon, Stripe, Google Workspace, Twilio, Resend) and the date their security terms were last reviewed.
+- `AccessibilityComplaint` — a reported problem using the site or app, with the fix-by date computed from the rule book.
+- `Customer.legalHoldAt` / `legalHoldReason` — a legal hold; blocks the nightly clean-up and privacy deletion.
+- `BusinessSettings`: `retentionAgreementYears` (7), `retentionTaxYears` (7), `retentionRefrigerantYears` (6), `retentionLeadYears` (2), `retentionMessageYears` (3), `retentionPurgeEnabled` (false), `faceMatchIdEnabled` (false), `marketingTextStartHour` (8), `marketingTextEndHour` (21), `vendorReviewMonths` (12).
+- Four seeded rule-book rows: `co.breach_notice_days` (30), `co.breach_ag_threshold` (500), `co.breach_bureau_threshold` (1000), `co.accessibility_fix_days` (30), checked 2026-10-26 (summaries of C.R.S. 6-1-716 and 24-34-802).
+The three new tables are in the backup manifest.
+### BA-3 review evidence (implementation branch)
+
+Additive migration `20261026070000_books_month_review` retains review reasons and accountant-send evidence per month, owner review reminder day (default 15), optional accountant destination, and expense no-receipt explanations. It never rewrites the original ledger or opens a provider connection. Accountants receive a report only when the OWNER explicitly selects Send.
+
+## November 12 — Logins vault and emergency access (VAULT-2, additive)
+
+Migration `20261112000000_vault`.
+- `VaultCredential` — one saved business login: `title`, `url`, and the three secret columns `usernameEncrypted`, `passwordEncrypted`, `notesEncrypted` (AES-256-GCM `v1:` format via `src/lib/field-crypto.ts`, but under the separate `VAULT_ENCRYPTION_KEY` — never the compliance key, never plaintext, never logged; DTOs carry only a masked username and has-value flags). `totpHint` is plain text by design (where the second-step code comes from — never a TOTP secret). `lastRotatedOn` + `rotateEveryMonths` drive the To do rotation reminder; `version` supports edit-conflict checks. Owner-only at the domain boundary: every other role gets the same not-found answer as a missing row. In the backup manifest — backed up still encrypted (a restore without the vault key leaves the values unreadable). Linked from `BusinessPaperwork.credentialId` (VAULT-1).
+- `VaultUnlock` — one row per live unlock: `userId`, `sessionId` (the exact sign-in session), `expiresAt` (grant + 5 minutes). Created only after Better Auth verifies a fresh second-step code. Deleted by sign-out-everywhere, password/email change and second-step change, at the same points ACC-6 forgets remembered devices. Not backed up (null in the manifest).
+- `EmergencyAccessRequest` — the emergency-access lifecycle: `tokenHash` (only the SHA-256 hash of the link token is stored; the token itself is shown to the owner once), `status` (LINK_READY, WAITING, DENIED, CODE_SENT, VERIFIED, CONSUMED, SUPERSEDED), the contact snapshot (`contactName`, `contactEmail`, `contactPhone` — copied from the settings at link creation, so later setting edits never redirect a live request), `requestedAt`, `waitEndsAt`, the reminder stamps (`remindedHalfwayAt`, `remindedDayBeforeAt` — each reminder sends once), `startNoticeFailedAt` (set when the start warning could not be delivered on any channel; shown on the owner's vault page and retried by the daily sweep until a delivery lands, then cleared), `deniedAt`, the one-time code kept only as `codeHash` (SHA-256 of request id + code) with `codeExpiresAt` and `codeAttempts`, and `exportExpiresAt` (code confirmed + 24 hours) with `downloadedAt` set when the one-time export is taken. Not backed up (null in the manifest): a restore re-issues links instead of resurrecting one-time state.
+- `BusinessSettings` gains the emergency settings: `emergencyAccessEnabled` (default false — the feature ships off), `emergencyContactName`, `emergencyContactEmail`, `emergencyContactPhone`, `emergencyWaitDays` (default 7, CHECK 1–30).
+
+Routes: `/desk/vault` and `/desk/vault/[id]` (OWNER only); the public `/emergency/[token]` page and its one-time `/emergency/[token]/download`; the daily reminder sweep at `/api/cron/emergency-access` (registered in `vercel.json` and the automation health registry). The vault lockout is not a column: it is derived from `vault.unlock_failed` audit rows (5 within 15 minutes → locked until 30 minutes after the latest failure).

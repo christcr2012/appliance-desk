@@ -1,10 +1,14 @@
+import { handleDisputeEvent } from "@/domains/disputes/webhook";
+import { assertActiveTeamActor } from "@/lib/team-actor";
+import { postPaidInvoiceAfterWebhook, postCheckoutPaymentAfterWebhook,
+ postRefundsAfterWebhook } from "@/domains/books/immediate";
 import type Stripe from "stripe";
 import { processSigningCheckoutEvent } from "./signing-payment-settlement";
 import { isLocalInvoiceSession, recordLocalInvoiceCheckoutFailure, recordLocalInvoiceCheckoutPayment } from "./local-invoice-checkout";
 import { signingInvoiceMirrorProof } from "./signing-invoice-mirror";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { RDF_LINE_DESCRIPTION } from "@/domains/tax/rdf-charges";
+import { RDF_LINE_DESCRIPTION, RDF_LINE_DESCRIPTION_LEGACY } from "@/domains/tax/rdf-charges";
 import { completeProviderOperation } from "./provider-ops";
 import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
 import {
@@ -21,6 +25,15 @@ import {
   MissingWebhookEvidenceError,
   type WebhookEvidence,
 } from "./webhook-evidence";
+import {
+  attachInFlightRowsToBill,
+  clearRowForFailedInvoice,
+  clearRowsForPaidInvoice,
+  handlePaymentIntentEnded,
+  handlePaymentIntentProcessing,
+  onLocalCheckoutAsyncResult,
+  onLocalCheckoutUnpaid,
+} from "./in-flight-writers";
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
 import {
@@ -43,8 +56,10 @@ async function markProcessed(db: Prisma.TransactionClient, event: Stripe.Event):
   await db.webhookEvent.create({ data: { id: event.id, type: event.type } });
 }
 
-export function inferLineItemKind(description: string | null, rdfRecordId?: string): InvoiceLineItemKind {
+export function inferLineItemKind(description: string | null, rdfRecordId?: string, lateFeeChargeId?: string): InvoiceLineItemKind {
   if (rdfRecordId) return "RETAIL_DELIVERY_FEE";
+  // FEE-1: a late fee the customer was warned about, sent to Stripe as its own invoice item (metadata carries the PendingCharge id).
+  if (lateFeeChargeId) return "LATE_FEE";
   if (description === "Security deposit") return "DEPOSIT";
   if (description === "Damage waiver") return "DAMAGE_WAIVER";
   if (description?.startsWith("Late return – ")) return "LATE_RETURN";
@@ -66,7 +81,8 @@ export async function attachRdfInvoiceLineInTx(
 ): Promise<void> {
   const recordId = stripeLine.metadata?.rdf_record_id;
   if (!recordId) return;
-  if (stripeLine.description !== RDF_LINE_DESCRIPTION)
+  // Lines sent before the TFA-2 wording change carry the legacy text.
+  if (stripeLine.description !== RDF_LINE_DESCRIPTION && stripeLine.description !== RDF_LINE_DESCRIPTION_LEGACY)
     throw new Error("Stripe RDF line description does not match its provider intent.");
   const op = await db.providerOperation.findUnique({
     where: { idempotencyKey: `rdf-${recordId}` },
@@ -224,7 +240,7 @@ export async function mirrorStripeInvoiceLines(
     stripeLine: line,
     kind: signingCreditLine !== null && line.id === signingCreditLine.lineId
       ? "CREDIT" as const
-      : inferLineItemKind(line.description, line.metadata?.rdf_record_id),
+      : inferLineItemKind(line.description, line.metadata?.rdf_record_id, line.metadata?.late_fee_pending_charge_id),
     description: signingCreditLine !== null && line.id === signingCreditLine.lineId
       ? signingCreditLine.description
       : line.description ?? "Charge",
@@ -245,8 +261,8 @@ export async function mirrorStripeInvoiceLines(
     const unshown = await db.customerCredit.findMany({
       where: {
         customerId,
-        // Credits sent to Stripe for visits and rental changes: late delivery, machines out for repair (W-21A), set to single price (W-21B).
-        sourceType: { in: [LATE_DELIVERY_CREDIT_SOURCE, "OUT_OF_SERVICE", "SET_SINGLE_PRICE"] },
+        // Credits sent to Stripe for visits and rental changes (and waived late fees): late delivery, machines out for repair (W-21A), set to single price (W-21B).
+        sourceType: { in: [LATE_DELIVERY_CREDIT_SOURCE, "OUT_OF_SERVICE", "SET_SINGLE_PRICE", "LATE_FEE_WAIVER"] },
         appliedViaStripeAt: { not: null },
         shownOnInvoiceId: null,
       },
@@ -274,6 +290,14 @@ export async function mirrorStripeInvoiceLines(
       select: { id: true },
     });
     await attachRdfInvoiceLineInTx(db, line.stripeLine, created.id, agreementId, invoiceId);
+    const lateFeeChargeId = line.stripeLine.metadata?.late_fee_pending_charge_id;
+    if (lateFeeChargeId) {
+      // FEE-1: this bill now carries the pending late fee. Recorded once; a replay finds it already applied.
+      await db.pendingCharge.updateMany({
+        where: { id: lateFeeChargeId, customerId, appliedToInvoiceId: null },
+        data: { appliedToInvoiceId: invoiceId },
+      });
+    }
     mirroredChargeLines.push({
       stripeLine: line.stripeLine,
       invoiceLineItemId: created.id,
@@ -342,6 +366,7 @@ async function recordPaidInvoice(
   if (recorded && (recorded.agreementId !== agreementId || recorded.customerId !== customerId)) {
     throw new Error("Stripe invoice is already recorded for another agreement/customer");
   }
+  if (recorded) await attachInFlightRowsToBill(db, stripeInvoice.id, recorded.id);
   if (recorded?.status === "PAID") return;
   const targetInvoiceId = existingInvoiceId ?? recorded?.id;
 
@@ -415,6 +440,9 @@ async function recordPaidInvoice(
         },
       });
 
+  // BILL-1: a bank payment that was being confirmed before this bill existed now belongs to it.
+  await attachInFlightRowsToBill(db, stripeInvoice.id, invoice.id);
+
   const mirrored = await mirrorStripeInvoiceLines(
     db,
     stripeInvoice,
@@ -480,6 +508,9 @@ async function recordSigningPaymentMethod(
   paymentMethodId: string | null,
 ): Promise<void> {
   if (!paymentMethodId) return;
+  // OPS-5: after a disputed bank payment, autopay stays off until the owner clears the block.
+  const blocked = await db.customer.findUnique({ where: { id: customerId }, select: { bankDebitBlockedAt: true } });
+  if (blocked?.bankDebitBlockedAt) return;
   await db.customer.update({
     where: { id: customerId },
     data: { stripeDefaultPaymentMethodId: paymentMethodId },
@@ -682,10 +713,13 @@ async function handleCheckoutSessionCompleted(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
+  event: Stripe.Event,
 ): Promise<void> {
   assertNoUnsettledW22Checkout(session);
   if (isLocalInvoiceSession(session)) {
     await recordLocalInvoiceCheckoutPayment(db, evidence, session);
+    // BILL-1: a bank payment the customer started but the bank has not confirmed yet is flagged "being confirmed".
+    await onLocalCheckoutUnpaid(db, evidence, session, event);
     return;
   }
   const estimateId = session.metadata?.estimateId;
@@ -707,6 +741,9 @@ async function handleCheckoutSessionCompleted(
       select: { customerId: true },
     });
     await recordPaidInvoice(db, evidence, stripeInvoice, agreementId, agreement.customerId);
+    // BILL-1: Stripe says this invoice is paid and it is now recorded, so any bank payment being confirmed for it is done.
+    const recordedBill = await db.invoice.findUnique({ where: { stripeInvoiceId: invoiceId }, select: { id: true } });
+    await clearRowsForPaidInvoice(db, invoiceId, recordedBill?.id ?? null, event);
     return;
   }
 
@@ -749,6 +786,7 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
+  event: Stripe.Event,
 ): Promise<void> {
   const paymentIntentId =
     typeof session.payment_intent === "string"
@@ -759,6 +797,7 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
   assertNoUnsettledW22Checkout(session);
   if (isLocalInvoiceSession(session)) {
     await recordLocalInvoiceCheckoutPayment(db, evidence, session);
+    await onLocalCheckoutAsyncResult(db, session, event, "SUCCEEDED");
     return;
   }
   const estimateId = session.metadata?.estimateId;
@@ -796,10 +835,12 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
 async function handleCheckoutSessionAsyncPaymentFailed(
   db: Prisma.TransactionClient,
   session: Stripe.Checkout.Session,
+  event: Stripe.Event,
 ): Promise<void> {
   assertNoUnsettledW22Checkout(session);
   if (isLocalInvoiceSession(session)) {
     await recordLocalInvoiceCheckoutFailure(db, session);
+    await onLocalCheckoutAsyncResult(db, session, event, "FAILED");
     return;
   }
   const estimateId = session.metadata?.estimateId;
@@ -848,6 +889,7 @@ async function handleInvoicePaid(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   webhookInvoice: Stripe.Invoice,
+  event: Stripe.Event,
 ): Promise<string | null> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
   if (!subscriptionId) return null;
@@ -877,8 +919,11 @@ async function handleInvoicePaid(
 
   const paidInvoice = await db.invoice.findUnique({
     where: { stripeInvoiceId: webhookInvoice.id },
-    select: { status: true, amountPaidCents: true },
+    select: { id: true, status: true, amountPaidCents: true },
   });
+  // BILL-1: Stripe says paid and the money is now recorded (applied, or held for the owner when the bill was closed):
+  // every bank payment that was being confirmed for this bill is done.
+  await clearRowsForPaidInvoice(db, webhookInvoice.id as string, paidInvoice?.id ?? null, event);
   if (paidInvoice?.status !== "PAID" || paidInvoice.amountPaidCents <= 0) {
     return rewardingReferralForCustomer(db, agreement.customerId);
   }
@@ -897,6 +942,7 @@ async function handleInvoicePaymentFailed(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   webhookInvoice: Stripe.Invoice,
+  event: Stripe.Event,
 ): Promise<void> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
   if (!subscriptionId) return;
@@ -926,6 +972,8 @@ async function handleInvoicePaymentFailed(
       stripePaymentIntentId: extractPaymentIntentId(webhookInvoice),
       failureReason: "Stripe reported this invoice's payment failed.",
     });
+    await attachInFlightRowsToBill(db, webhookInvoice.id, existing.id);
+    await clearRowForFailedInvoice(db, extractPaymentIntentId(webhookInvoice), event);
     return;
   }
 
@@ -970,6 +1018,9 @@ async function handleInvoicePaymentFailed(
     stripePaymentIntentId: extractPaymentIntentId(stripeInvoice),
     failureReason: "Stripe reported this invoice's payment failed.",
   });
+  // BILL-1: a bank payment that was being confirmed before this bill existed now belongs to it; a failure clears it.
+  await attachInFlightRowsToBill(db, stripeInvoice.id, invoice.id);
+  await clearRowForFailedInvoice(db, extractPaymentIntentId(stripeInvoice) ?? extractPaymentIntentId(webhookInvoice), event);
 }
 
 async function handleChargeRefunded(
@@ -1137,6 +1188,7 @@ async function processLockedEvent(
         db,
         evidence,
         event.data.object as Stripe.Checkout.Session,
+        event,
       );
       break;
     case "checkout.session.async_payment_succeeded":
@@ -1147,6 +1199,7 @@ async function processLockedEvent(
         db,
         evidence,
         event.data.object as Stripe.Checkout.Session,
+        event,
       );
       break;
     case "checkout.session.async_payment_failed":
@@ -1156,6 +1209,7 @@ async function processLockedEvent(
       await handleCheckoutSessionAsyncPaymentFailed(
         db,
         event.data.object as Stripe.Checkout.Session,
+        event,
       );
       break;
     case "invoice.paid": {
@@ -1163,15 +1217,32 @@ async function processLockedEvent(
         db,
         evidence,
         event.data.object as Stripe.Invoice,
+        event,
       );
       if (referralId) referralIdsToSettle.push(referralId);
       break;
     }
     case "invoice.payment_failed":
-      await handleInvoicePaymentFailed(db, evidence, event.data.object as Stripe.Invoice);
+      await handleInvoicePaymentFailed(db, evidence, event.data.object as Stripe.Invoice, event);
+      break;
+    // BILL-1: a bank payment the bank is confirming ("Being confirmed"), or that did not go through.
+    case "payment_intent.processing":
+      await handlePaymentIntentProcessing(db, evidence, event);
+      break;
+    case "payment_intent.payment_failed":
+      await handlePaymentIntentEnded(db, evidence, event, "FAILED");
+      break;
+    case "payment_intent.canceled":
+      await handlePaymentIntentEnded(db, evidence, event, "CANCELED");
       break;
     case "charge.refunded":
       await handleChargeRefunded(db, event.data.object as Stripe.Charge);
+      break;
+    // OPS-5: a card or bank dispute. Recorded and flagged for the owner; it never moves money.
+    case "charge.dispute.created":
+    case "charge.dispute.updated":
+    case "charge.dispute.closed":
+      await handleDisputeEvent(db, event);
       break;
     case "customer.subscription.deleted":
       await handleSubscriptionDeleted(db, event.data.object as Stripe.Subscription);
@@ -1207,8 +1278,16 @@ const MAX_EVIDENCE_REFILLS = 5;
  *    so route.ts can return 500 and Stripe can safely retry. Referral provider
  *    writes are returned to the route and happen only after the commit.
  */
+export type WebhookReplayOptions = {
+  /** An owner or admin acting from the desk (BILL-1 "Record it now"): checked again inside the locked transaction. */
+  actorUserId?: string | null;
+  /** Written in the same transaction, only when the event is applied now (not when it was already applied). */
+  audit?: { action: string; entityType: string; entityId: string; newValue?: Prisma.InputJsonValue };
+};
+
 export async function processStripeWebhookEvent(
   event: Stripe.Event,
+  options: WebhookReplayOptions = {},
 ): Promise<StripeWebhookProcessingResult> {
   const evidence = await gatherWebhookEvidence(event);
   for (let refill = 0; ; refill += 1) {
@@ -1216,10 +1295,39 @@ export async function processStripeWebhookEvent(
       const referralIdsToSettle = await prisma.$transaction(
         async (db) => {
           await db.$queryRaw`SELECT pg_advisory_xact_lock(174831, 1)::text`;
-          return processLockedEvent(db, evidence, event);
+          if (options.actorUserId) await assertActiveTeamActor(db, options.actorUserId, ["OWNER", "ADMIN"]);
+          const wasProcessed = options.audit ? await alreadyProcessed(db, event.id) : true;
+          const ids = await processLockedEvent(db, evidence, event);
+          if (options.audit && !wasProcessed) {
+            await db.auditLog.create({
+              data: {
+                action: options.audit.action,
+                entityType: options.audit.entityType,
+                entityId: options.audit.entityId,
+                userId: options.actorUserId ?? null,
+                newValue: options.audit.newValue,
+              },
+            });
+          }
+          return ids;
         },
         { maxWait: 10_000, timeout: 30_000 },
       );
+      // This follows the committed webhook transaction and never changes its result.
+      if(event.type==="invoice.paid")await postPaidInvoiceAfterWebhook(
+       (event.data.object as Stripe.Invoice).id as string);
+      if(event.type==="checkout.session.completed"||event.type==="checkout.session.async_payment_succeeded"){
+       const session=event.data.object as Stripe.Checkout.Session;
+       if(session.payment_status==="paid"){
+        const paymentIntentId=idOf(session.payment_intent);
+        if(paymentIntentId)await postCheckoutPaymentAfterWebhook(paymentIntentId);
+       }
+      }
+      if(event.type==="charge.refunded"){
+       const charge=event.data.object as Stripe.Charge;
+       const ids=charge.refunds?.data.map(refund=>refund.id).filter((id):id is string=>typeof id==="string")??[];
+       if(ids.length)await postRefundsAfterWebhook(ids);
+      }
       return { referralIdsToSettle };
     } catch (error) {
       if (!(error instanceof MissingWebhookEvidenceError) || refill >= MAX_EVIDENCE_REFILLS) {

@@ -28,4 +28,77 @@ browser-type comparison.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Built on branch `ai/marley/acc-6` (PR TBD): KnownDevice table + `BusinessSettings.trustedDeviceDays` (migration
+`20261030010000_known_devices`); owner setting on Settings › Security with the 30-day starting value and a Decisions
+& reviews question (`TRUSTED-DEVICE-DAYS`); the login two-step form offers "Remember this device for {n} days"
+(hidden at 0); My account › Devices lists remembered devices with "Forget remembered devices"; a sign-in gate removes
+a trust row whose device is no longer remembered; a hooks-only plugin registered after the two-factor plugin records
+finished sign-ins (device cookie, new-device notice, remembered-until date) and clamps the library's trust row;
+forgetting is wired into password change, forgot-password reset, email change, second-step change, turning two-step
+off, owner reset, removal, access change and sign-out-everywhere; device rows are left out of backups and removed by
+privacy deletion. Tests: `tests/trusted-devices.test.ts` (pure rules), `tests/known-devices.test.ts` (fakes),
+`tests/trusted-devices-integration.test.ts` (throwaway Postgres, full sign-in flow), `e2e/my-account.spec.ts`
+(remembered device shown and forgotten; checkbox hidden at 0). Unit tests pass locally; database and browser tests
+run in CI only (no local Postgres here). PR #616 opened (head 8b0199f9); `ci` came back red — two My account browser
+tests (a locator matching two elements; a settings save cancelled by an immediate reload), the customer
+session-deactivation test (ACC-6 records customer sign-ins in the audit log, so the fixture deletes its audit rows
+before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting the phone width
+before the desktop sidebar padding was recalculated — fixed in the shared scan helper by BA-1, now reused here), and
+one unit test timing out on a slow first import (import hoisted). Fixes in commit 6405616f; main (BA-1 #610) merged
+in (a39ae329). Pushed as head 7df70d47, but no check run started on it in 45 minutes (snapshot pushes do not
+reliably start CI). While waiting, the device integration test was run for the first time on the lane's own test
+database (port 5435): it failed 8 of 10, a fifth failure the unit shard's bare "exit code 1" had hidden. Causes,
+all in the test (the feature works): mixed-case fixture emails vs the app's lowercase storage, a stale trust cookie
+replayed after rotation, the device cookie not presented to the gate, and the session token read from the signed
+cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. The hand-started run
+(#2617) then came back red in 2 minutes with no test run: the seed fails on a missing `booksLastBroughtUpToDateAt`
+column (the snapshot manifest had been diffed against current main, omitting the BA-1 migration and 38 other main
+files from the remote branch created at 0516a31 — re-pushed with the manifest diffed against 0516a31, 76 files);
+three type errors in the test from that fix round (typecheck not re-run after the edit — fixed, typecheck clean);
+and 5 secret-scan leaks (four BA-1 false positives restored by the corrected push, plus the allowlist entry itself
+flagged for its own SHA — allowlisted). The corrected run (head 1005486e, started with the GitHub MCP's
+`github_actions_dispatch`) is green on unit shards, typecheck, secret scan, browser-b and browser-c; browser-a
+failed on the two ACC-6 my-account tests — the forget-confirm text uses a curly apostrophe the test didn't match,
+and the two-factor login page was prerendered at build time so it kept offering "Remember this device" after the
+owner turned it off (a real bug: the page is now force-dynamic). Both fixed; browser-d failed on the
+offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — a timing flake,
+watched on the re-run. The re-run (head 2aaea9e7) passed browser-a and browser-d, but browser-c failed with no test
+failing — all 106 tests passed and the shard ran 3.1m against the 180s phase budget, so staff-security (~18
+test-seconds) and fleet-report (~14) moved from browser-c to browser-b, the lightest group, with no test omitted
+and the budget unchanged. `ci` green at the exact head and every review comment read are still to do.
+Update 2026-10-26 (night): `main` moved (BILL-1 #612, preview-storage #609), merged into this branch as 164c968
+(conflicts only in STATUS.md and DATABASE.md, both kept both entries); re-checked locally — typecheck clean, lint
+0 errors, 41 unit tests pass. Push still blocked: the branch-creation approval timed out unanswered (01:39 MDT).
+Update 2026-10-26 (morning): `main` moved again (FEE-1 #614), merged as 4636808, re-checked (typecheck clean,
+lint 0 errors, 41 unit tests pass). Chris added the repo to the GitHub app installation; branch pushed and
+PR #616 opened (head 8f703069); CI pending.
+
+Two deviations from `docs/build-specs/engines/TRUSTED-DEVICES.md`, both from what the library actually does:
+- The spec's rotation clamp in the app's global `after` hook cannot work: the app's hook runs BEFORE the two-factor
+  plugin's sign-in hook, which rotates the trust row afterwards (a fresh row, full 90-day expiry). The follow-up
+  lives instead in a hooks-only plugin registered after the two-factor plugin, whose `after` hook runs after the
+  rotation. This also fixes a pre-existing issue: the old global hook recorded a new-device notice for a sign-in
+  still waiting for its code (at that point the session still looks finished).
+- The spec's Decisions subject has `recommended: 30`, but DEC-1a's registry test requires every subject's
+  `recommended` to stay null until DEC-2 adds researched values with sources. The subject is registered with
+  `recommended: null`; the 30-day starting value lives in the setting itself and on the Settings screen, and Chris
+  approved 30 days on 2026-10-25.
+
+CI then came back all green at head beb787c4 (run 40350332943). Codex's review (written against the opening head
+8f703069) left two findings, both now disposed: a P2 — the two-step login page could be prerendered, so it kept
+offering "Remember this device" after the owner turned remembering off — already fixed in the earlier round by
+making the page request-rendered (`force-dynamic`), verified at the current head; and a P1 — the My account
+"Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated
+between the page's role check and the write could still have their trust rows deleted. Fixed:
+`forgetTrustedDevices` now takes an `assertActor` option and the My account action passes it, so the forget
+re-checks the actor inside the transaction (the repo's row-lock rule); the internal cleanup paths (password
+change, reset, email change, method switch, owner actions) do not pass it and are unchanged. Three unit tests
+cover the active, deactivated, and internal-cleanup paths (27 focused unit tests pass; typecheck clean). Pushed
+for an exact-head rerun; on green, reply to and resolve both threads, then merge.
+
+Merged 2026-10-26: PR #628 (the rebuilt PR — #616 was closed automatically when its branch was reset onto
+current main after the snapshot history became unmergeable) went in as merge commit 66543a92 at head
+eac60bcd, with ci green at that exact head (one failed-jobs rerun for a browser-a phase-budget overrun on
+the PR-event run; a dispatched run on the same head was fully green; 0 review threads on #628). Both Codex
+findings stand disposed (P1 fixed, P2 already fixed — recorded in #628's body; the review tool could not
+resolve #616's threads after the history rewrite). Card complete. Next in this lane: VAULT-1.

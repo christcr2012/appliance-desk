@@ -11,12 +11,26 @@ type ModelDelegate = {
 // business-critical recovery state so provider events are not applied twice
 // after a restore.
 export const BACKUP_MODEL_POLICY = {
+  // MCP-3: OAuth secrets, access/refresh tokens, registered clients and signing keys are never restored.
+  Jwks: null,
+  OauthClient: null,
+  OauthResource: null,
+  OauthClientResource: null,
+  OauthRefreshToken: null,
+  OauthAccessToken: null,
+  OauthConsent: null,
+  OauthClientAssertion: null,
+  // Connection labels are business evidence, but a restore must leave all disconnected.
+  McpConnection: "mcpConnection",
   User: "user",
   Session: null,
   Account: null,
   Verification: null,
   RateLimit: null,
   TwoFactor: null,
+  // ACC-6: device rows are only identifiers for the sign-in notice and "remember this device"; a restore
+  // re-records devices as people sign in, so they are never restored.
+  KnownDevice: null,
   Customer: "customer",
   Referral: "referral",
   ServiceAddress: "serviceAddress",
@@ -43,6 +57,8 @@ export const BACKUP_MODEL_POLICY = {
   PurchaseOrderReceiptOperation: "purchaseOrderReceiptOperation",
   PartStockMovement: "partStockMovement",
   RetiredAppliancePlan: "retiredAppliancePlan",
+  // OPS-2: the signed refrigerant statement details for scrapped or discarded appliances are business records.
+  RefrigerantRecord: "refrigerantRecord",
   ScrapPayment: "scrapPayment",
   StaffCapabilityOverride: "staffCapabilityOverride",
   // ACC-2: invitations are short-lived and hold only a hash of a link code; a restore re-invites instead.
@@ -98,7 +114,18 @@ export const BACKUP_MODEL_POLICY = {
   TaxJurisdiction: "taxJurisdiction",
   TaxRateVersion: "taxRateVersion",
   TaxRateObservation: "taxRateObservation",
+  // TFA-1: the dated rule book is business tax evidence; it is restored.
+  LegalRuleVersion: "legalRuleVersion",
+  // TFA-2: prepared delivery-fee switches and their owner approvals.
+  RetailDeliveryFeeSwitch: "retailDeliveryFeeSwitch",
+  // TFA-2 §8: filing-frequency advice rows are tax-filing evidence.
+  FilingFrequencyAdvice: "filingFrequencyAdvice",
   OfficialSourceWatch: "officialSourceWatch",
+  // TFA-3: stored official-page readings and their approval trail.
+  LegalRuleObservation: "legalRuleObservation",
+  // FEETAX-2: delivery-area readiness and per-place delivery counts.
+  JurisdictionReadiness: "jurisdictionReadiness",
+  JurisdictionDeliveryCount: "jurisdictionDeliveryCount",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
   TaxabilityRuleVersion: "taxabilityRuleVersion",
@@ -111,6 +138,17 @@ export const BACKUP_MODEL_POLICY = {
   TaxFilingPeriod: "taxFilingPeriod",
   TaxFilingAmendment: "taxFilingAmendment",
   BusinessPaperwork: "businessPaperwork",
+  // VAULT-1: record file index rows are backed up (the file bytes ride the
+  // nightly media copy of the private store). The parent record's saved
+  // number stays encrypted in backups too; a restore needs the same key.
+  BusinessRecordFile: "businessRecordFile",
+  // VAULT-2: logins are backed up still encrypted (a restore needs the same
+  // VAULT_ENCRYPTION_KEY). Unlock rows are session-bound and meaningless
+  // after a restore; emergency requests hold a one-time token hash and
+  // one-time state, so they are never restored — the owner re-issues a link.
+  VaultCredential: "vaultCredential",
+  VaultUnlock: null,
+  EmergencyAccessRequest: null,
   PurchaseUseTax: "purchaseUseTax",
   // W-14/W-2: purchase records, their receipt pages and the parts-receipt tax answer are tax evidence.
   Purchase: "purchase",
@@ -119,6 +157,13 @@ export const BACKUP_MODEL_POLICY = {
   RetailDeliveryFeeRate: "retailDeliveryFeeRate",
   RetailDeliveryFeeRecord: "retailDeliveryFeeRecord",
   BusinessSettings: "businessSettings",
+  // CMP-1: compliance facts and filings are business records. einEncrypted
+  // stays encrypted in backups too; a restore needs the same key.
+  ComplianceProfile: "complianceProfile",
+  ComplianceFiling: "complianceFiling",
+  W9Request: "w9Request",
+  TaxYearFacts: "taxYearFacts",
+  PayrollImport: "payrollImport",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",
@@ -138,6 +183,7 @@ export const BACKUP_MODEL_POLICY = {
   LaunchSubscriber: "launchSubscriber",
   LaunchDelivery: "launchDelivery",
   AutomationRun: "automationRun",
+  BackupArtifact: "backupArtifact",
   SystemIssue: "systemIssue",
   SystemIssueNote: "systemIssueNote",
   OpsAgentKey: null,
@@ -194,6 +240,7 @@ export const BACKUP_MODEL_POLICY = {
   BudgetPlanVersion: "budgetPlanVersion",
   BudgetReviewSnapshot: "budgetReviewSnapshot",
   AccountingPeriod: "accountingPeriod",
+  BooksProblem: "booksProblem",
   StripeBalanceTransaction: "stripeBalanceTransaction",
   IntegrationCursor: "integrationCursor",
   ExpenseCategory: "expenseCategory",
@@ -206,7 +253,34 @@ export const BACKUP_MODEL_POLICY = {
   FeedbackEntry: "feedbackEntry",
   FeedbackAttachment: "feedbackAttachment",
   FeedbackEvent: "feedbackEvent",
+  // BILL-1: "the bank is confirming a payment" flags. Business state (a bill shows "Being confirmed" and gets no late fee while one is open), restored after bills and agreements.
+  BankPaymentInFlight: "bankPaymentInFlight",
+  PendingCharge: "pendingCharge",
+  // OPS-5: payment disputes (Stripe's record, Chris's answer and the bank-dispute follow-up) are business records.
+  PaymentDispute: "paymentDispute",
+  // OPS-6: the past-due ladder steps, the per-rental collection record (pickup agreement, court order, objection) and the small-claims filings Chris recorded are business records.
+  CollectionStep: "collectionStep",
+  CollectionCase: "collectionCase",
+  SmallClaimsFiling: "smallClaimsFiling",
+  // OPS-7: security incidents, the service-provider list and accessibility complaints are business records.
+  SecurityIncident: "securityIncident",
+  ServiceVendor: "serviceVendor",
+  AccessibilityComplaint: "accessibilityComplaint",
 
+  // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
+  RecallMatch: "recallMatch",
+  RecallWatchState: "recallWatchState",
+  SafetyIncident: "safetyIncident",
+  // OPS-8: which December check-up items the owner looked at, per year.
+  YearlyCheckup: "yearlyCheckup",
+
+  // OPS-3: the delivery vehicle and its mileage log are business records.
+  FleetVehicle: "fleetVehicle",
+  MileageTrip: "mileageTrip",
+  // OPS-4: insurance policies and certificate requests are business records.
+  OwnerInsurancePolicy: "ownerInsurancePolicy",
+  InsuranceCertificateRequest: "insuranceCertificateRequest",
+  TeamCertification: "teamCertification",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

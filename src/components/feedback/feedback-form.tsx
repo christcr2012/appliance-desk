@@ -115,7 +115,7 @@ export function FeedbackForm({
 
   const busy = pending || preparing;
   return (
-    <form onSubmit={submit} className="space-y-5" noValidate>
+    <form onSubmit={submit} className="min-w-0 space-y-5 [overflow-wrap:anywhere]" noValidate>
       <fieldset className="space-y-2">
         <legend className="text-sm font-semibold text-ink">What is this about?</legend>
         <div className="grid gap-3 sm:grid-cols-2">

@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { Prisma, type ExportTarget, type LedgerAccountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
-import { openingBalance } from "./posting-rules";
+import { openingBalance, balancedPlan, type PostingLine } from "./posting-rules";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { writeJournal } from "./post";
 
 export type BooksActor = { id: string; role: "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER" };
@@ -52,6 +53,81 @@ export async function initializeBooks(actor: BooksActor, input: {
     }});
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
+export type OpeningBalanceValues={bankCents:number;stripeCents:number;cardCents:number};
+const OPENING_ROLES=["BANK","STRIPE_CLEARING","CARD"] as const;
+async function openingTotals(tx:Prisma.TransactionClient,startDate:Date){
+  const key=businessDateKey(startDate);
+  const rows=await tx.journalEntry.findMany({where:{
+   sourceType:"OPENING",sourceId:key,OR:[
+    {eventKind:"OPENING_BALANCE"},{eventKind:{startsWith:"OPENING_CORRECTED_"}},
+   ],
+  },select:{eventKind:true,lines:{select:{
+   debitCents:true,creditCents:true,ledgerAccount:{select:{systemRole:true}},
+  }}}});
+  const net=new Map<string,number>();
+  for(const row of rows)for(const line of row.lines){
+   const role=line.ledgerAccount.systemRole;
+   if(role&&OPENING_ROLES.some(x=>x===role))
+    net.set(role,(net.get(role)??0)+line.debitCents-line.creditCents);
+  }
+  return {bankCents:net.get("BANK")??0,stripeCents:net.get("STRIPE_CLEARING")??0,
+   cardCents:-(net.get("CARD")??0),
+   corrections:rows.filter(row=>row.eventKind.startsWith("OPENING_CORRECTED_")).length};
+}
+export async function currentOpeningBalances(actor:BooksActor){
+ allow(actor,"OWNER","ADMIN");
+ const settings=await prisma.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}});
+ if(!settings?.booksStartDate)throw new BooksInputError("Start your books before correcting starting balances.");
+ const totals=await prisma.$transaction(tx=>openingTotals(tx,settings.booksStartDate!));
+ return {startDate:settings.booksStartDate,...totals};
+}
+/** The real owner's corrected numbers are a new, balanced journal; original entries never change. */
+export async function correctOpeningBalances(actor:BooksActor,input:OpeningBalanceValues & {reason:string}){
+ allow(actor,"OWNER");
+ const bank=safeCents(input.bankCents),stripe=safeCents(input.stripeCents),card=safeCents(input.cardCents);
+ const reason=safeText(input.reason,300);
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,actor.id,["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "BooksPostingRevision" WHERE "id" = ${"singleton"} FOR UPDATE`;
+  const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}});
+  if(!settings?.booksStartDate)throw new BooksInputError("Start your books before correcting balances.");
+  const current=await openingTotals(tx,settings.booksStartDate);
+  const ds=stripe-current.stripeCents,db=bank-current.bankCents,dc=card-current.cardCents;
+  if(!ds&&!db&&!dc)throw new BooksInputError("These balances already match. Nothing was changed.");
+  const lines:PostingLine[]=[];
+  const signed=(role:string,diff:number)=>{
+   if(diff>0)lines.push({role,debitCents:diff,creditCents:0});
+   else if(diff<0)lines.push({role,debitCents:0,creditCents:-diff});
+  };
+  signed("STRIPE_CLEARING",ds);
+  signed("BANK",db);
+  signed("CARD",-dc);
+  signed("OWNER_CONTRIBUTIONS",-(ds+db-dc));
+  const plan=balancedPlan(settings.booksStartDate,"Starting balances corrected: "+reason,lines);
+  if(!plan)throw new BooksInputError("No change to record.");
+  const n=current.corrections+1;
+  const eventKind="OPENING_CORRECTED_"+n;
+  if(!await writeJournal(tx,"OPENING",businessDateKey(settings.booksStartDate),eventKind,plan))
+   throw new BooksInputError("Starting balances were changed in another request; refresh and try again.");
+  await tx.auditLog.create({data:{userId:actor.id,action:"books.opening.correct",
+   entityType:"BusinessSettings",entityId:"singleton",
+   oldValue:{bankCents:current.bankCents,stripeCents:current.stripeCents,cardCents:current.cardCents},
+   newValue:{bankCents:bank,stripeCents:stripe,cardCents:card,reason,eventKind}}});
+  return {eventKind};
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+}
+/** A recommendation, never an owner decision; the owner can change the date. */
+export async function suggestedBooksStartDate(now=new Date()){
+ const [appliance,invoice,expense]=await Promise.all([
+  prisma.appliance.findFirst({where:{purchaseDate:{not:null}},orderBy:{purchaseDate:"asc"},select:{purchaseDate:true}}),
+  prisma.invoice.findFirst({orderBy:{createdAt:"asc"},select:{createdAt:true}}),
+  prisma.expense.findFirst({orderBy:{spentOn:"asc"},select:{spentOn:true}}),
+ ]);
+ return businessDateKey(new Date(Math.min(now.getTime(),
+  ...[appliance?.purchaseDate,invoice?.createdAt,expense?.spentOn].filter((d):d is Date=>d instanceof Date)
+   .map(d=>d.getTime()))));
+}
+
 export async function renameAccount(actor:BooksActor, accountId:string, name:string) {
   allow(actor,"OWNER");
   const label=safeText(name);
@@ -159,9 +235,8 @@ export async function reopenAccountingMonth(actor:BooksActor,key:string,reason:s
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
 /** K-2B's immutable review export; K-5 adds provider-specific journal import formats. */
-export async function exportMonthReview(actor:BooksActor,key:string) {
-  allow(actor,"OWNER","ADMIN");periodKey(key);
-  return prisma.$transaction(async tx=>{
+async function exportMonthReviewInTx(tx:Prisma.TransactionClient,actor:BooksActor,key:string){
+
     const entries=await tx.journalEntry.findMany({where:{periodKey:key},include:{lines:{include:{ledgerAccount:true}}},orderBy:{entryNumber:"asc"}});
     const cleanCell=(value:string)=>'"'+(/^[=+@\-\t\r]/.test(value)?"'"+value:value).replaceAll('"','""')+'"';
     const csv=['Date,Entry,Source,Account,Debit cents,Credit cents,Memo',
@@ -179,5 +254,68 @@ export async function exportMonthReview(actor:BooksActor,key:string) {
     await tx.auditLog.create({data:{userId:actor.id,action:"books.export.review",entityType:"ExportBatch",
       entityId:batch.id,newValue:{month:key,entries:entries.length,sha256:fingerprint}}});
     return {batchId:batch.id,csv,fileName:batch.fileName};
+}
+export async function exportMonthReview(actor:BooksActor,key:string){
+ allow(actor,"OWNER","ADMIN");periodKey(key);
+ return prisma.$transaction(tx=>exportMonthReviewInTx(tx,actor,key));
+}
+
+/** Month lock and its audit/export are one transaction, not separate button clicks. */
+export async function closeAccountingMonthWithReview(actor:BooksActor,key:string,
+ notes:{expenses?:string;payments?:string}={}){
+ allow(actor,"OWNER");periodKey(key);
+ const clean=(value:string|undefined)=>{
+  const text=(value??"").trim();
+  if(text.length>300)throw new BooksInputError("Review explanation must be 300 characters or fewer.");
+  return text;
+ };
+ const expenses=clean(notes.expenses),payments=clean(notes.payments);
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,actor.id,["OWNER"]);
+  await tx.$queryRaw`SELECT "revision" FROM "BooksPostingRevision"
+   WHERE "id"=${"singleton"} FOR UPDATE`;
+  await tx.$queryRaw`SELECT 1 AS locked FROM
+   (SELECT pg_advisory_xact_lock(hashtext(${"books-period:"+key}))) AS guard`;
+  const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
+   select:{booksStartDate:true}});
+  if(!settings?.booksStartDate)throw new BooksInputError("Start your books before locking.");
+  const was=await tx.accountingPeriod.findUnique({where:{periodKey:key}});
+  if(was?.status==="CLOSED")return {alreadyClosed:true,exported:false};
+  // Every Books evidence read that authorizes this close belongs to this
+  // Serializable snapshot, after the ledger and month locks are acquired.
+  const {monthReview}=await import("./month-review");
+  const review=await monthReview(actor,key,new Date(),tx);
+  if(!review.checks.sources.ok||!review.checks.equipment.ok)
+   throw new BooksInputError("First finish the missing source journals and equipment depreciation.");
+  if(!review.checks.costs.ok&&!expenses)
+   throw new BooksInputError("Explain why the unverified expenses are being locked.");
+  if(!review.checks.payments.ok&&!payments)
+   throw new BooksInputError("Explain why unresolved payment evidence is being locked.");
+  const entries=await tx.journalEntry.findMany({where:{periodKey:key},select:{id:true}});
+  const existing=entries.length?await tx.exportBatchEntry.findMany({
+   where:{journalEntryId:{in:entries.map(x=>x.id)}},select:{journalEntryId:true},
+  }):[];
+  const exported=entries.length>new Set(existing.map(x=>x.journalEntryId)).size;
+  if(exported)await exportMonthReviewInTx(tx,actor,key);
+  const reviewNotes=[
+   ...(!review.checks.costs.ok?[{check:"expenses",reason:expenses,
+    byUserId:actor.id,at:new Date().toISOString()}]:[]),
+   ...(!review.checks.payments.ok?[{check:"payments",reason:payments,
+    byUserId:actor.id,at:new Date().toISOString()}]:[]),
+  ];
+  await tx.accountingPeriod.upsert({where:{periodKey:key},
+   create:{periodKey:key,status:"CLOSED",closedAt:new Date(),closedByUserId:actor.id,
+    reviewNotes},
+   update:{status:"CLOSED",closedAt:new Date(),closedByUserId:actor.id,
+    reopenedReason:null,reviewNotes},
   });
+  await tx.auditLog.create({data:{userId:actor.id,action:"books.period.close-review",
+   entityType:"AccountingPeriod",entityId:key,
+   oldValue:{status:was?.status??"OPEN"},
+   newValue:{status:"CLOSED",sourceChecksPassed:true,equipmentCheckPassed:true,
+    expensesOverridden:!!(!review.checks.costs.ok&&expenses),
+    paymentsOverridden:!!(!review.checks.payments.ok&&payments),
+    entryCount:entries.length,createdReviewExport:exported}}});
+  return {alreadyClosed:false,exported};
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }

@@ -85,6 +85,7 @@ it("uses the shared past-due rule: open, money owed, due before the start of tod
   expect(m.invoices.mock.calls[0][0].where).toEqual({
     status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"] },
     amountDueCents: { gt: "amountPaidCents-field" },
+    bankPaymentsInFlight: { none: { clearedAt: null } },
     dueDate: { lt: new Date("2026-10-25T06:00:00Z") },
   });
 });

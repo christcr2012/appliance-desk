@@ -2,6 +2,13 @@ import fs from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 async function accessible(page: Page) {
+  // Next.js streams dynamic metadata after route navigation. Require a real
+  // accessible document title before axe scans the settled page. This does
+  // not suppress violations: missing titles still fail after the timeout.
+  await expect.poll(() => page.title(), {
+    message: "The document must have a non-empty title before its accessibility scan",
+    timeout: 10_000,
+  }).toMatch(/\S/);
   const layout = await page.evaluate(() => ({
     fits: document.documentElement.scrollWidth <= window.innerWidth,
     width: window.innerWidth,

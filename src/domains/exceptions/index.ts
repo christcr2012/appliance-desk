@@ -4,11 +4,19 @@ import { todoAction, todoDeadlineLabel, todoKey } from "./todo";
 import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
-import { listTaxFilingAttention, listRdfRefundAttention } from "@/domains/tax/filing-attention";
+import { listPendingRdfSwitches } from "@/domains/tax/rdf-switches";
+import { listRuleChangeAttention } from "@/domains/rules/observations";
+import { listDeliveryReadinessAttention } from "@/domains/tax/delivery-readiness";
+import { ruleDef } from "@/domains/rules/registry";
+import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { listRetiredPlanAttention } from "./retired-attention";
+import { listRecallAttention } from "./recall-attention";
+import { listBooksAttention, listBooksSetupAttention, listBooksMonthReviewAttention } from "./books-attention";
 import { listResaleTaxAttention } from "./resale-tax-attention";
+import { listVehicleAttention } from "./vehicle-attention";
+import { listInsuranceAttention } from "./insurance-attention";
 import { listApprovalAttention } from "./approval-attention";
 import { listGoalAttention } from "./goal-attention";
 import { prisma } from "@/lib/prisma";
@@ -18,10 +26,22 @@ import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listFeedbackWaiting } from "./feedback-attention";
 import { listDeliveryZoneAttention } from "./delivery-zone-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
+import { listComplianceDue } from "./compliance-attention";
+import { listSupplierW9Needed } from "./supplier-w9-attention";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listUnsignedAgreements } from "./unsigned-agreements";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, listCleaningNeeded } from "./turning-points-attention";
 import { requireRole } from "@/lib/session";
+import { listBankPaymentSlow } from "./bank-payment-attention";
+import { listDisputeAttention } from "./dispute-attention";
+import { listCollectionAttention } from "./collection-attention";
+import { listContinuityAttention } from "./continuity-attention";
+import { listSetupGuideAttention } from "./setup-attention";
+import { listVaultRotationAttention } from "@/domains/vault/attention";
+import { listPrivacyAttention } from "@/domains/security/reads";
+import { listLateFeeReview } from "./late-fee-attention";
+import { listStartingValuesAttention } from "@/domains/decisions/attention";
+import { notInFlightWhere } from "@/domains/billing/in-flight";
 import type { Prisma } from "@prisma/client";
 import {
   APPLIANCE_MAINTENANCE_DUE_DAYS,
@@ -43,6 +63,9 @@ import {
   taxRateReviewReminderException,
   officialRateReviewException,
   officialRateScheduledException,
+  ruleChangeReviewException,
+  deliveryReadinessException,
+  rdfSwitchException,
   taxSourceChangedException,
   taxSourceUnreachableException,
   returnedEarlyException,
@@ -154,6 +177,8 @@ const empty = <T,>(): Promise<Capped<T>> => Promise.resolve({ rows: [], total: 0
 // the customer record's customer-scoped next steps (src/domains/customers/record.ts), so both build the same items.
 export function pastDueTodoWhere(now: Date) {
   return {
+    // BILL-1: no chasing while a bank payment is being confirmed (the customer already paid).
+    ...notInFlightWhere,
     OR: [
       { status: { in: ["DELINQUENT", "PARTIALLY_PAID"] } },
       { status: "OPEN", dueDate: { lt: now } },
@@ -269,7 +294,8 @@ const utc = (date: Date) => date.toISOString();
  */
 export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
-  const canViewFinance = ["OWNER", "ADMIN"].includes((session.user as { role?: string }).role ?? "");
+  const role = (session.user as { role?: string }).role ?? "";
+  const canViewFinance = ["OWNER", "ADMIN"].includes(role);
   const now = new Date();
   const customerSelect = { customer: { select: { user: { select: { name: true, email: true } } } } } as const;
 
@@ -375,6 +401,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxSourceChanges,
     taxSourceFailures,
     officialRateAttention,
+    rdfSwitchesPending,
+    ruleChangeAttention,
+    deliveryReadinessAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -531,6 +560,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         )
       : empty<never>(),
     canViewFinance ? listOfficialRateAttention(now) : Promise.resolve([]),
+    canViewFinance ? listPendingRdfSwitches(now) : Promise.resolve([]),
+    canViewFinance ? listRuleChangeAttention(now) : Promise.resolve([]),
+    canViewFinance ? listDeliveryReadinessAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -962,6 +994,33 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             since: item.observedAt,
           }),
     ),
+    ...ruleChangeAttention.map((item) =>
+      ruleChangeReviewException({
+        observationId: item.observationId,
+        ruleTitle: ruleDef(item.ruleKey).title,
+        describedValue: ruleDef(item.ruleKey).describe(item.value as never),
+        ruleKey: item.ruleKey,
+        effectiveFrom: item.effectiveFrom,
+        evidence: item.evidence,
+        watchUrl: item.watchUrl,
+        readOnTwoDays: item.readOnTwoDays,
+        plausible: item.plausible,
+        startPassed: item.startPassed,
+        since: item.since,
+        now,
+      }),
+    ),
+    ...deliveryReadinessAttention.map((item) =>
+      deliveryReadinessException({
+        jurisdictionId: item.jurisdictionId,
+        name: item.name,
+        problems: item.problems,
+        sourceUrl: item.sourceUrl,
+        filesThrough: item.filesThrough,
+        licenseRequired: item.licenseRequired,
+        since: item.since,
+      }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -1066,6 +1125,15 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     (session.user as { role?: string }).role === "OWNER" ? await listPaperworkAttention(now) : [];
   const paperworkAttention: Capped<ExceptionItem> = { rows: paperworkItems, total: paperworkItems.length };
   const rdfRefundAttention = canViewFinance ? await listRdfRefundAttention() : [];
+  const useTaxResetAttention = canViewFinance ? await listUseTaxResetAttention(now) : [];
+  const expiredExemptionAttention = canViewFinance ? await listExpiredExemptionAttention(now) : [];
+  const filingFrequencyAdviceAttention = canViewFinance ? await listFilingFrequencyAdviceAttention(now) : [];
+  // TFA-2 §6.3: prepared delivery-fee switches waiting for the owner's
+  // approval, rendered as To do items with the approve action.
+  const rdfSwitchAttention = rdfSwitchesPending.map((row) => rdfSwitchException({
+    switchId: row.id, kind: row.kind, startsOn: row.startsOn,
+    basisRetailCents: row.basisRetailCents, since: row.createdAt, now,
+  }));
 
   const amendmentAttention = canViewFinance
     ? await listTaxAmendmentAttention(now)
@@ -1073,8 +1141,18 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const acquisitionAttention = canViewFinance ? await listAcquisitionTaxAttention(now) : [];
   const retiredAttention = canViewFinance ? await listRetiredPlanAttention(now) : [];
+  const recallAttention = canViewFinance ? await listRecallAttention(now) : [];
+  const booksAttention = canViewFinance ? await listBooksAttention(now) : [];
+  const booksSetupAttention = session.user.role === "OWNER" ? await listBooksSetupAttention(now) : [];
+  const vehicleAttention = (session.user as { role?: string }).role === "OWNER" ? await listVehicleAttention(now) : [];
+  const insuranceAttention = (session.user as { role?: string }).role === "OWNER" ? await listInsuranceAttention(now) : [];
+  const booksMonthReviewAttention = canViewFinance ? await listBooksMonthReviewAttention(now) : [];
   const resaleTaxAttention = (session.user as { role?: string }).role === "OWNER" ? await listResaleTaxAttention(now) : [];
+  const privacyAttention = (session.user as { role?: string }).role === "OWNER" ? await listPrivacyAttention(now) : [];
   const approvalAttention = (session.user as { role?: string }).role === "OWNER" ? await listApprovalAttention(now) : [];
+  const continuityAttention = (session.user as { role?: string }).role === "OWNER" ? await listContinuityAttention(now) : [];
+  const setupGuideAttention = (session.user as { role?: string }).role === "OWNER" ? await listSetupGuideAttention(now) : [];
+  const vaultAttention = (session.user as { role?: string }).role === "OWNER" ? await listVaultRotationAttention(now) : [];
   const goalAttention = canViewFinance ? await listGoalAttention(now) : [];
   const signingPaymentAttention = canViewFinance
     ? await listSigningPaymentAttention(EXCEPTION_CATEGORY_CAP)
@@ -1083,10 +1161,18 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const cancellationRefundAttention = canViewFinance ? await listCancellationRefundAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const signedDeliveryAttention = canViewFinance ? await listSignedDeliveryAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const noTurningPoints = { rows: [] as ExceptionItem[], total: 0 };
+  const bankPaymentsSlow = canViewFinance ? await listBankPaymentSlow(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  // DEC-2: owner only (the starting values are the owner's to review).
+  const startingValues = role === "OWNER" ? await listStartingValuesAttention() : noTurningPoints;
+  const paymentDisputes = canViewFinance ? await listDisputeAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const collectionSteps = canViewFinance ? await listCollectionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const lateFeeReview = canViewFinance ? await listLateFeeReview(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const heldPayments = canViewFinance ? await listHeldPaymentAttention(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const depositDecisions = canViewFinance ? await listDepositDecisionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const newLeadContact = canViewFinance ? await listNewLeadContact(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const leadFollowUps = canViewFinance ? await listLeadFollowUps(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const complianceDue = canViewFinance ? await listComplianceDue(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const supplierW9 = canViewFinance ? await listSupplierW9Needed(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const approvedQuotes = canViewFinance ? await listApprovedQuoteToRental(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const unsignedAgreements = canViewFinance ? await listUnsignedAgreements(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
@@ -1122,8 +1208,14 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...cancellationRefundAttention.rows,
     ...signedDeliveryAttention.rows,
     ...heldPayments.rows,
+    ...bankPaymentsSlow.rows,
+    ...startingValues.rows,
+    ...paymentDisputes.rows,
+    ...collectionSteps.rows,
     ...newLeadContact.rows,
     ...leadFollowUps.rows,
+    ...complianceDue.rows,
+    ...supplierW9.rows,
     ...approvedQuotes.rows,
     ...depositDecisions.rows,
     ...rentalEndingSoon.rows,
@@ -1141,12 +1233,26 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...filingAttention.setupChecks.rows,
     ...paperworkAttention.rows,
     ...rdfRefundAttention,
+    ...rdfSwitchAttention,
+    ...useTaxResetAttention,
+    ...expiredExemptionAttention,
+    ...filingFrequencyAdviceAttention,
     ...amendmentAttention.amendments.rows,
     ...amendmentAttention.readiness.rows,
     ...acquisitionAttention,
     ...retiredAttention,
+    ...recallAttention,
+    ...booksAttention,
+    ...booksSetupAttention,
+    ...booksMonthReviewAttention,
     ...resaleTaxAttention,
+    ...vehicleAttention,
+    ...insuranceAttention,
+    ...privacyAttention,
     ...approvalAttention,
+    ...continuityAttention,
+    ...setupGuideAttention,
+    ...vaultAttention,
     ...goalAttention,
   ];
 
@@ -1164,6 +1270,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           taxSourceChanges.total +
           taxSourceFailures.total +
           officialRateAttention.length +
+          rdfSwitchesPending.length +
+          ruleChangeAttention.length +
+          deliveryReadinessAttention.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))
@@ -1181,10 +1290,17 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["SIGNING_PAYMENT_DUE", signingPaymentAttention],
       ["CANCELLATION_REFUND_DUE", cancellationRefundAttention],
       ["SIGNED_DELIVERY_UNSCHEDULED", signedDeliveryAttention],
+      ["BANK_PAYMENT_SLOW", bankPaymentsSlow],
+      ["PAYMENT_DISPUTE", paymentDisputes],
+      ["COLLECTION_STEP", collectionSteps],
+      ["LATE_FEE_REVIEW", lateFeeReview],
+      ["DECISIONS_STARTING_VALUES", startingValues],
       ["HELD_PAYMENT_DECISION", heldPayments],
       ["DEPOSIT_DECISION", depositDecisions],
       ["NEW_LEAD_CONTACT", newLeadContact],
       ["LEAD_FOLLOW_UP", leadFollowUps],
+      ["COMPLIANCE_DUE", complianceDue],
+      ["SUPPLIER_TAX_ID", supplierW9],
       ["APPROVED_QUOTE", approvedQuotes],
       ["RENTAL_ENDING_SOON", rentalEndingSoon],
       ["UNSIGNED_AGREEMENT", unsignedAgreements],

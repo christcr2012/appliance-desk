@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// FEE-1: the late-fee review list has its own database tests; here it must not add reads to the capped Today queries.
+vi.mock("@/domains/security/reads", () => ({ listPrivacyAttention: async () => [] }));
+vi.mock("@/domains/exceptions/late-fee-attention", () => ({ listLateFeeReview: async () => ({ rows: [], total: 0 }) }));
+
 const mocks = vi.hoisted(() => ({
   settings: vi.fn(),
   requireRole: vi.fn(),
@@ -22,11 +26,14 @@ const mocks = vi.hoisted(() => ({
   taxExemption: vi.fn(),
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
+  legalRuleObservation: vi.fn(),
+  legalRuleVersion: vi.fn(),
   outOfService: vi.fn(),
   systemIssues: vi.fn(),
   systemIssueCount: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
   rdfRefundAttention: vi.fn(async () => []),
+  rdfSwitches: vi.fn(),
   filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 }, setupChecks: { rows: [], total: 0 } })),
   amendmentAttention: vi.fn(async () => ({ amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } })),
   acquisitionAttention: vi.fn(async () => []),
@@ -41,9 +48,39 @@ vi.mock("@/domains/tax/amendment-attention", () => ({
 vi.mock("@/domains/tax/filing-attention", () => ({
   listTaxFilingAttention: mocks.filingAttention,
   listRdfRefundAttention: mocks.rdfRefundAttention,
+  // TFA-2 §7: the use-tax year-reset notice.
+  listUseTaxResetAttention: vi.fn(async () => []),
+  // TFA-2 §9: expired exemption certificates.
+  listExpiredExemptionAttention: vi.fn(async () => []),
+  // TFA-2 §8: filing-frequency advice.
+  listFilingFrequencyAdviceAttention: vi.fn(async () => []),
 }));
 vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
   listOfficialRateAttention: mocks.officialRateAttention,
+}));
+vi.mock("@/domains/exceptions/bank-payment-attention", () => ({
+  listBankPaymentSlow: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/dispute-attention", () => ({
+  listDisputeAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/vehicle-attention", () => ({
+  listVehicleAttention: vi.fn(async () => []), // covered by tests/ops3-vehicle-integration.test.ts
+}));
+vi.mock("@/domains/exceptions/insurance-attention", () => ({
+  listInsuranceAttention: vi.fn(async () => []), // covered by tests/ops4-insurance-integration.test.ts
+}));
+vi.mock("@/domains/exceptions/collection-attention", () => ({
+  listCollectionAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/continuity-attention", () => ({
+  listContinuityAttention: vi.fn(async () => []), // covered by tests/ops8-continuity-integration.test.ts
+}));
+vi.mock("@/domains/exceptions/setup-attention", () => ({
+  listSetupGuideAttention: vi.fn(async () => []), // covered by tests/setup-guide-integration.test.ts
+}));
+vi.mock("@/domains/vault/attention", () => ({
+  listVaultRotationAttention: vi.fn(async () => []), // covered by tests/vault-integration.test.ts
 }));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
@@ -56,6 +93,12 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
   listNewLeadContact: vi.fn(async () => ({ rows: [], total: 0 })),
   listLeadFollowUps: vi.fn(async () => ({ rows: [], total: 0 })),
   listApprovedQuoteToRental: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/compliance-attention", () => ({
+  listComplianceDue: vi.fn(async () => ({ rows: [], total: 0 })), // covered by tests/compliance-filings-integration.test.ts
+}));
+vi.mock("@/domains/exceptions/supplier-w9-attention", () => ({
+  listSupplierW9Needed: vi.fn(async () => ({ rows: [], total: 0 })), // covered by CMP-3's tests/w9-integration.test.ts
 }));
 vi.mock("@/domains/exceptions/goal-attention", () => ({
   listGoalAttention: vi.fn(async () => []), // covered by tests/goals-integration.test.ts
@@ -82,11 +125,12 @@ vi.mock("@/domains/exceptions/delivery-zone-attention", () => ({
   // ZONE-1 items; covered by tests/delivery-zone-attention.test.ts.
   listDeliveryZoneAttention: vi.fn(async () => ({ unknown: { rows: [], total: 0 }, pickups: { rows: [], total: 0 }, requotes: { rows: [], total: 0 } })),
 }));
+vi.mock("@/domains/exceptions/recall-attention", () => ({ listRecallAttention: vi.fn(async () => []) }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     rentalAgreement: { findMany: mocks.agreement },
-    invoice: { findMany: mocks.invoice },
+    invoice: { findMany: mocks.invoice, count: vi.fn().mockResolvedValue(0) },
     job: { findMany: mocks.job },
     businessSettings: { findUnique: mocks.settings },
     maintenanceRequest: { findMany: mocks.request },
@@ -98,6 +142,7 @@ vi.mock("@/lib/prisma", () => ({
     agreementSigningPayment: { findMany: mocks.signingPayment, count: mocks.signingPaymentCount },
     preDeliveryCancellation: { findMany: mocks.cancellationRefunds, count: mocks.cancellationRefundCount },
     auditLog: { findMany: mocks.audit },
+    decisionRecord: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null) },
     exceptionSnooze: { findMany: mocks.snoozes },
     customerTaxExemption: {
       findMany: mocks.taxExemption,
@@ -113,6 +158,11 @@ vi.mock("@/lib/prisma", () => ({
       findMany: mocks.officialSourceWatch,
       count: vi.fn().mockResolvedValue(0),
     },
+    // TFA-2: the RDF approval switches read on Today.
+    retailDeliveryFeeSwitch: { findMany: mocks.rdfSwitches },
+    // TFA-3: stored official-page rule readings read on Today.
+    legalRuleObservation: { findMany: mocks.legalRuleObservation },
+    legalRuleVersion: { findMany: mocks.legalRuleVersion },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
     $queryRaw: mocks.raw,
   },
@@ -142,9 +192,12 @@ beforeEach(() => {
     mocks.taxExemption,
     mocks.taxAddressLocation,
     mocks.officialSourceWatch,
+    mocks.legalRuleObservation,
+    mocks.legalRuleVersion,
     mocks.systemIssues,
     mocks.officialRateAttention,
     mocks.rdfRefundAttention,
+    mocks.rdfSwitches,
     mocks.outOfService,
   ]) {
     fn.mockResolvedValue([]);
@@ -220,6 +273,51 @@ describe("Today server-side visibility", () => {
     },
   );
 
+  it("TFA-2 §6.3: a pending delivery-fee switch appears on Today with its approve action", async () => {
+    mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
+    mocks.rdfSwitches.mockResolvedValue([
+      {
+        id: "switch-1",
+        kind: "START",
+        startsOn: new Date(),
+        basisRetailCents: 5_100_000_00,
+        createdAt: new Date(),
+      },
+    ]);
+    const result = await getExceptions();
+    const item = result.find(
+      (x) => x.category === "SALES_TAX" && x.title.startsWith("Delivery fee turns on"),
+    );
+    expect(item).toBeTruthy();
+    expect(item?.action).toEqual(
+      expect.objectContaining({ type: "APPROVE_RDF_SWITCH" }),
+    );
+  });
+
+  it("TFA-3 §14: a differing rule reading appears on Today with its approve action", async () => {
+    mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
+    mocks.legalRuleObservation.mockImplementation(async (args: { where?: { OR?: unknown } }) => {
+      if (args?.where?.OR) return [];
+      return [{
+        id: "obs-1",
+        ruleKey: "co.rdf.amount",
+        value: 33,
+        effectiveFrom: new Date("2027-07-01T00:00:00.000Z"),
+        evidence: "Total Retail Delivery Fee $0.33",
+        observedAt: new Date(),
+        watchId: "watch-1",
+      }];
+    });
+    const result = await getExceptions();
+    const item = result.find(
+      (x) => x.category === "SALES_TAX" && x.title.startsWith("Colorado retail delivery fee: the official page now says"),
+    );
+    expect(item).toBeTruthy();
+    expect(item?.action).toEqual(
+      expect.objectContaining({ type: "APPROVE_RULE_CHANGE" }),
+    );
+  });
+
   it.each([getExceptions, getTodaysJobs])(
     "rejects an unauthorized caller before any query",
     async (query) => {
@@ -243,7 +341,7 @@ describe("Today server-side visibility", () => {
     const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp, mocks.taxExemption, mocks.taxAddressLocation, mocks.officialSourceWatch, mocks.outOfService].flatMap(
       (fn) => fn.mock.calls.map(([query]) => query),
     );
-    expect(calls.length).toBe(24); // includes the bounded retired-appliance read (M-2B), bounded Sales tax draft-invoice, exemption-expiry, address-change, two official-source reads, the W-16B old-set read and the W-21A out-of-service read
+    expect(calls.length).toBe(25); // includes the bounded retired-appliance read (M-2B), bounded Sales tax draft-invoice, exemption-expiry, address-change, two official-source reads, the W-16B old-set read, the W-21A out-of-service read and the FEETAX-2 delivery-readiness address read
     for (const query of calls) {
       expect(query.take).toBe(50);
       expect(query.orderBy.at(-1)).toEqual({ id: "asc" });

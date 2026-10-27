@@ -1,6 +1,5 @@
 import { isTestingEnvironment } from "./testing-environment";
 
-const VERIFIED_PREVIEW_PRIVATE_STORE_ID = "store_6Sttks2ULJ8wG5hl";
 
 function tokenStoreId(token: string | undefined): string | null {
   if (!token) return null;
@@ -18,7 +17,7 @@ export function isPublicPhotoPath(pathname: string): boolean {
 
 /** Every persisted operational/customer evidence path is private. */
 export function isPrivatePhotoPath(pathname: string): boolean {
-  return /^(jobs|appliances|maintenance-requests|tax-exemptions|tax-filings|expenses|purchases|bank-statements|accounting-confirmations|feedback)\/[A-Za-z0-9_-]+\/[^/]+$/.test(
+  return /^(jobs|appliances|maintenance-requests|tax-exemptions|tax-filings|expenses|purchases|bank-statements|accounting-confirmations|feedback|records)\/[A-Za-z0-9_-]+\/[^/]+$/.test(
     pathname,
   );
 }
@@ -73,7 +72,7 @@ export function getPrivatePhotoStore():
     const token = process.env.PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN;
     const storeId = process.env.PREVIEW_PRIVATE_BLOB_STORE_ID;
     if (
-      storeId === VERIFIED_PREVIEW_PRIVATE_STORE_ID &&
+      token && storeId && /^store_[A-Za-z0-9]+$/.test(storeId) &&
       tokenStoreId(token)?.toLowerCase() === storeId.toLowerCase()
     ) {
       return { token: token!, storeId };
@@ -128,4 +127,55 @@ export function privatePhotoPathFromUrl(value: string, storeId: string): string 
     return null;
   }
   return isPrivatePhotoPath(pathname) ? pathname : null;
+}
+
+/**
+ * Backup copies contain customer and financial records. Never use the public
+ * marketing photo store or its implicit Blob credential to hold them.
+ * The dedicated backup token wins; if either dedicated setting is present but
+ * incomplete, fail closed rather than silently switching stores.
+ */
+export function getBackupStore(): { token: string; storeId: string; source: "backup store" | "private photo store" } | null {
+  const token = process.env.BACKUP_BLOB_READ_WRITE_TOKEN;
+  const storeId = process.env.BACKUP_BLOB_STORE_ID;
+  if (token !== undefined || storeId !== undefined) {
+    if (!token || !storeId || !/^store_[A-Za-z0-9]+$/.test(storeId) ||
+        tokenStoreId(token)?.toLowerCase() !== storeId.toLowerCase()) return null;
+    return { token, storeId, source: "backup store" };
+  }
+  const privateStore = getPrivatePhotoStore();
+  return privateStore ? { ...privateStore, source: "private photo store" } : null;
+}
+
+export type PrivateStoreReadiness =
+  | "READY" | "MISSING_TOKEN" | "MISSING_STORE_ID" |
+    "TOKEN_STORE_MISMATCH" | "ACCESS_DENIED" | "UNREACHABLE";
+
+export async function checkPrivateStoreReady(): Promise<PrivateStoreReadiness> {
+  const token = isTestingEnvironment()
+    ? process.env.BLOB_READ_WRITE_TOKEN
+    : process.env.VERCEL === "1" && process.env.VERCEL_ENV === "preview"
+      ? process.env.PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN
+      : process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN;
+  const storeId = isTestingEnvironment()
+    ? process.env.TEST_PRIVATE_BLOB_STORE_ID
+    : process.env.VERCEL === "1" && process.env.VERCEL_ENV === "preview"
+      ? process.env.PREVIEW_PRIVATE_BLOB_STORE_ID
+      : process.env.PRIVATE_PHOTO_BLOB_STORE_ID;
+  if (!token) return "MISSING_TOKEN";
+  if (!storeId) return "MISSING_STORE_ID";
+  const store = getPrivatePhotoStore();
+  if (!store) return "TOKEN_STORE_MISMATCH";
+  try {
+    // Import the server-side Blob SDK only when making a readiness probe.
+    // Eagerly importing it from this shared URL/metadata helper loads Undici in
+    // component-test DOM environments that correctly lack ReadableStream.
+    const { list } = await import("@vercel/blob");
+    await list({ limit: 1, prefix: "jobs/", token: store.token, abortSignal: AbortSignal.timeout(15_000) });
+    return "READY";
+  } catch (cause) {
+    const status = (cause as { status?: number; statusCode?: number })?.status ??
+      (cause as { statusCode?: number })?.statusCode;
+    return status === 401 || status === 403 ? "ACCESS_DENIED" : "UNREACHABLE";
+  }
 }

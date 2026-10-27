@@ -31,6 +31,8 @@ import { BudgetContextCard } from "@/domains/budget/context";
 import { getSalvagedParts } from "@/domains/inventory/retired-plans";
 import { businessDateKey } from "@/lib/business-date";
 import { RetiredPlanPanel } from "./retired-plan-panel";
+import { RefrigerantPanel } from "./refrigerant-panel";
+import { loadRefrigerantPanel } from "@/domains/refrigerant/actions";
 
 export const metadata = { title: "Appliance" };
 
@@ -72,6 +74,7 @@ export default async function ApplianceDetailPage({
   const retiredPlan = appliance.status === "RETIRED"
     ? await prisma.retiredAppliancePlan.findUnique({ where: { applianceId: id } })
     : null;
+  const refrigerantPanel = appliance.status === "RETIRED" ? await loadRefrigerantPanel(id, new Date(), session.user.role) : null;
   const retiredPanel = appliance.status === "RETIRED"
     ? {
         salvaged: (await getSalvagedParts(id)).map((m) => ({
@@ -171,6 +174,24 @@ export default async function ApplianceDetailPage({
             parts={retiredPanel.parts}
             today={businessDateKey(new Date())}
             isOwner={session.user.role === "OWNER"}
+          />
+        )}
+        {refrigerantPanel && (
+          <RefrigerantPanel
+            applianceId={id}
+            today={businessDateKey(new Date())}
+            locked={refrigerantPanel.locked}
+            keepYears={refrigerantPanel.years}
+            keepUntilText={refrigerantPanel.keepUntil ? businessDateKey(refrigerantPanel.keepUntil) : null}
+            isOwner={session.user.role === "OWNER"}
+            receiptRecord={refrigerantPanel.receiptRecord}
+            record={refrigerantPanel.record ? {
+              refrigerantType: refrigerantPanel.record.refrigerantType, outcome: refrigerantPanel.record.outcome,
+              recoveredByName: refrigerantPanel.record.recoveredByName, recoveredByAddress: refrigerantPanel.record.recoveredByAddress,
+              certificationNumber: refrigerantPanel.record.certificationNumber, equipmentUsed: refrigerantPanel.record.equipmentUsed,
+              recoveredOn: businessDateKey(refrigerantPanel.record.recoveredOn), recyclerName: refrigerantPanel.record.recyclerName,
+              receiptReference: refrigerantPanel.record.receiptReference,
+            } : null}
           />
         )}
         {taxProof && <TaxProofPanel proof={taxProof} />}

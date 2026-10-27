@@ -6,6 +6,9 @@ import { getBillCounts, getBills, getBillTotals, type BillRow } from "@/domains/
 import { getInvoiceDetail, type InvoiceDetail } from "@/domains/billing/invoice-detail";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { requireRole } from "@/lib/session";
+import { getWorkspace, savedViewHref } from "@/domains/workspace";
+import { saveBillViewAction } from "@/app/desk/views/actions";
+import { builtInViewsFor } from "@/components/kit/built-in-views";
 import { businessDayBounds, formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { formatCents } from "@/domains/pricing";
@@ -13,6 +16,8 @@ import { DataList, EmptyState as LegacyEmptyState, StatusPill as LegacyStatusPil
 import {
   ActionButton,
   ActiveFilterChips,
+  AutoRefresh,
+  PullToRefresh,
   DataTable,
   EmptyState,
   OverflowMenu,
@@ -61,7 +66,7 @@ const FILTERS: FilterDef[] = [
 ];
 
 const VIEWS: ViewDef[] = [
-  { id: "past-due", label: "Past due", href: "/desk/billing?status=past-due", builtIn: true },
+  ...builtInViewsFor("billing"),
   { id: "by-customer", label: "By customer", href: "/desk/billing?view=by-customer", builtIn: true },
   { id: "deposits", label: "Deposits", href: "/desk/billing?view=deposits", builtIn: true },
   { id: "waiting", label: "Waiting for Stripe", href: "/desk/billing?view=waiting", builtIn: true },
@@ -70,6 +75,7 @@ const VIEWS: ViewDef[] = [
 const EMPTY: Record<BillsPageParams["status"], string> = {
   open: "No open bills",
   "past-due": "Nothing is late",
+  "being-confirmed": "No bank payments are being confirmed",
   paid: "No paid bills yet",
   closed: "No closed bills",
   drafts: "No draft bills",
@@ -113,8 +119,9 @@ function hrefWith(params: URLSearchParams, changes: Record<string, string | null
 }
 
 function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row: BillRow | undefined; closeHref: string; now: Date }) {
+  const beingConfirmed = row?.beingConfirmed ?? detail.beingConfirmedCents > 0;
   const pill = billPill(
-    { status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents },
+    { status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents, beingConfirmed },
     now,
   );
   const fullHref = `/desk/billing/customer/${encodeURIComponent(detail.customer.id)}/invoice/${encodeURIComponent(detail.id)}`;
@@ -142,7 +149,7 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
           <p className="text-xs font-bold text-ink-soft">Bill #{detail.invoiceNumber}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-lg font-extrabold text-ink">{detail.customer.name}</p>
-            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"])} />
+            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"], beingConfirmed)} />
           </div>
         </div>
         {/* The StatStrip's two-column look, kept at two columns inside the 420 px panel. */}
@@ -186,7 +193,9 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<Search> }) {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN");
+  const workspace = await getWorkspace(session.user.id);
+  const savedViews = workspace.prefs.savedViews.filter(v => v.routeKey === "billing").map(v => ({ id: v.id, label: v.label, href: savedViewHref(v), builtIn: false }));
   const search = await searchParams;
   const legacy = legacyBillsRedirect(search);
   if (legacy) redirect(legacy);
@@ -213,7 +222,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       filters={FILTERS}
       sorts={Object.entries(BILL_SORT_LABEL).map(([value, label]) => ({ value, label }))}
       currentSort={params.sort}
-      views={VIEWS}
+      views={[...VIEWS, ...savedViews]}
+      saveViewAction={saveBillViewAction}
+      saveViewKeys={["status", "due", "autopay"]}
       currentViewId={params.view ?? (params.status === "past-due" ? "past-due" : undefined)}
     />
   );
@@ -222,8 +233,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     const legacyTitle = params.view === "by-customer" ? "Who owes money" : params.view === "deposits" ? "Deposits" : "Waiting for Stripe";
     const balances = params.view === "by-customer" ? await getCustomersWithOpenBalances() : [];
     return (
-      <div className="px-1 sm:px-0">
+      <PullToRefresh><div className="px-1 sm:px-0">
         {header}
+        <AutoRefresh />
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h2 className="flex-1 text-base font-bold text-ink">{legacyTitle}</h2>
           <ActionButton spec={{ kind: "link", label: "All bills", href: "/desk/billing" }} variant="secondary" />
@@ -240,7 +252,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             empty={<LegacyEmptyState title="No one owes money right now" />}
           />
         )}
-      </div>
+      </div></PullToRefresh>
     );
   }
 
@@ -250,11 +262,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     getBillTotals(params, now),
     params.open ? getInvoiceDetail(params.open) : Promise.resolve(null),
   ]);
-  const owing = params.status === "open" || params.status === "past-due";
+  const owing = params.status === "open" || params.status === "past-due" || params.status === "being-confirmed";
   const filtered = hasBillFilters(params);
   const tabs = [
     { value: "open", label: "Open", count: counts.open },
     { value: "past-due", label: "Past due", count: counts["past-due"] },
+    { value: "being-confirmed", label: "Being confirmed", count: counts["being-confirmed"], hideWhenZero: true },
     { value: "paid", label: "Paid" },
     { value: "closed", label: "Closed" },
     { value: "drafts", label: "Drafts", count: counts.drafts, hideWhenZero: true },
@@ -274,8 +287,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
   return (
     // The kit lays out for a 20 px phone gutter (KIT 1); the current shell gives 16 px, so add the difference until AR-1.
-    <div className="px-1 sm:px-0">
+    <PullToRefresh><div className="px-1 sm:px-0">
       {header}
+      <AutoRefresh />
       <Toaster />
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
         <StatusTabs label="Bill status" current={params.status} items={tabs} />
@@ -310,6 +324,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </section>
         {openDetail ? <BillPanel detail={openDetail} row={openRow} closeHref={closeHref} now={now} /> : null}
       </div>
-    </div>
+    </div></PullToRefresh>
   );
 }

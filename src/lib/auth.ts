@@ -1,6 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { twoFactor } from "better-auth/plugins";
+import { jwt, twoFactor } from "better-auth/plugins";
+import { oauthProvider } from "@better-auth/oauth-provider";
+import { getMcpIssuer, validateMcpRedirectUri } from "@/mcp/issuer";
+import { OAUTH_SCOPES } from "@/mcp/scopes";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
@@ -27,6 +30,9 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({
       issuer: "Robinson Appliance Rentals",
+      // ACC-6: hard ceiling for "remember this device" (90 days). The owner's shorter setting is enforced by the
+      // app on top of it (the sign-in gate and the follow-up clamp), because this value is fixed at start-up.
+      trustDeviceMaxAge: 90 * 24 * 60 * 60,
       // ACC-3: 6-digit codes that work 5 minutes, stored scrambled, 5 tries. WHERE a code goes is decided by the person's
       // stored choice (src/domains/security/second-step.ts), never by anything the browser sends.
       otpOptions: {
@@ -44,6 +50,100 @@ export const auth = betterAuth({
         storeBackupCodes: "encrypted",
       },
     }),
+    // ACC-6: device cookie, new-device notice and "remember this device", as a hooks-only plugin registered
+    // AFTER twoFactor on purpose. Hooks run in plugin order, so this after hook runs after the two-factor
+    // plugin's sign-in hook — the one that rotates the trust row on a trusted sign-in, and the one that turns
+    // a sign-in into a code challenge (setting newSession to null). The user after hook below runs BEFORE
+    // that plugin hook, so it cannot tell a finished sign-in from one still waiting for a code; this plugin
+    // is where a finished sign-in is recorded. A hooks-only plugin has no endpoints.
+    {
+      id: "trusted-devices",
+      hooks: {
+        after: [
+          {
+            matcher: (ctx) => ctx.path === "/sign-in/email" || (ctx.path ?? "").startsWith("/two-factor/verify"),
+            handler: createAuthMiddleware(async (ctx) => {
+              try {
+                const signedIn = ctx.context.newSession?.user?.id as string | undefined;
+                if (!signedIn) return;
+                const { completeSignInFollowUp } = await import("@/domains/security/sign-in-guard");
+                const { DEVICE_COOKIE_NAME, DEVICE_COOKIE_MAX_AGE_SECONDS } = await import("@/domains/security/trusted-devices");
+                const userAgent = ctx.request?.headers.get("user-agent") ?? null;
+                const deviceCookie = ctx.getCookie(DEVICE_COOKIE_NAME) ?? null;
+                const trustCookieName = ctx.context.createAuthCookie("trust_device").name;
+                const trustCookiePresented = Boolean(
+                  await ctx.getSignedCookie(trustCookieName, ctx.context.secret).catch(() => null),
+                );
+                await completeSignInFollowUp({
+                  userId: signedIn,
+                  userAgent,
+                  trustDeviceRequested:
+                    ctx.path.startsWith("/two-factor/verify") &&
+                    (ctx.body as { trustDevice?: unknown } | undefined)?.trustDevice === true,
+                  trustCookiePresented: ctx.path === "/sign-in/email" && trustCookiePresented,
+                  deviceCookie,
+                  setDeviceCookie: (value) => {
+                    let secure = false;
+                    try {
+                      secure = new URL(ctx.request?.url ?? "").protocol === "https:";
+                    } catch {
+                      secure = false;
+                    }
+                    ctx.setCookie(DEVICE_COOKIE_NAME, value, {
+                      httpOnly: true,
+                      secure,
+                      sameSite: "lax",
+                      path: "/",
+                      maxAge: DEVICE_COOKIE_MAX_AGE_SECONDS,
+                    });
+                  },
+                });
+              } catch (error) {
+                console.error("[auth] trusted-device follow-up failed", error instanceof Error ? error.name : "unknown");
+              }
+            }),
+          },
+        ],
+      },
+    },
+    // No OAuth or MCP endpoint is installed unless the owner has set a canonical issuer.
+    ...(getMcpIssuer() ? [
+      jwt(),
+      oauthProvider({
+        loginPage: "/login",
+        consentPage: "/connect/consent",
+        scopes: [...OAUTH_SCOPES],
+        resources: [{ identifier: `${getMcpIssuer()}/api/mcp`, allowedScopes: [...OAUTH_SCOPES] }],
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+        clientRegistrationRequirePKCE: true,
+        clientRegistrationAllowedScopes: [...OAUTH_SCOPES],
+        // Register only this app-owned resource; reject any outside OAuth audience.
+        clientRegistrationDefaultResources: [`${getMcpIssuer()}/api/mcp`],
+        clientRegistrationAllowedResources: [`${getMcpIssuer()}/api/mcp`],
+        validateRedirectUri: validateMcpRedirectUri,
+        // Signed JWTs are stateless. Bind each one to this person's CURRENT
+        // approval of this particular OAuth client, so reconnect never revives
+        // an older JWT issued before Disconnect.
+        extensions: [{
+          claims: {
+            accessToken: async ({ user, client }) => {
+              if (!user) return {};
+              const connection = await prisma.mcpConnection.findUnique({
+                where: { userId_oauthClientId: { userId: user.id, oauthClientId: client.clientId } },
+                select: { grantVersion: true, revokedAt: true },
+              });
+              return connection && !connection.revokedAt
+                ? { appliance_connection_version: connection.grantVersion }
+                : {};
+            },
+          },
+        }],
+        accessTokenExpiresIn: 600,
+        refreshTokenExpiresIn: 60 * 60 * 24 * 30,
+        // Existing emailAndPassword.disableSignUp keeps invitation-only accounts.
+      }),
+    ] : []),
   ],
   secret: process.env.BETTER_AUTH_SECRET,
   hooks: {
@@ -52,6 +152,19 @@ export const auth = betterAuth({
     // for the team; our own server code calls the library directly and is not affected. Customers cannot change
     // their sign-in email at all (their customer record is matched on it).
     before: createAuthMiddleware(async (ctx) => {
+      // Public OAuth dynamic registration is deliberately throttled in the shared database.
+      // Do not trust a caller-supplied X-Forwarded-For: a conservative shared bucket
+      // stops request bursts across server instances even without a trusted source IP.
+      if (getMcpIssuer() && ctx.path === "/oauth2/register") {
+        const { isRateLimited } = await import("@/lib/rate-limit");
+        if (await isRateLimited("mcp-register:all", { max: 100, windowMs: 3_600_000 })) {
+          throw APIError.fromStatus("TOO_MANY_REQUESTS", { message: "Too many assistant registrations. Try again later." });
+        }
+        const ip = ctx.request?.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        if (await isRateLimited(`mcp-register:${ip}`, { max: 10, windowMs: 3_600_000 })) {
+          throw APIError.fromStatus("TOO_MANY_REQUESTS", { message: "Too many assistant registrations. Try again later." });
+        }
+      }
       // ACC-4: an account that had too many wrong passwords waits (the per-address rate limit stays as well).
       if (ctx.path === "/sign-in/email") {
         const attempted = typeof (ctx.body as { email?: unknown } | undefined)?.email === "string" ? (ctx.body as { email: string }).email : "";
@@ -59,6 +172,35 @@ export const auth = betterAuth({
           const { pausedMessageFor } = await import("@/domains/security/sign-in-guard");
           const message = await pausedMessageFor(attempted).catch(() => null);
           if (message) throw APIError.fromStatus("TOO_MANY_REQUESTS", { message });
+        }
+        // ACC-6: a trust cookie for a device that is no longer remembered must not skip the code. The gate
+        // never throws, so a failure here cannot stop a sign-in.
+        const { enforceTrustedDeviceGate, DEVICE_COOKIE_NAME } = await import("@/domains/security/trusted-devices");
+        const trustCookieName = ctx.context.createAuthCookie("trust_device").name;
+        const trustCookieRaw = await ctx.getSignedCookie(trustCookieName, ctx.context.secret).catch(() => null);
+        // getSignedCookie returns false when the signature does not verify: no valid cookie was presented.
+        const trustCookieValue = typeof trustCookieRaw === "string" ? trustCookieRaw : null;
+        await enforceTrustedDeviceGate({
+          email: attempted || null,
+          trustCookieValue,
+          deviceCookie: ctx.getCookie(DEVICE_COOKIE_NAME) ?? null,
+        });
+        return;
+      }
+      // ACC-6: the library trusts whatever the browser sends in `trustDevice`. The app only allows it when the
+      // owner allows remembering (days above 0) and only for team members. Anything else is stripped before
+      // the library runs, so a hand-made request cannot remember a device.
+      if (ctx.path.startsWith("/two-factor/verify")) {
+        const body = ctx.body as { trustDevice?: unknown } | undefined;
+        if (body?.trustDevice === true) {
+          const { shouldStripTrustDevice } = await import("@/domains/security/trusted-devices");
+          const sessionUserId = (ctx.context.session?.user as { id?: string } | undefined)?.id ?? null;
+          const twoFactorCookieName = ctx.context.createAuthCookie("two_factor").name;
+          const twoFactorCookieRaw = await ctx.getSignedCookie(twoFactorCookieName, ctx.context.secret).catch(() => null);
+          const twoFactorCookieValue = typeof twoFactorCookieRaw === "string" ? twoFactorCookieRaw : null;
+          if (await shouldStripTrustDevice({ trustDevice: true, sessionUserId, twoFactorCookieValue })) {
+            return { context: { body: { ...(ctx.body as Record<string, unknown>), trustDevice: false } } };
+          }
         }
         return;
       }
@@ -71,12 +213,14 @@ export const auth = betterAuth({
       });
       if (!decision.allow) throw APIError.fromStatus("FORBIDDEN", { message: decision.message });
     }),
-    // ACC-4: count wrong passwords, clear the count on a right one, and tell the team about a new device. This must
-    // never stop or change a sign-in, so every failure here is swallowed.
+    // ACC-4: count wrong passwords and clear the count on a right one. This must never stop or change a
+    // sign-in, so every failure here is swallowed. (ACC-6: noting a finished sign-in — device cookie, new-device
+    // notice, "remember this device" — lives in the trusted-devices plugin hook above, which runs after the
+    // two-factor plugin has decided whether the sign-in is finished or still waiting for a code. This hook runs
+    // before that, so it cannot tell the two apart.)
     after: createAuthMiddleware(async (ctx) => {
       try {
         const guard = await import("@/domains/security/sign-in-guard");
-        const userAgent = ctx.request?.headers.get("user-agent") ?? null;
         if (ctx.path === "/sign-in/email") {
           const attempted = typeof (ctx.body as { email?: unknown } | undefined)?.email === "string" ? (ctx.body as { email: string }).email : "";
           const returned = ctx.context.returned as unknown;
@@ -86,17 +230,13 @@ export const auth = betterAuth({
           }
           const signedIn = ctx.context.newSession?.user?.id as string | undefined;
           const twoStep = Boolean((returned as { twoFactorRedirect?: unknown } | null | undefined)?.twoFactorRedirect);
-          if (signedIn) { await guard.recordPasswordAccepted(signedIn); await guard.noteCompletedSignIn(signedIn, userAgent); }
+          if (signedIn) await guard.recordPasswordAccepted(signedIn);
           else if (twoStep && attempted) {
             const { prisma: db } = await import("./prisma");
             const u = await db.user.findUnique({ where: { email: attempted.trim().toLowerCase() }, select: { id: true } });
             if (u) await guard.recordPasswordAccepted(u.id);
           }
           return;
-        }
-        if (ctx.path.startsWith("/two-factor/verify")) {
-          const signedIn = ctx.context.newSession?.user?.id as string | undefined;
-          if (signedIn) await guard.noteCompletedSignIn(signedIn, userAgent);
         }
       } catch (error) {
         console.error("[auth] sign-in follow-up failed", error instanceof Error ? error.name : "unknown");
@@ -114,7 +254,7 @@ export const auth = betterAuth({
   // work without hand-setting a URL for each one. Once a real custom
   // domain is bought (see docs/ARCHITECTURE.md), add it here too.
   baseURL:
-    process.env.BETTER_AUTH_URL ??
+    getMcpIssuer() ?? process.env.BETTER_AUTH_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
     {
       allowedHosts: [
@@ -155,6 +295,9 @@ export const auth = betterAuth({
       // Choosing a new password through the emailed link ends any sign-in pause too (as the card requires).
       const { prisma: db } = await import("./prisma");
       await db.user.updateMany({ where: { id: user.id }, data: { failedSignInCount: 0, failedSignInWindowStartedAt: null, signInPausedUntil: null } }).catch(() => undefined);
+      // ACC-6: a reset password forgets remembered devices, so the next sign-in asks for a code again.
+      const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
+      await forgetTrustedDevices(user.id).catch(() => undefined);
       await sendAccountNotice(user.id, "password");
     },
     // Real "forgot password" flow (Phase 6A item 2 — customer account

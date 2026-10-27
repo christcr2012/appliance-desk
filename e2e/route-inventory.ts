@@ -13,13 +13,20 @@ export type AccessibilityRoute = {
 };
 
 export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
+  {
+    path: "/connect/consent", role: "OWNER",
+    fixture: "A registered SDK OAuth client with a valid pending authorization code and active owner login",
+    manualOnlyReason: "A live client approval request and a time-limited OAuth authorization code are required.",
+  },
   { path: "/", role: "PUBLIC", fixture: "/" },
   { path: "/accessibility", role: "PUBLIC", fixture: "/accessibility" },
   { path: "/contact", role: "PUBLIC", fixture: "/contact" },
   { path: "/how-it-works", role: "PUBLIC", fixture: "/how-it-works" },
   { path: "/launch", role: "PUBLIC", fixture: "/launch" },
+  { path: "/offline", role: "PUBLIC", fixture: "/offline" },
   { path: "/pricing", role: "PUBLIC", fixture: "/pricing" },
   { path: "/privacy", role: "PUBLIC", fixture: "/privacy" },
+  { path: "/privacy/how-we-handle-your-information", role: "PUBLIC", fixture: "/privacy/how-we-handle-your-information" },
   { path: "/rent/[city]", role: "PUBLIC", fixture: "/rent/denver" },
   { path: "/service-area", role: "PUBLIC", fixture: "/service-area" },
   { path: "/terms", role: "PUBLIC", fixture: "/terms" },
@@ -45,6 +52,13 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
       "Launch confirmation tokens are single-use and expire; a fixed token would make the accessibility test stateful and non-repeatable.",
   },
   { path: "/join/[code]", role: "PUBLIC", fixture: "/join/not-a-real-link" },
+  {
+    path: "/w9/[token]",
+    role: "PUBLIC",
+    fixture: "A newly issued one-time W-9 request link for a test supplier",
+    manualOnlyReason:
+      "W-9 links are single-use and expire in 14 days; a fixed token would make the accessibility test stateful and non-repeatable.",
+  },
   { path: "/login", role: "PUBLIC", fixture: "/login" },
   { path: "/login/two-factor", role: "PUBLIC", fixture: "/login/two-factor" },
   { path: "/reset-password", role: "PUBLIC", fixture: "/reset-password" },
@@ -143,6 +157,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/billing/held-payments", role: "OWNER", fixture: "/desk/billing/held-payments" },
   { path: "/desk/billing", role: "OWNER", fixture: "/desk/billing" },
   { path: "/desk/billing/reconciliation", role: "OWNER", fixture: "/desk/billing/reconciliation" },
+  { path: "/desk/compliance", role: "OWNER", fixture: "/desk/compliance" },
+  { path: "/desk/compliance/facts", role: "OWNER", fixture: "/desk/compliance/facts" },
+  {
+    path: "/desk/compliance/[id]",
+    role: "OWNER",
+    fixture: "A generated compliance filing id",
+    manualOnlyReason:
+      "The CI seed does not create a deterministic filing id; filing behavior is covered by the compliance workflow tests.",
+  },
   {
     path: "/desk/customers/[id]",
     role: "OWNER",
@@ -191,6 +214,35 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason: "CI seeds no old one-record set; the split itself is covered by tests/rental-package-lines-integration.test.ts.",
   },
   { path: "/desk/inventory", role: "OWNER", fixture: "/desk/inventory" },
+  { path: "/desk/disputes", role: "OWNER", fixture: "/desk/disputes" },
+  { path: "/desk/collections", role: "OWNER", fixture: "/desk/collections" },
+  { path: "/desk/continuity", role: "OWNER", fixture: "/desk/continuity" },
+  { path: "/desk/continuity/checkup", role: "OWNER", fixture: "/desk/continuity/checkup" },
+  {
+    path: "/desk/collections/[agreementId]",
+    role: "OWNER",
+    fixture: "A rental that is far behind on a bill",
+    manualOnlyReason: "CI seeds no overdue rental past the day-30 decision; the flow is covered by tests/ops6-collections-integration.test.ts.",
+  },
+  {
+    path: "/desk/disputes/[id]",
+    role: "OWNER",
+    fixture: "A payment dispute opened by Stripe",
+    manualOnlyReason: "CI seeds no dispute; the flow is covered by tests/ops5-disputes-integration.test.ts.",
+  },
+  { path: "/desk/recalls", role: "OWNER", fixture: "/desk/recalls" },
+  {
+    path: "/desk/recalls/[recallId]",
+    role: "OWNER",
+    fixture: "A possible recall match found by the nightly check",
+    manualOnlyReason: "CI cannot reach the government recall list, so no match exists; the flow is covered by tests/ops1-recalls-integration.test.ts.",
+  },
+  {
+    path: "/desk/recalls/incidents/[id]",
+    role: "OWNER",
+    fixture: "A safety incident someone marked from a repair request or job",
+    manualOnlyReason: "CI seeds no safety incident; the flow is covered by tests/ops1-recalls-integration.test.ts.",
+  },
   { path: "/desk/inventory/retired", role: "OWNER", fixture: "/desk/inventory/retired" },
   { path: "/desk/jobs/[id]", role: "OWNER", fixture: "/desk/jobs/ci-security-job" },
   { path: "/desk/jobs/[id]/work-order", role: "OWNER", fixture: "/desk/jobs/ci-security-job/work-order" },
@@ -230,6 +282,25 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
       "The CI seed does not create a deterministic part record; inventory-part behavior is covered by real-Postgres tests.",
   },
   { path: "/desk/paperwork", role: "OWNER", fixture: "/desk/paperwork" },
+  { path: "/desk/setup-guide", role: "OWNER", fixture: "/desk/setup-guide" },
+  { path: "/desk/setup-guide/[key]", role: "OWNER", fixture: "/desk/setup-guide/ein" },
+  { path: "/desk/vault", role: "OWNER", fixture: "/desk/vault" },
+  {
+    path: "/desk/vault/[id]",
+    role: "OWNER",
+    fixture: "A generated vault credential id",
+    manualOnlyReason:
+      "Vault logins are created by the owner; the CI seed has none. Item behavior is covered by real-Postgres tests.",
+  },
+  {
+    path: "/emergency/[token]",
+    role: "PUBLIC",
+    fixture: "A generated emergency link token",
+    manualOnlyReason:
+      "Emergency links are issued by the owner on demand and ship switched off; the public page behavior is covered by real-Postgres tests.",
+  },
+  { path: "/desk/vehicle", role: "OWNER", fixture: "/desk/vehicle" },
+  { path: "/desk/insurance", role: "OWNER", fixture: "/desk/insurance" },
   {
     path: "/desk/paperwork/[id]",
     role: "OWNER",
@@ -240,6 +311,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/paperwork/new", role: "OWNER", fixture: "/desk/paperwork/new" },
   { path: "/desk/parts", role: "OWNER", fixture: "/desk/parts" },
   { path: "/desk/privacy", role: "OWNER", fixture: "/desk/privacy" },
+  { path: "/desk/privacy-security", role: "OWNER", fixture: "/desk/privacy-security" },
   { path: "/desk/sales", role: "OWNER", fixture: "/desk/sales" },
   { path: "/desk/sales/new", role: "OWNER", fixture: "/desk/sales/new" },
   {
@@ -280,6 +352,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/books/closing", role: "OWNER", fixture: "/desk/books/closing" },
   { path: "/desk/books/assets", role: "OWNER", fixture: "/desk/books/assets" },
   { path: "/desk/books/reports", role: "OWNER", fixture: "/desk/books/reports" },
+  { path: "/desk/books/setup", role: "OWNER", fixture: "/desk/books/setup" },
+  { path: "/desk/books/months/[month]", role: "OWNER", fixture: "/desk/books/months/2026-09" },
   { path: "/desk/books/exports", role: "OWNER", fixture: "/desk/books/exports" },
   { path: "/desk/expenses", role: "STAFF", fixture: "/desk/expenses" },
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },
@@ -290,6 +364,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/settings/lead-response", role: "OWNER", fixture: "/desk/settings/lead-response" },
   // MCP-10a app feedback: settings, triage (owner/admin), and every team member's own reports.
   { path: "/desk/settings/feedback", role: "OWNER", fixture: "/desk/settings/feedback" },
+  { path: "/desk/settings/decisions", role: "OWNER", fixture: "/desk/settings/decisions" },
+  { path: "/desk/settings/decisions/import", role: "OWNER", fixture: "/desk/settings/decisions/import" },
   { path: "/desk/feedback", role: "OWNER", fixture: "/desk/feedback" },
   { path: "/desk/feedback/new", role: "STAFF", fixture: "/desk/feedback/new?from=/desk/today" },
   { path: "/desk/feedback/mine", role: "STAFF", fixture: "/desk/feedback/mine" },
@@ -328,6 +404,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/suppliers/new", role: "OWNER", fixture: "/desk/suppliers/new" },
   { path: "/desk/suppliers", role: "OWNER", fixture: "/desk/suppliers" },
   { path: "/desk/sales-tax/areas", role: "OWNER", fixture: "/desk/sales-tax/areas" },
+  { path: "/desk/sales-tax/area", role: "OWNER", fixture: "/desk/sales-tax/area" },
   { path: "/desk/sales-tax/delivery-fees", role: "OWNER", fixture: "/desk/sales-tax/delivery-fees" },
   { path: "/desk/sales-tax/exemptions", role: "OWNER", fixture: "/desk/sales-tax/exemptions" },
   { path: "/desk/sales-tax/returns", role: "OWNER", fixture: "/desk/sales-tax/returns" },
@@ -356,6 +433,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/sales-tax/audit-pack", role: "OWNER", fixture: "/desk/sales-tax/audit-pack" },
   { path: "/desk/sales-tax/record-retention", role: "OWNER", fixture: "/desk/sales-tax/record-retention" },
+  { path: "/desk/sales-tax/rules", role: "OWNER", fixture: "/desk/sales-tax/rules" },
   { path: "/desk/sales-tax/use-tax/settings", role: "OWNER", fixture: "/desk/sales-tax/use-tax/settings" },
   { path: "/desk/sales-tax/use-tax", role: "OWNER", fixture: "/desk/sales-tax/use-tax" },
   {

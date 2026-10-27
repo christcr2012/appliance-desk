@@ -8,6 +8,614 @@ from the town list. One rule sets each address's delivery charge for the fee rev
 pickup $0, else an owner-recorded driving-route exception's frozen price, else the zone price. Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
 Proof: unit tests and the zone DB tests run here on a throwaway Postgres; browser tests in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
 
+## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
+
+A repair visit can be marked "sealed refrigerant system". Only a person with a refrigerant (Type I) certification on file can be
+given it, you included; certifications are entered by the owner in Settings > Team. The rule applies when the visit is created,
+when it comes from a maintenance request, and when it is reassigned. Question DQ-OPS2-2 filed (starting value, not confirmed).
+Tests on real Postgres pass. This was the last unbuilt OPS-2 item.
+## October 27 — Fast-lane execution rules alignment (branch `ai/chatgpt/fast-lane-protocol`)
+
+Aligned session instructions with the already-approved squash auto-merge, final-head `ci` and `review-gate`,
+no up-to-date branch rule, and continuous work on independent approved items during CI. Preserved all
+data, permission, payment, spending, and release protections. PR and CI evidence pending.
+
+## October 27 — OPS-2: recycler receipt photo on a record (branch `ai/claude/ops2-receipt-photo`)
+
+After a refrigerant record is signed, the owner can keep the recycler's receipt photo or PDF with the business
+records (private files, same pattern as the insurance certificate). Tests on real Postgres pass. Still open on OPS-2:
+the sealed-system repair gate (needs a technician-certification record). Vehicle-insurance link is PR #689 (auto-merge on).
+## October 27 — Lane 1 AR-12 review fixes (PR #693)
+Addressed three Codex findings: searched record results cannot be selected for a different query, native segmented radios work without callbacks, and changing list search/filters resets page numbers. Fixed picker lint and Bills workspace test fake; added regression coverage. Fresh exact-head CI/review still required; an unrelated compliance lock-test failure in the prior CI is being checked separately.
+
+## October 27 — Lane 1 AR-12 controls and saved views (PR incoming)
+Built five accessible kit choice controls, mobile/desktop record lookup, built-in Bills/Customers views, honest pending flags on filters not yet supported, real customer search/rental/property-manager filtering, and owner/admin-only saved views with the existing locked workspace store. Tests now cover controls, view registry, customer predicates, and strict saved filter values. CI and review remain pending; no money logic or production settings changed. Remaining AR-12 wording, status explanation, feature settings, help and practice outcomes follow separately.
+
+## October 27 — Lane 1 AR-12: accessible selection controls and useful views (plan)
+Plan committed before implementation on `ai/chatgpt/ar12-controls-views-20261027`: five accessible kit selectors, starter list views, and supported saved Bills and Customers filters. Tests and exact-head CI will be required before merge; no owner confirmation is assumed.
+
+## October 27 — Fix: closing the emergency link works in the same millisecond (branch `ai/claude/pause-window-edge`)
+
+CI caught a rare edge from the successor-pause work (#672): if "Close this link now" and the contact's Pause press landed in
+the very same millisecond, the pause still went through. The window is now strictly before its end. A test checks the exact
+closing instant. Nothing else changes.
+
+## October 27 — OPS-3: vehicle-to-insurance link (branch `ai/claude/ops3-vehicle-insurance`)
+
+Each delivery vehicle can now be linked to the insurance policy that covers it. The vehicle page says "Insured by …,
+ends …" and warns when that policy has ended (the ended policy already reaches the To do list through OPS-4). Only
+live policies can be picked; deleting a policy just clears the link. Additive migration; tests on real Postgres pass.
+Merged earlier today: review check (#685), insurance certificate on a record (#687, #688). GitHub rule: the
+up-to-date requirement is off; `review-gate` still needs to be saved as a required check (OWNER-CHECKLIST section A).
+NEXT: OPS-2 leftovers (sealed-system technician check, receipt photo).
+
+## October 27 — MCP-3 backup recovery compatibility, CI follow-up (unmerged)
+
+The OAuth tables are deliberately excluded from business backup. The backup restore dependency scanner previously rejected ANY `@@map` model, even an excluded OAuth model, which caused CI unit/restore failures. The parser now allows excluded mapped tables but still rejects restoring mapped business tables. Backup policy test fixtures list the OAuth exclusions explicitly. Focused backup tests passed 15/15, and real disposable-PostgreSQL restore drill passed 1/1; changed-file ESLint, secret/migration and route checks passed. All three reviewer threads on PR #692 have a code fix, reply and resolution. Final-head CI and Reviewgate remain before auto-merge.
+
+## October 27 — MCP-3 PR #692 review fixes (in progress, not merged)
+
+GitHub PR #692 was published through the documented sandbox-transfer route with auto-merge enabled. Three reviewer findings are being fixed: disconnected signed tokens must stay invalid after reconnect, consent/disconnect must serialize, and older active assistants must remain visible to disconnect. The owner-triggered GitHub CI run and `review-gate` must pass at the final head; no deployment settings were changed.
+
+## October 27 — MCP-3 AI assistant OAuth (PR #692 open)
+
+Secure assistant OAuth implementation has been published as PR #692 with automatic merge enabled. Disposable-PostgreSQL roundtrip and 17 focused security/scope checks passed; the sandbox full TypeScript quick gate exhausted its memory. GitHub exact-head CI and Reviewgate are required for merge. No production provider settings or real data were changed.
+
+## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
+React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
+
+## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
+
+MERGED earlier: the review check (#685) and OPS-4 "Keep certificate on record" (#687, squash `ffac3c8`). #687 merged
+before its two Codex fixes landed because `review-gate` is not yet a required check (one row on OWNER-CHECKLIST
+section A needs Chris). This PR carries those fixes: policy saves keep the owner's reminder days on the record, and
+renewing a linked record moves the policy's end date in the same step. Tests on real Postgres pass.
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
+## October 27 — Lane 7 follow-ups: review gate merged, insurance certificate on a record
+
+MERGED: the automatic-merge safety check (`review-gate`, PR #685). Self-review notes now have to name the commit
+reviewed and come from the author or a collaborator; Codex findings clear only with a written disposition. It is already
+posting on open PRs. NEEDS CHRIS: two GitHub rule settings (agents cannot edit them) — one row in OWNER-CHECKLIST
+section A; until done, PRs still need a re-sync when main moves. IN PROGRESS (branch `ai/claude/ops-vault-gaps`): OPS-4
+"Keep certificate on record" (links each policy to one Insurance record in the vault; tests on real Postgres pass).
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
+## October 27 — Automatic merging and the review gate (branch `ai/claude/auto-merge-review-gate`)
+
+Chris asked for pull requests to merge themselves, because several agents work at once and main keeps moving. Two
+things were in the way: the main-branch rule required every PR to be re-synced after each other merge, and nothing
+handled Codex being slow or out of usage. Built: a `review-gate` check (`.github/workflows/review-gate.yml`,
+`scripts/review-gate.mjs`, 14 tests) that passes when Codex reviewed and every finding has a reply, or, when Codex
+is unavailable (usage limit, or no answer in 25 minutes), when the author left a "self-reviewed" comment after the last
+real push (a sync with main does not erase it). It only reads pull requests and writes one commit status; it never
+checks out a PR. After this merges the main-branch rule is changed to require `review-gate` and to stop requiring
+branches to be up to date, then auto-merge is turned on per PR. AGENTS.md section 6 and the quickstart say how.
+
+## October 27 — CMP-5: Hiring readiness (merged)
+
+MERGED via PR #679, squash `d22a76e8` on main (chain #674 → #676 → #679; the first two were closed
+unmerged for GitHub merge-check reasons only, the tree never changed). Built ahead of the first
+hire by owner decision 2026-10-27 — the dormant-until-employees condition is lifted. The six payroll obligations CMP-1 registered (Form 941,
+Form 940, W-2s, Colorado withholding, UI, FAMLI) already wake from the Business facts **employees**
+count; CMP-5 adds what was missing. New fact `firstHireDate` and a seventh payroll obligation,
+**co.payroll.new_hire** (Colorado new-hire report, due the first employee's start date + 20 days,
+GUIDED_WEB to the Colorado Child Support Services page — verified 2026-10-27; without the date it
+stays unscheduled with the reason printed). The Compliance screen gains a **Hiring checklist** when
+employees > 0 (EIN, W-4, I-9, new hire report, withholding account, UI account, FAMLI, workers'
+comp, posters, paid sick leave) whose state derives from facts and filings — no stored tick boxes.
+**DQ-CMP-PAYROLL-HOW** filed (starting value: payroll service). The provider's summary CSV imports
+each pay run into the books through `writeJournal` as source type **PAYROLL** (Dr wages, Dr employer
+payroll taxes, Cr bank) against two new system accounts — `WAGES` (Schedule C line 26, newly added
+to the worksheet's line list) and `EMPLOYER_PAYROLL_TAXES` (line 23) — with strict balance
+validation (the one withdrawal equals gross + employer taxes; the employee share rides inside the
+gross), whole-file duplicate protection via a unique (fileHash, rowIndex) `PayrollImport` record,
+and plain-word refusals (books not started, pay date before the books start, customer actor).
+Nothing is filed or calculated; payroll stays with the service. Proof: `tests/hiring-readiness.test.ts`
+(schedule incl. leap/December crossings, checklist derivation, CSV parser, balance rules),
+`tests/compliance-registry.test.ts` (23 obligations), `tests/payroll-import-integration.test.ts`
+(real Postgres on the lane's own cluster: wake + 20-day deadline, balanced journals, duplicate and
+gate refusals). With CMP-5 merged, Lane 5's compliance line (CMP-1…CMP-5) is complete.
+## October 27 — Lane 7 follow-up: your emergency contact can pause charges (branch `ai/claude/successor-pause`)
+
+The last Lane 7 piece, blocked until now on the logins vault (VAULT-1 and VAULT-2 are merged), is built. On the
+public emergency-access link (ships switched off), a contact who has waited out the period and confirmed the code sent to
+the saved phone or email now also sees **Pause all automatic charges**, good for the same 24 hours (also after the one
+download). It only pauses: new charges, late fees and reminders stop; nothing is refunded or cancelled, only the owner
+turns charges back on, a second press changes nothing, each link can pause only once (if you turn charges back on it cannot pause again), replacing the link
+or pressing "Close this link now" ends the power at once, the owner is emailed and texted (a notice that reaches nobody is recorded,
+shown honestly to the contact, retried on the next press, and the pause shows as a high To do), and the audit row
+`continuity.charges_paused_emergency` names the request. Two Codex findings on #672 fixed with tests. Refused before the code, with a bad link, after the window, and
+when emergency access is switched off. Proof: `tests/vault-integration.test.ts` (new case, real Postgres); all 20 OPS-1 to
+OPS-8 test files re-run together on a fresh throwaway Postgres (164 passing). Re-check of the eight cards: all merged at a
+green exact-head `ci` (PRs #623, #640, #648, #641, #631, #636, #637, #653); the cards still said "PR open" and had unticked
+boxes, now corrected (acceptance 1 stays open only for the "Not built" items each card names). Codex never posted a finding on
+#653 (its note stayed "running" on an older commit): self-read, nothing blocking. Unblocked by VAULT-1 but still not built:
+OPS-4 certificate upload and OPS-2 sealed-system technician check. Browser proof for the public page is CI only.
+
+## October 27 — Lane 2 MCP-3 local SDK OAuth round trip passed (not merged)
+
+On `ai/chatgpt/mcp-3-oauth-connect` a disposable-PostgreSQL test now covers PKCE registration, owner consent, signed resource token, refresh, MCP whoami and instant token rejection after Disconnect. Seventeen additional focused unit/security/size tests and changed-file ESLint passed. The only allowed dynamic-registration resource is the canonical app MCP endpoint. Full quick check, browser/axe, exact-head CI and review **remain**, so MCP-3 is not shipped. MCP-2 was merged on #611; MCP-4 read tools remain on a separate dependent plan branch. No real accounts or deployment settings were touched.
+
+## October 27 — MCP-3 OAuth hardening checkpoint (still unshipped)
+
+PR #611 MCP-2 is merged with final-head green CI; MCP-3 remains in its separate
+branch. MCP-3 now denies stale-owner/admin grants, revokes refresh/access/consent
+records atomically and tests those rules on disposable PostgreSQL (3/3 passing).
+Its bearer/request/issuer tests and stream-size tests passed (17 focused tests).
+The complete OAuth client handshake and CI are NOT yet verified. No live issuer,
+customer email/SMS/payment or production database change was made.
+
+## October 27 — Lane 2 MCP-3 secure assistant connection (in progress, not shipped)
+
+Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Thirteen focused tests passed; scoped TypeScript checking exposed three fixable errors. New OAuth revocation tests require disposable PostgreSQL verification. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 merged at bc204189 after exact-head CI and resolved reviews. No customer data, hosting settings, production keys or live communications changed.
+
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
+
+
+
+## October 27 — VAULT-2: Logins vault and emergency access (in build)
+
+Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
+encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
+beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
+Copy and saving a secret all need an **unlock**: a fresh second-step code verified by Better Auth itself (the
+same methods as sign-in), good for 5 minutes on that session only; every reveal is audited with the field
+name, never the value; shown values hide after 30 seconds. Five wrong codes in 15 minutes lock the vault for
+30 minutes and email the owner (a new `vault_locked` account notice); sign-out-everywhere, password/email
+change and second-step change clear unlocks at the same points ACC-6 forgets devices. A grep test keeps the
+four encrypted-secret column names inside the vault and paperwork domains only (SETUP-1's guide now reads
+record facts through a paperwork helper). Logins link to VAULT-1 records both ways (the record page shows
+"Login: …"); rotation reminders land on To do as a `VAULT` item when a login carries a change-every setting.
+Backups keep credentials still encrypted; unlock rows and emergency requests are never backed up.
+**Emergency access ships switched off**: an owner setting (contact name/email/phone, wait 1–30 days, starting
+value 7) plus a one-time link whose token is stored only as a hash. The public `/emergency/[token]` page runs
+the flow — request (owner reminded by email and text at the start), a daily cron sweep reminding halfway and
+a day before the wait ends, deny at any time, then a code sent to the SAVED contact only, and one download
+(records pack + the vault decrypted into a PDF) that works once inside 24 hours. Filed DQ-VAULT-BANK (bank
+logins allowed, with the honest on-screen note) and DQ-CONT-SUCCESSOR. Proof: `tests/vault.test.ts` (masking,
+rotation, key separation), `tests/vault-secret-fields-grep.test.ts`, `tests/vault-integration.test.ts` (real
+Postgres, serial: owner boundary, unlock lifecycle, lockout, emergency end to end), `e2e/vault.spec.ts`
+(browser-e). Next for this lane: **ACCT-1** (accountant sign-in), which also unblocks Lane 4's TAXBEN-2.
+
+
+## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
+GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
+selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings
+(portalled Confirm interactions and long labels) were fixed and regression-tested; replies posted.
+Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
+optimistic Snooze and bundle budget remain. No user payment or permission path changed.
+## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
+
+Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
+walkthroughs for the real-world accounts — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley
+license, Weld assessor, IRS accounts, the IRIS TCC, insurance, the vehicle, email domain, texting, the
+encryption keys, the CPA and backups. Each has plain steps with official links, what to have ready, and the
+VAULT-1 record it fills; where a step produces a number or a file, saving it lands on that record through
+the VAULT-1 rules (encrypted, masked, sniffed). Steps the app can verify check themselves — presence only
+for keys (`ENV_PRESENT` allowlist), a saved number or file on a record, a set-up filing account. Progress is
+the audit log folded on read (no new table); "Not for me" dismisses a walkthrough. The suggested next is the
+one whose needed-by date comes soonest (the IRIS TCC before January 31), and one To do names it until all
+are done or dismissed. The OWNER-CHECKLIST rows for the keys, the TCC and backups now link here. This branch
+also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthroughs.test.ts` (data + order),
+`tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
+saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
+
+## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR #669)
+
+Branch `ai/vivienne/feetax-2-final` (successor to the first PR, #666). Every place within 50 miles of Greeley is seeded with its delivery
+readiness (city license rule, how returns are filed, source and review state — no tax rates
+seeded, and no rent-tax decisions either: whether a place taxes rentals stays in the tax rules). Before an address can be quoted, ordered
+or scheduled, the new readiness check refuses it with a plain reason when a place's rules are
+undecided, a required city license is missing or expired, the delivery count crosses a city's
+license rule, the address's tax places aren't confirmed, or the address is outside Colorado. The
+one override — owner-only, with a reason, written to Activity — covers "rules not decided" only;
+a missing license can never be overridden. Delivery counts are recorded when a delivery job
+finishes. New screen **Taxes › Delivery area** lists every place and runs "Check an address";
+a "Get ready to deliver in {city}" item lands on the To do list only for places a real customer
+address needs. Proof so far: `tests/delivery-readiness-integration.test.ts` (19 tests), the
+conversion suite and the wired-path suites on throwaway Postgres; PR #669 carries the full
+verification record. Starting values filed as
+DQ-FEETAX2-1 (Boulder rent "likely") and DQ-FEETAX2-2 (presumed city licenses).
+
+## October 27 — CMP-4 merged (PR #670)
+
+CMP-4 is on main (squash 95de266b): the Colorado and local filings — the Weld County business personal
+property declaration (January 1 snapshot from the asset records with possession read from the custody
+episodes, the $56,000 exemption check with an owner-confirmed close when under, the filled DS 056 /
+DS 060 forms gated on the vendored printing being the filing's own year, and the itemized spreadsheet),
+the Secretary of State periodic report with the exact values to type, the trade name entry (an LLC's
+Colorado trade name never needs renewal — C.R.S. § 7-71-104), the Greeley business license on its
+two-year cycle from the recorded license date, the truck registration month, and the USDOT biennial
+schedule read off the recorded USDOT number. Two PRs (#668, then its successor #670) and six Codex
+findings — all real, all fixed with regression tests. Lane 5's compliance line is now complete except
+CMP-5, which stays dormant until the business has employees.
+
+## October 27 — CMP-2 merged (PR #660)
+
+CMP-2 is on main (squash e4e9cf31): every books account mapped to a Schedule C line, the year-end
+accountant packet (CSV + PDF) prepared from posted journals under the approve flow, the 4562 and 4797
+worksheets, quarterly federal and Colorado estimates by the prior-year safe harbor from owner-entered
+tax-year facts (no prior year → words only, no number), the DR 0104EP and 1040-ES vouchers filled at
+download time with nothing stored, and the 1099-K tie-out. One PR, one review round: three Codex
+findings, all real, fixed with regression tests. CMP-2 merging unblocked Lane 4's TAXBEN-1. Two honest
+gaps recorded in the PR: no TXF export (no authoritative TXF 042 spec could be confirmed) and the
+Colorado 70%-of-actual-tax estimate prong is not computed (DQ-CMP-CO-EST).
+
+## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
+
+Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
+walkthroughs for the real-world accounts — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley
+license, Weld assessor, IRS accounts, the IRIS TCC, insurance, the vehicle, email domain, texting, the
+encryption keys, the CPA and backups. Each has plain steps with official links, what to have ready, and the
+VAULT-1 record it fills; where a step produces a number or a file, saving it lands on that record through
+the VAULT-1 rules (encrypted, masked, sniffed). Steps the app can verify check themselves — presence only
+for keys (`ENV_PRESENT` allowlist), a saved number or file on a record, a set-up filing account. Progress is
+the audit log folded on read (no new table); "Not for me" dismisses a walkthrough. The suggested next is the
+one whose needed-by date comes soonest (the IRIS TCC before January 31), and one To do names it until all
+are done or dismissed. The OWNER-CHECKLIST rows for the keys, the TCC and backups now link here. This branch
+also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthroughs.test.ts` (data + order),
+`tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
+saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
+
+## October 27 — CMP-3 merged (PR #656)
+
+CMP-3 is on main (squash f103c7fc): 1099s and W-9s, the IRIS portal CSV and A2A client, and the Form 8300
+detector, after three PRs (#654, #655, #656) and ten Codex findings — all real, all fixed with regression
+tests.
+
+## October 26 — Lane 7 (back-office operations) close-out
+Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653, merged. Each merged at a green exact-head `ci`; Codex findings answered where it posted any (it posted none on #653). The successor pause switch (needed VAULT-1) is built on `ai/claude/successor-pause`. Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
+## October 26 — OPS-8: "If something happens to me" and the yearly check-up (PR #653, merged, CI green at the exact head)
+
+Branch `ai/claude/ops-8`. New **More → If something happens to me** screen (`/desk/continuity`, owner only): who to call (emergency contact, who would keep the business running, CPA, attorney, where records are kept), a live snapshot (appliances out, unpaid bills and total owed, visits in the next 14 days; counts only, no customer names), and an owner-only **Pause all automatic charges** switch. While on, the nightly jobs that start charges, add late fees, send past-due notices or email reminders do not run (11 named jobs); backups, payment checking, recall watch and the tax watches keep running; nothing is refunded or cancelled. Each press is written to Activity. A paused store shows a high To do until turned back on. **Yearly check-up** (`/desk/continuity/checkup`): in December an owner To do opens an 11-step walkthrough (insurance, prices, CPA packet, policies, records clean-up, access, vendors, recalls, expiring records, tax set-aside, this page); ticking only records that you looked; finishing is once per year.
+Proof: `tests/ops8-continuity-rules.test.ts` and `tests/ops8-continuity-integration.test.ts` on throwaway Postgres (owner-only, audit once per real change, the pause stops `late-fees` but not `backup`, December and Denver-calendar edges, finish-once); `e2e/continuity.spec.ts` (axe at 360 and 1440). Not yet done: CI at the exact head; the successor using the switch through VAULT emergency access (VAULT-1 does not exist yet, so only the owner can press it today — see OWNER-CHECKLIST). Starting values not confirmed: DQ-OPS8-1, DQ-OPS8-2.
+## October 26 — OPS-3: vehicle, mileage log and driving rules (merged, PR #648)
+## October 26 — OPS-4: insurance (merged, PR #641)
+## October 26 — OPS-7: privacy and security duties (merged, PR #637)
+## October 26 — AR-11 remembers desk list filters and scroll (in progress)
+Branch ai/chatgpt/ar-11-remember-lists stores only a tab-scoped list query and scroll number
+for known list pages. Links in AreaTabs, sidebar and bottom bar restore the query for plain links;
+direct filtered links stay authoritative. Both manual and idle sign-out clear list memory.
+Unit and authenticated browser coverage added; exact-head CI and review pending.
+React transitions, swipe actions, optimistic helper and bundle budget remain in AR-11.
+## October 26 — AR-11 mobile refresh and safe-area chrome (PR pending)
+Branch `ai/chatgpt/ar-11-mobile-pull-refresh`: touch-only 72px downward pull refresh on Today, Bills and Customers,
+with cancelled/sideways/scrolled/dirty/offline and reduced-motion guards plus a manual
+Refresh button when motion is reduced. Phone chrome respects safe areas; static form and
+server-action paths are untouched. Unit/browser proof and exact-head CI still required.
+React transitions, swipe row actions, remembered lists, optimistic helper and bundle budget remain.
+## October 26 — Lane 3 complete: automatic Books, setup and monthly review
+BA-1 PR #610, BA-2 PR #613 and BA-3 PR #624 are merged into main. The final PR heads passed CI:
+BA-1 e85e4358 (run 40317413250), BA-2 6337a754 (run 40357496521) and BA-3 eb2a99c7
+(run 40444991438). BA-3 has no unresolved review threads. The nightly records, first-time setup,
+and month-end checks are built; accountant emailing requires a separate owner action. No live
+provider setting, customer message, production records or payments were changed. Lane 3 has no
+remaining implementation cards. Real-business acceptance and release status are separate from CI.
+## October 26 — AR-11 desk-wide loading screens (in review)
+Branch `ai/claude/ops-7` (stacked on OPS-6). New **Privacy and security** screen (More menu, owner and admin). **Something may have leaked**: you record the date you found out, then the date you decided information was really exposed and how many Colorado residents; the app works out the deadline (30 days, starting value from the dated rule book, not confirmed), also needs the Attorney General at 500 or more people and the credit bureaus above 1,000, fills in a printable notice letter, and puts each step on your To do list. It sends nothing; the date can only move earlier, and the incident cannot be closed while a notice is still owed. **Service providers** (Vercel, Neon, Stripe, Google, Twilio, Resend) each get a yearly "security terms reviewed" check that returns to your To do list. **Legal hold** on a customer stops the nightly clean-up and blocks their privacy deletion. **Keep for** years are settings (agreements 7, tax 7, refrigerant 6, enquiries 2, messages 3); the nightly **clean-up of old enquiries ships OFF**, removes at most 200 a night, never signed or billed history, and logs every run. **Face-match ID** stays off. **Marketing texts** are held outside 8 am–9 pm Denver time (setting). **Accessibility complaints** get a 30-day fix date on your To do list. A public page "How we handle your information" shows the disposal policy.
+Migration `20261105000000_privacy_security` (additive). Proof: pure tests (`tests/ops7-privacy-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops7-privacy-integration.test.ts`), including a bug the test caught (old enquiries with no stored phone key would never have been cleaned up). Browser check `e2e/privacy-security.spec.ts` runs only in CI.
+Not done: the 6-1-713 text and the breach rules were summarized from secondary sources (the statute site was not reachable from the build machine), so the rule-book rows say "summary" and the questions are filed as DQ-OPS7-1/2/3. No ID-image storage exists in the app yet, so there was nothing to purge there. Messages older than the setting are not purged (they are tied to legal records).
+Branch `ai/chatgpt/ar-11-loading-skeletons` makes every top-level desk page area show a kit list or record skeleton while
+its server content loads; the root fallback also uses the kit. A filesystem inventory test protects
+future screens, and an authenticated browser test checks Today → Customers under a slow response.
+No data, role, money or provider changes. Local tests cannot run without repository checkout;
+CI at exact head and review still required. AR-11 remains open after this: transitions, touch,
+remembered lists, optimistic helper and bundle speed check.
+## October 26 — AR-11 desktop shortcuts and idle-safe freshness (merged PR #647)
+Branch `ai/chatgpt/ar-11-keyboard-freshness`, head after latest main merge. Adds on-desktop
+navigation keys and a searchable help dialog, plus guarded refresh on Today, Bills and Customers.
+The shifted-key ordering bug was fixed; exact-head CI and review passed before merge. AR-11 is not yet complete (touch, view transitions, skeletons, bundle budget).
+
+## October 26 — MCP-2 PR #611 all tests green, finishing merge sync
+
+Branch `ai/chatgpt/mcp-2-backup-reliability`, PR #611. Full CI 40443264938
+passed all 11 jobs on previous head, including throwaway PostgreSQL, backup
+restore and five browser groups. Latest `main` merged before final exact-head
+CI/review; no real backup provider or production data was touched.
+
+## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
+
+## October 26 — TFA-3: official-page watches with strict parsers (in progress)
+
+Branch `ai/claude/ops-3`. New **More → Vehicle and mileage** screen (`/desk/vehicle`): the delivery vehicle (year, make, model, VIN shown masked, plate, registration month, odometer at purchase, maintenance every N miles/months, medical card date) with the **weight rating (GVWR) required**. From the weight the screen says, in plain words, "No special license" (under 16,001 lb), "No CDL, but Colorado's commercial-vehicle rules apply" (16,001–26,000 lb; a medical card is asked for, a setting) or "A commercial driver's license is needed" (26,001 lb and up). The **Driver view** gets a "Mileage today" card: type the odometer when you start and when you finish; the trip's purpose ("Deliveries and pickups", "Service visits") and stops come from that day's visits, and only one route trip per vehicle per day can exist. The owner can add a trip by hand (a supply run) and sees business miles per year, the IRS rate from the dated rule book (`us.mileage_rate`, 72.5¢ for 2026) and the standard-rate deduction in whole cents. To do items: registration month (this month and the month before), maintenance due (by miles or months), medical card missing/expiring/expired.
+Proof: `tests/ops3-vehicle-rules.test.ts` (weight lines at exactly 16,001/26,001, input checks, reminders, deduction rounding) and `tests/ops3-vehicle-integration.test.ts` on throwaway Postgres (seeded rate, route day start/finish, odometer sanity, one trip per day, staff limits, yearly total, reminders, retire); `e2e/vehicle.spec.ts` runs in CI only.
+Not built on purpose: comparing with actual vehicle costs from the books (shown as "not connected yet"), linking the vehicle to its insurance policy (insurance reminders are on the Insurance screen), the CMP-2 tax-form feed, and the "route day" prompt at first and last stop (a card at the top of the Driver view instead). Weight lines are code constants with their sources noted, not rule-book rows. Questions filed: DQ-OPS3-1 (mileage method), DQ-OPS3-2 (medical card).
+## October 26 — TFA-3: official-page watches with strict parsers (in progress)
+Branch `ai/vivienne/tfa-3-final`. The six seeded official-page watches are turned on behind an owner switch on the
+Rules screen, and three gain strict readers (Colorado RDF rates, IRS 1099 instructions, Colorado interest) plus
+the Greeley rate reader: pages are read weekly, and daily inside each rule's known change window. Every reading
+is stored; one that differs from the rule book waits on To do for Chris's Approve / Not right — nothing is
+applied on its own, and the old GIS rate auto-apply now starts off. Greeley readings go through the existing
+rate review path, and a Greeley approval also mirrors into the rule book so the two stores agree. Known limit:
+the live Greeley page does not state its rate in a sentence yet, so that reader reports "couldn't read" until
+the city publishes one (never a guess). Local proof: parsers 13/13, observation 9/9, watch 18/18, rate review
+6/6, Today access 11/11, registries 24/24 on throwaway Postgres. PR #646: CI green at the exact head, review round 1 resolved; merging.
+## October 26 — BA-3: guided monthly Books review (PR #624)
+
+Completed four month-end source checks, immutable accountant CSV package and explicit owner-approved email with honest provider outcomes, owner-only audited month closing, expense receipt explanations, reminder items and role-safe screens. BA-1 and BA-2 prerequisites are merged. CI run 40441051070 passed full tests, browser/accessibility (all five shards), secret scan and typecheck at `d0fa86a2`; all 10 Codex findings dispositioned and threads resolved. Reconciled newer main without discarding other lanes. The final documentation-only commit must still pass its exact-head CI before guarded merge. No customer email, payment, live settings or production data changed.
+
+## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
+
+## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
+One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
+registries' identifier keys (the generic-api-key false positives that needed a new
+per-commit fingerprint after every commit touching those lines); 48 fingerprint
+lines came out of `.gitleaksignore`, including all of CMP-1's. Verified: full-history
+scan clean with the fingerprints removed, and planted real-shaped keys still flag,
+including inside the registry files. Merge is sequenced by the lane heartbeat.
+Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
+## October 26 — CI speed fixes across parallel lanes (PR #645)
+Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
+## October 26 — VAULT-1: business records (PR #658, CI green at the exact head; merging)
+
+Business paperwork is now **Business records**: kinds, issued/expiry dates, portal
+links, costs and compliance links on every record; numbers stored encrypted (the
+compliance field key) and shown only masked, owner-only when a number is on file;
+files in the private store, sniffed by magic bytes, with a verified large-PDF path;
+"Renewed…" keeps old files as history; the export pack (ZIP + PDF index, masked,
+audited) downloads from the list page; 19 new starters (32 total) with starter
+idempotency proven. Admins read only the kinds in the owner's new setting
+(DQ-VAULT-ADMIN-KINDS). Packet + five-item drift table are in the card. Local
+evidence: 10 unit + 14 integration tests green on the lane database, the existing
+paperwork suites (14) still green, money and plain-words checks pass; full CI
+green at the exact head on PR #658 (three Codex findings fixed with tests). The ACC-6 merged-status
+tidy-up rides this branch's first commit.
+
+## October 26 — CMP-1: Compliance center (MERGED, PR #642, commit 238f7a57)
+
+The Compliance center is on main: the obligation registry with sources and 2026–2028 periods, business facts with the EIN encrypted (last 4 only), the prepare → approve (hash-bound) → submit filing flow, the To do COMPLIANCE_DUE category, the filled-form engine with the vendored 1040-ES booklet, and the Compliance screen (Coming up / Needs you / Done / Not needed). Four Codex review rounds were answered on the way in; the final head passed every check. The merged detail lives in the October 26 entry below and on the CMP-1 card. Still on Chris's checklist: set the compliance encryption key so the EIN box unlocks. Next for this lane: **CMP-3** (1099s and W-9s, plus the Form 8300 detector) on this foundation, then CMP-2.
+
+
+
+
+
+## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
+
+Branch `ai/claude/ops-4`. New **More → Insurance** screen (`/desk/insurance`, owner only): your policies (general liability, commercial auto, equipment, workers' comp, other) with company, policy number, limits as your agent wrote them, yearly cost, end date, agent and where the certificate is kept. A To do appears at 60 days and again at 30 days before a policy ends (both numbers are settings, with "Restore recommended"), and once it has ended. Workers' compensation status is recorded (no employees and rejected as an LLC member, with form date and certified-mail number, or a policy in place); entering one or more employees without a live policy puts "Workers' compensation insurance is required now" on To do. "Request a certificate of insurance" records the ask and writes the email to your agent for you to read and send yourself (the app sends nothing).
+Proof: `tests/ops4-insurance-rules.test.ts` (reminder boundaries, workers' comp rule, input checks, email draft) and `tests/ops4-insurance-integration.test.ts` on throwaway Postgres (add/edit/archive, staff refused, To do at each stage, owner's own reminder days, workers' comp raise and clear, certificate record); `e2e/insurance.spec.ts` runs in CI only.
+Not built on purpose: the certificate PDF upload (a note says where it is kept; file storage for business records waits for VAULT-1), the yearly premium flowing into the cash budget, and the "staff user marked employee" link (you enter the employee count instead). Questions filed: DQ-OPS4-1, DQ-OPS4-2.
+## October 26 — CI speed fixes across parallel lanes (PR #645)
+Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
+Branch `ai/claude/ops-6` (stacked on OPS-5). A nightly pass now watches bills that are past due and prepares the next step for you — a **second notice** on day 10, a **final notice** on day 20 (email text plus a printable letter), and a **decision** on day 30 (payment plan, pick up the appliance, or small claims). All three days are your settings. Nothing is sent, nothing is picked up and no money moves until you press the button; sending still goes through the normal message path, so it stays off while live email is off. Every message is written in "Robinson Appliance Rentals"'s own name. A **pickup** can be made only after you record that the customer agreed (or a court order), and never for a customer marked on active military duty without a recorded court order; "Customer objected" ends the visit with nothing taken and brings up small claims. The **small-claims packet** (PDF) gathers the bills and payments, notices sent, the appliance cost and the claim amount; it checks the $7,500 limit, the filing fee ($31 up to $500, otherwise $55) and the court's 2-a-month / 18-a-year limits from the rule book. You file it yourself. A test now fails if any agreement, quote or notice wording offers ownership or a purchase option. Proved so far: 24 new tests (pure rules and wording, ownership-wording scan, and 9 on a throwaway database); CI still to run. Not built: the court's own claim form is not copied into the app — the packet tells you to fill in JDF 250 from the Colorado Judicial Branch site so it is always the current one.
+## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
+Branch `ai/claude/ops-2`. A retired refrigerator, freezer or mini-fridge can no longer be marked "scrapped" or "thrown away" (one at a time, in bulk, or as the leftovers of a parts-stripping) until its **refrigerant record** is signed on screen: refrigerant type, whether it was recovered (by whom, their address, certification number, equipment, date) or had already leaked, and the scrap yard's receipt number. The app prints the signed **statement** (PDF) to hand the scrap yard. The record is kept for **6 years** (a dated rule-book number; the federal rule asks for 3; not confirmed). Owner setting on the Retired appliances page: which kinds of appliance have refrigerant (starting value: refrigerators, freezers and mini-fridges; washers and dryers no). Migration `20261106000000_refrigerant` (additive). Proof: pure tests (`tests/ops2-refrigerant-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops2-refrigerant-integration.test.ts`), typecheck and lint clean.
+Not done: the **recycler receipt photo** (a text receipt number is saved instead; a photo needs a new private upload area) and the **sealed-system repair gate** (needs a technician certification record, which belongs to VAULT-1, not built yet). The Colorado-specific rule is not confirmed (DQ-OPS2-1).
+
+## October 26 — DEC-2: researched starting values in the live app (PR #635, merged after green checks)
+
+Branch `ai/claude/dec-2-starting-values`. DEC-1b (PR #603) is merged. Codex found two real problems, both fixed before merge: the overnight values were being cancelled on their start day (nobody was named to carry them out), and the nightly save now re-checks under its lock that nobody answered meanwhile.
+Coded: every question in Decisions & reviews has a researched value with sources (tax-by-charge, Greeley careful choices,
+filing basis, delivery fee, bad debt, setup fee, record years, remembered-device days, and the "as built" wording
+answers); new questions for Greeley's measure 2F city rate and the late fee amount. The nightly run (inside the existing
+books-nightly cron, before the Books check) applies each value once, from the next Denver day, only over untouched
+settings, as the one active owner, with a record that names no person; questions Chris already answered are recorded as
+confirmed. One To do item ("N starting values are now in use") until the owner presses Mark as reviewed (or keeps/changes any
+question). New rental agreements and quote conversions take the late fee from Settings; the form pre-fills it; renewals keep old terms.
+Proof: unit tests here (registry, defaults, day 11 with the clock changes, screens) and `tests/starting-values-integration.test.ts`
+on throwaway Postgres; the waiver browser spec `e2e/late-fee-waiver.spec.ts` runs in CI only. Not done on purpose: the
+`Invoice.lateFeeWaivedAt` field from the old spec (FEE-1's waiver on the pending charge replaced it).
+Needs Chris: nothing new on the checklist; the starting values show on his For you / For your CPA tabs.
+
+## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review, merged with latest main)
+
+Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,
+filters, cards with Keep / Change / Ask / Enter their answer / Reopen — owner acts, admins read only, staff sent away),
+Word and PDF questionnaires, "Import a completed form" (Word file or pasted answers → preview → apply with the signed
+token), private storage of completed forms (type checked by content, 4 MB) and a weekly "Decisions waiting" Today
+card. The kit `<Toaster />` is mounted on these two screens only (in the layout it broke older tests that look for
+one status message; moving it there stays with AR-0b). Proof: unit tests here; browser spec `e2e/decisions.spec.ts` runs in CI only.
+Not observed: a form kept in real private storage (CI has none). Next: DEC-2 researched values; MCP decision tools.
+
+## October 26 — OPS-5: card disputes and bank returns (built, PR pending)
+
+Branch `ai/claude/ops-5`. When Stripe tells us a customer disputed a payment, the app now records it, puts it on your To do list with the deadline, and builds one evidence packet (PDF) from your own records: signed agreement, delivery record and photos, the bill and payments, messages sent, refund terms. You read it and press **Approve and send to Stripe**; it can be sent only once. A bank (ACH) dispute can't be contested, so it says "collect directly", switches that customer's bank autopay off, and stays off until you allow it. A refund on a bill with an open dispute is stopped with a plain warning, and a deposit paid by bank debit waits (starting value 60 days, your setting) before it can be refunded. Nothing moves money by itself. Proved so far: 15 new tests on a throwaway database and typecheck; browser checks and CI still to run. Not built: the 7-day notice before a debit date changes, because nothing in the app lets anyone change a debit date today (noted on the card).
+
+## October 26 — CI maintenance: scoped secret history and rebalanced browser groups (PR #632)
+
+PR #632 changes Gitleaks from all-branch history scanning to new PR/push commits plus the complete main-only nightly history; the full checked-out-file scan remains. Three complete browser specs moved into the previously lightest group, preserving all 85 specs and four runners. The first full CI run (40416591581, head f591596f) passed all 11 jobs: browser a 164.74s, b 142.41s, c 108.31s, d 164.08s against 180s. No automated review appeared and the diff was self-reviewed. The final evidence documentation revision must pass its own exact-head CI before merge; the PR records the current merge state. No security allowlist, test coverage, provider settings or production data changed.
+## October 26 — CMP-1 compliance center (PR #627)
+
+The Compliance center's foundation: every federal and Colorado obligation from the 2026-10-25 research file is in a pure registry with sources and correct 2026–2028 periods; the "checked and not needed" items (FinCEN BOI, Form 2290, rent-to-own license) show their reason and source. Business facts (owner-only) hold the entity type, report month, truck weight and employees; the EIN is stored AES-256-GCM encrypted (`src/lib/field-crypto.ts`), only its last 4 ever shown, never logged — and until Chris sets `COMPLIANCE_ENCRYPTION_KEY` (owner checklist) the EIN box is disabled with the reason. Filings move prepare → approve → submit under the row lock: approval binds the prepared numbers' hash (changed numbers force re-review), submitting happens once only, and prepared numbers refuse a full tax ID. The To do list gains a COMPLIANCE_DUE category driven by the TFA-1 timing rule; the Compliance screen lives at /desk/compliance, reached from the Taxes home page (the guarded four-tab Taxes menu is unchanged), with four sections of its own (Coming up, Needs you, Done, Not needed), a business-facts page, filing pages and a calendar download. The filled-form engine vendors the official 1040-ES booklet, hash-checked against a manifest, with a field map read from the PDF itself (voucher blocks verified by geometry); the SOS periodic report has the first guided preparation. Open CMP questions are filed as DQ-CMP-* in OWNER-INPUTS.md. Next: CMP-3 (1099s) then CMP-2 on this foundation.
+
+## October 26 — OPS-1: product recalls (PR open, branch `ai/claude/ops-1`)
+
+Each night the app reads the government's public recall list (CPSC, read only) and records **possible** matches against your
+fleet (same maker, and the model number appears in the notice). Nothing is held or sent automatically. On **Equipment › Recalls**
+the owner or an admin presses "It's ours" (machine goes on hold: cannot be rented, reserved, swapped in, sold or listed for
+parts) or "Not ours" (a reason is required). A confirmed recall puts a high-priority To do on the list for each current renter
+with a drafted message; the app never sends it. Extra step beyond the spec: "Fixed" ends a hold after the repair. A
+"Safety incident" button on repairs and visits starts a 24-hour To do to decide whether to report to the government.
+Migration `20261102000000_recalls` (additive). Proof: unit tests plus 11 database tests on a throwaway Postgres, typecheck and lint clean.
+Not done: no real call to the government list was possible from the build machine, so the live answer shape is on the
+checklist; browser test runs only in CI.
+
+## October 26 — TFA-2 built: exemption switches that turn themselves on and off
+
+Branch `ai/vivienne/tfa-2` (main merged in at `50e265e`). Everything in spec sections 6–10 is coded: the delivery-fee crossing date is recorded automatically and the fee starts on the statute date after Chris approves the prepared switch on To do (returns keep the fee, pre-delivery cancellations credit it, exchanges add none, the pay-instead choice locks at the first qualifying sale); use tax resets to one yearly return every Jan 1 and goes monthly only when that year passes the limit; filing-frequency advice compares the trailing-12-month average with the rule-book limits and waits for Chris's one-tap confirm after Colorado agrees; an expired exemption certificate gets a To do with a drafted ask, and a back-dated certificate earns the customer a credit; a new license defaults to expiring Dec 31 of the odd year in force and renewal rolls to the next one. All packet tests pass in calm local batches on the merged tree; the browser spec and exact-head CI run with the PR. Next: open the PR, green CI, review threads, merge. No production data or settings changed.
+
+Update 2026-10-26 ~15:45 MDT: PR #629 is open. The first CI run passed everything except the secret scan, which flagged rule-key names in other lanes' history (the scan reads every branch's history); seven fingerprints were allowlisted with explanations, and the scan then passed. The automated review found five real problems, all fixed in one patch with regression tests: pending delivery-fee switches were counted on To do but never shown, so the approval button could never appear (now rendered); a rental delivered before its switch was approved could be charged after approval (now the business absorbs those fees for good, written down at charge time); confirming less-frequent filing mid-year would have left the rest of the year with no returns (the confirm now fills the gap with one transition period); and a back-dated exemption credit could run past the certificate's expiration day and could credit the same tax twice for overlapping certificates (now bounded and net of earlier credits, with certificate creation serialized per customer). One browser group also crossed its time budget with all 115 tests passing, so two small specs moved to the lightest group, the same rebalance other lanes have used. Final CI and merge next.
+
+Update 2026-10-26 ~16:20 MDT: PR #629's checks went fully green at its final head, but GitHub would not merge it: the upload-based history never recorded the merge of current main (ACC-6), so GitHub computed conflicts in three docs files even though the tree was fully merged — the same failure LD-1 and ACC-6 hit. The lane was rebuilt on current main as PR #630 with the identical tree, and #629 will be closed in its favor. On #630 the review found two more real problems, both fixed with regression tests: the back-dated exemption credit now nets out tax already refunded on the bill (using the filing packet's proportional refund allocation), and the filing-frequency average now counts periods by overlap with the trailing twelve months, so a yearly account can still be advised to file more often in December. One browser group crossed its time budget again on the merged tree (all tests passing), so revenue-records moved from the heaviest group to the lightest. Final CI and merge next.
+
+Update 2026-10-26 ~16:50 MDT: CI went fully green at head e6162a31 (run 40411209478, its re-run attempt), and both review threads on PR #630 are answered and resolved. This docs commit ticks the card's last acceptance box and gives the PR a fresh head whose single run decides the merge.
+
+Update 2026-10-26 ~17:35 MDT: PR #630 was fully green but GitHub's merge graph still refused it, so the lane rebuilt on current main as PR #633 (branch ai/vivienne/tfa-2-final) with the identical verified tree; its CI run 40418152654 went green on the second attempt after the browser-b job passed on re-run. Main then moved again (PR #632, CI maintenance), so current main is merged in here: e2e/shards.json takes PR #632's full four-group rebalance (all 85 specs registered once, checked), and this STATUS file keeps both top entries. A fresh exact-head CI run on the merged tree decides the merge.
+
+Update 2026-10-26 ~18:05 MDT: PR #634's checks went fully green (run 40420046032, second attempt), and its automated review left three more findings, all fixed in one patch with regression tests. A back-dated exemption credit is now recorded per invoice on its audit row, and the refund path subtracts what an invoice already received as a credit, so a later refund can never hand the same tax back twice (before, a $108 bill could pay out $116). A shop-sale return that keeps the delivery fee now leaves the fee out of the filing packet's refund allocation, so the whole tax comes off the return (before, three cents of a $4 tax stayed payable). Filing-frequency advice now reads the dated evidence inside its twelve-month window instead of prorating whole filing periods: proration had shrunk a yearly account's year-to-date tax a second time and suppressed its December advice, and let current-December tax leak into the next run. Locally verified: the three touched suites plus packet, refunds, RDF and Today suites all pass and the type check is clean. Fresh exact-head CI on this patch decides the merge.
+
+Update 2026-10-26 ~18:25 MDT: while the round-3 patch was being verified, OPS-5 (PR #631, card disputes and bank returns) merged to main, so current main is merged in here. The three conflicts were unions, not choices: the sales imports keep both the recall guard and the TFA-2 helpers, OWNER-INPUTS keeps DQ-TFA2-1 alongside the OPS rows, and this file keeps both top entries. The refund, exemption, packet, shop-sale, advice and Today suites were re-run on the merged tree before pushing.
+
+## October 26 — ACC-6: CI green; Codex findings fixed, exact-head rerun
+
+PR #616's checks came back all green at head beb787c4. Codex's review left two findings: a P2 — the two-step login page could be prerendered, so it kept offering "Remember this device" after the owner turned remembering off (already fixed in an earlier round by making the page request-rendered) — and a P1 — the My account "Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated between the page check and the write could still have their trust rows deleted. The forget now re-checks the actor inside the transaction (row lock + active-team check, the repo's rule), with unit tests for the active, deactivated, and internal-cleanup paths; internal cleanup (password, reset, email, owner actions) is unchanged. Typecheck clean, 27 focused unit tests pass. The rerun on the fix head then failed only the secret scan: the full-history scan reads every branch, and it flagged the same legal rule-name lines under main's TFA-1 merge commit (already allowlisted on main — this branch's copy was older) and under the leads lane's merge commits (not allowlisted anywhere). Main has been merged in, bringing the refreshed allowlist, and the four leads-branch fingerprints were added with the reason recorded in `.gitleaksignore` and the PR; every flagged line was read — they are tax rule names and a migration comment, not credentials. Next: exact-head CI, then reply to and resolve both review threads and merge.
+
+Update 2026-10-26 ~13:45 MDT: three more runs, each red on exactly one thing, all diagnosed and fixed in turn. Run 40370951794 (head 0627b5c2): everything green except browser-b — 164 passed but 3.0m against the 180s phase budget; feedback and staff-security moved b to c. Run 40386761485 (head 52207003): the scanner flagged the leads migration comment under LD-1's merge commit (50e265ec — one fingerprint added, reason recorded) and browser-c ran 3.1m with 109 passing (the desk-a route scan varies 120–183 test-seconds between runs). LD-1 then merged to main (#625), so main was merged in again here: conflicts in `.gitleaksignore` (union of both lanes' fingerprints), this file (both top entries kept) and the shard file resolved; LD-1's new lead-staff-detail spec assigned to browser-b, revenue-records moved c to a and my-account d to c from run 40386761485's measured times (a 2.3m, b 2.6m, d 2.9m). Next: exact-head CI on the merged tree, then reply to and resolve both review threads and merge.
+
+Update 2026-10-26 (merged): PR #628 — the rebuilt PR, after #616 was closed when its branch was
+reset — merged as 66543a92 at head eac60bcd, ci green at the exact head (one failed-jobs rerun
+for a browser-a phase-budget overrun on the PR-event run; a dispatched run on the same head was
+fully green; no review threads on #628). Main's own post-merge run passed the secret scan with
+no allowlist refresh, and PR #632 has since scoped the scan by commit range and rebalanced the
+browser groups. Card complete. The ACC-6 work-index/card merged notes ride the VAULT-1 branch
+(this entry's commit), per the lane plan.
+## October 26 — LD-1: fix pushed, checks never started — needs one manual start
+
+PR #618 (leads pipeline engine) at `ac70fedc`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.
+
+Update 2026-10-26 ~07:20 MDT: Chris started the run by hand (40328842401) and it failed in all 11 jobs — but that run's tree was missing the books work's files the leads branch never touched (the upload only sent files differing from current main, while the branch was built on older main). That explains every failure: typecheck, the seed, the schema check and the secret scan. The remote tree is repaired (all 86 files changed since the branch base, verified file-for-file) at head `ac70fedc`; it needs one more manual start on the new head.
+
+Update 2026-10-26 ~07:45 MDT: trigger hunt — the connector has no start-checks action, the CLI has no raw-API command, and there is no git login in this shell. Tested: snapshot push, close/reopen, draft PR #619 and non-draft PR #620 on the same head — none started a run (the very first run appeared 2s after PR #618 was created and can't be reproduced). Only a manual start works. Both throwaway PRs closed again. Still needs one manual start on `ac7e23eb`.
+
+Update 2026-10-26 ~08:35 MDT: the checks now start from here — Chris's custom GitHub MCP has a dispatch action, and it started run 40340617271 on `a02e4040`. The run finished red in 2 jobs: the secret scan flags the tax lane's own allowlist entry (a false positive that also fails their run), and 3 tests were skipped — the leads capacity test only runs in the performance job but was never added to the skip list. The automated review also left 2 real findings: staff cannot open a lead record, and converting a lead with an approver email erases its phone search key. All four are fixed locally and verified (the secret-scan finding is gone from a full-history scan, the skip check passes on 1,616 tests, the phone-key test fails without the fix and passes with it); the staff page has a new browser test. Pushing the fix next, then starting the checks again.
+
+Update 2026-10-26 ~09:25 MDT: the staff browser test found a second bug the review fix did not cover — the lead page also renders the text-message panel, whose preview and history both refuse staff on a lead, so the page crashed for every staff member and bounced them to the home page. Staff cannot send lead texts anyway, so the panel is now owner/admin only on the lead page (same pattern as the tasks section); staff still see the message history in the separate history panel. Rebuilding to re-verify the test, then pushing (the custom MCP push starts the checks on its own — proven on a throwaway branch) and merging once green. Note: the customer page has the same text panel, so staff opening a customer record likely hit the same crash — a follow-up, not part of LD-1.
+
+Update 2026-10-26 ~09:40 MDT: a third staff bug turned up while verifying — the linked-communication timeline requires OWNER/ADMIN and redirects staff to the home page mid-render, so the page bounced staff home the moment it loaded, with no error logged anywhere. It took a debug run tracing the session (staff, valid) and the navigation (a full document load of the home page right after the lead page loaded) to find it. The timeline is now owner/admin only on the lead page too; staff still see the message history and can log notes. Rebuilding again to re-verify the browser test, then pushing and merging once green.
+
+Update 2026-10-26 ~11:40 MDT: the fix is pushed (head 6fc2dc5e) with main merged in. Run 40367161675 passed everything except the secret scan: the browser-c rebalance worked, and the offline test passed (it was timing, not code). The secret scan needed allowlist fingerprints for the merge's own commits (the same refresh TFA-1 needed after its merge) — added. Run 40369165252 then passed the secret scan and everything else except browser-b, which ran 3.2m against the 180s budget with all 165 tests passing (345 test-seconds after the earlier rebalance landed two specs there). Measured a 293/2.6m, c 211/2.1m, d 311/2.8m, so website-editor (~35 test-seconds) moved from b to c, the lightest group. Re-running; on green, the two review comments get answered and the PR merges.
+
+Update 2026-10-26 ~12:40 MDT: run 40370502019 passed every test group; the secret scan then needed the same fingerprints under the ACC-6 lane's merge commits, because the scan reads every branch's history (added). Run 40371581549 passed the secret scan and everything except the offline test, which failed the same way as once before (the 'Try again' link missing after the connection returns; it has passed in three of the last five runs, the same failure has appeared on other lanes' branches, and nothing in this lane touches the offline path). Main moved again (BA-2, PR #613), so main is merged in once more — the only conflict was this file. Final checks running on the merged head; on green, the two review comments get answered and the PR merges.
+
+Update 2026-10-26 ~13:05 MDT: the checks went fully green at 41cc8e49 (run 40379427517, all 11 jobs) and both review comments were answered and resolved, but GitHub would not merge PR #618: the branch's upload-based history never recorded the two merges of main, so GitHub still computed a conflict in this file even though the tree itself was fully merged, and its merge endpoint refused with the same conflict. The lane has been rebuilt on current main as branch ai/vivienne/ld-1 with the identical tree and a new PR, and PR #618 is closed in its favor. Nothing about the work itself changed.
+
+Update 2026-10-26 ~13:15 MDT: the rebuilt PR is #625. Its first run needed one more secret-scan fingerprint (the migration comment under the rebuild's commit), then went fully green — but the fresh review found three real issues, all now fixed in one patch: the lead actions check the actor's Leads screen directly instead of trusting the page address the request was posted from (a job role without Leads could otherwise run them from an allowed page); changing a lead's follow-up date through a status change or a merge now advances the follow-up version, so a stale save can't overwrite it; and lead creation takes its serialization lock before the duplicate check, so two leads created at the same moment with the same phone or email can't both slip through unflagged. New tests cover all three (an actions test, status-transaction cases, and real-database race/version cases). PR #625 then merged to main as 50e265ec, and PR #618 was closed in its favor. LD-1 is done; Lane 5 continues with AR-4b (the Leads screens on this engine), then the CMP compliance cards.
+
+## October 26 — BA-2 implementation accepted in CI; documentation revalidation next
+
+BA-2 PR #613 has all functional and full-suite checks green on implementation commit `72ac47ff` (run 40355797414). The single Codex issue about corrected Stripe openings was fixed with a real-database regression. This documentation update is the last branch change; exact-head CI and review disposition precede any merge. BA-1 PR #610 is already merged. BA-3 remains a separate branch and is being checked. No live money or provider settings changed.
+
+## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
+
+PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.
+
+## October 26 — Books Lane 3: BA-1 merged, BA-2 and BA-3 in progress
+
+BA-1 books autopilot merged as PR #610 after full exact-head CI and three Codex findings fixed. BA-2 owner setup is in PR #613, reconciling its branch with main before fresh CI. BA-3 monthly review is a separate dependent branch. No production data, provider settings, or live messages changed.
+
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
+## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
+
+PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
+
+## October 26 — BA-1 source posting verified, merge reconciliation in progress
+
+PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
+## October 26 — ACC-6: remember this device (built; PR #616 open, CI red — fixed, re-running)
+
+Owner setting "Remember devices for {n} days" (starting 30, 0 = off) on Settings › Security, a "Remember this device"
+box on the two-step login, remembered devices with "Forget remembered devices" on My account, a device cookie behind
+the new-device notice (a second phone of the same kind is new), customers noticed only through the customer-email
+switch, and every security change (password, reset, email, second step, removal, role change, sign-out-everywhere,
+lowering the setting) asking for a code again. Built with unit tests (fakes), a throwaway-Postgres integration test
+and two browser tests; database and browser proof runs in CI only. PR #616 opened (head 8b0199f9); CI came back red:
+two My account browser tests (a locator matching two elements, and a settings save cancelled by an immediate reload),
+the customer session-deactivation test (ACC-6 records customer sign-ins in the audit log, so the fixture now deletes
+its audit rows before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting
+the phone width before the desktop sidebar padding was recalculated — BA-1 fixed the same thing in the shared scan
+helper; this branch now uses that fix), and one unit test that timed out importing the customers domain inside the
+test (import hoisted to the top of the file). Fixes in commit 6405616f; main (BA-1 #610) merged in. Pushed as head
+7df70d47 — but no check run has started on it in 45 minutes (snapshot pushes do not reliably start CI; the leads and
+tax lanes are hitting the same thing). While waiting, the lane's own test database (port 5435) was used to run the
+device integration test for the first time: it failed 8 of 10, a fifth failure the unit shard's bare "exit code 1"
+had hidden. Causes, all in the test (the feature works): the test used mixed-case email addresses but the app stores
+emails lowercased, so the code email was never found; it replayed a stale trust cookie after the sign-in rotated it,
+and it did not present the device cookie the gate needs; and it read the session token from the (signed) session
+cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. Next: push the fix, then the
+checks need a manual start (Actions → CI → Run workflow) if they do not start on their own. Update, same day: the
+run was started by hand (browser, signed in as Chris) and came back red in 2 minutes — no test ran. Causes, all
+found by reading the job logs: (1) the seed and schema-health steps fail because the BusinessSettings column
+`booksLastBroughtUpToDateAt` does not exist — the snapshot push had been diffed against current main, so it omitted
+the BA-1 migration and 38 other main files the remote branch (created from 0516a31) did not have; the remote tree
+was a mix of new and old files. Fixed by pushing with the manifest diffed against the branch-creation commit
+0516a31 (76 files), per the snapshot-push rule. (2) Three type errors in the device test from the fix round
+(`string | null` passed where `string | undefined` was wanted) — the typecheck had not been re-run after that
+edit; fixed and typecheck is clean. (3) The secret scan found 5 leaks: four are the BA-1 historical false
+positives, missing from the remote tree's stale allowlist (restored by the corrected push), and the fifth is the
+allowlist entry itself being flagged for its own commit SHA — allowlisted with a fingerprint entry, verified clean
+by scanning the entry text. Next: push the corrected tree, then the checks need starting again (the GitHub MCP's
+`github_actions_dispatch` now starts them — no browser sign-in needed). Update, same day: the corrected run
+(head 1005486e, started with the MCP) is green everywhere except browser-a and browser-d. Unit shards, typecheck,
+secret scan, browser-b and browser-c all pass. The two browser-a failures are both the ACC-6 my-account tests: the
+forget-confirm text uses a curly apostrophe the test didn't match, and — a real bug — the two-factor login page
+was prerendered at build time, so it kept offering "Remember this device" after the owner turned remembering off.
+Fixed (page is now force-dynamic; test matches without the apostrophe) and pushed; the remaining browser-d failure
+is the offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — it looks
+like a timing flake, not an ACC-6 regression, so it is being watched on the re-run rather than "fixed". Update,
+same day: the re-run (head 2aaea9e7, MCP dispatch) passed browser-a and browser-d — both my-account fixes work and
+the offline test passed — but browser-c failed with no test failing: all 106 tests passed and the shard ran 3.1m
+against the 180s phase budget. That is a shard-balance problem, not a code problem, so the fix is the repo's
+established rebalance: staff-security (~18 test-seconds) and fleet-report (~14) moved from browser-c to browser-b,
+the lightest group (1.9m), with no test omitted and the budget unchanged. Pushed through the custom GitHub MCP
+(the original connector is disconnected; the MCP's API push starts the checks on its own). Next: read the checks,
+then reviews, then merge. Next card: VAULT-1, once CMP-1 (lane 5) is merged.
+
+## October 27 — FEE-1: fair late fees (merged PR #614)
+
+Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
+at most $15, once per bill, only after the customer was warned (2 days' notice, Settings), never while a payment is in progress
+or a bank payment is being confirmed, and autopay customers get 10 days' notice. The fee is its own charge on the next bill
+(its own one-line bill if the rental ended); the overdue bill never changes. Owner screens: warn / "told by phone" / skip /
+waive on the bill, servicemember checkbox, a Settings card for the warning days and for the Colorado lease filing, To do items.
+Migration `20261027040000_fair_late_fees` (additive; lifts old settings below 10 days / over $15). Proof: unit tests plus about
+45 database tests with a pretend Stripe on a throwaway Postgres; CI green at the merged head; twelve automatic-review findings fixed (waiving removes the Stripe item or credits Stripe, autopay notice first, no fee on a fee bill, promised date never earlier, failed bank payment re-warns, reconciler for unknown Stripe requests).
+Not done: no browser test; no real Stripe test-mode fee observed; fees do not attach to an arbitrary next local bill; "payment
+in progress" is approximated (open bank flag or phone payment in the last 24 h). Next: DEC-2 — waiting: it needs DEC-1 fully merged and DEC-1b (PR #603) is still open with merge conflicts.
+
+## October 26 — BILL-1: bank payments being confirmed (merged PR #612)
+
+Branch `ai/claude/bill-1-bank-in-flight`. A bank transfer now shows **Being confirmed** instead of late: Stripe's "processing"
+event is recorded as a flag (never as money), the Bills list has a new **Being confirmed** tab and pill, the bill and customer
+record say so, no late fee is added and no past-due To do appears while it waits, and a calm **bank payment is taking a while**
+To do appears after the owner's number of banking days (starting value 6, Settings › Bank payments). A nightly check asks Stripe
+about up to 50 waiting payments; one Stripe says cleared but we missed is recorded through the normal payment handlers, or shows
+a **Record it now** button (Today and Billing › Reconciliation). Migration `20261026010000_bank_payment_in_flight` (additive).
+Proof: unit tests plus 41 database tests with a pretend Stripe, run on a throwaway Postgres here; CI results pending.
+Not done: the **Payments** tab — AR-3 adds it. Until the three Stripe events are added (checklist row), the screens only
+learn about a payment from events already sent; the nightly check can only follow payments that already have a flag. Next: FEE-1.
+
+## October 26 — Tax and fee rule book (TFA-1, merged PR #617)
+
+Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit kept for their next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 20 unit tests pass here; 53 database tests pass on a fresh database migrated from scratch. First CI run came back red (secret scan, two unit shards, two browser shards, 4 review comments); one fix patch follows: the owner's existing settings are carried into the rule book, a second value for the same start date supersedes the first, late changes adjust incrementally, the credit is kept for the next bill instead of an old open one, the database check that blocked rule-versioned delivery-fee records is relaxed, and the Rules browser tests use the right labels. Two more fixes after that: the carry-over only carries a setting the owner actually changed (an unguarded carry created default OWNER rows on every fresh database and blocked other versions for the same date), and the branch merged main (BA-1 #610) to clear a merge conflict. The checks never started on the fix commit — snapshot pushes don't reliably start them — so the run was started by hand (run #2618) and came back red with 2 failures: the secret scan flagged the `.gitleaksignore` comment itself (it spelled out the flagged pattern), and the Rules browser tests failed on an accessibility duplicate-`<main>` and on the Change sheet never opening. Second fix patch: the comment is rewritten so it no longer spells out the pattern, with a fingerprint entry covering the historical occurrence; the page no longer renders its own `<main>` (the desk shell already provides one); and the Change sheet now receives only plain data — the full rule definition carries a zod schema and a `describe` function, which React refuses to pass from a Server Component, so the sheet never opened at all. Proof: all 3 Rules browser tests pass locally against a production build on the lane's own database (port 5434). That patch was pushed through the custom GitHub MCP, which started CI on its own; run 40346700557 came back all green at head `98da4545`. All 4 Codex review threads were answered and resolved. The PR would not merge at first — GitHub's test merge conflicted on `.gitleaksignore` alone (the branch and main had both appended allowlist blocks after the same base line). Fixed by taking main's block verbatim on the branch and moving the 463b1043 entry to the middle of the file, where it merges cleanly (verified with a local test merge); that push also started CI on its own and went green at head `af3fda28`. **Merged 2026-10-26 as `cb1c3618` (squash, PR #617).** The merge commit's secret scan flagged the three rule-key lines under the merge commit, so a small follow-up PR refreshes those three fingerprints to `cb1c3618`. Next: TFA-2.
+
+
+## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
+
+Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
+
+## October 26 — LD-1 leads pipeline (PR #618 open, CI fixes in progress)
+
+Branch `ai/marley/ld-1` (merged up to `origin/main` 0e66c2e8). Everything in the card is built and verified here: 78 tests pass on throwaway Postgres (41 unit, 37 database), capacity list 123 ms / counts 73 ms / search 22 ms on 50,000 leads, typecheck and lint clean, `check:quick` green. Chris answered DQ-LD1-1 yes on 2026-10-26, so staff whose job role includes the Leads screen can see and work leads and be given them; merging, reassigning and Today lead follow-ups stay owner/admin. PR #618 opened; its first CI run was red in 4 jobs — the unit shards (fixed on this branch: a test fake missing the new lead-lock query, a stale add-email expectation, the lead-assignment test not listed in the serial project), the secret scan and browser-d (both already fixed on main by BA-1's merge: a migration-comment false match and a phone-width resize race). Fixes pushed for a fresh CI run. Next: AR-4b (Leads screens), then CMP-1 — blocked until lane 4's TFA-1 merges.
+
+## October 25 — BA-1 books autopilot (merged #610)
+
+Branch `ai/chatgpt/ba-1` (PR #610, merged): nightly recording, automatic appliance enrollment/depreciation,
+books To do issues, Equipment retirement/disposal reversals and post-commit source recording coded.
+Run 40269991085 passed all CI shards at earlier head `6be9cfac`, **not** the current head;
+later changes and their new concurrency/long-life tests are awaiting exact-head CI and review.
+Remaining BA-1 hook/edge proof is on its card; BA-2 and BA-3 await BA-1 merge.
+No production settings, real accounts or customer data touched.
+
+## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
+
+Branch `ai/chatgpt/ar-11-pwa-shell`: separate desk install manifest; private-data-safe offline worker,
+fallback page and warning; kit actions disabled offline. Added unit and browser tests; CI/review not yet proven.
+AR-11 is not complete: remaining app interactions and performance checks follow. AR-0b is merged (#606)
+and its reference screens were preserved while updating this branch.
+
 ## October 25 (night) — AR-0b: Today, Money › Bills and Customer record rebuilt with the kit (merged PR #606)
 
 Branch `ai/claude/ar-0b-screens`. Coded: the shared bill rules (`bill-status.ts`, one past-due rule now used by Today,
@@ -15,8 +623,9 @@ Bills and the revenue dashboard), the Bills list reads, Today's weekly health, C
 grouping, the customer-scoped next steps and summary, and the three screens with loading/error screens. Same server
 actions and role checks as before (staff: no money on Today, refused on Bills, operational customer view). Proof: unit
 tests here; database and browser tests run in CI only. Your look-over row is on the checklist. Next: AR-1.
-**Open (unexplained):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. The
-phone-width scan now names the element that overflows, so the next occurrence identifies the cause — fix it then.
+**Resolved (was open):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. Cause
+found and fixed by BA-1 (#610): the shared phone-width scan helper measured right after a resize, before the desktop
+sidebar padding recalculated, so it briefly reported phone width with desktop padding.
 
 ## October 25 (night) — MCP-1: System health that tells the truth (merged PR #602)
 

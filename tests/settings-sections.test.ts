@@ -13,7 +13,15 @@ const base = {
 };
 const none = { mode: "none", open: "09:00", close: "17:00" };
 const extras = {
-  hours: { mon: none, tue: none, wed: none, thu: none, fri: none, sat: none, sun: none },
+  hours: {
+    mon: none,
+    tue: none,
+    wed: none,
+    thu: none,
+    fri: none,
+    sat: none,
+    sun: none,
+  },
   holidayClosuresText: "",
   facebookUrl: "",
   instagramUrl: "",
@@ -57,7 +65,10 @@ describe("isolated settings writes", () => {
       success: true,
       update: {
         ...base,
-        hours: { mon: { open: "08:00", close: "17:30" }, sun: { closed: true } },
+        hours: {
+          mon: { open: "08:00", close: "17:30" },
+          sun: { closed: true },
+        },
         holidayClosures: [
           { date: "2026-11-26", label: "Thanksgiving" },
           { date: "2026-12-25", label: "Christmas Day" },
@@ -68,8 +79,15 @@ describe("isolated settings writes", () => {
     });
   });
   it("other sections never carry the profile extras", () => {
-    const r = settingsSectionUpdate("service-area", { serviceAreaCities: "A", serviceAreaZips: "", ...extras });
-    expect(r).toEqual({ success: true, update: { serviceAreaCities: ["A"], serviceAreaZips: [] } });
+    const r = settingsSectionUpdate("service-area", {
+      serviceAreaCities: "A",
+      serviceAreaZips: "",
+      ...extras,
+    });
+    expect(r).toEqual({
+      success: true,
+      update: { serviceAreaCities: ["A"], serviceAreaZips: [] },
+    });
   });
   it("profile refuses an old screen that does not send the new fields", () => {
     expect(settingsSectionUpdate("profile", base).success).toBe(false);
@@ -93,9 +111,13 @@ describe("isolated settings writes", () => {
         k,
         k.endsWith("Enabled")
           ? false
-          : k === "draftReservationHoldDays" || k === "receiptFileKeepDays" || k === "unsentPhotoKeepDays"
-            ? 5
-            : 0,
+          : k === "lateFeeGraceDays"
+            ? 10
+            : k === "draftReservationHoldDays" ||
+                k === "receiptFileKeepDays" ||
+                k === "unsentPhotoKeepDays"
+              ? 5
+              : 0,
       ]),
     );
     values.deliveryFeeDollars = 45.55;
@@ -125,7 +147,9 @@ describe("isolated settings writes", () => {
         k,
         k.endsWith("Enabled")
           ? false
-          : k === "draftReservationHoldDays" || k === "receiptFileKeepDays" || k === "unsentPhotoKeepDays"
+          : k === "draftReservationHoldDays" ||
+              k === "receiptFileKeepDays" ||
+              k === "unsentPhotoKeepDays"
             ? 5
             : 0,
       ]),

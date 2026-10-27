@@ -1,3 +1,4 @@
+import { assertNotRecallHeld } from "@/domains/recalls/guard";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -65,7 +66,8 @@ export async function substituteWaitingItem(
     if (replacement.applianceTypeId !== original.applianceTypeId) throw new SubstituteError("Different type: ask the owner.");
     if (replacement.status !== "AVAILABLE") throw new SubstituteError(`${replacement.assetNumber} isn't currently available.`);
 
-    const reserved = await tx.appliance.updateMany({ where: { id: replacement.id, status: "AVAILABLE" }, data: { status: "RESERVED" } });
+    await assertNotRecallHeld(tx, replacement.id, "swapped in");
+    const reserved = await tx.appliance.updateMany({ where: { id: replacement.id, status: "AVAILABLE", recallHold: false }, data: { status: "RESERVED" } });
     if (reserved.count !== 1) throw new SubstituteError(`${replacement.assetNumber} was just taken by someone else.`);
     await tx.jobAppliance.create({ data: { jobId: job.id, applianceId: replacement.id, role: "REPLACEMENT", reservationActive: true } });
     await tx.pendingDelivery.update({ where: { id: pending.id }, data: { substituteApplianceId: replacement.id, substituteJobId: job.id } });
@@ -162,7 +164,7 @@ export async function substituteChoices(pendingDeliveryId: string): Promise<{
   if (!pending || pending.deliveredOn || pending.removedAt || pending.substituteApplianceId) return { units: [], visits: [] };
   const [units, visits] = await Promise.all([
     prisma.appliance.findMany({
-      where: { applianceTypeId: pending.appliance.applianceTypeId, status: "AVAILABLE", id: { not: pending.applianceId } },
+      where: { applianceTypeId: pending.appliance.applianceTypeId, status: "AVAILABLE", recallHold: false, id: { not: pending.applianceId } },
       orderBy: { assetNumber: "asc" },
       take: 25,
       select: { id: true, assetNumber: true },

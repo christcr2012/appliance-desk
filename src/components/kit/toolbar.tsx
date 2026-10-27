@@ -30,6 +30,8 @@ export type ToolbarProps = {
   currentViewId?: string;
   /** "Save this view": a server action (O-7 saved views) that receives `label` and `filters` (JSON of the URL params). */
   saveViewAction?: FormAction;
+  /** Only these actual page filters can be saved. URL-only position/search never becomes a view. */
+  saveViewKeys?: string[];
 };
 
 export const SEARCH_DEBOUNCE_MS = 250;
@@ -40,7 +42,7 @@ export const DATE_PRESETS: FilterOption[] = [
   { value: "custom", label: "Pick dates" },
 ];
 /** Params that describe where you are in a list, not what it shows; never saved in a view or counted as filters. */
-const POSITION_PARAMS = ["cursor", "open", "view"];
+const POSITION_PARAMS = ["cursor", "open", "view", "page"];
 
 type Values = Record<string, string>;
 
@@ -59,7 +61,7 @@ export function activeFilterCount(filters: FilterDef[], params: URLSearchParams)
   return filters.filter((def) => (params.get(def.param) ?? "") !== "").length;
 }
 
-/** The URL after applying `values` for these filters: empty values are removed, as is `cursor`. */
+/** After changing filters, numbered pagination and cursor both restart at the first results. */
 export function applyFilters(pathname: string, search: string, filters: FilterDef[], values: Values): string {
   const params = new URLSearchParams(search);
   for (const def of filters) {
@@ -71,6 +73,7 @@ export function applyFilters(pathname: string, search: string, filters: FilterDe
     }
   }
   params.delete("cursor");
+  params.delete("page");
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
@@ -80,6 +83,7 @@ function withParam(pathname: string, search: string, name: string, value: string
   if (value) params.set(name, value);
   else params.delete(name);
   params.delete("cursor");
+  params.delete("page");
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
@@ -132,6 +136,7 @@ function SearchBox({ param, placeholder, label }: { param: string; placeholder: 
       <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft" />
       <input
         id={id}
+        data-kit-search
         type="search"
         value={value}
         placeholder={placeholder}
@@ -354,7 +359,7 @@ function SortMenu({ sorts, currentSort }: { sorts: SortDef[]; currentSort?: stri
   );
 }
 
-function ViewsMenu({ views, currentViewId, saveViewAction }: { views: ViewDef[]; currentViewId?: string; saveViewAction?: FormAction }) {
+function ViewsMenu({ views, currentViewId, saveViewAction, saveViewKeys }: { views: ViewDef[]; currentViewId?: string; saveViewAction?: FormAction; saveViewKeys?: string[] }) {
   const search = useSearchParams()?.toString() ?? "";
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -369,7 +374,7 @@ function ViewsMenu({ views, currentViewId, saveViewAction }: { views: ViewDef[];
     for (const position of POSITION_PARAMS) params.delete(position);
     const data = new FormData();
     data.set("label", name.trim());
-    data.set("filters", JSON.stringify(Object.fromEntries(params.entries())));
+    data.set("filters", JSON.stringify(Object.fromEntries([...params.entries()].filter(([key]) => !saveViewKeys || saveViewKeys.includes(key)))));
     startTransition(async () => {
       const ok = await runFormAction({ kind: "form", label: "Save this view", action: saveViewAction, successMessage: `Saved view "${name.trim()}"` }, data);
       if (ok) {
@@ -472,7 +477,7 @@ export function ActiveFilterChips({ filters }: { filters: FilterDef[] }) {
   );
 }
 
-export function Toolbar({ search, filters, sorts, currentSort, views, currentViewId, saveViewAction }: ToolbarProps) {
+export function Toolbar({ search, filters, sorts, currentSort, views, currentViewId, saveViewAction, saveViewKeys }: ToolbarProps) {
   const hasFilters = (filters?.length ?? 0) > 0;
   return (
     <div className="pb-3">
@@ -482,7 +487,7 @@ export function Toolbar({ search, filters, sorts, currentSort, views, currentVie
           {hasFilters ? <FilterButton filters={filters!} /> : null}
           {sorts && sorts.length > 0 ? <SortMenu sorts={sorts} currentSort={currentSort} /> : null}
           {(views && views.length > 0) || saveViewAction ? (
-            <ViewsMenu views={views ?? []} currentViewId={currentViewId} saveViewAction={saveViewAction} />
+            <ViewsMenu views={views ?? []} currentViewId={currentViewId} saveViewAction={saveViewAction} saveViewKeys={saveViewKeys} />
           ) : null}
         </div>
       </div>

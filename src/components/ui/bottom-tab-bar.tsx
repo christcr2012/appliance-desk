@@ -1,4 +1,7 @@
+"use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { followRememberedClick } from "@/components/kit/remember-list";
 import type { ComponentType, ReactNode } from "react";
 
 export type BottomTab = {
@@ -16,6 +19,7 @@ export function BottomTabBar({
   activeHref: string;
   moreAction?: ReactNode;
 }) {
+  const router = useRouter();
   const columns = tabs.length + (moreAction ? 1 : 0);
 
   return (
@@ -33,6 +37,7 @@ export function BottomTabBar({
           <Link
             key={tab.href}
             href={tab.href}
+            onClick={(event) => followRememberedClick(event, tab.href, (next) => router.push(next))}
             aria-current={active ? "page" : undefined}
             className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-control px-1 text-xs font-semibold ${
               active ? "bg-action text-on-action" : "text-ink"

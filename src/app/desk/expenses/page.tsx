@@ -3,7 +3,9 @@ import { requireRole } from "@/lib/session";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getExpenses } from "@/domains/books/expenses";
-import { createExpenseAction, postExpenseAction, voidExpenseAction, saveRecurringAction } from "./actions";
+import { prisma } from "@/lib/prisma";
+import { createExpenseAction, postExpenseAction, voidExpenseAction, saveRecurringAction, explainMissingExpenseReceiptAction } from "./actions";
+import { NoReceiptFields } from "./no-receipt-fields";
 import { ExpenseReceiptUpload } from "./receipt-upload";
 import { getBudgetContext } from "@/domains/budget/context";
 import { ExpenseBudgetFields } from "./budget-expense-fields";
@@ -12,12 +14,16 @@ import { BudgetContextCard } from "@/domains/budget/context";
 export const metadata = { title: "Expenses — Books" };
 const field = "min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
 const button = "rounded border border-border bg-card px-3 py-2 font-semibold text-foreground hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2";
-export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ status?: string; notice?: string }> }) {
+export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ status?: string; notice?: string; paidFrom?: string }> }) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const params = await searchParams;
   const data = await getExpenses(session.user.id, params.status);
   const budget = await getBudgetContext(session.user.id).catch(()=>null);
   const notice = params.notice?.slice(0, 250);
+  const ownerContribution=params.paidFrom==="owner"&&data.manager?
+    await prisma.ledgerAccount.findFirst({where:{systemRole:"OWNER_CONTRIBUTIONS",active:true},select:{id:true}}):null;
+  const paidFromAccountId=ownerContribution&&data.payments.some(x=>x.id===ownerContribution.id)?
+    ownerContribution.id:undefined;
   return <div className="space-y-6">
     <header className="space-y-2">
       <h1 className="text-2xl font-bold">Expenses</h1>
@@ -26,7 +32,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       {notice && <p role="status" className="rounded border border-border p-3">{notice}</p>}
     </header>
     <BudgetContextCard userId={session.user.id} heading="Expense and budget context"/>
-    <section className="rounded-lg border border-border p-4 space-y-3">
+    <section id="add-expense" className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Record an expense</h2>
       <p>First save the expense, then upload its private receipt below. Seller tax is included in the amount paid.</p>
       <form action={createExpenseAction} className="grid gap-3 sm:grid-cols-2">
@@ -40,10 +46,11 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <label>Category<select className={field} name="categoryId" required>
           <option value="">Select a category</option>{data.categories.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select></label>
-        <label>Paid from<select className={field} name="paidFromAccountId" required>
+        <label>Paid from<select className={field} name="paidFromAccountId" defaultValue={paidFromAccountId} required>
           <option value="">Select an account</option>{data.payments.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select></label>
         <label className="sm:col-span-2">Description (optional)<textarea name="memo" maxLength={500} className={field} rows={2}/></label>
+        <NoReceiptFields/>
         {data.manager && <div className="sm:col-span-2 grid gap-2 sm:grid-cols-3">
           <label>Appliance ID (optional)<input className={field} name="applianceId"/></label>
           <label>Job ID (optional)<input className={field} name="jobId"/></label>
@@ -73,8 +80,20 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <p className="text-sm">{formatBusinessDate(row.spentOn)} · {row.category.name} · seller tax {formatMoney(row.vendorTaxCents)}</p>
         {row.memo && <p>{row.memo}</p>}
         {row.budgetIntentLabel&&<p className="text-sm">Requested budget label: {row.budgetIntentLabel}. Not yet classified against a posted bank expense.</p>}
+        {row.noReceiptReason&&<p className="text-sm">No receipt documented: {row.noReceiptReason}</p>}
         {row.receiptPhotoId ? <a className="underline" href={`/api/photos/${encodeURIComponent(row.receiptPhotoId)}`}>View private receipt</a> :
-          row.status !== "VOID" ? <ExpenseReceiptUpload id={row.id}/> : <p>No receipt attached.</p>}
+         row.status !== "VOID" ? <>
+          <ExpenseReceiptUpload id={row.id}/>
+          {!row.noReceiptReason&&<form action={explainMissingExpenseReceiptAction}
+            className="flex flex-wrap items-end gap-2">
+           <input type="hidden" name="id" value={row.id}/>
+           <input type="hidden" name="version" value={row.version}/>
+           <label className="flex-1 min-w-44">No receipt? Explain why
+            <input className={field} name="reason" maxLength={200} required/>
+           </label>
+           <button className={button}>Record explanation</button>
+          </form>}
+         </> : <p>No receipt attached.</p>}
         {data.manager && (row.status === "DRAFT" || row.status === "SUBMITTED") && <form action={postExpenseAction}>
           <input type="hidden" name="id" value={row.id}/><input type="hidden" name="version" value={row.version}/>
           <button className={button}>Approve and post</button>

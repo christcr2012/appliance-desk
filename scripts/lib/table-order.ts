@@ -7,9 +7,6 @@ export type RelationDependency = { model: string; dependsOn: string };
 export type AutoincrementField = { model: string; delegate: string; field: string };
 
 function modelBlocks(schema: string): ModelBlock[] {
-  if (schema.includes("@@map(") || /\s@map\(/.test(schema)) {
-    throw new Error("Restore ordering does not support mapped Prisma table or field names.");
-  }
   const blocks = [...schema.matchAll(/^model\s+(\w+)\s+\{([\s\S]*?)^\}/gm)].map((match) => ({
     name: match[1]!,
     body: match[2]!,
@@ -50,6 +47,8 @@ export function relationDependencies(schema: string): RelationDependency[] {
         field.attributes.includes("@relation") &&
         /fields\s*:/.test(field.attributes)
         // Both edges are nullable and restored in a second pass after their targets exist.
+        // Same-table backup pairs are restored parent-first in restore-backup.ts.
+        && !(block.name === "BackupArtifact" && field.name === "databaseArtifact")
         && !field.attributes.includes('@relation("AcquisitionReceipt"')
         && !field.attributes.includes('@relation("CurrentMessageAttempt"')
         // COM-L10 nullable self-reference is restored in a second pass.
@@ -73,6 +72,14 @@ export function relationDependencies(schema: string): RelationDependency[] {
 }
 
 export function deriveRestoreTableOrder(schema: string, policy: BackupPolicy): string[] {
+  // OAuth provider tables are intentionally excluded from backups and use
+  // @@map. Parsing their model definitions is safe, but restored models must
+  // still have unmapped SQL identifiers until the writer supports mapping.
+  for (const block of modelBlocks(schema)) {
+    if (policy[block.name] && (block.body.includes("@@map(") || /\s@map\(/.test(block.body))) {
+      throw new Error(`Restore ordering does not support mapped Prisma table or field names: ${block.name}.`);
+    }
+  }
   const names = new Set(prismaModelNames(schema));
   for (const model of Object.keys(policy)) {
     if (!names.has(model)) throw new Error(`Backup policy names missing Prisma model "${model}".`);

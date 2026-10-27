@@ -7,8 +7,46 @@
 681b062a713c8d7cbc770434f463b84c5b480eca:tests/deployment-safety.test.ts:stripe-access-token:38
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:193
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:195
+# Reviewed 2026-10-26 (TFA-1): an earlier allowlist comment on this branch
+# spelled out the flagged pattern itself, so the scanner flagged this file
+# at line 16 in the 463b1043 fix push. That comment was rewritten; this
+# entry covers the historical occurrence on that branch commit.
+463b1043edefe4fdd233f001a7cf01963e8fddc2:.gitleaksignore:generic-api-key:16
 # Reviewed 2026-10-03: made-up string in a test about hiding keys in error text (older branch commit, PR #139); not a real key.
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:195
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197
 # Reviewed 2026-10-25: made-up request id in a feedback form test (MCP-10a branch commit); not a real key.
 5f62cc2c5ac2482cbf1444131f31acb97a7f4815:tests/feedback-context.test.ts:generic-api-key:125
+
+# Reviewed 2026-10-26: a false generic-api-key match in an SQL migration
+# comment (the header names its card). It is not a credential.
+12dcced1286354a19575483096b8c419f9b11923:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# Reviewed 2026-10-26 (ACC-6): the leads migration header comment (a comment
+# naming its card, not a credential) under the leads engine commit (464157c3),
+# the LD-1 merge commit (50e265ec) and this branch's merge push (34cd2521).
+# Every flagged line was read and verified.
+464157c3af1d1bca5b89a929b0bdb79189e1ae84:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+34cd2521ff5214ce0dde5e2322df47fc2eb2cd5f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# The LD-1 migration header comment once more: the rebuilt ai/vivienne/ld-1
+# branch re-committed the migration in 3d86add, so the same line needs a
+# fingerprint under that commit too.
+3d86adda6fe28e5128160187509bac6b54d9c43f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# Obligation and rule identifier keys (the rules and compliance registries
+# and their tests) are allowlisted durably by identifier shape in
+# .gitleaks.toml — see the [allowlist] section there. That family no longer
+# needs per-commit fingerprints in this file; the dozens of entries it used
+# to need (under every branch, rebuild and merge commit that touched those
+# lines) were removed by the allowlist PR.
+# Reviewed 2026-10-26 (TFA-2): the LD-1 leads migration header comment once
+# more (the same line is allowlisted under its earlier commits above). LD-1
+# landed as squash commit 50e265e (PR #625), which re-committed the file, so
+# the same comment needs a fingerprint under that commit too.
+50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# TFA-3 false positives: the generic-api-key heuristic reads a rule-book key
+# assignment for the 1099 threshold rule as a credential. It is a tax rule
+# identifier in the parser and its integration test, not a secret. The third
+# line fingerprints this file's own earlier comment, which quoted the key.
+585b1bb93a2067a2366ea60689a03a5915c4232b:src/domains/rules/parsers/irs-1099-threshold.ts:generic-api-key:52
+2af71a0ab9b7435edb2bfcce2a9ce2ba6f8360c9:tests/rules-observation-integration.test.ts:generic-api-key:170
+0903d119b6410dc5f275aaa19ac0181c9011edf4:.gitleaksignore:generic-api-key:116

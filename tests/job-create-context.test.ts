@@ -20,6 +20,25 @@ function makeTx() {
     maintenanceRequest: { findUnique: m.request },
     job: { create: m.create },
     auditLog: { create: m.audit },
+    // FEETAX-2: creating a delivery-type job also runs the delivery
+    // readiness check. The fake address is confirmed into the
+    // state-collected state jurisdiction only, which is ready.
+    addressTaxLocation: {
+      findFirst: async () => ({
+        status: "VERIFIED",
+        jurisdictions: [
+          {
+            jurisdiction: {
+              id: "co",
+              name: "State of Colorado",
+              level: "STATE",
+              administration: "STATE_COLLECTED",
+            },
+          },
+        ],
+      }),
+    },
+    jurisdictionReadiness: { findUnique: async () => null },
   };
 }
 vi.mock("@/lib/prisma", () => ({
@@ -30,7 +49,7 @@ vi.mock("@/lib/prisma", () => ({
 import { createJob } from "@/domains/jobs";
 beforeEach(() => {
   vi.clearAllMocks();
-  m.address.mockResolvedValue({ customerId: "c1" });
+  m.address.mockResolvedValue({ customerId: "c1", state: "CO", city: "Greeley" });
   m.agreement.mockResolvedValue({ customerId: "c1", serviceAddressId: "a1" });
   m.successorAgreement.mockResolvedValue([]);
   m.request.mockResolvedValue({ customerId: "c1" });

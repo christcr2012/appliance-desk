@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ViewTransition, useEffect, useRef, useState, type ReactNode } from "react";
 import { GlobalSearchBox } from "@/components/global-search-box";
 import {
   ApplianceServiceIcon,
@@ -25,6 +25,8 @@ import {
   type BottomTab,
 } from "@/components/ui/bottom-tab-bar";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { OfflineBar } from "@/components/kit/offline-bar";
+import { RememberList, followRememberedClick, clearRememberedLists } from "@/components/kit/remember-list";
 
 const TAB_ICONS: Record<string, BottomTab["icon"]> = {
   "/desk/today": CalendarServiceIcon,
@@ -49,6 +51,7 @@ function Navigation({
   close?: () => void;
 }) {
   const active = activeDeskHref(pathname, nav);
+  const router = useRouter();
 
   return (
     <nav aria-label="Owner desk" className="space-y-5 px-3 py-4">
@@ -69,7 +72,10 @@ function Navigation({
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      onClick={close}
+                      onClick={(event) => {
+                        close?.();
+                        followRememberedClick(event, link.href, (next) => router.push(next));
+                      }}
                       aria-current={current ? "page" : undefined}
                       className={`flex min-h-11 items-center rounded-control px-3 py-2 text-sm font-semibold ${
                         current
@@ -143,6 +149,9 @@ export function AppShell({
     try {
       const result = await signOut();
       if (result.error) throw new Error("Sign out failed");
+      // Route offline data, if AR-5 creates it, belongs to the person. The shared static shell does not.
+      try { if ("indexedDB" in window) indexedDB.deleteDatabase("desk-route"); } catch { /* storage may be disabled */ }
+      clearRememberedLists();
       router.push("/login");
       router.refresh();
     } catch {
@@ -177,7 +186,7 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen bg-canvas lg:pl-64 print:block print:bg-white print:pl-0">
+    <div className="desk-app min-h-screen w-full min-w-0 max-w-full bg-canvas lg:pl-64 print:block print:bg-white print:pl-0">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-nav-bg text-nav-ink lg:flex print:hidden">
         <Link
           href="/desk/today"
@@ -211,14 +220,16 @@ export function AppShell({
         </div>
       </aside>
 
-      <div className="min-w-0">
-        <header className="flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
+      <RememberList />
+      <div className="min-w-0 w-full max-w-full">
+        <OfflineBar />
+        <header className="flex w-full min-w-0 max-w-full min-h-16 items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] lg:hidden print:hidden">
           <Image
             src="/brand/badge.svg"
             alt=""
             width={32}
             height={32}
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
           />
           <span className="min-w-0 flex-1 truncate font-semibold text-ink">
             {current}
@@ -226,6 +237,7 @@ export function AppShell({
           <ButtonLink
             href="/desk/search"
             variant="quiet"
+            className="shrink-0"
             aria-label="Search"
           >
             Search
@@ -244,9 +256,11 @@ export function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto min-w-0 max-w-screen-2xl p-4 pb-28 sm:p-6 lg:p-8 lg:pb-8 print:max-w-none print:p-0"
+          className="mx-auto min-w-0 max-w-screen-2xl overscroll-y-contain p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-6 lg:p-8 lg:pb-8 print:max-w-none print:p-0"
         >
-          {children}
+          <ViewTransition key={pathname?.split("/")[2] ?? "desk"} default="none" enter="desk-area-enter" exit="desk-area-exit">
+            <div>{children}</div>
+          </ViewTransition>
         </main>
       </div>
 

@@ -12,6 +12,8 @@ import {
   SortHeaderLink,
 } from "./data-table-client";
 import { OverflowMenu } from "./overflow-menu";
+import { MobileSwipeCard } from "./mobile-swipe-card";
+import { RecordTitleTransition } from "./record-title-transition";
 import type { ConfirmSpec, FormAction, MenuItem } from "./types";
 
 export type Column<T> = {
@@ -77,8 +79,9 @@ export function DataTable<T>({
         const key = keys[index];
         const card = <div className="min-w-0 flex-1">{mobileCard(row)}</div>;
         const href = rowHref?.(row);
+        const menu = rowActions?.(row) ?? [];
         return (
-          <li key={key} className="flex items-start gap-3 rounded-card bg-surface px-4 py-3.5">
+          <MobileSwipeCard key={key} actions={menu} label={`row ${index + 1}`}>
             {bulk ? (
               <span className="flex min-h-11 items-center">
                 <BulkCheckbox rowKey={key} label={`Select row ${index + 1}`} />
@@ -91,10 +94,10 @@ export function DataTable<T>({
             ) : (
               card
             )}
-            {rowActions && rowActions(row).length > 0 ? (
-              <OverflowMenu items={rowActions(row)} label={`More for row ${index + 1}`} />
+            {menu.length > 0 ? (
+              <OverflowMenu items={menu} label={`More for row ${index + 1}`} />
             ) : null}
-          </li>
+          </MobileSwipeCard>
         );
       })}
     </ul>
@@ -148,7 +151,7 @@ export function DataTable<T>({
                   <td key={column.key} className={`px-4 py-3 ${align(column)} ${column.widthClass ?? ""} ${hideNarrow(column)}`}>
                     {columnIndex === 0 ? (
                       <PanelLink rowKey={key} panelParam={panelParam}>
-                        {column.cell(row)}
+                        <RecordTitleTransition id={key}>{column.cell(row)}</RecordTitleTransition>
                       </PanelLink>
                     ) : (
                       column.cell(row)

@@ -55,10 +55,12 @@ const groups = [
 /** Screens that belong to a menu entry without being in the menu themselves (highlight only). */
 export const DESK_NAV_ALIASES: Record<string, string[]> = {
   "/desk/dispatch": ["/desk/jobs", "/desk/driver"],
-  "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders"],
-  "/desk/billing": ["/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
+  "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders", "/desk/recalls"],
+  "/desk/billing": ["/desk/disputes", "/desk/collections", "/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
+  // CMP-1: Compliance belongs to the Taxes area (next to sales tax).
+  "/desk/sales-tax": ["/desk/compliance"],
   "/desk/more": [
-    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork", "/desk/account", "/desk/feedback",
+    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/setup-guide", "/desk/vault", "/desk/vehicle", "/desk/continuity", "/desk/insurance", "/desk/account", "/desk/feedback",
   ],
 };
 
@@ -71,8 +73,14 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["automations", "System health", "Whether the background jobs and connections are running.", "finance"],
   ["control-center", "Manage my business", "Everything you can do, grouped by what you want to get done, with a search box.", "finance"],
   ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
-  ["paperwork", "Business paperwork", "Your LLC, EIN, licenses and insurance, with reminders before anything needs renewing.", "owner"],
+  ["paperwork", "Business records", "Your LLC, EIN, licenses, insurance and accounts, with reminders before anything needs renewing.", "owner"],
+  ["setup-guide", "Set up your business", "Guided walkthroughs for your LLC, tax accounts, bank, licenses, insurance and backups, with automatic checks.", "owner"],
+  ["vault", "Logins vault", "Your business logins, kept encrypted and shown only after a fresh sign-in code, plus emergency access for someone you trust.", "owner"],
+  ["continuity", "If something happens to me", "Who to call, a live snapshot of the business, the pause-charges switch and your yearly check-up.", "owner"],
+  ["vehicle", "Vehicle and mileage", "The delivery vehicle, its license rules, the mileage log and the yearly mileage deduction.", "finance"],
+  ["insurance", "Insurance", "Your policies, when each one ends, workers' compensation and certificate requests.", "owner"],
   ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
+  ["privacy-security", "Privacy and security", "A possible data leak, how long to keep things, service providers, legal holds and accessibility complaints.", "finance"],
   ["feedback", "App feedback", "Problems with the app and ideas sent by customers and your team.", "finance"],
   ["activity", "Activity", "Who changed what, and when.", undefined],
   ["account", "My account", "Your name, phone, password, sign-in email, devices and two-step sign-in.", undefined],

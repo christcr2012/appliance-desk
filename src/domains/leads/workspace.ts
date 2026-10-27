@@ -28,6 +28,8 @@ export function leadWorkspaceWhere(
   filter: ReturnType<typeof leadFilters>,
 ): Prisma.LeadWhereInput {
   return {
+    // LD-1: merged leads never appear in lists, counts, search or To do.
+    mergedIntoLeadId: null,
     ...(filter.status ? { status: filter.status } : {}),
     ...(filter.q
       ? {
@@ -52,7 +54,7 @@ export function leadWorkspaceWhere(
 export async function getLeadWorkspace(
   query: Parameters<typeof leadFilters>[0],
 ) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const filter = leadFilters(query);
   const where = leadWorkspaceWhere(filter);
   const meta = paginationMeta(await prisma.lead.count({ where }), filter.page);
@@ -102,7 +104,7 @@ export async function getLeadWorkspace(
   return { records, filter, ...meta };
 }
 export async function getLeadEstimates(leadId: string) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.estimate.findMany({
     where: { leadId },
     select: { id: true, estimateNumber: true, status: true },

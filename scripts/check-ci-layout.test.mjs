@@ -22,9 +22,22 @@ test('timeout increases and removed aggregate result checks cannot hide slow/mis
  assert.throws(()=>checkLayout(source().replaceAll('scripts/ci-phase.mjs','scripts/untimed.mjs')),/Missing measured/);
  assert.throws(()=>checkLayout(source().replaceAll('--budget-seconds 180','--budget-seconds 181')),/feedback budget increased/);
 });
+test('each exact unit/browser group must remain in CI, not merely the old minimum count',()=>{
+ const src=source();
+ assert.equal(policy.matrices.unit,3);
+ assert.equal(policy.matrices.e2e,5);
+ for (const [from,to] of [
+  ['shard: [1, 2, 3]','shard: [1, 2]'],
+  ['shard: [browser-a, browser-b, browser-c, browser-d, browser-e]','shard: [browser-a, browser-b, browser-c, browser-d]'],
+  ['shard: [1, 2, 3]','shard: [1, 2, 2]'],
+ ]) {
+  assert.ok(src.includes(from), 'Real matrix exists: '+from);
+  assert.throws(()=>checkLayout(src.replace(from,to)),/collapse, disappear, duplicate or serialize/);
+ }
+});
 test('sharded cohorts cannot silently become one serial runner',()=>{
  for(const [id] of Object.entries(policy.matrices??{})){
   const changed=source().replace(new RegExp('(  '+id+':\\n[\\s\\S]*?strategy:\\n)'), '$1      max-parallel: 1\n');
-  assert.throws(()=>checkLayout(changed),/collapse or serialize/);
+  assert.throws(()=>checkLayout(changed),/collapse, disappear, duplicate or serialize/);
  }
 });

@@ -87,13 +87,16 @@ describe.skipIf(!enabled)("Sign-in recovery on real Postgres", () => {
   it("tells a team member about a sign-in from a device not seen before, but not the first one", async () => {
     const chrome = "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36";
     const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17) Safari/604.1";
-    expect(await noteCompletedSignIn(ids.admin, chrome)).toBe("first");
-    expect(await noteCompletedSignIn(ids.admin, chrome)).toBe("known");
+    expect(await noteCompletedSignIn(ids.admin, chrome, "acc4-device-a")).toBe("first");
+    expect(await noteCompletedSignIn(ids.admin, chrome, "acc4-device-a")).toBe("known");
     expect(sent).toHaveLength(0);
-    expect(await noteCompletedSignIn(ids.admin, iphone)).toBe("new");
+    expect(await noteCompletedSignIn(ids.admin, iphone, "acc4-device-b")).toBe("new");
     expect(sent).toHaveLength(1);
     expect(sent[0]!.text).not.toMatch(/https?:\/\//);
-    expect(await noteCompletedSignIn(ids.admin, iphone)).toBe("known");
+    expect(await noteCompletedSignIn(ids.admin, iphone, "acc4-device-b")).toBe("known");
+    // ACC-6: a second phone of the same kind is a new device, even though the browser label is identical.
+    expect(await noteCompletedSignIn(ids.admin, iphone, "acc4-device-c")).toBe("new");
+    expect(sent).toHaveLength(2);
   });
 
   it("choosing a new password through Forgot password ends a sign-in pause", async () => {

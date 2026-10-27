@@ -1,3 +1,10 @@
+import { assertNotRecallHeld } from "@/domains/recalls/guard";
+import {
+  assertDeliveryReadyInTx,
+  deliveryTaxReadinessWith,
+  recordReadinessOverrideInTx,
+} from "@/domains/tax/delivery-readiness";
+import { LATE_FEE_CAP_CENTS, LATE_FEE_MIN_GRACE_DAYS, classifyLateFeeAgreement } from "@/domains/billing/late-fee-rules";
 import { draftRequestId } from "./draft-request";
 import { ensurePickupDraftInTx } from "./pickup-draft";
 import { buildTermsSnapshot } from "./terms-snapshot";
@@ -155,17 +162,47 @@ export type NewAgreementInput = {
   lateFeeCents?: number;
   lateFeePercent?: number;
   paidInFullInAdvance?: boolean;
+  /** FEETAX-2: the owner's reason for overriding a "rules not decided"
+   * delivery-readiness refusal for this order only. Never overrides a
+   * missing city license. */
+  overrideReason?: string;
 };
 
 type DraftSettingsSnapshot = {
   twelveMonthPrepayFreeMonthEnabled: boolean;
   draftReservationHoldDays: number;
+  /** DEC-2: the late fee terms new agreements start with. Left out, the built-in starting terms apply. */
+  lateFeeGraceDays?: number;
+  lateFeeFlatCents?: number;
+  lateFeePercent?: number;
 };
+
+/**
+ * DEC-2: a new agreement takes its late fee terms from Settings when the person creating it leaves them out. Once an
+ * agreement exists it keeps its own terms (renewals copy the old agreement's, never the setting).
+ */
+export function lateFeeTermsForNewAgreement(
+  input: { lateFeeGraceDays?: number; lateFeeCents?: number; lateFeePercent?: number },
+  settings: { lateFeeGraceDays?: number; lateFeeFlatCents?: number; lateFeePercent?: number },
+) {
+  return {
+    lateFeeGraceDays: input.lateFeeGraceDays ?? Math.max(settings.lateFeeGraceDays ?? LATE_FEE_MIN_GRACE_DAYS, LATE_FEE_MIN_GRACE_DAYS),
+    lateFeeCents: input.lateFeeCents ?? Math.min(settings.lateFeeFlatCents ?? 0, LATE_FEE_CAP_CENTS),
+    lateFeePercent: input.lateFeePercent ?? settings.lateFeePercent ?? 0,
+  };
+}
 
 export type CreateDraftAgreementInTxOptions = {
   id?: string;
   sourceEstimateId?: string | null;
   settings: DraftSettingsSnapshot;
+  /**
+   * FEETAX-2: estimate preparation creates unsigned draft shells that are
+   * never sent, approved or charged — readiness is enforced by the quote,
+   * approval and conversion gates instead, so preparation passes true.
+   * Real order saves (desk wizard, estimate conversion) leave it unset.
+   */
+  skipDeliveryReadinessCheck?: boolean;
 };
 
 function validateDraftTerms(input: NewAgreementInput) {
@@ -175,6 +212,13 @@ function validateDraftTerms(input: NewAgreementInput) {
     throw new Error(
       "Paying in advance for the free-month bonus only applies to a 12-month term.",
     );
+  }
+  // FEE-1: one late fee rule for every rental (Colorado's 10 days; never more than $15).
+  if (input.lateFeeGraceDays !== undefined && input.lateFeeGraceDays < LATE_FEE_MIN_GRACE_DAYS) {
+    throw new Error("Colorado's rule: a bill must be at least 10 days late before a late fee. Use 10 or more days.");
+  }
+  if (input.lateFeeCents !== undefined && input.lateFeeCents > LATE_FEE_CAP_CENTS) {
+    throw new Error("A late fee can be at most $15.");
   }
   return { termMonths, paidInFullInAdvance };
 }
@@ -225,9 +269,7 @@ export async function createDraftAgreementInTx(
       termMonths,
       depositCents: input.depositCents ?? 0,
       damageWaiverCents: input.damageWaiverCents ?? 0,
-      lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
-      lateFeeCents: input.lateFeeCents ?? 0,
-      lateFeePercent: input.lateFeePercent ?? 0,
+      ...lateFeeTermsForNewAgreement(input, options.settings),
       paidInFullInAdvance,
       freeMonthGranted,
       reservationExpiresAt: addDays(
@@ -253,6 +295,29 @@ export async function createDraftAgreementInTx(
     },
   });
 
+  // FEETAX-2: a new order may only be saved for an address that is ready
+  // to deliver to. The owner may override a "rules not decided" refusal
+  // for this one order with a reason (audited); a missing city license,
+  // an out-of-state address or an unconfirmed address can never be
+  // overridden, and the refusal rolls the whole save back.
+  const readiness = options.skipDeliveryReadinessCheck
+    ? null
+    : await deliveryTaxReadinessWith(tx, input.serviceAddressId);
+  if (readiness && !readiness.ready) {
+    if (input.overrideReason?.trim()) {
+      await recordReadinessOverrideInTx(tx, {
+        agreementId: agreement.id,
+        actorUserId: userId,
+        reason: input.overrideReason,
+        serviceAddressId: input.serviceAddressId,
+      });
+    }
+    await assertDeliveryReadyInTx(tx, {
+      serviceAddressId: input.serviceAddressId,
+      agreementId: agreement.id,
+    });
+  }
+
   return agreement;
 }
 
@@ -264,15 +329,18 @@ export async function createDraftAgreement(
   const requestedId = input.requestKey
     ? draftRequestId(userId, input.requestKey)
     : undefined;
+  // Late fee terms the person left out come from Settings, and are only looked up when a new draft is really created.
+  // A repeated save request is compared on what the person actually sent, so a Settings change between the first
+  // save and a retry never turns the retry into "different terms".
   const terms = {
     customerId: input.customerId,
     serviceAddressId: input.serviceAddressId,
     termMonths,
     depositCents: input.depositCents ?? 0,
     damageWaiverCents: input.damageWaiverCents ?? 0,
-    lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
-    lateFeeCents: input.lateFeeCents ?? 0,
-    lateFeePercent: input.lateFeePercent ?? 0,
+    ...(input.lateFeeGraceDays !== undefined ? { lateFeeGraceDays: input.lateFeeGraceDays } : {}),
+    ...(input.lateFeeCents !== undefined ? { lateFeeCents: input.lateFeeCents } : {}),
+    ...(input.lateFeePercent !== undefined ? { lateFeePercent: input.lateFeePercent } : {}),
     paidInFullInAdvance,
   };
 
@@ -378,8 +446,9 @@ export async function addRentalLine(
     });
 
     for (const applianceId of input.applianceIds) {
+      await assertNotRecallHeld(tx, applianceId, "reserved");
       const reserved = await tx.appliance.updateMany({
-        where: { id: applianceId, status: "AVAILABLE" },
+        where: { id: applianceId, status: "AVAILABLE", recallHold: false },
         data: { status: "RESERVED" },
       });
       if (reserved.count !== 1) {
@@ -514,11 +583,23 @@ export async function sendForSignature(userId: string, agreementId: string) {
         JSON.stringify(buildTermsSnapshot(settings ?? {}, agreement.termsOverride, new Date())),
       );
     }
+    // FEE-1: the late fee terms the customer signs are classified and frozen now. A draft made before the one-rule policy
+    // (10 days, at most $15) is brought up to it here, so the signing page never shows older terms.
+    const feeCustomer = await tx.customer.findUniqueOrThrow({
+      where: { id: agreement.customerId },
+      select: { isBusiness: true, isPropertyManager: true, companyName: true },
+    });
+    const lateFeeClass = classifyLateFeeAgreement({ ...feeCustomer, termMonths: agreement.termMonths });
+    const lateFeeGraceDays = Math.max(agreement.lateFeeGraceDays, LATE_FEE_MIN_GRACE_DAYS);
+    const lateFeeCents = Math.min(agreement.lateFeeCents, LATE_FEE_CAP_CENTS);
     await tx.rentalAgreement.update({
       where: { id: agreementId },
       data: {
         status: "AWAITING_SIGNATURE",
         taxRateMilliPercent,
+        lateFeeClass,
+        lateFeeGraceDays,
+        lateFeeCents,
         ...(termsSnapshot ? { termsSnapshot } : {}),
       },
     });

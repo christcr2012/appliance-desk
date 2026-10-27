@@ -1,17 +1,21 @@
 import { reportBackgroundError } from "@/lib/report-error";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { Prisma, type AutomationRun } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { recordSystemIssue, resolveSystemIssue } from "@/domains/system-issues";
 import { classifyFailure, newCorrelationId } from "./failures";
+import { pausedByChargeSwitch } from "@/domains/continuity/rules";
 
 export type AutomationOutcome = "RAN" | "ALREADY_RAN" | "FAILED" | "PAUSED";
 
 export type RunAutomationInput = {
   ruleKey: string;
+  runKeyOverride?: string; // manual backup runs are isolated from the daily slot
+  actorUserId?: string; // owner checked inside the backup claim transaction
   now?: Date;
   budgetSeconds?: number;
-  work: () => Promise<{ counts: Record<string, number> }>;
+  work: (context: { runId: string }) => Promise<{ counts: Record<string, number> }>;
 };
 
 export type RunAutomationResult = {
@@ -68,13 +72,51 @@ function validateCounts(counts: Record<string, number>): Record<string, number> 
 async function settingsPaused(ruleKey: string): Promise<boolean> {
   const settings = await prisma.businessSettings.findUnique({
     where: { id: "singleton" },
-    select: { pausedAutomations: true },
+    select: { pausedAutomations: true, chargesPausedAt: true },
   });
+  // OPS-8: the owner-only "Pause all automatic charges" switch stops the jobs that start charges or send reminders.
+  if (settings?.chargesPausedAt && pausedByChargeSwitch(ruleKey)) return true;
   return pausedRuleKeys(settings?.pausedAutomations).includes(ruleKey);
 }
 
-async function createRun(ruleKey: string, runKey: string, budgetSeconds: number, now: Date): Promise<AutomationRun | null> {
+async function createRun(ruleKey: string, runKey: string, budgetSeconds: number, now: Date, actorUserId?: string): Promise<AutomationRun | null> {
   try {
+    if (["backup", "backup-manual", "media-copy"].includes(ruleKey)) {
+      // The advisory lock covers the concurrent RUNNING check AND the insert.
+      // A second request cannot slip through while another caller is claiming.
+      return await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('backup-run')) IS NULL AS locked`;
+        if (ruleKey === "backup-manual") {
+          if (!actorUserId) throw new Error("Owner sign-in required.");
+          await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+        }
+        const others = await tx.automationRun.findMany({
+          where: { ruleKey: { in: ["backup", "backup-manual", "media-copy"] }, state: "RUNNING" },
+          select: { startedAt: true, budgetSeconds: true },
+        });
+        if (ruleKey === "backup-manual") {
+          // Two submissions carrying different request IDs still result in one
+          // attempt on the same Colorado day, even when the first finishes quickly.
+          const manualToday = await tx.automationRun.findMany({
+            where: { ruleKey: "backup-manual" }, select: { startedAt: true },
+            orderBy: { startedAt: "desc" }, take: 10,
+          });
+          if (manualToday.some(r => businessDateKey(r.startedAt) === businessDateKey(now))) return null;
+        }
+        if (others.some((r) => now.getTime() - r.startedAt.getTime() < r.budgetSeconds * 1000)) return null;
+        const started = await tx.automationRun.create({
+          data: { ruleKey, runKey, budgetSeconds, environment: environmentName(), startedAt: now },
+        });
+        if (ruleKey === "backup-manual") {
+          await tx.auditLog.create({
+            data: { userId: actorUserId, action: "backup.manual_run",
+              entityType: "AutomationRun", entityId: started.id,
+              newValue: { requested: true } },
+          });
+        }
+        return started;
+      }, { maxWait: 10_000, timeout: 20_000 });
+    }
     return await prisma.automationRun.create({
       data: {
         ruleKey,
@@ -92,18 +134,21 @@ async function createRun(ruleKey: string, runKey: string, budgetSeconds: number,
 
 const MAX_FAILED_RETRIES = 2;
 
-async function claimRun(ruleKey: string, baseRunKey: string, budgetSeconds: number, now: Date): Promise<AutomationRun | null> {
+async function claimRun(ruleKey: string, baseRunKey: string, budgetSeconds: number, now: Date, actorUserId?: string): Promise<AutomationRun | null> {
   let runKey = baseRunKey;
   let retry = 0;
 
   for (;;) {
-    const created = await createRun(ruleKey, runKey, budgetSeconds, now);
+    const created = await createRun(ruleKey, runKey, budgetSeconds, now, actorUserId);
     if (created) return created;
 
     const existing = await prisma.automationRun.findUnique({
       where: { ruleKey_runKey: { ruleKey, runKey } },
     });
-    if (!existing) continue;
+    if (!existing) {
+      if (["backup", "backup-manual", "media-copy"].includes(ruleKey)) return null;
+      continue;
+    }
 
     if (existing.state === "SUCCEEDED" || existing.state === "SKIPPED") return null;
     // A failed slot may be tried again on a later call the same day (at most twice), so one bad moment
@@ -132,7 +177,14 @@ export async function runAutomation(input: RunAutomationInput): Promise<RunAutom
   if (!input.ruleKey.trim()) throw new Error("ruleKey is required.");
   if (!Number.isInteger(budgetSeconds) || budgetSeconds < 1) throw new Error("budgetSeconds must be a positive integer.");
 
-  const baseRunKey = `${input.ruleKey}:${automationSlot(now)}`;
+  if (input.runKeyOverride && (input.ruleKey !== "backup-manual" ||
+      !/^manual:[0-9a-f-]{36}$/.test(input.runKeyOverride))) {
+    throw new Error("Invalid manual backup run key.");
+  }
+  if (input.ruleKey === "backup-manual" && (!input.actorUserId || !input.runKeyOverride)) {
+    throw new Error("Manual backup needs a verified owner and unique request.");
+  }
+  const baseRunKey = input.runKeyOverride ?? `${input.ruleKey}:${automationSlot(now)}`;
 
   if (await settingsPaused(input.ruleKey)) {
     const existing = await prisma.automationRun.findUnique({
@@ -163,7 +215,7 @@ export async function runAutomation(input: RunAutomationInput): Promise<RunAutom
     }
   }
 
-  const run = await claimRun(input.ruleKey, baseRunKey, budgetSeconds, now);
+  const run = await claimRun(input.ruleKey, baseRunKey, budgetSeconds, now, input.actorUserId);
   if (!run) {
     const latest = await prisma.automationRun.findFirst({
       where: { ruleKey: input.ruleKey, runKey: { startsWith: baseRunKey } },
@@ -174,7 +226,7 @@ export async function runAutomation(input: RunAutomationInput): Promise<RunAutom
   }
 
   try {
-    const result = await input.work();
+    const result = await input.work({ runId: run.id });
     const counts = validateCounts(result.counts);
     await prisma.automationRun.update({
       where: { id: run.id },

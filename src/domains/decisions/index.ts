@@ -6,6 +6,7 @@ import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import { previewToken, verifyToken } from "@/lib/preview-token";
 import { businessDateKey } from "@/lib/business-date";
 import { listTaxabilityRuleCells } from "@/domains/tax/locations";
+import { ruleAsOf } from "@/domains/rules/reads";
 import {
   AUDIENCES,
   DECISION_SUBJECTS,
@@ -82,17 +83,26 @@ const TX_OPTIONS = { maxWait: 10_000, timeout: 20_000 };
 
 /** Everything the registry reads, in one pass: settings row once, tax cells once, filing accounts once. */
 export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise<DecisionContext> {
-  const [settings, cells, greeley, accounts] = await Promise.all([
+  const [settings, cells, greeley, accounts, retentionYears] = await Promise.all([
     tx.businessSettings.findUnique({
       where: { id: "singleton" },
       select: { shortTermLeaseElection: true, rdfHandling: true, retailDeliveryFeeDecision: true,
         badDebtTaxRecovery: true, setupFeeTaxPlanningTreatment: true, setupFeeTaxTreatment: true,
-        recordRetentionYears: true },
+        trustedDeviceDays: true, lateFeeFlatCents: true },
     }),
     listTaxabilityRuleCells(tx),
     tx.taxJurisdiction.findFirst({ where: GREELEY_JURISDICTION_WHERE, select: { id: true }, orderBy: { id: "asc" } }),
     tx.taxFilingAccount.findMany({ select: { basis: true }, orderBy: { id: "asc" } }),
+    // TFA-1: how long records are kept is a dated rule, not a setting.
+    ruleAsOf<number>("records.keep_years", new Date(), tx).then((row) => row.value),
   ]);
+  // DEC-2: Greeley's city rate as of today (only looked up once the Greeley area exists).
+  const greeleyRate = greeley
+    ? await tx.taxRateVersion.findFirst({
+      where: { jurisdictionId: greeley.id, effectiveFrom: { lte: new Date() } },
+      orderBy: { effectiveFrom: "desc" }, select: { rateMilliPercent: true },
+    })
+    : null;
   return {
     settings: {
       shortTermLeaseElection: settings?.shortTermLeaseElection ?? "UNDECIDED",
@@ -101,11 +111,14 @@ export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise
       badDebtTaxRecovery: settings?.badDebtTaxRecovery ?? "UNDECIDED",
       setupFeeTaxPlanningTreatment: settings?.setupFeeTaxPlanningTreatment ?? "TAXABLE",
       setupFeeTaxTreatment: settings?.setupFeeTaxTreatment ?? "UNDECIDED",
-      recordRetentionYears: settings?.recordRetentionYears ?? 7,
+      recordRetentionYears: retentionYears,
+      trustedDeviceDays: settings?.trustedDeviceDays ?? 30,
+      lateFeeFlatCents: settings?.lateFeeFlatCents ?? 0,
     },
     taxCells: cells.map((cell) => ({ jurisdictionId: cell.jurisdictionId, category: cell.category,
       taxability: cell.taxability, provisional: cell.provisional })),
     greeleyJurisdictionId: greeley?.id ?? null,
+    greeleyRateMilliPercent: greeleyRate?.rateMilliPercent ?? null,
     filingBases: accounts.map((account) => account.basis),
   };
 }
@@ -244,6 +257,11 @@ async function cancelPending(tx: Prisma.TransactionClient, subjectId: string, no
   });
 }
 
+/** DEC-2: the owner acting on a question counts as having looked at the starting values (clears the To do item). */
+async function markReviewedInTx(tx: Prisma.TransactionClient, now: Date) {
+  await tx.businessSettings.updateMany({ where: { id: "singleton" }, data: { decisionsReviewedAt: now } });
+}
+
 async function insertRecord(
   tx: Prisma.TransactionClient,
   actorId: string,
@@ -252,6 +270,8 @@ async function insertRecord(
     previousValue: Prisma.JsonValue | null; effectiveFrom: Date | null; via: DecisionVia;
     professionalName?: string | null; professionalFirm?: string | null; professionalAnsweredOn?: Date | null;
     explanation?: string | null; attachmentUrl?: string | null; sources?: DecisionSourceRef[] | null;
+    /** DEC-2: the app's own nightly run records the answer; no person answered, so nobody is named. */
+    noAnswerer?: boolean;
   },
 ) {
   const json = (value: Prisma.JsonValue | null | undefined) =>
@@ -260,7 +280,7 @@ async function insertRecord(
     data: {
       subjectId: data.subjectId, kind: data.kind, audience: data.audience,
       value: json(data.value), previousValue: json(data.previousValue),
-      effectiveFrom: data.effectiveFrom, answeredByUserId: actorId,
+      effectiveFrom: data.effectiveFrom, answeredByUserId: data.noAnswerer ? null : actorId,
       professionalName: data.professionalName ?? null, professionalFirm: data.professionalFirm ?? null,
       professionalAnsweredOn: data.professionalAnsweredOn ?? null, explanation: data.explanation ?? null,
       attachmentUrl: data.attachmentUrl ?? null,
@@ -351,6 +371,7 @@ export async function confirmDecision(actorId: string, id: string, expectedValue
       reason: "Confirmed by the owner in Decisions & reviews", sources: [],
       record: { audience: "OWNER", via: "SCREEN" }, now, ctx,
     });
+    await markReviewedInTx(tx, now);
   });
 }
 
@@ -371,6 +392,7 @@ export async function changeDecision(
       reason: ("Changed by the owner in Decisions & reviews" + (explanation ? ": " + explanation : "")).slice(0, 500),
       sources: [], record: { audience: "OWNER", via, explanation }, now, ctx,
     });
+    await markReviewedInTx(tx, now);
   });
 }
 
@@ -485,9 +507,18 @@ export async function recordProfessionalAnswer(
  */
 export async function applyStartingValue(
   actorId: string, id: string,
-  input: { value: Prisma.JsonValue; effectiveFrom: string | Date | null; why: string; sources: DecisionSourceRef[] },
+  input: {
+    value: Prisma.JsonValue; effectiveFrom: string | Date | null; why: string; sources: DecisionSourceRef[];
+    /** CONFIRMED for a question the owner already answered (DEC-2); the default is a starting value. */
+    kind?: "STARTING_VALUE_APPLIED" | "CONFIRMED";
+    /**
+     * DEC-2's nightly run: re-check, under the same lock the write takes, that nobody has answered this question since
+     * the run looked (any record) and that the setting is still untouched; if not, nothing is saved.
+     */
+    onlyIfStillUntouched?: boolean;
+  },
   via: DecisionVia = "SCREEN",
-): Promise<void> {
+): Promise<"APPLIED" | "ALREADY_ANSWERED" | "ALREADY_CHANGED"> {
   const subject = requireSubject(id);
   const chosen = checkOption(subject, input.value);
   const why = cleanText(input.why, 500, "reason");
@@ -495,14 +526,23 @@ export async function applyStartingValue(
   if (!Array.isArray(input.sources) || input.sources.length > 20) throw new Error("Invalid source list.");
   const now = new Date();
   decisionStart(input.effectiveFrom, now);
-  await runWrite(actorId, [subject], async (tx) => {
+  return runWrite(actorId, [subject], async (tx): Promise<"APPLIED" | "ALREADY_ANSWERED" | "ALREADY_CHANGED"> => {
     const ctx = await loadDecisionContext(tx);
     const previous = await subject.read(ctx);
+    if (input.onlyIfStillUntouched) {
+      if (await tx.decisionRecord.findFirst({ where: { subjectId: subject.id }, select: { id: true } })) return "ALREADY_ANSWERED";
+      const recommended = subject.recommended?.value;
+      const untouched = previous === "UNDECIDED" || (recommended !== undefined && sameValue(previous, recommended)) ||
+        (subject.untouchedDefault !== undefined && sameValue(previous, subject.untouchedDefault));
+      if (previous === null || !untouched) return "ALREADY_CHANGED";
+    }
     await applyDecisionInTx(tx, actorId, {
-      subject, kind: "STARTING_VALUE_APPLIED", value: chosen, previous, effectiveFrom: input.effectiveFrom,
+      subject, kind: input.kind ?? "STARTING_VALUE_APPLIED", value: chosen, previous, effectiveFrom: input.effectiveFrom,
       confirmedOn: now, reason: why, sources: input.sources,
-      record: { audience: subject.audience, via, explanation: why, sources: input.sources }, now, ctx,
+      record: { audience: subject.audience, via, explanation: why, sources: input.sources,
+        ...(via === "MIGRATION" ? { noAnswerer: true } : {}) }, now, ctx,
     });
+    return "APPLIED";
   });
 }
 
@@ -521,6 +561,8 @@ export type ParsedAnswer = {
   answeredBy?: string | null;
   firm?: string | null;
   answeredOn?: string | null;
+  /** Set by the form reader when the answer can't be read safely (e.g. "Two answers were ticked"): shown as INVALID. */
+  problem?: string | null;
 };
 
 export type AnswerPreview = {
@@ -558,6 +600,7 @@ async function previewInTx(tx: Prisma.TransactionClient, answers: ParsedAnswer[]
     const now_ = subject.describe(current);
     const invalid = (reason: string) => out.push({ ...base, now: now_, after: "", status: "INVALID", reason });
     if ((seen.get(code) ?? 0) > 1) { invalid("This question was answered more than once."); continue; }
+    if (typeof answer.problem === "string" && answer.problem.trim()) { invalid(answer.problem.trim().slice(0, 300)); continue; }
     if (!cleanText(answer.answeredBy ?? null, 120, "name of who answered")) { invalid("Fill in who answered."); continue; }
     try {
       decisionStart(effective, now);
@@ -729,7 +772,7 @@ export async function applyDueDecisionChanges(
         const change = await tx.decisionScheduledChange.findUniqueOrThrow({ where: { id } });
         const record = await tx.decisionRecord.findUniqueOrThrow({
           where: { id: change.decisionRecordId },
-          select: { kind: true, answeredByUserId: true, professionalName: true, professionalFirm: true,
+          select: { kind: true, via: true, answeredByUserId: true, professionalName: true, professionalFirm: true,
             professionalAnsweredOn: true, explanation: true, sources: true, createdAt: true },
         });
         const subject = decisionSubject(change.subjectId);
@@ -737,26 +780,41 @@ export async function applyDueDecisionChanges(
         if (record.answeredByUserId) {
           await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${record.answeredByUserId} FOR SHARE`;
         }
-        const decider = record.answeredByUserId ? await tx.user.findUnique({
-          where: { id: record.answeredByUserId }, select: { role: true, archivedAt: true },
+        // DEC-2: a value the app's own nightly run recorded names nobody as its answerer. It is saved by the one
+        // active owner (the same rule the nightly run used to schedule it); with none or several it stays waiting
+        // untouched, and is never cancelled as if a person had left.
+        const systemMade = !record.answeredByUserId && record.via === "MIGRATION";
+        let executorId = record.answeredByUserId;
+        if (systemMade) {
+          const owners = await tx.user.findMany({
+            where: { role: "OWNER", archivedAt: null }, select: { id: true }, take: 2, orderBy: { id: "asc" },
+          });
+          if (owners.length !== 1) return null;
+          executorId = owners[0]!.id;
+          await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${executorId} FOR SHARE`;
+        }
+        const decider = executorId ? await tx.user.findUnique({
+          where: { id: executorId }, select: { role: true, archivedAt: true },
         }) : null;
         if (!decider || decider.archivedAt || decider.role !== "OWNER") {
           await cancelForInactiveDecider(tx, change, now);
           return "CANCELLED" as const;
         }
-        const actorId = record.answeredByUserId!;
+        const actorId = executorId!;
         await assertActiveTeamActor(tx, actorId, ["OWNER"]);
         await tx.decisionScheduledChange.update({ where: { id }, data: { appliedAt: now } });
         const previous = await subject.read(await loadDecisionContext(tx));
         const who = record.professionalName
           ? (record.professionalFirm ? `${record.professionalName}, ${record.professionalFirm}` : record.professionalName)
           : "the owner";
-        const kind = (["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED"].includes(record.kind)
+        const kind = ((systemMade ? ["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED", "CONFIRMED"]
+          : ["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED"]).includes(record.kind)
           ? record.kind : "CHANGED") as DecisionWriteKind;
         await subject.write(tx, actorId, change.value, change.effectiveFrom, {
           kind,
           confirmedOn: record.professionalAnsweredOn ?? record.createdAt,
-          reason: (kind === "STARTING_VALUE_APPLIED" ? record.explanation ?? "Researched starting value"
+          reason: (kind === "STARTING_VALUE_APPLIED" || (systemMade && kind === "CONFIRMED")
+            ? record.explanation ?? "Researched starting value"
             : `Decided by ${who}${record.explanation ? ": " + record.explanation : ""}`).slice(0, 500),
           sources: sourcesOf(record.sources),
           effectiveFrom: change.effectiveFrom,

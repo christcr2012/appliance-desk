@@ -15,6 +15,8 @@ vi.mock("@/domains/capabilities", () => ({
   assertCapability: (tx: unknown, id: string) => assertActiveTeamActor(tx, id, ["OWNER", "ADMIN"]),
 }));
 
+const postBookSourceAfterCommit = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock("@/domains/books/immediate", () => ({ postBookSourceAfterCommit }));
 vi.mock("@/domains/billing/ledger", () => ledger);
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -26,6 +28,10 @@ vi.mock("@/lib/prisma", () => ({
           update: invoiceUpdate,
         },
         auditLog: { create: auditLogCreate },
+        // CMP-3: a cash payment runs the Form 8300 detector in the same
+        // transaction; with no receipts in the fake it finds nothing to do.
+        receipt: { findMany: vi.fn().mockResolvedValue([]) },
+        complianceFiling: { findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), create: vi.fn() },
       }),
   },
 }));
@@ -96,6 +102,7 @@ describe("recordManualPayment", () => {
     expect(result).toMatchObject({ totalAppliedCents: 4000, overpaymentCents: 0 });
     expect(result.invoicesTouched).toHaveLength(2);
     expect(auditLogCreate).toHaveBeenCalledTimes(2);
+    expect(postBookSourceAfterCommit).toHaveBeenCalledWith("RECEIPT","receipt-1");
   });
 
   it("reports the remainder as overpayment while the ledger mints the credit", async () => {
@@ -178,6 +185,7 @@ describe("writeOffInvoice", () => {
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await writeOffInvoice("inv-1", "owner-1", "Tenant vacated, uncollectible");
     expect(queryRaw).toHaveBeenCalledOnce();
+    expect(postBookSourceAfterCommit).toHaveBeenCalledWith("INVOICE","inv-1");
     expect(invoiceUpdate).toHaveBeenCalledWith({
       where: { id: "inv-1" },
       data: expect.objectContaining({

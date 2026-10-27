@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   Prisma,
+  Taxability,
   TaxAddressStatus,
   TaxRateSource,
 } from "@prisma/client";
@@ -23,6 +24,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { recordedRetailSales } from "./rdf-sales-evidence";
 import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { resolveTaxabilityAsOf, type TaxabilityCell } from "./taxability-history";
+import { ruleAsOf } from "@/domains/rules/reads";
 import { GREELEY_JURISDICTION_WHERE, taxCellForSubject } from "@/domains/decisions/tax-cells";
 
 const LOOKUP_REUSE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -710,6 +712,28 @@ export async function getSaleTaxContext(
  * only place that reads the TaxabilityRule table (tests/decisions-append-only.test.ts checks), so dated reads cannot
  * be bypassed by accident.
  */
+/**
+ * FEETAX-2: the stored RENTAL rule for one jurisdiction, or null when the
+ * jurisdiction has no RENTAL row (an undecided rule). This file is the
+ * only TaxabilityRule reader, so the delivery-readiness check asks here
+ * instead of querying the table itself.
+ */
+export async function getJurisdictionRentalTaxability(
+  tx: Prisma.TransactionClient,
+  jurisdictionId: string,
+  at: Date,
+): Promise<Taxability | null> {
+  // Resolve at the check's effective date, not just the stored cell:
+  // a decision the owner scheduled that is due by `at` counts as
+  // decided even before the nightly run applies it — the same dated
+  // resolution the tax engine prices with.
+  const cells = await getTaxabilityRulesAsOf(tx, at);
+  const cell = cells.find(
+    (entry) => entry.jurisdictionId === jurisdictionId && entry.category === "RENTAL",
+  );
+  return cell?.taxability ?? null;
+}
+
 export async function listTaxabilityRuleCells(tx: Prisma.TransactionClient) {
   return tx.taxabilityRule.findMany({
     select: { id: true, jurisdictionId: true, category: true, taxability: true, cpaConfirmedOn: true,
@@ -982,7 +1006,7 @@ export async function assertTaxReadyForAgreement(
   const settings = await tx.businessSettings.findUniqueOrThrow({
     where: { id: "singleton" },
     select: {
-      shortTermLeaseElection: true, rdfThresholdCents: true,
+      shortTermLeaseElection: true,
       rdfThresholdCrossedOn: true, rdfHandling: true, rdfCpaConfirmedOn: true,
     },
   });
@@ -1043,21 +1067,17 @@ export async function assertTaxReadyForAgreement(
         context.jurisdictions.some(j => j.id === state.id &&
           resolveTaxability(j, "RENTAL", context).taxability === "TAXABLE"))) {
         const year = Number(businessDateKey(taxDate).slice(0, 4));
-        const [priorRetail, currentRetail, filingAccount] = await Promise.all([
+        const [priorRetail, currentRetail] = await Promise.all([
           recordedRetailSales(tx, year - 1),
           recordedRetailSales(tx, year),
-          tx.taxFilingAccount.findFirst({
-            where: { kind: "SALES_RETURN", jurisdictions: { some: { level: "STATE" } } },
-            select: { frequency: true },
-          }),
         ]);
         const decision = retailDeliveryFeeStatus({
           today: taxDate, saleType: "RENTAL", election: settings.shortTermLeaseElection,
           previousYearRetailCents: priorRetail, currentYearRetailCents: currentRetail,
-          thresholdCents: settings.rdfThresholdCents,
+          // TFA-1: the small-seller limit is a dated rule, not a setting.
+          thresholdCents: (await ruleAsOf<number>("co.rdf.qualified_threshold", taxDate, tx)).value,
           thresholdCrossedOn: settings.rdfThresholdCrossedOn,
           handling: settings.rdfHandling, cpaConfirmedOn: settings.rdfCpaConfirmedOn,
-          frequency: filingAccount?.frequency ?? "MONTHLY",
         });
         if (decision.status === "UNDECIDED")
           problems.push("Colorado retail delivery fee: " + decision.reason);

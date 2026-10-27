@@ -6,6 +6,7 @@ import { ActionButton, StatusPill, type ActionSpec, type Column, type MenuItem }
 import { billPill, billPillInfo } from "@/domains/billing/bill-status";
 import type { BillRow } from "@/domains/billing/bills-list";
 import { formatMoney } from "@/lib/money-ui";
+import { formatShortDate } from "@/lib/business-date";
 
 const enc = encodeURIComponent;
 export const billHref = (row: Pick<BillRow, "id" | "customerId">) => `/desk/billing/customer/${enc(row.customerId)}/invoice/${enc(row.id)}`;
@@ -14,6 +15,8 @@ const FINISHED = new Set(["PAID", "VOID", "WRITTEN_OFF", "REFUNDED"]);
 
 /** The main way to collect this bill, or nothing when there is nothing to collect. */
 export function billPayActions(row: BillRow): ActionSpec[] {
+  // BILL-1: the customer already paid by bank and the bank is confirming it. Nothing to collect, so no button (⋯ only).
+  if (row.beingConfirmed) return [];
   switch (row.payPath) {
     case "STRIPE_LINK":
       return [
@@ -32,8 +35,8 @@ export function billPayActions(row: BillRow): ActionSpec[] {
 export function billRowActions(row: BillRow): MenuItem[] {
   const items: MenuItem[] = [];
   const open = row.payPath !== null || (row.status === "FAILED" && row.owedCents > 0);
-  if (row.payPath === "STRIPE_LINK") items.push({ kind: "link", label: "Take payment", href: `${billHref(row)}#take-payment` });
-  if (row.payPath === "SHOP_CARD") items.push({ kind: "link", label: "Take card payment", href: `/desk/sales/${enc(row.id)}` });
+  if (row.payPath === "STRIPE_LINK" && !row.beingConfirmed) items.push({ kind: "link", label: "Take payment", href: `${billHref(row)}#take-payment` });
+  if (row.payPath === "SHOP_CARD" && !row.beingConfirmed) items.push({ kind: "link", label: "Take card payment", href: `/desk/sales/${enc(row.id)}` });
   if (open) items.push({ kind: "link", label: "Record cash or check", href: `${statementHref(row)}#record-payment` });
   items.push({ kind: "link", label: "View customer", href: `/desk/customers/${enc(row.customerId)}` });
   if (FINISHED.has(row.status)) items.push({ kind: "link", label: "Frozen bill record", href: `/api/documents/invoice/${enc(row.id)}` });
@@ -44,6 +47,8 @@ export function billRowActions(row: BillRow): MenuItem[] {
 }
 
 function detailLine(row: BillRow): string | null {
+  // BILL-1: "$120.00 by bank · started Oct 22" — the bank is confirming it, so there is nothing to do.
+  if (row.confirming) return `${formatMoney(row.confirming.amountCents)} by bank · started ${formatShortDate(row.confirming.startedAt)}`;
   if (row.status === "PARTIALLY_PAID") return `Paid ${formatMoney(row.paidCents)} of ${formatMoney(row.amountCents)}`;
   if (row.status === "FAILED") return "This bill has an old status — open it to check";
   return null;
@@ -51,7 +56,7 @@ function detailLine(row: BillRow): string | null {
 
 /** Open tabs show what is still owed; finished tabs show the bill's amount. */
 export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
-  const pill = billPill({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents }, now);
+  const pill = billPill({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents, beingConfirmed: row.beingConfirmed }, now);
   const detail = detailLine(row);
   const actions = billPayActions(row);
   return (
@@ -70,7 +75,7 @@ export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="text-base font-extrabold text-ink tabular-nums">{formatMoney(owing ? row.owedCents : row.amountCents)}</span>
-          <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status)} />
+          <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status, row.beingConfirmed)} />
         </div>
       </div>
       {detail ? <p className="text-sm text-ink-soft">{detail}</p> : null}
@@ -108,8 +113,8 @@ export function billColumns(now: Date): Column<BillRow>[] {
       header: "Status",
       sortValue: "due-asc",
       cell: (row) => {
-        const pill = billPill({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents }, now);
-        return <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status)} />;
+        const pill = billPill({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents, beingConfirmed: row.beingConfirmed }, now);
+        return <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status, row.beingConfirmed)} />;
       },
     },
   ];

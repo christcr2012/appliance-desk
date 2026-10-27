@@ -261,8 +261,8 @@ export async function sendEstimateAction(
 }
 
 const convertSchema = z.union([
-  z.object({ mode: z.literal("single"), serviceAddressId: z.string().trim().min(1) }),
-  z.object({ mode: z.literal("per-property") }),
+  z.object({ mode: z.literal("single"), serviceAddressId: z.string().trim().min(1), overrideReason: z.string().trim().max(500).optional() }),
+  z.object({ mode: z.literal("per-property"), overrideReason: z.string().trim().max(500).optional() }),
 ]);
 
 export async function convertEstimateAction(

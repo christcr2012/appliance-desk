@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "91f7d34d",
-  "updated": "2026-10-23",
+  "updated": "2026-10-26",
   "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
@@ -524,7 +524,7 @@
     },
     {
       "id": "F2-A",
-      "title": "Integrated rental and financial scenarios 1–5",
+      "title": "Integrated rental and financial scenarios 1\u20135",
       "batch": "F2",
       "dependencies": [
         "V-4"
@@ -2160,7 +2160,7 @@
         "O-7",
         "COM-L15"
       ],
-      "status": "MERGED — PR #574 (2026-10-25)",
+      "status": "MERGED \u2014 PR #574 (2026-10-25)",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2186,7 +2186,7 @@
       "dependencies": [
         "COM-N1A"
       ],
-      "status": "MERGED — PR #579 (2026-10-25)",
+      "status": "MERGED \u2014 PR #579 (2026-10-25)",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2211,7 +2211,7 @@
       "dependencies": [
         "COM-N1B"
       ],
-      "status": "MERGED — PR #585 (2026-10-25)",
+      "status": "MERGED \u2014 PR #585 (2026-10-25)",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2236,7 +2236,7 @@
       "dependencies": [
         "COM-N1C"
       ],
-      "status": "MERGED — PR #587 (2026-10-25)",
+      "status": "MERGED \u2014 PR #587 (2026-10-25)",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2287,7 +2287,7 @@
       "dependencies": [
         "COM-N3"
       ],
-      "status": "MERGED — PR #580 (2026-10-25)",
+      "status": "MERGED \u2014 PR #580 (2026-10-25)",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2314,7 +2314,7 @@
         "COM-N4",
         "O-5"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "batch_bp_commercial_records",
       "budget": 470,
       "units": [
@@ -2339,7 +2339,7 @@
       "dependencies": [
         "BP-1"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2364,7 +2364,7 @@
       "dependencies": [
         "BP-2A"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -2389,7 +2389,7 @@
       "dependencies": [
         "BP-2B"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -2414,7 +2414,7 @@
       "dependencies": [
         "BP-3"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "batch_bp_first_use",
       "budget": 250,
       "units": [
@@ -2439,7 +2439,7 @@
       "dependencies": [
         "BP-4"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -2464,7 +2464,7 @@
       "dependencies": [
         "BP-5"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "batch_bp_property_evidence",
       "budget": 400,
       "units": [
@@ -2489,7 +2489,7 @@
       "dependencies": [
         "BP-6"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2514,7 +2514,7 @@
       "dependencies": [
         "BP-7A"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -2540,7 +2540,7 @@
       "dependencies": [
         "BP-7B"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2565,7 +2565,7 @@
       "dependencies": [
         "BP-8"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2590,7 +2590,7 @@
       "dependencies": [
         "BP-9"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "batch_bp_portfolio_contracts",
       "budget": 300,
       "units": [
@@ -2615,7 +2615,7 @@
       "dependencies": [
         "BP-10"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -2640,7 +2640,7 @@
       "dependencies": [
         "BP-11A"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -2666,7 +2666,7 @@
       "dependencies": [
         "BP-11B"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "batch_bp_partner_programs",
       "budget": 430,
       "units": [
@@ -2691,7 +2691,7 @@
       "dependencies": [
         "BP-12"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -2716,7 +2716,7 @@
       "dependencies": [
         "BP-13A"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -2741,7 +2741,7 @@
       "dependencies": [
         "BP-13B"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "batch_bp_partner_books_settlement",
       "budget": 500,
       "units": [
@@ -2766,7 +2766,7 @@
       "dependencies": [
         "BP-14"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -2791,7 +2791,7 @@
       "dependencies": [
         "BP-15A"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -2816,7 +2816,7 @@
       "dependencies": [
         "BP-15B"
       ],
-      "status": "PROPOSED — runtime design acceptance required",
+      "status": "PROPOSED \u2014 runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -4020,7 +4020,7 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED \u2014 PR #610, CI green 40317413250",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
@@ -4028,12 +4028,21 @@
       ],
       "evidence": [
         "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
-        "docs/designs/BOOKS-AUTOPILOT.md"
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/domains/books/autopilot.ts",
+        "src/domains/books/fixed-assets.ts",
+        "src/domains/exceptions/books-attention.ts",
+        "src/app/api/cron/books-nightly/route.ts"
       ],
       "tests": [
-        "tests/ba1-books-autopilot-integration.test.ts"
+        "tests/ba1-books-autopilot-integration.test.ts",
+        "tests/ba1-books-autopilot-guard.test.ts",
+        "tests/ba1-nightly-autopilot-integration.test.ts",
+        "tests/ba1-books-nightly-route.test.ts",
+        "tests/ba1-books-paging.test.ts",
+        "tests/ba1-immediate-webhook.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
@@ -4043,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED \u2014 PR #613, exact-head CI green 40357496521",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4056,7 +4065,7 @@
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
@@ -4066,7 +4075,7 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED \u2014 PR #624, exact-head CI green 40444991438 at eb2a99c7",
       "migration": "month_review",
       "budget": 480,
       "units": [
@@ -4078,9 +4087,12 @@
       ],
       "tests": [
         "tests/ba3-month-review-integration.test.ts",
-        "e2e/books-month-review.spec.ts"
+        "e2e/books-month-review.spec.ts",
+        "tests/ba3-accountant-send.test.ts",
+        "tests/ba3-month-review.test.ts",
+        "tests/ba3-month-actions.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-3.md"
     },
     {
@@ -4090,7 +4102,7 @@
       "dependencies": [
         "BA-3"
       ],
-      "status": "SUPERSEDED — screens built in AR-7 (docs/designs/APP-REDESIGN.md)",
+      "status": "SUPERSEDED \u2014 screens built in AR-7 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4115,7 +4127,7 @@
       "dependencies": [
         "BA-4"
       ],
-      "status": "SUPERSEDED — screens built in AR-7 (docs/designs/APP-REDESIGN.md)",
+      "status": "SUPERSEDED \u2014 screens built in AR-7 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 300,
       "units": [
@@ -4137,7 +4149,7 @@
       "title": "No bare link lists anywhere on the desk; guard test",
       "batch": "BA",
       "dependencies": [],
-      "status": "SUPERSEDED — screens built in AR-0/AR-10 (docs/designs/APP-REDESIGN.md)",
+      "status": "SUPERSEDED \u2014 screens built in AR-0/AR-10 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4159,7 +4171,7 @@
       "title": "Lead stages, ownership, speed to lead, duplicates and scale (indexes, search, cursor paging)",
       "batch": "LD",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #625, squash 50e265ec on main (2026-10-26); housekeeping PR #626",
       "migration": "lead_pipeline",
       "budget": 480,
       "units": [
@@ -4172,7 +4184,12 @@
       ],
       "tests": [
         "tests/lead-stage.test.ts",
+        "tests/lead-stage-integration.test.ts",
+        "tests/lead-assignment-integration.test.ts",
         "tests/lead-merge-integration.test.ts",
+        "tests/lead-status-tx.test.ts",
+        "tests/lead-keys.test.ts",
+        "tests/leads-queue-integration.test.ts",
         "tests/perf/leads-queue.perf.test.ts"
       ],
       "readiness": "CARD_READY",
@@ -4185,7 +4202,7 @@
       "dependencies": [
         "LD-1"
       ],
-      "status": "SUPERSEDED — screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
+      "status": "SUPERSEDED \u2014 screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -4210,7 +4227,7 @@
       "dependencies": [
         "LD-2"
       ],
-      "status": "SUPERSEDED — screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
+      "status": "SUPERSEDED \u2014 screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4234,7 +4251,7 @@
       "dependencies": [
         "LD-3"
       ],
-      "status": "SUPERSEDED — built in AR-9 (docs/build-specs/screens/INSIGHTS.md)",
+      "status": "SUPERSEDED \u2014 built in AR-9 (docs/build-specs/screens/INSIGHTS.md)",
       "migration": "none",
       "budget": 320,
       "units": [
@@ -4255,7 +4272,7 @@
       "title": "Customer list as a working tool: segments, money and next event per row, filter sheet, saved views, summary read model, fast search, count fix",
       "batch": "CU",
       "dependencies": [],
-      "status": "SUPERSEDED — engine and screen built in AR-4c (docs/build-specs/screens/CUSTOMERS.md)",
+      "status": "SUPERSEDED \u2014 engine and screen built in AR-4c (docs/build-specs/screens/CUSTOMERS.md)",
       "migration": "customer_summary",
       "budget": 500,
       "units": [
@@ -4280,7 +4297,7 @@
       "dependencies": [
         "CU-1"
       ],
-      "status": "SUPERSEDED — screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
+      "status": "SUPERSEDED \u2014 screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 380,
       "units": [
@@ -4305,7 +4322,7 @@
         "CU-2",
         "LD-4"
       ],
-      "status": "SUPERSEDED — screens built in AR-1/AR-4/AR-9 (docs/designs/APP-REDESIGN.md)",
+      "status": "SUPERSEDED \u2014 screens built in AR-1/AR-4/AR-9 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 380,
       "units": [
@@ -4327,7 +4344,7 @@
       "title": "Application kit, guards and three reference screens (Today, Invoices, Customer record) on the testing app",
       "batch": "AR",
       "dependencies": [],
-      "status": "IN PROGRESS — AR-0a merged PR #601 (2026-10-25); AR-0b building",
+      "status": "IN PROGRESS \u2014 AR-0a merged PR #601 (2026-10-25); AR-0b building",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4361,7 +4378,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4391,7 +4408,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4419,7 +4436,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -4448,7 +4465,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "DONE \u2014 merged PR #612 (2026-10-26)",
       "migration": "20261026010000_bank_payment_in_flight",
       "budget": 420,
       "units": [
@@ -4478,7 +4495,7 @@
         "AR-12",
         "LD-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (RentalAgreement.endReason/endReasonNote, BusinessSettings.rentalEndReasons)",
       "budget": 500,
       "units": [
@@ -4509,7 +4526,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 650,
       "units": [
@@ -4543,7 +4560,7 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 600,
       "units": [
@@ -4577,7 +4594,7 @@
         "AR-12",
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -4600,7 +4617,7 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 520,
       "units": [
@@ -4632,7 +4649,7 @@
         "AR-6",
         "LD-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "20261030000000_lead_closed_at (+ goal threshold settings)",
       "budget": 520,
       "units": [
@@ -4667,7 +4684,7 @@
         "AR-8",
         "AR-9"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 700,
       "units": [
@@ -4698,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662/#663; React 19.3 and view transitions PR #665 in merge review; measured JS budget still pending",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4725,7 +4742,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — first AR-12 selection controls and Bills/Customers saved views PR in CI; remaining outcomes pending",
       "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [
@@ -4753,7 +4770,7 @@
         "AR-1",
         "AR-2"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "20261031000000_notifications",
       "budget": 450,
       "units": [
@@ -4783,7 +4800,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — DEC-1a merged PR #600 (2026-10-25); DEC-1b in PR #603",
+      "status": "IN PROGRESS \u2014 DEC-1a merged PR #600 (2026-10-25); DEC-1b in PR #603",
       "migration": "20261026030000_decision_record",
       "budget": 460,
       "units": [
@@ -4810,8 +4827,8 @@
         "DEC-1",
         "FEE-1"
       ],
-      "status": "DESIGNED — build spec ready 2026-10-25",
-      "migration": "additive (Invoice.lateFeeWaivedAt, BusinessSettings.decisionsReviewedAt)",
+      "status": "DONE \u2014 PR #635",
+      "migration": "additive (BusinessSettings.decisionsReviewedAt; Invoice.lateFeeWaivedAt dropped, FEE-1 waiver replaced it)",
       "budget": 460,
       "units": [
         "DEC-2"
@@ -4830,7 +4847,7 @@
       "title": "System health that tells the truth: one state list, real schedules, bounded reads, typed failures",
       "batch": "MCP",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (AutomationRun/SystemIssue failure fields, BusinessSettings.automationLateGraceMinutes, index)",
       "budget": 450,
       "units": [
@@ -4855,7 +4872,7 @@
       "dependencies": [
         "MCP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (BackupArtifact, BusinessSettings.backupRetentionDays)",
       "budget": 650,
       "units": [
@@ -4880,7 +4897,7 @@
       "dependencies": [
         "MCP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (OAuth provider tables, jwks, McpConnection)",
       "budget": 600,
       "units": [
@@ -4907,7 +4924,7 @@
         "MCP-2",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -4933,7 +4950,7 @@
         "MCP-2",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (AgentOperation)",
       "budget": 650,
       "units": [
@@ -4958,7 +4975,7 @@
       "dependencies": [
         "MCP-5"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (RepairCase, RepairEvidence)",
       "budget": 450,
       "units": [
@@ -4982,7 +4999,7 @@
         "MCP-1",
         "MCP-5"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (MonitorRule, MonitorRun)",
       "budget": 450,
       "units": [
@@ -5008,7 +5025,7 @@
         "MCP-6",
         "AR-8"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (PerfSample, OptimizationProposal)",
       "budget": 500,
       "units": [
@@ -5036,7 +5053,7 @@
         "MCP-7",
         "MCP-8"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (AgentPass, AgentResult, McpConnection.kind)",
       "budget": 600,
       "units": [
@@ -5059,7 +5076,7 @@
       "title": "App feedback box, people only: reports, screenshots, triage, privacy",
       "batch": "MCP",
       "dependencies": [],
-      "status": "MERGED — PR #599 (2026-10-25)",
+      "status": "MERGED \u2014 PR #599 (2026-10-25)",
       "migration": "additive (FeedbackReport, FeedbackEntry, FeedbackAttachment, FeedbackEvent, settings)",
       "budget": 650,
       "units": [
@@ -5086,7 +5103,7 @@
         "MCP-5",
         "MCP-6"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (FeedbackEntry.authorKind, FeedbackCaseLink)",
       "budget": 450,
       "units": [
@@ -5127,7 +5144,7 @@
         "tests/customer-isolation.test.ts",
         "e2e/portal.spec.ts"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "units": [
         "PORTAL-1"
       ]
@@ -5155,19 +5172,19 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED 2026-10-26 \u2014 PR #628 (merge commit 66543a92) at head eac60bcd; PR #616 was rebuilt as #628 after its snapshot history could not merge. ci green at the exact head after one failed-jobs rerun (browser-a phase budget on the PR-event run; the dispatched run was fully green). Codex dispositions for #616's findings recorded in #628's body; #628 had no review threads. Main's post-merge run passed the secret scan with no refresh needed.",
       "units": [
         "ACC-6"
       ]
     },
     {
       "id": "TFA-1",
-      "title": "Tax and fee rule book: dated legal rules with sources, timing rule (costs late, benefits early), Taxes › Rules",
+      "title": "Tax and fee rule book: dated legal rules with sources, timing rule (costs late, benefits early), Taxes \u203a Rules",
       "batch": "TFA",
       "dependencies": [
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED \u2014 PR #617, squash merge cb1c3618 (2026-10-26); fingerprint refresh PR #622 merged as 38e92a98 (2026-10-26), main's secret scan green",
       "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
       "budget": 500,
       "units": [
@@ -5194,7 +5211,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT \u2014 branch ai/vivienne/tfa-2, main merged in at 50e265e (2026-10-26); PR, exact-head CI and merge next",
       "migration": "additive (Invoice.replacementOfInvoiceId)",
       "budget": 500,
       "units": [
@@ -5222,7 +5239,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (LegalRuleObservation, watch rows activated)",
       "budget": 450,
       "units": [
@@ -5235,7 +5252,10 @@
       ],
       "tests": [
         "tests/rules-parsers.test.ts",
-        "tests/rules-observation-integration.test.ts"
+        "tests/rules-observation-integration.test.ts",
+        "tests/tax-official-source-watch-integration.test.ts",
+        "tests/tax-official-rate-auto-apply-integration.test.ts",
+        "tests/today-role-access.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/TFA-3.md"
@@ -5248,7 +5268,7 @@
         "TFA-1",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED \u2014 PR #642, 238f7a57 (2026-10-26)",
       "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
       "budget": 550,
       "units": [
@@ -5263,7 +5283,8 @@
         "tests/compliance-registry.test.ts",
         "tests/field-crypto.test.ts",
         "tests/compliance-forms.test.ts",
-        "e2e/compliance.spec.ts"
+        "e2e/compliance.spec.ts",
+        "tests/compliance-filings-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-1.md"
@@ -5276,8 +5297,8 @@
         "CMP-1",
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (account Schedule C line)",
+      "status": "MERGED — PR #660, e4e9cf31 (2026-10-27)",
+      "migration": "20261110000000_cmp2_income_tax (LedgerAccount.scheduleCLine + system-chart backfill, TaxYearFacts)",
       "budget": 500,
       "units": [
         "CMP-2"
@@ -5290,7 +5311,8 @@
       "tests": [
         "tests/schedule-c-mapping.test.ts",
         "tests/estimated-tax.test.ts",
-        "tests/1099k-tieout.test.ts"
+        "tests/1099k-tieout.test.ts",
+        "tests/income-tax-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-2.md"
@@ -5302,8 +5324,8 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (Supplier TIN fields)",
+      "status": "MERGED \u2014 PR #656, f103c7fc (2026-10-27)",
+      "migration": "20261107000000_supplier_tin_w9 + 20261107010000_filing_period_key_widen (Supplier TIN fields, W9Request, ExpenseCategory.form1099Box, ComplianceProfile payer block, ComplianceFiling.periodKey 20\u219240)",
       "budget": 600,
       "units": [
         "CMP-3"
@@ -5317,7 +5339,9 @@
         "tests/w9-integration.test.ts",
         "tests/1099-prep-integration.test.ts",
         "tests/iris-csv.test.ts",
-        "tests/form8300-detector.test.ts"
+        "tests/iris-a2a.test.ts",
+        "tests/form-8300-detector.test.ts",
+        "tests/compliance-forms.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-3.md"
@@ -5329,8 +5353,8 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "none",
+      "status": "MERGED — PR #670, squash 95de266b on main (2026-10-27)",
+      "migration": "20261111000000_cmp4_colorado_local (ComplianceProfile CMP-4 facts, co.bpp rule seeds)",
       "budget": 400,
       "units": [
         "CMP-4"
@@ -5341,8 +5365,10 @@
         "docs/research/2026-10-25-federal-colorado-compliance.md"
       ],
       "tests": [
-        "tests/bpp-declaration-integration.test.ts",
-        "tests/sos-report.test.ts"
+        "tests/bpp-snapshot.test.ts",
+        "tests/local-filings.test.ts",
+        "tests/colorado-local-integration.test.ts",
+        "tests/compliance-forms.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-4.md"
@@ -5354,8 +5380,8 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "none",
+      "status": "MERGED — PR #679, squash d22a76e8 on main (2026-10-27)",
+      "migration": "20261112000000_cmp5_hiring (ComplianceProfile.firstHireDate, PAYROLL journal source, PayrollImport, WAGES + EMPLOYER_PAYROLL_TAXES accounts)",
       "budget": 200,
       "units": [
         "CMP-5"
@@ -5378,7 +5404,7 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED 2026-10-27 \u2014 PR #659, squash 9f7671dd on main at head 562beffb; CI green at the exact head on both runs; 7 Codex findings across #657/#658/#659 all fixed with tests and resolved. Close-out rides the SETUP-1 branch.",
       "migration": "20261103000000_business_records",
       "budget": 450,
       "units": [
@@ -5403,7 +5429,7 @@
         "VAULT-1",
         "ACC-6"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/vault-2; packet and drift check written 2026-10-27 (docs/pr-cards/execution/VAULT-2.json). SETUP-1 close-out rides this branch.",
       "migration": "additive (VaultCredential, VaultUnlock)",
       "budget": 450,
       "units": [
@@ -5428,7 +5454,7 @@
       "dependencies": [
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED 2026-10-27 — PR #661, squash 39d4bf8e on main (final head 716515bb, CI fully green at the exact head; 2 Codex findings + 3 CI-caught registry/import misses fixed with regression tests in one round).",
       "migration": "none",
       "budget": 400,
       "units": [
@@ -5455,7 +5481,7 @@
         "CMP-1",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "20261104000000_accountant_role",
       "budget": 500,
       "units": [
@@ -5479,7 +5505,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #623, exact-head ci green (f7db1c05)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5491,7 +5517,7 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-1-integration.test.ts"
+        "tests/ops1-recalls-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-1.md"
@@ -5504,7 +5530,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #640, exact-head ci green (5d88b75e)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5516,7 +5542,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-2-integration.test.ts"
+        "tests/ops2-refrigerant-rules.test.ts",
+        "tests/ops2-refrigerant-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-2.md"
@@ -5529,7 +5556,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #648, exact-head ci green (b3e6d017)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5541,7 +5568,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-3-integration.test.ts"
+        "tests/ops3-vehicle-rules.test.ts",
+        "tests/ops3-vehicle-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-3.md"
@@ -5554,7 +5582,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #641, exact-head ci green (7db1a3e4)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5566,7 +5594,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-4-integration.test.ts"
+        "tests/ops4-insurance-rules.test.ts",
+        "tests/ops4-insurance-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-4.md"
@@ -5578,7 +5607,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #631, exact-head ci green (6f6460bc)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5590,7 +5619,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-5-integration.test.ts"
+        "tests/ops5-dispute-rules.test.ts",
+        "tests/ops5-disputes-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-5.md"
@@ -5602,7 +5632,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #636, exact-head ci green (b1b9b5cf)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5614,7 +5644,9 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-6-integration.test.ts"
+        "tests/ops6-collections-rules.test.ts",
+        "tests/ops6-no-ownership-wording.test.ts",
+        "tests/ops6-collections-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-6.md"
@@ -5626,7 +5658,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #637, exact-head ci green (2bf9c5bd)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5638,7 +5670,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-7-integration.test.ts"
+        "tests/ops7-privacy-rules.test.ts",
+        "tests/ops7-privacy-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-7.md"
@@ -5651,7 +5684,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #653, exact-head ci green (a90b2329)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5663,7 +5696,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-8-integration.test.ts"
+        "tests/ops8-continuity-rules.test.ts",
+        "tests/ops8-continuity-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-8.md"
@@ -5678,7 +5712,7 @@
         "CMP-2",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (purchase capitalization fields, business-use settings)",
       "budget": 550,
       "units": [
@@ -5705,7 +5739,7 @@
         "CMP-2",
         "ACCT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "none",
       "budget": 250,
       "units": [
@@ -5728,8 +5762,8 @@
       "dependencies": [
         "BILL-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
+      "status": "DONE \u2014 merged PR #614 (2026-10-26)",
+      "migration": "20261027040000_fair_late_fees (additive: PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
       "budget": 450,
       "units": [
         "FEE-1"
@@ -5740,7 +5774,9 @@
         "src/domains/billing/reminders.ts"
       ],
       "tests": [
-        "tests/late-fees-fair-integration.test.ts"
+        "tests/late-fee-rules.test.ts",
+        "tests/late-fee-engine-integration.test.ts",
+        "tests/late-fee-digest.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/FEE-1.md"
@@ -5753,7 +5789,7 @@
         "TFA-1",
         "ZONE-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (OrderServiceChoice, HAUL_AWAY, optionalSeparatedTreatment)",
       "budget": 450,
       "units": [
@@ -5779,7 +5815,7 @@
         "FEETAX-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (JurisdictionReadiness, JurisdictionDeliveryCount)",
       "budget": 450,
       "units": [
@@ -5792,7 +5828,7 @@
         "docs/build-specs/screens/SERVICE-AREA-MAP.md"
       ],
       "tests": [
-        "tests/delivery-readiness.test.ts",
+        "tests/delivery-readiness-integration.test.ts",
         "e2e/delivery-area.spec.ts"
       ],
       "readiness": "CARD_READY",
@@ -5803,7 +5839,7 @@
       "title": "Service area map, delivery zones detected from the address, pickup always offered",
       "batch": "FEETAX",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "APPROVED \u2014 Chris 2026-10-25",
       "migration": "additive (ServiceAddress coordinates, deliveryZones/zoneCenter/zoneDistanceMethod settings)",
       "budget": 500,
       "units": [
@@ -5866,6 +5902,10 @@
   ],
   "activeExecution": "K-CASH-7",
   "executionPackets": [
+    {
+      "id": "FEETAX-2",
+      "path": "docs/pr-cards/execution/FEETAX-2.json"
+    },
     {
       "id": "W-22D12",
       "path": "docs/pr-cards/execution/W-22D12.json"
@@ -6025,6 +6065,38 @@
     {
       "id": "K-CASH-7",
       "path": "docs/pr-cards/execution/K-CASH-7.json"
+    },
+    {
+      "id": "CMP-1",
+      "path": "docs/pr-cards/execution/CMP-1.json"
+    },
+    {
+      "id": "CMP-3",
+      "path": "docs/pr-cards/execution/CMP-3.json"
+    },
+    {
+      "id": "CMP-2",
+      "path": "docs/pr-cards/execution/CMP-2.json"
+    },
+    {
+      "id": "CMP-4",
+      "path": "docs/pr-cards/execution/CMP-4.json"
+    },
+    {
+      "id": "CMP-5",
+      "path": "docs/pr-cards/execution/CMP-5.json"
+    },
+    {
+      "id": "TFA-2",
+      "path": "docs/pr-cards/execution/TFA-2.json"
+    },
+    {
+      "id": "SETUP-1",
+      "path": "docs/pr-cards/execution/SETUP-1.json"
+    },
+    {
+      "id": "VAULT-2",
+      "path": "docs/pr-cards/execution/VAULT-2.json"
     }
   ]
 }

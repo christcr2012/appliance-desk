@@ -1,3 +1,5 @@
+import { NoteAction } from "@/app/desk/collections/controls";
+import { objectedAction } from "@/app/desk/collections/actions";
 import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
 import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
 import { CallPanel } from "@/app/desk/_text/call-panel";
@@ -23,6 +25,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { LateReturnWaiverForm } from "./late-return-waiver-form";
 import { getLateReturnWaiverState } from "@/domains/billing/late-return-waiver";
 import { RecordConnections } from "@/components/desk/record-connections";
+import { SafetyIncidentButton } from "@/components/desk/safety-incident-button";
 
 export const metadata = { title: "Job" };
 
@@ -78,6 +81,7 @@ export default async function JobDetailPage({
     ? new Map(await Promise.all(pendingDeliveries.filter((p) => !p.deliveredOn && !p.removedAt && !p.substituteJobId).map(async (p) => [p.id, await substituteChoices(p.id)] as const)))
     : new Map<string, Awaited<ReturnType<typeof substituteChoices>>>();
 
+  const pickupCase = await prisma.collectionCase.findFirst({ where: { pickupJobId: job.id, objectedAt: null }, select: { agreementId: true } });
   const feeData = session.user.role==="OWNER"&&job.type==="DELIVERY"
     ? await prisma.job.findUnique({where:{id:job.id},select:{
       type:true,status:true,version:true,noShowAt:true,noShowEvidence:true,
@@ -106,6 +110,11 @@ export default async function JobDetailPage({
           View / print work order &rarr;
         </Link>
       </div>
+      <SafetyIncidentButton jobId={job.id} />
+      {pickupCase && job.status !== "COMPLETED" && job.status !== "CANCELLED" && (
+        <div className="mt-3 rounded-lg border border-line p-3"><p className="mb-2 text-sm">If the customer says no at the door, do not take the appliance.</p>
+          <NoteAction label="Customer objected — end the visit" noteLabel="What happened" secondary run={objectedAction.bind(null, pickupCase.agreementId)} /></div>
+      )}
       {job.customer && (canViewFinance || job.assignedToUserId === session.user.id) && (
         <div className="mt-3">
           <SendTextPanel userId={session.user.id} entityType="Job" entityId={job.id} path={`/desk/jobs/${job.id}`}

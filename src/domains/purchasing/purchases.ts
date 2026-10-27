@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/money-ui";
 import { allocateAssetNumbers } from "@/domains/inventory/asset-numbers";
 import { assetNumberPrefix } from "@/domains/inventory";
 import { recordApplianceAcquisitionTaxInTx } from "@/domains/tax/acquisition";
+import { ruleAsOf } from "@/domains/rules/reads";
 import { loadApplianceTaxSteps, type PurchaseTaxStep } from "@/domains/tax/next-step";
 import { reconcilePurchase, splitSellerTax, type TaxSplitBasis } from "./purchase-math";
 import {
@@ -583,8 +584,8 @@ export async function removePurchaseDocument(actorId: string, documentId: string
     }
     const remaining = await tx.purchaseDocument.count({ where: { purchaseId: doc.purchaseId } });
     if (remaining <= 1) {
-      const settings = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { recordRetentionYears: true } });
-      const years = settings?.recordRetentionYears ?? 7;
+      // TFA-1: how long records are kept is a dated rule, not a setting.
+      const years = (await ruleAsOf<number>("records.keep_years", now, tx)).value;
       const keepUntil = new Date(doc.purchase.purchasedOn);
       keepUntil.setUTCFullYear(keepUntil.getUTCFullYear() + years);
       if (keepUntil.getTime() > now.getTime()) {

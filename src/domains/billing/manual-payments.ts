@@ -1,3 +1,4 @@
+import { postBookSourceAfterCommit } from "@/domains/books/immediate";
 import type { InvoiceStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -6,6 +7,7 @@ import {
   createReceiptWithAllocations,
   lockCustomerLedger,
 } from "./ledger";
+import { assessCashReceipt8300 } from "@/domains/compliance/form-8300";
 
 export type ManualPaymentMethod = "check" | "cash" | "bank_transfer" | "other";
 
@@ -61,6 +63,7 @@ export async function recordManualPayment(
   }
 
   let result: ManualPaymentResult | undefined;
+  let committedReceiptId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
     await assertCapability(tx, actingUserId, "RECORD_MANUAL_PAYMENT");
@@ -119,7 +122,7 @@ export async function recordManualPayment(
       .filter(Boolean)
       .join(" — ") || undefined;
 
-    await createReceiptWithAllocations(tx, {
+    const recordedReceipt = await createReceiptWithAllocations(tx, {
       customerId,
       source: "MANUAL",
       amountCents: input.amountCents,
@@ -129,6 +132,13 @@ export async function recordManualPayment(
       notes: receiptNotes,
       allocations,
     });
+    committedReceiptId=recordedReceipt.receiptId;
+
+    // CMP-3: a cash receipt can trigger a Form 8300 filing (cash over
+    // $10,000 from one customer, alone or related within 12 months).
+    if (input.method === "cash") {
+      await assessCashReceipt8300(tx, { id: recordedReceipt.receiptId, customerId, receivedOn });
+    }
 
     // Keep the existing per-invoice audit trail even though the receipt is now
     // the cash source of truth.
@@ -156,6 +166,7 @@ export async function recordManualPayment(
     };
   });
 
+  if(committedReceiptId)await postBookSourceAfterCommit("RECEIPT",committedReceiptId);
   return result!;
 }
 
@@ -170,6 +181,7 @@ export async function writeOffInvoice(
   reason: string,
 ): Promise<void> {
   await prisma.$transaction((tx) => writeOffInvoiceInTx(tx, invoiceId, actingUserId, reason));
+  await postBookSourceAfterCommit("INVOICE",invoiceId);
 }
 
 /** The whole write-off inside a transaction the caller owns (approvals run it as the owner). */

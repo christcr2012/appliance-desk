@@ -91,7 +91,7 @@ test.describe("settings history and previews", () => {
   test("a section can be previewed before saving and nothing is written by the preview", async ({ page }) => {
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 10 } });
     await page.goto("/desk/settings?section=policies");
-    const grace = page.getByLabel("Late fee grace period (days)");
+    const grace = page.getByLabel("Days to pay before a late fee (at least 10)");
     // The form's saved values are put into the inputs when the page's script starts. Filling before that can leave
     // the saved "10" and the typed "12" joined as "1012" (seen in CI as "Too big: expected number to be <=90"), so
     // wait until the saved value shows, as the out-of-date test below already does.
@@ -111,7 +111,7 @@ test.describe("settings history and previews", () => {
   test("saving from a page that is out of date is refused with a reload message", async ({ page }) => {
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 20, referralRewardCents: 2500 } });
     await page.goto("/desk/settings?section=policies");
-    await expect(page.getByLabel("Late fee grace period (days)")).toHaveValue("20");
+    await expect(page.getByLabel("Days to pay before a late fee (at least 10)")).toHaveValue("20");
     // Another owner saves the same section while this page stays open.
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 30 } });
     await page.getByLabel("Referral reward — same amount for both people").fill("40");

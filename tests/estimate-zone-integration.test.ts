@@ -14,6 +14,8 @@ import { saveZoneSettings, zoneSettingsRevision, getZoneSettingsInTx } from "@/d
 import { readZoneSnapshot } from "@/domains/delivery/snapshot";
 import { convertEstimateToAgreements, getEstimateForApproval } from "@/domains/estimates";
 import type { GeocodeResult } from "@/domains/delivery/geocode";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
+const taxCleanups: Array<() => Promise<void>> = [];
 
 // ZONE-1 on throwaway Postgres: zone and price from the address, pickup choice, outside-area refusal, frozen snapshot,
 // staff-confirmed unknown zones, copy to the agreement, and no map position reaching a customer read.
@@ -49,11 +51,14 @@ beforeAll(async () => {
   goldenId = (await prisma.serviceAddress.create({ data: { customerId, line1: "200 Golden Way", city: "Golden", zip: "80401" } })).id;
   lostId = (await prisma.serviceAddress.create({ data: { customerId, line1: "300 Lost Road", city: "Greeley", zip: "80631" } })).id;
   otherAddressId = (await prisma.serviceAddress.create({ data: { customerId: otherCustomerId, line1: "100 Loveland Ave", city: "Loveland", zip: "80537" } })).id;
+  // FEETAX-2: an address must be ready to deliver to (tax places set up) before an agreement is made for it.
+  for (const id of [lovelandId, lostId]) taxCleanups.push((await seedTaxReadyContext(id)).cleanup);
   estimateId = await estimateWith([lovelandId, goldenId], "Zone test");
   lostEstimateId = await estimateWith([lostId], "Unknown zone test");
 });
 
 afterAll(async () => {
+  for (const cleanup of taxCleanups.reverse()) await cleanup();
   await prisma.businessSettings.update({ where: { id: "singleton" }, data: { deliveryZones: savedZones as Prisma.InputJsonValue } });
   const agreements = await prisma.rentalAgreement.findMany({ where: { customerId }, select: { id: true } });
   await prisma.staffTask.deleteMany({ where: { customerId } });

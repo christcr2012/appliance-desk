@@ -33,6 +33,12 @@ enum Role {
 }
 
 model User {
+  // MCP-3: connections are separate from sign-in sessions and OAuth credentials.
+  McpConnections McpConnection[] @relation("McpConnections")
+  oauthclients OauthClient[]
+  oauthrefreshtokens OauthRefreshToken[]
+  oauthaccesstokens OauthAccessToken[]
+  oauthconsents OauthConsent[]
   workspacePreference OwnerWorkspacePreference?
   budgetPublishedPlans BudgetPlanVersion[] @relation("BudgetPlanPublisher")
   budgetReviewSnapshots BudgetReviewSnapshot[] @relation("BudgetReviewCreator")
@@ -64,6 +70,8 @@ model User {
   sessions  Session[]
   accounts  Account[]
   twoFactor TwoFactor?
+  // ACC-6: devices this person has signed in from (one row per device cookie).
+  knownDevices KnownDevice[] @relation("KnownDevices")
 
   customer Customer?
 
@@ -75,6 +83,7 @@ model User {
   auditLogEntries AuditLog[]
   customerNotes   CustomerNote[]
   leadNotes       LeadNote[]
+  assignedLeads   Lead[] @relation("LeadAssignee")
   createdTasks    StaffTask[] @relation("StaffTaskCreatedBy")
   assignedTasks   StaffTask[] @relation("StaffTaskAssignedTo")
   createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
@@ -96,9 +105,12 @@ model User {
   // MCP-10a app feedback (reports about the app, never appliance repairs).
   feedbackReports FeedbackReport[] @relation("FeedbackReporter")
   feedbackEntries FeedbackEntry[]  @relation("FeedbackEntryAuthor")
+  teamCertifications TeamCertification[] @relation("TeamCertificationUser")
 }
 
 model Session {
+  oauthrefreshtokens OauthRefreshToken[]
+  oauthaccesstokens OauthAccessToken[]
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -161,11 +173,41 @@ model TwoFactor {
   lockedUntil             DateTime?
 }
 
+// ACC-6: devices a person has signed in from, keyed by a device cookie.
+// The cookie value itself is never stored — only its SHA-256 hash — and the
+// cookie is only an identifier: it never signs anyone in on its own.
+// trustedUntil is set when the person ticks "Remember this device" and is
+// never extended by later sign-ins; forgottenAt marks a device the person
+// (or the owner, or a security change) has forgotten.
+model KnownDevice {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation("KnownDevices", fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash   String   @db.Char(64)
+  label        String   @db.VarChar(80)
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  trustedUntil DateTime?
+  forgottenAt  DateTime?
+
+  @@unique([userId, deviceHash])
+  @@index([userId, lastSeenAt])
+}
+
 // ---------------------------------------------------------------------------
 // Customers & service addresses
 // ---------------------------------------------------------------------------
 
 model Customer {
+  // OPS-5: set when a bank debit from this customer was disputed. Autopay stays off until the owner clears it.
+  bankDebitBlockedAt DateTime?
+  bankDebitBlockedReason String?
+  paymentDisputes PaymentDispute[]
+  collectionSteps CollectionStep[]
+  collectionCases CollectionCase[]
+  // OPS-7: a legal hold stops every automatic purge and privacy deletion for this customer.
+  legalHoldAt DateTime?
+  legalHoldReason String?
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
@@ -175,6 +217,9 @@ model Customer {
   isBusiness      Boolean  @default(false)
   isPropertyManager Boolean @default(false)
   companyName     String?
+  // FEE-1: optional; an active-duty servicemember never gets an automatic late fee (federal SCRA protections).
+  activeMilitary  Boolean  @default(false)
+  pendingCharges  PendingCharge[]
   // W-26: customer-owned language preference. Activation is separately reviewer gated.
   preferredLanguage String @default("en")
 
@@ -402,6 +447,22 @@ model Lead {
   scoringPolicyVersion Int @default(1)
   lastRealContactAt DateTime?
 
+  // LD-1: who owns this lead, and whether a real person has contacted them yet.
+  // firstContactedAt is set only by a real outbound contact (never at creation);
+  // firstContactEstimated is true only for rows backfilled from lastRealContactAt.
+  assignedToUserId   String?
+  assignedTo         User?     @relation("LeadAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  firstContactedAt   DateTime?
+  firstContactEstimated Boolean @default(false)
+  // LD-1: normalized contact keys, maintained on every write of phone/email
+  // (src/domains/leads/keys.ts) so duplicate checks and phone search stay exact.
+  phoneDigits        String?
+  emailLower         String?
+  // LD-1: the oldest lead this one may duplicate (set at create), and merge state.
+  possibleDuplicateOfLeadId String?
+  mergedIntoLeadId   String?
+  mergedAt           DateTime?
+
   applianceRequests LeadApplianceRequest[]
   estimates         Estimate[]
 
@@ -427,6 +488,10 @@ model Lead {
   // W-6: the date the owner chose for the next follow-up (Colorado midnight). Null = none chosen.
   nextFollowUpOn DateTime?
 
+  // LD-1: compare-and-set token for the follow-up date, bumped only by
+  // setLeadFollowUp (src/domains/leads/follow-up.ts).
+  version Int @default(1)
+
   notesLog LeadNote[]
   tasks    StaffTask[]
 
@@ -435,6 +500,19 @@ model Lead {
 
   @@index([status])
   @@index([score])
+  // LD-1: pipeline lists, assignment and duplicate lookups; trigram indexes
+  // make the leads search (name/company/city/email/phone) fast.
+  @@index([assignedToUserId, status, nextFollowUpOn])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([phoneDigits])
+  @@index([emailLower])
+  @@index([mergedIntoLeadId])
+  @@index([contactName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_contactName_trgm")
+  @@index([companyName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_companyName_trgm")
+  @@index([city(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_city_trgm")
+  @@index([emailLower(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_emailLower_trgm")
+  @@index([phoneDigits(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_phoneDigits_trgm")
 
   // COM-L2 additive communication lineage.
   contactBindings ContactBinding[]
@@ -457,6 +535,10 @@ model LeadNote {
   authorId String?
   author   User?  @relation(fields: [authorId], references: [id])
   body     String
+  // LD-1: what kind of note this is. "NOTE" = a plain note (never counts as
+  // contact); "CONTACTED" = a real outbound contact (sets firstContactedAt);
+  // "ATTEMPT" = tried to reach them, no contact made.
+  kind     String  @default("NOTE")
 
   createdAt DateTime @default(now())
 
@@ -498,6 +580,13 @@ model ApplianceType {
   // on the public site next to the generic "may vary" disclaimer. Null
   // until Chris supplies one — the site falls back to a generic icon.
   photoUrl String?
+
+  // OPS-1: words used to search the government recall list for this kind of appliance ("washer", "washing machine").
+  // Empty means the nightly check falls back to the type's own name.
+  recallProductTerms String[] @default([])
+
+  // OPS-2: appliances of this type have a sealed refrigerant system, so scrapping or throwing one away needs a refrigerant record.
+  hasRefrigerant Boolean @default(false)
 
   // Soft-delete: an appliance type is never hard-deleted once it's been
   // referenced by a Lead/PricingRule/Appliance (that would break history).
@@ -619,9 +708,14 @@ model Appliance {
   staffTasks  StaffTask[]
   // Batch M-2: what the owner decided to do with it after retiring it, and parts taken from it.
   retiredPlan RetiredAppliancePlan?
+  refrigerantRecord RefrigerantRecord?
   saleLines InvoiceLineItem[] @relation("ApplianceSaleLine")
   saleDispositions RetiredSaleDisposition[]
   salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
+  // OPS-1: true while a CONFIRMED safety recall covers this machine. Blocks renting, reserving, swapping, selling and parts listing.
+  recallHold Boolean @default(false)
+  recallMatches RecallMatch[]
+  safetyIncidents SafetyIncident[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -759,6 +853,24 @@ model Supplier {
   email       String?
   notes       String?
 
+  // CMP-3: the W-9 record. The TIN itself is stored only encrypted
+  // (field-crypto, AES-256-GCM); screens show the last 4. legalName is the
+  // name on the tax return, which can differ from the trade name above.
+  tinType           String? // "SSN" | "EIN"
+  tinEncrypted      String?
+  tinLast4          String?
+  legalName         String?
+  // The mailing address from the W-9 — 1099 recipient copies and the IRIS
+  // file are incomplete without it (review finding on PR #654).
+  mailingAddress    String?
+  mailingCity       String?
+  mailingState      String?
+  mailingZip        String?
+  w9ReceivedOn      DateTime?
+  w9FileUrl         String?
+  backupWithholding Boolean   @default(false)
+  w9Requests        W9Request[]
+
   // Batch C P1-C: archived suppliers are hidden from pickers and cannot take new purchase orders.
   archivedAt DateTime?
 
@@ -767,6 +879,44 @@ model Supplier {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// CMP-5: one pay run imported from the payroll provider's summary CSV.
+// Provider totals only — no employee-level data is ever stored here. The
+// row's id is the books journal's sourceId (sourceType PAYROLL), and the
+// (fileHash, rowIndex) uniqueness is what stops the same file from ever
+// posting a pay run twice.
+model PayrollImport {
+  id                 String   @id @default(cuid())
+  fileHash           String
+  rowIndex           Int
+  payDate            DateTime @db.Date
+  grossWagesCents    Int
+  employerTaxesCents Int
+  employeeTaxesCents Int?
+  withdrawnCents     Int
+  providerName       String?
+  sourceFileName     String?
+  importedById       String
+  createdAt          DateTime @default(now())
+
+  @@unique([fileHash, rowIndex])
+  @@index([payDate])
+}
+
+// CMP-3: a one-time W-9 request link for a supplier. Only the token's
+// SHA-256 hash is stored; the link works once and expires after 14 days.
+model W9Request {
+  id              String    @id @default(cuid())
+  supplierId      String
+  supplier        Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  tokenHash       String    @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+
+  @@index([supplierId])
 }
 
 // One order placed with a supplier. DRAFT while Chris is still putting
@@ -1101,6 +1251,11 @@ enum RentalAgreementStatus {
 }
 
 model RentalAgreement {
+  collectionCase CollectionCase?
+  // BILL-1: bank payments being confirmed for a subscription bill that is not mirrored locally yet.
+  bankPaymentsInFlight BankPaymentInFlight[]
+  lateFeeClass LateFeeClass?
+  pendingCharges PendingCharge[]
   signingBusinessReviews SigningBusinessReview[]
   rdfRecords RetailDeliveryFeeRecord[] @relation("RdfAgreement")
   outOfServicePeriods OutOfServicePeriod[]
@@ -1119,6 +1274,12 @@ model RentalAgreement {
   // pricing or billing logic.
   sourceEstimateId String?
   sourceEstimate   Estimate? @relation(fields: [sourceEstimateId], references: [id])
+  // FEETAX-2: the owner's one-order override of a "rules not decided"
+  // delivery-readiness refusal (never for a missing license). Reason is
+  // required; the save is audited.
+  readinessOverrideByUserId String?
+  readinessOverrideReason   String?   @db.VarChar(500)
+  readinessOverrideAt       DateTime?
   // W-24 independent agreement owner-offered windows; never a booked visit.
   deliveryOffer Json @default("[]")
   deliveryOfferVersion Int @default(0)
@@ -1148,7 +1309,7 @@ model RentalAgreement {
   // freezes through AgreementSigningCharge, never a second ledger.
   mandatoryChargeReviewVersions Json @default("[]")
   damageWaiverCents Int @default(0)
-  lateFeeGraceDays  Int @default(5)
+  lateFeeGraceDays  Int @default(10)
   lateFeeCents      Int @default(0)
   lateFeePercent    Int @default(0)
   taxRatePermille   Int @default(0) // DEPRECATED: old tenths-of-a-percent value; a database trigger keeps it in step with taxRateMilliPercent until the cleanup batch removes both
@@ -1793,6 +1954,8 @@ model Job {
   @@index([agreementId])
   @@index([maintenanceRequestId])
   @@index([assignedToUserId, scheduledAt])
+  /// OPS-2: a repair on a sealed refrigerant system. Only someone with a refrigerant certification on file may be assigned.
+  sealedSystem     Boolean   @default(false)
 }
 
 // An agreement item that was NOT delivered on the delivery visit that started
@@ -2270,6 +2433,24 @@ enum Taxability {
   UNDECIDED
 }
 
+// FEETAX-2: how a place's delivery license rule works, from the 50-mile
+// research table and the owner's review on Taxes > Delivery area.
+enum LicenseRequirement {
+  NONE
+  AFTER_FIRST_DELIVERY
+  AFTER_SECOND_DELIVERY_IN_12_MONTHS
+  ALWAYS
+  UNKNOWN
+}
+
+// FEETAX-2: how sales tax returns for a place are filed.
+enum FilingChannel {
+  SUTS
+  CITY_PORTAL
+  STATE_RETURN
+  UNKNOWN
+}
+
 enum TaxRateSource {
   COLORADO_GIS
   BULK_FILE
@@ -2326,6 +2507,15 @@ enum TaxAmendmentStatus {
   HANDLED_OUTSIDE
 }
 
+// TFA-1: where a dated legal-rule version came from. Priority when two versions
+// share a start date: PROFESSIONAL > OWNER > OFFICIAL_WATCH > RESEARCHED.
+enum LegalRuleOrigin {
+  RESEARCHED
+  OFFICIAL_WATCH
+  OWNER
+  PROFESSIONAL
+}
+
 enum TaxExemptionReason {
   RESALE
   GOVERNMENT
@@ -2371,6 +2561,7 @@ enum ProviderOperationKind {
   REFUND_CREATE
   TAX_RATE_CREATE
   SUBSCRIPTION_TAX_UPDATE
+  LATE_FEE_INVOICE_ITEM
 }
 
 enum ProviderOperationStatus {
@@ -2484,6 +2675,8 @@ model CreditApplication {
 }
 
 model Invoice {
+  collectionSteps CollectionStep[]
+  paymentDisputes PaymentDispute[]
   rdfShopRecords RetailDeliveryFeeRecord[] @relation("RdfShopInvoice")
   id          String        @id @default(cuid())
   invoiceNumber Int         @unique @default(autoincrement())
@@ -2518,6 +2711,9 @@ model Invoice {
   saleServiceAddressId String?
   walkInName           String?
   saleOperationKey     String? @unique
+  // TFA-2: a replacement sale (an exchange) points at the sale it replaces, so
+  // the delivery fee is never charged twice for one purchase.
+  replacementOfInvoiceId String?
   // Stripe: finalized_at from the signed provider invoice, never webhook-receipt time.
   // Local: issue time is its original creation time. Null means evidence is incomplete.
   issuedAt           DateTime?
@@ -2527,6 +2723,16 @@ model Invoice {
   payments            Payment[]
   refunds             Refund[]
   creditApplications  CreditApplication[]
+  // BILL-1: bank payments the bank is still confirming for this bill (see BankPaymentInFlight).
+  bankPaymentsInFlight BankPaymentInFlight[]
+  // FEE-1: the "your payment is late" warning, the date a late fee may first be recorded, and Chris's phone-call record.
+  lateNoticeDeliveryId String?
+  lateNoticeCount      Int       @default(0)
+  lateFeeDate          DateTime?
+  lateFeeToldOn        DateTime?
+  lateFeeToldByUserId  String?
+  pendingChargesFor     PendingCharge[] @relation("PendingChargeFor")
+  pendingChargesApplied PendingCharge[] @relation("PendingChargeApplied")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2538,6 +2744,82 @@ model Invoice {
   // Owner billing lists sort newest first with stable ID tie-breaker.
   // Without this compound order index, 5k invoices need a heap scan + sort.
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "Invoice_createdAt_id_idx")
+}
+
+/// BILL-1: "the bank is confirming a payment of $X for this bill". It is only a flag: it never counts as money received
+/// and changes no total, book entry or receipt. One row per Stripe PaymentIntent, ever (a retried bank payment reopens it).
+model BankPaymentInFlight {
+  id                String    @id @default(cuid())
+  /// Null until the local bill exists (the first attempt of a rental-subscription bill is mirrored only when paid or failed).
+  invoiceId         String?
+  invoice           Invoice?  @relation(fields: [invoiceId], references: [id])
+  stripeInvoiceId   String?
+  agreementId       String?
+  agreement         RentalAgreement? @relation(fields: [agreementId], references: [id])
+  /// "STRIPE_INVOICE" | "LOCAL_CHECKOUT"
+  source            String
+  paymentIntentId   String    @unique
+  amountCents       Int
+  /// "ach" (or the Stripe payment type when it is not us_bank_account)
+  method            String
+  startedAt         DateTime
+  clearedAt         DateTime?
+  /// "SUCCEEDED" | "FAILED" | "CANCELED" | "INVOICE_CLOSED"
+  clearedReason     String?
+  /// Stripe `event.created` of the event that cleared it (orders later events).
+  clearedByEventAt  DateTime?
+  attempt           Int       @default(1)
+  lastCheckedAt     DateTime?
+  /// Stripe says it succeeded but the app could not record it yet.
+  settledInStripeAt DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([invoiceId, clearedAt])
+  @@index([clearedAt, startedAt])
+  @@index([clearedAt, lastCheckedAt])
+  @@index([stripeInvoiceId])
+}
+
+enum LateFeeClass {
+  CONSUMER_LEASE
+  CONSUMER_SHORT
+  BUSINESS
+}
+
+enum PendingChargeKind {
+  LATE_FEE
+}
+
+// FEE-1: a late fee is its own charge, never added to the overdue bill. One per overdue bill (unique), put on the
+// customer's next bill (or its own bill when the rental ended). Waivable before or after it is billed.
+model PendingCharge {
+  id                String            @id @default(cuid())
+  customerId        String
+  customer          Customer          @relation(fields: [customerId], references: [id])
+  agreementId       String
+  agreement         RentalAgreement   @relation(fields: [agreementId], references: [id])
+  kind              PendingChargeKind @default(LATE_FEE)
+  amountCents       Int
+  forInvoiceId      String
+  forInvoice        Invoice           @relation("PendingChargeFor", fields: [forInvoiceId], references: [id])
+  noticeDeliveryId  String?
+  addedOn           DateTime          @default(now())
+  appliedToInvoiceId String?
+  appliedToInvoice  Invoice?          @relation("PendingChargeApplied", fields: [appliedToInvoiceId], references: [id])
+  // Set once the fee is on its way to Stripe (a provider operation), so a retry never posts it twice.
+  providerOperationId String?
+  // Autopay: the delivered notice of the higher automatic charge, when it was sent, and the charge date it named.
+  autopayNoticeDeliveryId String?
+  autopayNoticedAt  DateTime?
+  autopayChargeOn   DateTime?
+  waivedAt          DateTime?
+  waivedReason      String?
+  waivedByUserId    String?
+  createdAt         DateTime          @default(now())
+
+  @@unique([forInvoiceId, kind])
+  @@index([appliedToInvoiceId])
+  @@index([customerId, appliedToInvoiceId, waivedAt])
 }
 
 model InvoiceLineItem {
@@ -2566,6 +2848,7 @@ model InvoiceLineItem {
 }
 
 model Payment {
+  disputes PaymentDispute[]
   id          String   @id @default(cuid())
   invoiceId   String
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
@@ -2679,6 +2962,7 @@ model TaxFilingAccount {
   jurisdictions            TaxJurisdiction[]     @relation("SalesTaxFilingAccount")
   useTaxJurisdictions      TaxJurisdiction[]     @relation("UseTaxFilingAccount")
   periods                  TaxFilingPeriod[]
+  filingFrequencyAdvices   FilingFrequencyAdvice[]
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
 }
@@ -2702,6 +2986,8 @@ model TaxJurisdiction {
   notes            String?
   rates            TaxRateVersion[]
   rateObservations TaxRateObservation[]
+  readiness        JurisdictionReadiness?
+  deliveryCounts   JurisdictionDeliveryCount[]
   rules            TaxabilityRule[]
   addresses        AddressTaxJurisdiction[]
   invoiceTaxLines  InvoiceTaxLine[]
@@ -2748,6 +3034,9 @@ model OfficialSourceWatch {
   label               String
   url                 String   @unique
   active              Boolean  @default(true)
+  // TFA-3: which strict parser reads this page (RDF_RATES, GREELEY_RATE,
+  // IRS_1099_THRESHOLD, CO_INTEREST); null means hash-only watching.
+  parserKey           String?
   lastHash            String?
   lastText            String?
   lastExcerpt         String?
@@ -2758,6 +3047,31 @@ model OfficialSourceWatch {
   reviewedAt          DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  ruleObservations LegalRuleObservation[]
+}
+
+// TFA-3: one stored reading from a strict parser over an official page
+// (same pattern as TaxRateObservation). A reading is never applied on its
+// own: the owner approves it on To do (approvedVersionId links the rule
+// version it created) or dismisses it (dismissedAt), and a dismissed or
+// approved reading never asks again.
+model LegalRuleObservation {
+  id                String              @id @default(cuid())
+  ruleKey           String              @db.VarChar(80)
+  value             Json
+  effectiveFrom     DateTime?
+  watchId           String
+  watch             OfficialSourceWatch @relation(fields: [watchId], references: [id])
+  evidence          String              @db.VarChar(1000)
+  observedAt        DateTime            @default(now())
+  dismissedAt       DateTime?
+  dismissNote       String?             @db.VarChar(500)
+  dismissedByUserId String?
+  approvedVersionId String?
+
+  @@index([ruleKey, effectiveFrom])
+  @@index([observedAt])
 }
 
 model TaxabilityRule {
@@ -2795,6 +3109,38 @@ model TaxabilityRuleVersion {
   createdAt       DateTime          @default(now())
 
   @@index([jurisdictionId, category, effectiveFrom])
+}
+
+// TFA-1: every legal number the desk relies on (tax and fee rates, thresholds,
+// deadlines) as a dated version with its source. Reads use the version in force
+// on the date that matters; nothing is overwritten, so a late change can be
+// true-up'd against the version that should have applied. `provisional` is true
+// until the value is confirmed (official-watch values from strict parsers are
+// false); `autoApplied` records whether an official-watch value went in on its
+// own. Owner overrides are versions with origin OWNER and a reason in the audit
+// row. `undoneAt` marks a version the owner undid before its start date.
+model LegalRuleVersion {
+  id            String          @id @default(cuid())
+  ruleKey       String          @db.VarChar(80)
+  value         Json
+  effectiveFrom DateTime
+  origin        LegalRuleOrigin
+  sourceUrl     String?         @db.VarChar(500)
+  sourceQuote   String?         @db.VarChar(1000)
+  checkedOn     DateTime?
+  provisional   Boolean         @default(true)
+  autoApplied   Boolean         @default(false)
+  undoneAt      DateTime?
+  createdByUserId String?
+  createdAt     DateTime        @default(now())
+
+  rdfRecords    RetailDeliveryFeeRecord[] @relation("RdfRuleVersion")
+
+  // No @@unique here: uniqueness is one ACTIVE version per
+  // (ruleKey, effectiveFrom, origin), enforced by the SQL-only partial unique
+  // index in migration 20261101000000_legal_rules (an undone version stays
+  // as history and must not block its replacement). See DATABASE.md.
+  @@index([ruleKey, effectiveFrom])
 }
 
 // DEC-1a: Decisions & reviews. One append-only row per answer, confirmation, question sent or reopening. The setting
@@ -2865,6 +3211,43 @@ model AddressTaxJurisdiction {
 
   @@id([addressTaxLocationId, jurisdictionId])
   @@index([jurisdictionId])
+}
+
+// FEETAX-2: whether the business is set up to deliver into one taxing
+// place — its researched rent rule, license rule and filing channel, the
+// business record holding the city's license, and the owner's review
+// state. Seeded from docs/research/2026-10-25-tax-jurisdictions-50mi.md;
+// the owner edits it on Taxes > Delivery area. Whether the place taxes
+// rentals is NOT stored here — that is the TaxabilityRule RENTAL cell for
+// the jurisdiction (the one live rent decision, decided on Taxes > What
+// gets taxed); this row carries only delivery setup facts.
+model JurisdictionReadiness {
+  id              String             @id @default(cuid())
+  jurisdictionId  String             @unique
+  jurisdiction    TaxJurisdiction    @relation(fields: [jurisdictionId], references: [id])
+  licenseRequired LicenseRequirement @default(UNKNOWN)
+  licenseRecordId String?
+  licenseRecord   BusinessPaperwork? @relation("ReadinessLicenseRecord", fields: [licenseRecordId], references: [id])
+  filesThrough    FilingChannel      @default(UNKNOWN)
+  sourceUrl       String?            @db.VarChar(500)
+  checkedOn       DateTime?
+  reviewStatus    TaxReviewStatus    @default(NEEDS_REVIEW)
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+// FEETAX-2: one row per completed delivery order into a place whose
+// license rule counts deliveries (orderId unique makes the write
+// idempotent when a completion is retried).
+model JurisdictionDeliveryCount {
+  id             String          @id @default(cuid())
+  jurisdictionId String
+  jurisdiction   TaxJurisdiction @relation(fields: [jurisdictionId], references: [id])
+  deliveredOn    DateTime
+  orderId        String          @unique
+
+  @@index([jurisdictionId, deliveredOn])
 }
 
 model InvoiceTaxLine {
@@ -2966,6 +3349,10 @@ model RetailDeliveryFeeRecord {
   status                   RdfRecordStatus
   rateId                   String?
   rate                     RetailDeliveryFeeRate? @relation(fields: [rateId], references: [id], onDelete: Restrict)
+  // TFA-1: the dated rule version that set the amount (co.rdf.amount). New
+  // records use this; rateId stays for rows recorded before TFA-1.
+  ruleVersionId            String?
+  ruleVersion              LegalRuleVersion? @relation("RdfRuleVersion", fields: [ruleVersionId], references: [id], onDelete: Restrict)
   amountCents              Int?
   collectedFromCustomer    Boolean?
   invoiceLineId            String? @unique
@@ -2979,6 +3366,49 @@ model RetailDeliveryFeeRecord {
   @@index([invoiceId])
   @@index([status, deliveredOn])
   @@index([filingPeriodId])
+}
+
+enum RdfSwitchKind {
+  START
+  STOP
+}
+
+// TFA-2: one prepared delivery-fee switch. The app prepares and dates it; it
+// changes a customer bill only after the owner approves it on Today. A START
+// with no approval yet means the fee is owed but not billed to customers.
+model RetailDeliveryFeeSwitch {
+  id               String        @id @default(cuid())
+  kind             RdfSwitchKind
+  startsOn         DateTime
+  // The prior-year Colorado retail total the Jan 1 test used (null for the
+  // new-business start, which is dated from the crossing instead).
+  basisRetailCents Int?
+  approvedAt       DateTime?
+  approvedByUserId String?
+  createdAt        DateTime      @default(now())
+
+  @@unique([kind, startsOn])
+  @@index([startsOn])
+}
+
+// TFA-2 §8: one filing-frequency advice. The monthly job computes the
+// trailing-12-month average of state and state-collected tax and compares it
+// with the rule-book limits; the app never changes the frequency itself. The
+// To do offers a one-tap confirm once Colorado has agreed (Revenue Online),
+// and the confirm marks this row and sets the account frequency, which only
+// future periods pick up.
+model FilingFrequencyAdvice {
+  id                  String             @id @default(cuid())
+  filingAccountId     String
+  filingAccount       TaxFilingAccount   @relation(fields: [filingAccountId], references: [id])
+  currentFrequency    TaxFilingFrequency
+  advisedFrequency    TaxFilingFrequency
+  averageMonthlyCents Int
+  computedOn          DateTime           @default(now())
+  confirmedAt         DateTime?
+  confirmedByUserId   String?
+
+  @@index([filingAccountId, computedOn])
 }
 
 model TaxFilingAmendment {
@@ -3089,6 +3519,18 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  // OPS-3: how the owner claims vehicle costs. Starting value: the standard mileage rate in the first year (keeps both options open).
+  mileageMethod MileageMethod @default(STANDARD_RATE)
+  // OPS-3: a medical card is asked for from this vehicle weight up (starting value: required from 16,001 lb; not confirmed).
+  vehicleMedicalCardRequired Boolean @default(true)
+  // OPS-4: insurance. Renewal reminders (days before a policy ends) and workers' compensation status.
+  insuranceRemindFirstDays Int @default(60)
+  insuranceRemindSecondDays Int @default(30)
+  workersCompStatus WorkersCompStatus @default(NOT_SET)
+  workersCompEmployees Int @default(0)
+  workersCompNote String?
+  workersCompFormSentOn DateTime?
+  workersCompMailNumber String?
   // Batch M-2: remind on Today when a retired appliance has had no plan (or an unfinished one) this many days; 0 = never.
   retiredFollowUpDays Int @default(30)
   // O-5: warn on Today when a ready-to-rent appliance has sat idle this many days (0 = never) and when fleet utilization
@@ -3106,6 +3548,11 @@ model BusinessSettings {
   budgetUpcomingWindowDays Int @default(30)
   budgetReminderLeadDays Int @default(7)
   booksStartDate DateTime?
+  booksLastBroughtUpToDateAt DateTime?
+  booksLastProblemCount Int @default(0)
+  booksConsecutiveFailedNights Int @default(0)
+  booksReviewReminderDay Int @default(15)
+  accountantEmail String?
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
   badDebtTaxRecovery String @default("UNDECIDED")
@@ -3125,6 +3572,12 @@ model BusinessSettings {
 
   // W-6: days after a new lead arrives that its "Contact <name>" To do is due (0 = the same day).
   leadResponseDays Int @default(0)
+  // LD-1: who new leads go to. "OWNER" = the owner gets every new lead;
+  // "PERSON" = the person in leadAssignmentUserId; "ROTATE" = take turns in
+  // created order, remembering the last person in leadRotationCursor.
+  leadAssignmentMode   String  @default("OWNER")
+  leadAssignmentUserId String?
+  leadRotationCursor   String?
   // W-19: days an agreement may wait for a signature before "Follow up: <name> hasn't signed" appears on To do.
   unsignedFollowUpDays Int @default(3)
 
@@ -3180,9 +3633,17 @@ model BusinessSettings {
   defaultJobDurationMinutes Int @default(120)
   // Can staff work jobs nobody is assigned to (Batch C P2-E). On keeps the old behavior.
   staffMayWorkUnassignedJobs Boolean @default(true)
-  lateFeeGraceDays        Int     @default(5)
+  lateFeeGraceDays        Int     @default(10)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)
+  // BILL-1: banking days a bank payment may take before it goes on To do (2-20; starting value 6, banks usually take up to 4).
+  bankPaymentSlowBusinessDays Int @default(6)
+  // FEE-1: how many days before a late fee the customer is warned (1-5).
+  lateFeeNoticeDaysBefore Int @default(2)
+  // FEE-1: the day Chris confirmed the Colorado consumer-lease notification was filed (before the first household rental over 4 months). Null = not yet.
+  ucccNotificationFiledOn DateTime?
+  // DEC-2: when the owner last marked the researched starting values as reviewed (To do item until then).
+  decisionsReviewedAt     DateTime?
   taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
   taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)
@@ -3197,8 +3658,21 @@ model BusinessSettings {
   rdfCpaConfirmedOn               DateTime?
   rdfThresholdCrossedOn           DateTime?
   businessTaxAddress              Json                   @default("{}")
-  autoApplyOfficialRateChanges    Boolean                @default(true)
+  // TFA-3: starting value false (Chris's answer, recorded in DECISIONS):
+  // every new rate waits for his approval on To do. The auto-apply code
+  // path stays, but only runs if he turns this on himself.
+  autoApplyOfficialRateChanges    Boolean                @default(false)
+  // TFA-3: master switch for the official-page watches (Taxes > Rules,
+  // owner only). Starting value on; the per-watch active flags stay data.
+  watchOfficialTaxPages           Boolean                @default(true)
   autoRateChangeMaxMilliPercent   Int                    @default(1000)
+  // TFA-1: timing for changes that cost the business or do not help to do
+  // early (paying a return, filing 1099s, renewing a license). The desk
+  // suggests acting this far through the time allowed, and always at least
+  // this many business days before the deadline. Starting values 90% and 3
+  // days (owner choice, Oct 25, 2026) — owner-editable on Taxes > Rules.
+  costlyChangeTimingPercent       Int                    @default(90)
+  timingSafetyMarginBusinessDays  Int                    @default(3)
 
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
@@ -3223,6 +3697,20 @@ model BusinessSettings {
   autoRenewEnabled Boolean @default(false)
   // Batch E: durable automation pause state and versioned, owner-editable lead scoring policy.
   pausedAutomations Json @default("[]")
+  // OPS-8: the owner's "If something happens to me" page, and the owner-only switch that stops new automatic charges and reminders.
+  continuityEmergencyName String?
+  continuityEmergencyContact String?
+  continuitySuccessorName String?
+  continuitySuccessorContact String?
+  continuityCpaName String?
+  continuityCpaContact String?
+  continuityAttorneyName String?
+  continuityAttorneyContact String?
+  continuityRecordsNote String?
+  continuityReviewedAt DateTime?
+  chargesPausedAt DateTime?
+  chargesPausedByUserId String?
+  chargesPausedNote String?
   leadScoringPolicy Json @default("{\"version\":1,\"termPoints\":{\"month-to-month\":0,\"6-month\":10,\"12-month\":20},\"additionalUnitPoints\":5,\"businessAccountPoints\":10,\"multiUnitPropertyManagerPoints\":25,\"highValueThreshold\":30}")
   draftReservationHoldDays Int @default(7)
   // Older review findings: how long a removed receipt file / an unsent request photo waits before the nightly clean-up deletes it.
@@ -3233,6 +3721,7 @@ model BusinessSettings {
   feedbackReopenDays     Int @default(90)
   // MCP-1: minutes after a job's usual (UTC cron) time before System health calls it late. Owner-editable, 15-1440.
   automationLateGraceMinutes Int @default(120)
+  backupRetentionDays Int @default(30)
   inspectionChecklist Json @default("[]")
 
   // Batch B D10: null means policy not set; dependent actions stay unavailable.
@@ -3286,6 +3775,22 @@ model BusinessSettings {
   // ACC-4: wrong passwords allowed on one account inside the window, and how long the account waits afterwards.
   signInPauseAttempts      Int     @default(10)
   signInPauseMinutes       Int     @default(15)
+  // ACC-6: days a ticked "Remember this device" skips the sign-in code (0-90; 0 = always ask). Starting value 30.
+  trustedDeviceDays        Int     @default(30)
+  // VAULT-1: which business-record kinds an ADMIN may open (read-only). Starting
+  // value: the non-sensitive kinds. A record holding an encrypted number is
+  // never admin-readable, whatever its kind (domain rule, not just this list).
+  paperworkAdminKinds      String[] @default(["DOCUMENT", "LICENSE", "PERMIT", "REGISTRATION", "INSURANCE", "VEHICLE", "CONTRACT"])
+  // VAULT-2: emergency access (spec §7) — ships OFF. The contact gets no
+  // account; when the owner turns this on and issues a link, the contact can
+  // request access, wait emergencyWaitDays (1-30, CHECK in the migration),
+  // confirm a one-time code sent to the saved contact, and download one
+  // read-only export. The owner can deny at any time.
+  emergencyAccessEnabled   Boolean @default(false)
+  emergencyContactName     String? @db.VarChar(120)
+  emergencyContactEmail    String? @db.VarChar(200)
+  emergencyContactPhone    String? @db.VarChar(40)
+  emergencyWaitDays        Int     @default(7)
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 
@@ -3294,6 +3799,31 @@ model BusinessSettings {
   // COM-L2 additive communication lineage.
   communicationsPolicy Json @default("{}")
   communicationsPolicyVersion Int @default(1)
+
+  // OPS-5: how long after a bank debit a customer can still dispute it (starting value 60 days, from the NACHA rules
+  // via Stripe's documentation). Deposit refunds for bank payments wait this long.
+  achDisputeWindowDays Int @default(60)
+  // OPS-6: days past due when each step of the past-due ladder comes up (starting values 10 / 20 / 30).
+  collectionSecondNoticeDay Int @default(10)
+  collectionFinalNoticeDay Int @default(20)
+  collectionPayHowText String?
+  collectionHelpText String?
+  collectionDecisionDay Int @default(30)
+
+  // OPS-7: how long to keep things, in years (starting values from the research; the purge below is OFF until the owner turns it on).
+  retentionAgreementYears Int @default(7)
+  retentionTaxYears Int @default(7)
+  retentionRefrigerantYears Int @default(6)
+  retentionLeadYears Int @default(2)
+  retentionMessageYears Int @default(3)
+  retentionPurgeEnabled Boolean @default(false)
+  // OPS-7: face-match ID checks stay off unless the owner turns them on.
+  faceMatchIdEnabled Boolean @default(false)
+  // OPS-7: marketing texts only between these hours, Denver time.
+  marketingTextStartHour Int @default(8)
+  marketingTextEndHour Int @default(21)
+  // OPS-7: how many months before a service provider's security terms are due for a re-read.
+  vendorReviewMonths Int @default(12)
 
   // ZONE-1 delivery zones (Settings › Delivery zones; src/domains/delivery/zone.ts). Starting values are IN-06's.
   deliveryZones               Json    @default("[{\"name\":\"Local — free delivery\",\"outerMiles\":15,\"deliveryCents\":0,\"pickupCents\":0,\"color\":\"GREEN\"},{\"name\":\"Nearby\",\"outerMiles\":30,\"deliveryCents\":7500,\"pickupCents\":7500,\"color\":\"BLUE\"},{\"name\":\"Extended\",\"outerMiles\":50,\"deliveryCents\":12500,\"pickupCents\":12500,\"color\":\"AMBER\"}]")
@@ -3315,6 +3845,99 @@ model ServiceAddressGeocode {
   source           String // CENSUS | STAFF_PIN
   geocodedAt       DateTime
   geocodedByUserId String?
+}
+
+model ComplianceProfile {
+  // CMP-1: the owner's business facts for compliance, one row ("singleton").
+  // entityType is a Decisions question (CMP-ENTITY, CPA) — SINGLE_MEMBER_LLC
+  // is the starting value, not a confirmed answer.
+  id             String   @id @default("singleton")
+  entityType     String   @default("SINGLE_MEMBER_LLC")
+  // The EIN itself is never stored in plain text: einEncrypted holds the
+  // AES-256-GCM value from src/lib/field-crypto.ts; only the last 4 show.
+  einLast4       String?  @db.Char(4)
+  einEncrypted   String?
+  sosReportMonth Int?
+  truckGvwrLbs   Int?
+  employees      Int      @default(0)
+  hasHomeOffice  Boolean  @default(false)
+  // CMP-3: the payer identity printed on information returns (1099s) and
+  // Form 8300 — the business's legal name and mailing address, entered
+  // once on the business-facts screen.
+  businessLegalName String?
+  businessAddress   String?
+  businessCity      String?
+  businessState     String?
+  businessZip       String?
+  businessPhone     String?
+  // CMP-4: the local-filing facts. tradeName is the name the LLC files
+  // under, if any (an LLC's Colorado trade name never needs renewal —
+  // C.R.S. § 7-71-104). usdotNumber's last two digits set the FMCSA
+  // biennial update schedule. truckRegistrationMonth (1-12) is the month
+  // on the truck's current registration. greeleyLicenseDate is the date
+  // the city license was issued or last renewed; the two-year renewal
+  // cycle runs from it. The registered agent fields are the exact values
+  // the SOS periodic report shows.
+  tradeName              String?
+  usdotNumber            String?
+  truckRegistrationMonth Int?
+  greeleyLicenseDate     DateTime?
+  // CMP-5: the first employee's start date. The Colorado new-hire report
+  // is due 20 days after it; the payroll obligations wake from the
+  // employees count above, and this date schedules the one deadline that
+  // hangs off the first hire itself.
+  firstHireDate          DateTime?
+  registeredAgentName    String?
+  registeredAgentAddress String?
+  registeredAgentCity    String?
+  registeredAgentState   String?
+  registeredAgentZip     String?
+  updatedAt      DateTime @updatedAt
+}
+
+// CMP-2: what the owner (or the CPA) recorded about one finished tax
+// year — the figures the safe-harbor estimates are computed from, plus
+// the 1099-K gross typed from Stripe's form for the tie-out. Every field
+// is optional: a missing figure means the app shows words ("ask your
+// CPA"), never an invented number. Entered on the business-facts screen.
+model TaxYearFacts {
+  id                   String   @id @default(cuid())
+  year                 Int      @unique
+  federalTaxCents      Int? // that year's total federal tax (Form 1040)
+  federalAgiCents      Int? // that year's federal adjusted gross income
+  coloradoTaxCents     Int? // that year's total Colorado tax (DR 0104)
+  form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model ComplianceFiling {
+  // CMP-1: one row per obligation period, moved by the filing flow
+  // (prepare → approve → submit). The approval binds preparedHash, and the
+  // APPROVED → SUBMITTED step happens once only under the row lock.
+  id               String    @id @default(cuid())
+  obligationKey    String    @db.VarChar(60)
+  periodKey        String    @db.VarChar(40)
+  state            String    @db.VarChar(20)
+  dueOn            DateTime
+  actOn            DateTime
+  preparedData     Json?
+  preparedHash     String?   @db.Char(64)
+  outputFileUrl    String?
+  approvedByUserId String?
+  approvedAt       DateTime?
+  submittedAt      DateTime?
+  confirmation     String?   @db.VarChar(200)
+  note             String?   @db.VarChar(1000)
+  version          Int       @default(1)
+  // True only while a NOT_APPLICABLE state came from the sync's automatic
+  // retirement (the facts stopped generating the period). An owner's own
+  // "not needed" decision never sets it, and the sync reactivates an
+  // auto-retired row when its period is generated again.
+  autoRetired      Boolean   @default(false)
+
+  @@unique([obligationKey, periodKey])
+  @@index([state, actOn])
 }
 
 model MonthToMonthTermsVersion {
@@ -3686,6 +4309,44 @@ enum AutomationRunState {
   FAILED
   UNKNOWN
   SKIPPED
+}
+
+enum BackupArtifactKind {
+  DATABASE
+  MEDIA_MANIFEST
+}
+
+enum BackupArtifactState {
+  VERIFIED
+  UPLOADED_UNVERIFIED
+  FAILED
+  PRUNED
+}
+
+// MCP-2: immutable artifact identities plus verified state. Protected paths only;
+// bearer URLs, tokens and snapshot data never go into this ledger.
+model BackupArtifact {
+  id                 String @id @default(cuid())
+  kind               BackupArtifactKind
+  state              BackupArtifactState
+  runId              String?
+  databaseArtifactId String?
+  databaseArtifact   BackupArtifact?  @relation("BackupPair", fields: [databaseArtifactId], references: [id], onDelete: Restrict)
+  mediaManifests     BackupArtifact[] @relation("BackupPair")
+  pathname           String @unique
+  formatVersion      Int
+  migrationId        String?
+  appRevision        String?
+  sizeBytes          Int
+  sha256             String @db.Char(64)
+  tableCounts        Json?
+  photoCounts        Json?
+  failureStage       String?
+  createdAt          DateTime @default(now())
+  verifiedAt         DateTime?
+  prunedAt           DateTime?
+  @@index([kind, state, createdAt])
+  @@index([databaseArtifactId])
 }
 
 model AutomationRun {
@@ -4562,6 +5223,7 @@ enum JournalSourceType {
   USE_TAX
   TAX_FILING
   CASH_EVENT
+  PAYROLL
 }
 
 enum AccountingPeriodStatus {
@@ -4596,6 +5258,10 @@ model LedgerAccount {
   description     String // plain words, shown on screen
   isPaymentSource Boolean                @default(false)
   filingAccountId String? // set for per-filing-account tax payable accounts
+  // CMP-2: the Schedule C line this account's year totals land on
+  // (src/domains/compliance/schedule-c.ts); null = not yet mapped, which
+  // the packet treats as line 27a (Other expenses) listed by name.
+  scheduleCLine   String?
   active          Boolean                @default(true)
   sortOrder       Int                    @default(0)
   mappings        AccountExportMapping[]
@@ -4661,6 +5327,8 @@ model AccountingPeriod {
   closedAt       DateTime?
   closedByUserId String?
   reopenedReason String?
+  reviewNotes Json?
+  accountantSentAt DateTime?
   updatedAt      DateTime               @updatedAt
 }
 
@@ -4696,6 +5364,11 @@ model ExpenseCategory {
   ledgerAccountId String
   active          Boolean   @default(true)
   sortOrder       Int       @default(0)
+  // CMP-3: which 1099 box payments in this category count toward, when the
+  // supplier is a 1099 vendor: "NEC_1" (services), "MISC_1" (rents) or
+  // "MISC_3" (other income). Null = not classified yet — those amounts are
+  // shown as unclassified on the 1099 filing, never silently guessed.
+  form1099Box     String?
   expenses        Expense[]
   createdAt       DateTime  @default(now())
 }
@@ -4713,6 +5386,7 @@ model Expense {
   paidFromAccountId     String
   memo                  String?
   receiptPhotoId        String?
+  noReceiptReason       String?
   applianceId           String?
   jobId                 String?
   purchaseOrderId       String?
@@ -4758,18 +5432,36 @@ model BookAsset {
   lifeMonths Int
   salvagePercent Int
   lastDepreciationMonth String?
+  fullyDepreciatedOn DateTime?
   retiredOn DateTime?
   retirementIntent String?
   retiredValueCents Int?
   // M-2C: the day the retired appliance was sold (its book value left the books then); null while still held.
   disposedOn DateTime?
+  disposalCycle Int @default(0)
+  enrollmentSource String @default("MANUAL")
   version Int @default(1)
-  createdByUserId String
+  createdByUserId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   taxEvidence BookTaxEvidence[]
 
   @@index([retiredOn])
+}
+
+// Unresolved books exceptions are held separately from journals. They can be resolved, never silently forgotten.
+model BooksProblem {
+  id String @id @default(cuid())
+  kind String
+  subjectType String
+  subjectId String
+  message String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@unique([kind, subjectType, subjectId])
+  @@index([resolvedAt, kind])
 }
 
 // M-2C: what was known about the income-tax side of selling one retired appliance, frozen when the sale was saved.
@@ -5274,8 +5966,116 @@ model BusinessPaperwork {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   version          Int             @default(1)
+  // VAULT-1: a paperwork item is a business record. kind says what sort of record
+  // it is; issuedOn/expiresOn are the document's own dates (dueOn stays the next
+  // action date; reminders use the earlier of expiresOn and dueOn).
+  kind            String   @default("TASK") // TASK | LICENSE | PERMIT | REGISTRATION | TAX_ACCOUNT | INSURANCE | BANK | DOCUMENT | ACCOUNT | VEHICLE | CONTRACT
+  issuedOn        DateTime?
+  expiresOn       DateTime?
+  /// What the stored number is ("EIN", "Policy number", "TCC").
+  numberLabel     String?  @db.VarChar(60)
+  /// The number itself, encrypted with the compliance field key (never plaintext,
+  /// never logged; screens and exports show numberLast4 only).
+  numberEncrypted String?
+  numberLast4     String?  @db.VarChar(4)
+  portalUrl       String?  @db.VarChar(500)
+  /// VAULT-2 link: the vault login for this record, when one exists.
+  credentialId    String?
+  /// Yearly or renewal cost in cents; feeds the budget and Schedule C mapping.
+  costCents       Int?
+  /// Compliance registry keys this record unlocks or feeds.
+  linkedObligationKeys String[] @default([])
+  recordFiles     BusinessRecordFile[]
+  readinessLicenses JurisdictionReadiness[] @relation("ReadinessLicenseRecord")
+  insurancePolicy OwnerInsurancePolicy? @relation("InsurancePolicyRecord")
+  refrigerantReceipt RefrigerantRecord? @relation("RefrigerantReceiptRecord")
 
   @@index([status, dueOn])
+}
+
+/// VAULT-1: one stored file on a business record (private store only). The file
+/// bytes live in the private Blob store under records/{recordId}/{id}.{ext};
+/// this row is the searchable, auditable index. deletedAt soft-deletes so a
+/// replaced file stays in the record's history.
+model BusinessRecordFile {
+  id               String    @id @default(cuid())
+  recordId         String
+  record           BusinessPaperwork @relation(fields: [recordId], references: [id], onDelete: Restrict)
+  pathname         String    @unique
+  fileName         String    @db.VarChar(200)
+  contentType      String    @db.VarChar(80)
+  sizeBytes        Int
+  sha256           String    @db.Char(64)
+  label            String?   @db.VarChar(120)
+  uploadedByUserId String
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+
+  @@index([recordId, deletedAt])
+}
+
+// VAULT-2: one business login. The secret fields are encrypted with the VAULT
+// key (src/lib/field-crypto.ts, VAULT_ENCRYPTION_KEY — never the compliance
+// key) and are read only inside src/domains/vault (the grep test enforces
+// it). Listing DTOs carry a masked username, never a ciphertext.
+model VaultCredential {
+  id                String    @id @default(cuid())
+  title             String    @db.VarChar(120)
+  url               String?   @db.VarChar(500)
+  usernameEncrypted String?
+  passwordEncrypted String?
+  notesEncrypted    String?
+  /// Where the second-step code comes from ("Authenticator on Chris's phone") — never a TOTP secret.
+  totpHint          String?   @db.VarChar(120)
+  lastRotatedOn     DateTime?
+  rotateEveryMonths Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  version           Int       @default(1)
+}
+
+// VAULT-2: proof that this session entered a fresh second-step code. Rows are
+// deleted on sign-out-everywhere, password change and second-step change, and
+// are never backed up.
+model VaultUnlock {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, expiresAt])
+}
+
+// VAULT-2: emergency access, designed in spec §7 and shipped OFF (the owner
+// turns it on in BusinessSettings). One row per link the owner issues; the
+// link token itself is never stored, only its SHA-256 hash. The contact's
+// one-time code is likewise stored hashed. Never backed up.
+model EmergencyAccessRequest {
+  id                   String    @id @default(cuid())
+  tokenHash            String    @unique @db.Char(64)
+  /// LINK_READY | WAITING | DENIED | CODE_SENT | VERIFIED | CONSUMED | SUPERSEDED
+  status               String    @default("LINK_READY") @db.VarChar(20)
+  contactName          String?   @db.VarChar(120)
+  contactEmail         String?   @db.VarChar(200)
+  contactPhone         String?   @db.VarChar(40)
+  requestedAt          DateTime?
+  waitEndsAt           DateTime?
+  remindedHalfwayAt    DateTime?
+  remindedDayBeforeAt  DateTime?
+  startNoticeFailedAt  DateTime?
+  deniedAt             DateTime?
+  codeHash             String?   @db.Char(64)
+  codeExpiresAt        DateTime?
+  codeAttempts         Int       @default(0)
+  codeSentAt           DateTime?
+  exportExpiresAt      DateTime?
+  downloadedAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  version              Int       @default(1)
+
+  @@index([status, waitEndsAt])
 }
 
 // O-5: a monthly target for one business number (cash collected, or new rentals). One per metric per Colorado month.
@@ -5448,4 +6248,651 @@ enum FeedbackState {
   DUPLICATE
   DECLINED
   CLOSED
+}
+
+// OPS-5: a card or bank dispute raised through Stripe. One row per Stripe dispute; the webhook only records and flags,
+// it never moves money. Chris decides what to send, and sends it once.
+enum DisputeState {
+  NEEDS_RESPONSE
+  UNDER_REVIEW
+  WON
+  LOST
+  CLOSED
+}
+
+model PaymentDispute {
+  id               String       @id @default(cuid())
+  stripeDisputeId  String       @unique
+  stripeChargeId   String?
+  stripePaymentIntentId String?
+  paymentId        String?
+  payment          Payment?     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoiceId        String?
+  invoice          Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customerId       String?
+  customer         Customer?    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amountCents      Int
+  reason           String
+  stripeStatus     String
+  state            DisputeState @default(NEEDS_RESPONSE)
+  // A bank (ACH) debit dispute is final: it cannot be contested.
+  isBank           Boolean      @default(false)
+  dueBy            DateTime?
+  outcome          String?
+  openedAt         DateTime
+  closedAt         DateTime?
+  // The newest Stripe event applied, so an older event arriving late never undoes a newer one.
+  lastEventAt      DateTime
+  lastEventId      String
+  evidenceSubmittedAt DateTime?
+  evidenceSubmittedByUserId String?
+  evidenceFileId   String?
+  evidencePacketBytes Int?
+  evidenceSummary  Json?
+  // The To do for "collect directly" after a bank dispute, once Chris says it is handled.
+  handledAt        DateTime?
+  handledByUserId  String?
+  handledNote      String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([state])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([paymentId])
+}
+
+// ---------------------------------------------------------------------------
+// OPS-1 (docs/build-specs/engines/OWNER-OPERATIONS.md): product recalls.
+// The nightly check only ever creates POSSIBLE matches. Only Chris confirms one (CONFIRMED puts the machine on hold).
+// REMEDIED is the one state beyond the spec: without it a hold could never end after the maker's fix is done.
+// ---------------------------------------------------------------------------
+enum RecallMatchState {
+  POSSIBLE
+  CONFIRMED
+  NOT_OURS
+  REMEDIED
+}
+
+model RecallMatch {
+  id           String           @id @default(cuid())
+  recallId     String
+  recallNumber String
+  title        String
+  url          String
+  hazard       String?
+  remedy       String?
+  publishedAt  DateTime?
+  applianceId  String
+  appliance    Appliance        @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  matchReason  String
+  state        RecallMatchState @default(POSSIBLE)
+  decidedByUserId String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([recallId, applianceId])
+  @@index([state])
+  @@index([applianceId])
+}
+
+// One row: when the nightly recall check last finished, and whether Chris asked for a whole-fleet check.
+model RecallWatchState {
+  id                    String    @id @default("singleton")
+  lastSuccessAt         DateTime?
+  fullFleetRequestedAt  DateTime?
+  fullFleetCheckedAt    DateTime?
+  fullFleetCursor       Int       @default(0)
+  lastError             String?
+  updatedAt             DateTime  @updatedAt
+}
+
+enum SafetyIncidentDecision {
+  PENDING
+  REPORTED
+  NOT_REPORTED
+}
+
+// An injury or safety incident Chris marked on a repair request or visit. Stays on his To do until he decides about CPSC.
+model SafetyIncident {
+  id          String   @id @default(cuid())
+  applianceId String?
+  appliance   Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  maintenanceRequestId String?
+  jobId       String?
+  description String
+  markedByUserId String
+  decision    SafetyIncidentDecision @default(PENDING)
+  decidedByUserId String?
+  decidedAt   DateTime?
+  decisionNote String?
+  createdAt   DateTime @default(now())
+
+  @@index([decision])
+  @@index([applianceId])
+  @@index([maintenanceRequestId])
+  @@index([jobId])
+}
+
+// OPS-4: the owner's insurance policies (general liability, commercial auto, equipment, workers' comp) with a renewal
+// date that feeds To do reminders. Limits are free text ("$1M per claim") because only the agent can say what is right.
+enum InsuranceKind {
+  GENERAL_LIABILITY
+  COMMERCIAL_AUTO
+  EQUIPMENT
+  WORKERS_COMP
+  OTHER
+}
+
+enum WorkersCompStatus {
+  NOT_SET
+  NO_EMPLOYEES_REJECTED
+  POLICY_IN_PLACE
+}
+
+model OwnerInsurancePolicy {
+  id               String        @id @default(cuid())
+  kind             InsuranceKind
+  insurer          String
+  policyNumber     String
+  limitsText       String?
+  annualPremiumCents Int?
+  effectiveOn      DateTime?
+  expiresOn        DateTime
+  agentName        String?
+  agentEmail       String?
+  /// Where the certificate of insurance (COI) PDF is kept, e.g. "Emailed by agent, in the Insurance folder in Drive".
+  certificateNote  String?
+  /// OPS-4 + VAULT-1: the business record that holds this policy's certificate PDF (private files, expiry reminders,
+  /// export pack). Created on demand by the owner; the policy's dates and yearly cost are copied onto it on every save.
+  recordId         String?       @unique
+  record           BusinessPaperwork? @relation("InsurancePolicyRecord", fields: [recordId], references: [id], onDelete: SetNull)
+  vehicles         FleetVehicle[]     @relation("VehicleInsurancePolicy")
+  notes            String?
+  archivedAt       DateTime?
+  createdByUserId  String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  certificateRequests InsuranceCertificateRequest[]
+
+  @@index([expiresOn])
+}
+
+/// Each time Chris asked his agent for a certificate of insurance on behalf of someone (usually a property manager).
+model InsuranceCertificateRequest {
+  id               String   @id @default(cuid())
+  policyId         String
+  policy           OwnerInsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  requesterName    String
+  requesterCompany String?
+  requesterEmail   String
+  holderText       String?
+  requestedByUserId String
+  requestedAt      DateTime @default(now())
+
+  @@index([policyId, requestedAt])
+}
+
+// OPS-3: the delivery vehicle(s), the mileage log, and the rules that follow from the vehicle's weight (GVWR).
+enum MileageMethod {
+  STANDARD_RATE
+  ACTUAL_COSTS
+}
+
+enum MileageTripSource {
+  ROUTE
+  MANUAL
+}
+
+model FleetVehicle {
+  id                    String   @id @default(cuid())
+  nickname              String
+  year                  Int
+  make                  String
+  model                 String
+  vin                   String?
+  plate                 String?
+  /// Gross vehicle weight rating in pounds. Required: the license and commercial-vehicle rules depend on it.
+  gvwrLbs               Int
+  /// 1-12: the month the registration is due each year.
+  registrationMonth     Int?
+  odometerAtPurchase    Int      @default(0)
+  maintenanceEveryMiles Int?
+  maintenanceEveryMonths Int?
+  lastMaintenanceOn     DateTime?
+  lastMaintenanceMiles  Int?
+  medicalCardExpiresOn  DateTime?
+  notes                 String?
+  archivedAt            DateTime?
+  /// OPS-3: the insurance policy that covers this vehicle (cleared if the policy is ever deleted).
+  insurancePolicyId     String?
+  insurancePolicy       OwnerInsurancePolicy? @relation("VehicleInsurancePolicy", fields: [insurancePolicyId], references: [id], onDelete: SetNull)
+  createdByUserId       String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  trips                 MileageTrip[]
+
+  @@index([insurancePolicyId])
+}
+
+model MileageTrip {
+  id              String            @id @default(cuid())
+  vehicleId       String
+  vehicle         FleetVehicle      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  /// The business day (Denver midnight).
+  tripDate        DateTime
+  startOdometer   Int
+  /// Null while the day is still in progress.
+  endOdometer     Int?
+  miles           Int?
+  purpose         String
+  source          MileageTripSource
+  stops           Int               @default(0)
+  notes           String?
+  createdByUserId String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([vehicleId, tripDate])
+}
+
+// OPS-6: the past-due ladder. One row per bill per step, made by the nightly pass; nothing reaches a customer until
+// the owner or an admin approves it.
+enum CollectionStepKind {
+  SECOND_NOTICE
+  FINAL_NOTICE
+  DECISION
+  SMALL_CLAIMS
+}
+
+enum CollectionStepState {
+  WAITING
+  SENT
+  SKIPPED
+  DONE
+}
+
+model CollectionStep {
+  id            String @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  kind          CollectionStepKind
+  state         CollectionStepState @default(WAITING)
+  // The day (Denver) the step came up, and the amount owed when it did.
+  cameUpOn      DateTime
+  amountOwedCents Int
+  subject       String?
+  body          String?
+  decidedAt     DateTime?
+  decidedByUserId String?
+  deliveryId    String?
+  // What the owner chose or wrote: the DECISION choice, or why a notice was skipped.
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([invoiceId, kind])
+  @@index([state, kind])
+  @@index([customerId])
+}
+
+// OPS-6: one per rental that fell behind. Holds the pickup consent, the active-duty court order, the objection and
+// the small-claims decision, so each of those is a dated record rather than a note.
+model CollectionCase {
+  id            String @id @default(cuid())
+  agreementId   String @unique
+  agreement     RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  openedAt      DateTime @default(now())
+  pickupConsentAt DateTime?
+  pickupConsentHow String?
+  pickupConsentByUserId String?
+  courtOrderOn  DateTime?
+  courtOrderNote String?
+  pickupJobId   String?
+  objectedAt    DateTime?
+  objectedNote  String?
+  resolvedAt    DateTime?
+  resolvedNote  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([resolvedAt])
+}
+
+// OPS-6: a small-claims case the owner says he filed. Only used to count the court's limits (2 a month, 18 a year per county).
+model SmallClaimsFiling {
+  id            String @id @default(cuid())
+  county        String
+  filedOn       DateTime
+  amountCents   Int
+  feeCents      Int
+  agreementId   String?
+  recordedByUserId String
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([county, filedOn])
+}
+
+enum RefrigerantOutcome {
+  RECOVERED
+  LEAKED_BEFORE
+}
+
+// OPS-2: what happened to the refrigerant in a retired appliance before it was scrapped or thrown away (40 CFR 82.155:
+// the scrap yard must get a signed statement). Kept for the rule-book number of years (records.refrigerant_keep_years).
+/// OPS-2: a team member's refrigerant (EPA Section 608 Type I) certification, entered by the owner. One per person per kind.
+model TeamCertification {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation("TeamCertificationUser", fields: [userId], references: [id], onDelete: Restrict)
+  kind                String   @default("EPA_608_TYPE_I")
+  certificationNumber String
+  issuedOn            DateTime?
+  createdByUserId     String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, kind])
+}
+
+model RefrigerantRecord {
+  applianceId      String   @id
+  appliance        Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  refrigerantType  String
+  outcome          RefrigerantOutcome
+  recoveredByName  String
+  recoveredByAddress String
+  certificationNumber String?
+  equipmentUsed    String?
+  recoveredOn      DateTime
+  recyclerName     String?
+  receiptReference String?
+  statementSignedAt DateTime
+  statementSignedByUserId String
+  // What the statement said when it was signed. Reprints use these, so later edits to a name or appliance never change a signed statement.
+  signedByName     String
+  assetNumberSnapshot String
+  applianceDescriptionSnapshot String
+  serialNumberSnapshot String?
+  /// OPS-2 + VAULT-1: the business record that holds the recycler's receipt photo or PDF (cleared if that record is ever deleted).
+  receiptRecordId  String?  @unique
+  receiptRecord    BusinessPaperwork? @relation("RefrigerantReceiptRecord", fields: [receiptRecordId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([recoveredOn])
+}
+
+// OPS-8: one row per calendar year the owner finished the December business check-up. Nothing here changes money or customers.
+model YearlyCheckup {
+  year              Int      @id
+  completedAt       DateTime @default(now())
+  completedByUserId String
+  ticked            Json     @default("[]")
+  note              String?
+}
+
+enum SecurityIncidentState {
+  OPEN
+  CLOSED
+}
+
+// OPS-7: "something may have leaked". The deadlines come from the dated rule book, never from this row.
+model SecurityIncident {
+  id               String @id @default(cuid())
+  state            SecurityIncidentState @default(OPEN)
+  summary          String
+  discoveredAt     DateTime
+  determinedAt     DateTime?
+  residentsAffected Int?
+  informationInvolved String?
+  openedByUserId   String
+  residentsNotifiedAt DateTime?
+  attorneyGeneralNotifiedAt DateTime?
+  bureausNotifiedAt DateTime?
+  vendorsNotifiedAt DateTime?
+  closedAt         DateTime?
+  closedNote       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([state, discoveredAt])
+}
+
+// OPS-7: a service provider that holds our data, with the date its security terms were last read.
+model ServiceVendor {
+  id             String @id @default(cuid())
+  name           String @unique
+  whatTheyDo     String
+  dataTheyHold   String
+  termsReviewedOn DateTime?
+  termsReviewedByUserId String?
+  notes          String?
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// OPS-7: someone told us the website or app is hard to use. Colorado gives a short window to fix it.
+model AccessibilityComplaint {
+  id          String @id @default(cuid())
+  receivedAt  DateTime
+  fromWho     String?
+  description String
+  recordedByUserId String
+  resolvedAt  DateTime?
+  resolvedNote String?
+  createdAt   DateTime @default(now())
+
+  @@index([resolvedAt, receivedAt])
+}
+
+// MCP-3: Better Auth OAuth 1.7.12 generated models (schema-only, no live DB changes).
+model Jwks {
+  id         String    @id
+  publicKey  String
+  privateKey String
+  createdAt  DateTime
+  expiresAt  DateTime?
+  alg        String?
+  crv        String?
+
+  @@map("jwks")
+}
+
+model OauthClient {
+  id                               String                @id
+  clientId                         String
+  clientSecret                     String?
+  clientDiscoveryId                String?
+  disabled                         Boolean?              @default(false)
+  skipConsent                      Boolean?
+  enableEndSession                 Boolean?
+  subjectType                      String?
+  scopes                           String[]
+  clientCredentialsScopes          String[]              @default([])
+  userId                           String?
+  user                             User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime?
+  updatedAt                        DateTime?
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         String[]
+  tos                              String?
+  policy                           String?
+  softwareId                       String?
+  softwareVersion                  String?
+  softwareStatement                String?
+  redirectUris                     String[]
+  postLogoutRedirectUris           String[]
+  backchannelLogoutUri             String?
+  backchannelLogoutSessionRequired Boolean?
+  tokenEndpointAuthMethod          String?
+  applicationType                  String?
+  jwks                             String?
+  jwksUri                          String?
+  grantTypes                       String[]
+  responseTypes                    String[]
+  requirePKCE                      Boolean?
+  dpopBoundAccessTokens            Boolean?              @default(false)
+  referenceId                      String?
+  metadata                         Json?
+  oauthclientresources             OauthClientResource[]
+  oauthrefreshtokens               OauthRefreshToken[]
+  oauthaccesstokens                OauthAccessToken[]
+  oauthconsents                    OauthConsent[]
+
+  @@unique([clientId])
+  @@index([userId])
+  @@map("oauthClient")
+}
+
+model OauthResource {
+  id                            String                @id
+  identifier                    String
+  name                          String
+  accessTokenTtl                Int?
+  refreshTokenTtl               Int?
+  signingAlgorithm              String?
+  signingKeyId                  String?
+  allowedScopes                 String[]
+  customClaims                  Json?
+  dpopBoundAccessTokensRequired Boolean?              @default(false)
+  disabled                      Boolean?              @default(false)
+  createdAt                     DateTime?
+  updatedAt                     DateTime?
+  policyVersion                 Int?                  @default(1)
+  metadata                      Json?
+  oauthclientresources          OauthClientResource[]
+
+  @@unique([identifier])
+  @@map("oauthResource")
+}
+
+model OauthClientResource {
+  id            String        @id
+  clientId      String
+  oauthclient   OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId    String
+  oauthresource OauthResource @relation(fields: [resourceId], references: [identifier], onDelete: Cascade)
+  metadata      Json?
+  createdAt     DateTime?
+
+  @@index([clientId])
+  @@index([resourceId])
+  @@map("oauthClientResource")
+}
+
+model OauthRefreshToken {
+  id                      String             @id
+  token                   String
+  clientId                String
+  oauthclient             OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  expiresAt               DateTime?
+  createdAt               DateTime?
+  revoked                 DateTime?
+  rotatedAt               DateTime?
+  rotationReplayResponse  String?
+  rotationReplayExpiresAt DateTime?
+  authTime                DateTime?
+  confirmation            Json?
+  scopes                  String[]
+  oauthaccesstokens       OauthAccessToken[]
+
+  @@unique([token])
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@map("oauthRefreshToken")
+}
+
+model OauthAccessToken {
+  id                      String             @id
+  token                   String?
+  clientId                String
+  oauthclient             OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  refreshId               String?
+  oauthrefreshtoken       OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
+  expiresAt               DateTime?
+  createdAt               DateTime?
+  revoked                 DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  @@unique([token])
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@index([refreshId])
+  @@map("oauthAccessToken")
+}
+
+model OauthConsent {
+  id                      String      @id
+  clientId                String
+  oauthclient             OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?
+  user                    User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  scopes                  String[]
+  createdAt               DateTime?
+  updatedAt               DateTime?
+
+  @@index([clientId])
+  @@index([userId])
+  @@map("oauthConsent")
+}
+
+model OauthClientAssertion {
+  id        String   @id
+  expiresAt DateTime
+
+  @@map("oauthClientAssertion")
+}
+
+
+model McpConnection {
+  id String @id @default(cuid())
+  userId String
+  user User @relation("McpConnections", fields: [userId], references: [id], onDelete: Cascade)
+  oauthClientId String
+  label String @db.VarChar(80)
+  scopes String[]
+  // Changes on each new Allow. A disconnected JWT must never revive after reconnect.
+  grantVersion String @default(uuid())
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime?
+  lastToolName String? @db.VarChar(80)
+  revokedAt DateTime?
+  revokedReason String? @db.VarChar(200)
+  @@unique([userId, oauthClientId])
+  @@index([userId, revokedAt])
 }

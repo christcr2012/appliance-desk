@@ -12,7 +12,8 @@ export type ProviderOpKind =
   | "BALANCE_CREDIT"
   | "REFUND_CREATE"
   | "TAX_RATE_CREATE"
-  | "SUBSCRIPTION_TAX_UPDATE";
+  | "SUBSCRIPTION_TAX_UPDATE"
+  | "LATE_FEE_INVOICE_ITEM";
 
 type ProviderOpStatus =
   | "PENDING"
