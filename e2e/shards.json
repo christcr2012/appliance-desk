@@ -106,7 +106,8 @@
       "late-fee-waiver.spec.ts",
       "books-closing.spec.ts",
       "compliance.spec.ts",
-      "desk-shortcuts.spec.ts"
+      "desk-shortcuts.spec.ts",
+      "remembered-lists.spec.ts"
     ]
   }
 }
