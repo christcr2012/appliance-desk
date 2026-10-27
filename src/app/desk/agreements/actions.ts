@@ -39,6 +39,7 @@ const newAgreementSchema = z.object({
   lateFeeDollars: z.coerce.number().min(0).max(15, "A late fee can be at most $15.").optional(),
   lateFeePercent: z.coerce.number().min(0).max(100).optional(),
   paidInFullInAdvance: z.boolean().optional(),
+  overrideReason: z.string().trim().max(500).optional(),
 });
 
 export async function createDraftAgreementAction(
@@ -81,6 +82,7 @@ export async function createDraftAgreementAction(
           : 0,
       lateFeePercent: data.lateFeePercent,
       paidInFullInAdvance: data.paidInFullInAdvance ?? false,
+      overrideReason: data.overrideReason,
     });
   } catch (error) {
     return {
