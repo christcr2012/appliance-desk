@@ -28,6 +28,8 @@ describe.skipIf(!enabled)("form 8300 detector", () => {
   const otherUser = `cmp3-u2-${tag}`;
   const customer = `cmp3-c1-${tag}`;
   const otherCustomer = `cmp3-c2-${tag}`;
+  const thirdUser = `cmp3-u3-${tag}`;
+  const thirdCustomer = `cmp3-c3-${tag}`;
   const invoiceId = `cmp3-inv-${tag}`;
   const receiptIds: string[] = [];
   let ownerId: string;
@@ -48,12 +50,14 @@ describe.skipIf(!enabled)("form 8300 detector", () => {
       data: [
         { id: customerUser, email: `${customerUser}@example.test`, role: "CUSTOMER" },
         { id: otherUser, email: `${otherUser}@example.test`, role: "CUSTOMER" },
+        { id: thirdUser, email: `${thirdUser}@example.test`, role: "CUSTOMER" },
       ],
     });
     await prisma.customer.createMany({
       data: [
         { id: customer, userId: customerUser, referralCode: `C3A${tag}`.toUpperCase() },
         { id: otherCustomer, userId: otherUser, referralCode: `C3B${tag}`.toUpperCase() },
+        { id: thirdCustomer, userId: thirdUser, referralCode: `C3C${tag}`.toUpperCase() },
       ],
     });
   });
@@ -63,8 +67,8 @@ describe.skipIf(!enabled)("form 8300 detector", () => {
     await prisma.payment.deleteMany({ where: { invoiceId } });
     await prisma.receipt.deleteMany({ where: { id: { in: receiptIds } } });
     await prisma.invoice.deleteMany({ where: { id: invoiceId } });
-    await prisma.customer.deleteMany({ where: { id: { in: [customer, otherCustomer] } } });
-    await prisma.user.deleteMany({ where: { id: { in: [customerUser, otherUser] } } });
+    await prisma.customer.deleteMany({ where: { id: { in: [customer, otherCustomer, thirdCustomer] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [customerUser, otherUser, thirdUser] } } });
   });
 
   it("creates exactly one filing when related cash crosses $10,000 within 12 months", async () => {
@@ -113,5 +117,31 @@ describe.skipIf(!enabled)("form 8300 detector", () => {
     });
     expect(filing).not.toBeNull();
     expect(filing!.dueOn.toISOString().slice(0, 10)).toBe("2026-08-25");
+  });
+
+  it("the count restarts after a report: the next $10,000 of cash files again (PR #656 review)", async () => {
+    expect((await receipt(`cmp3-r6-${tag}`, thirdCustomer, 1100000, "2026-01-10")).created).toBe(true);
+    // The first $6,000 after the report starts the new count — no filing yet.
+    expect((await receipt(`cmp3-r7-${tag}`, thirdCustomer, 600000, "2026-02-10")).created).toBe(false);
+    // The second $6,000 crosses on the new count alone.
+    const crossing = await receipt(`cmp3-r8-${tag}`, thirdCustomer, 600000, "2026-03-10");
+    expect(crossing.created).toBe(true);
+    const filing = await prisma.complianceFiling.findFirstOrThrow({
+      where: { obligationKey: "fed.8300", periodKey: `8300-cmp3-r8-${tag}` },
+    });
+    expect((filing.preparedData as { totalCashCents: number }).totalCashCents).toBe(1200000);
+  });
+
+  it("the 15-day deadline counts Denver calendar days across the DST change (PR #656 review)", async () => {
+    // The first customer's count restarted at its June filing; $2,000 came
+    // in July, so this $11,000 crosses on the new count. Received Oct 25,
+    // the deadline is Nov 9 — not Nov 8 (UTC-day addition across Nov 1).
+    const crossing = await receipt(`cmp3-r9-${tag}`, customer, 1100000, "2026-10-25");
+    expect(crossing.created).toBe(true);
+    const filing = await prisma.complianceFiling.findFirstOrThrow({
+      where: { obligationKey: "fed.8300", periodKey: `8300-cmp3-r9-${tag}` },
+    });
+    expect((filing.preparedData as { dueBy: string }).dueBy).toBe("2026-11-09");
+    expect(filing.dueOn.toISOString()).toBe(day("2026-11-09").toISOString());
   });
 });

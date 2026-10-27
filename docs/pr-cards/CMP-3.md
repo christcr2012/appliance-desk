@@ -71,3 +71,9 @@ Built 2026-10-26 (Lane 5, Vivienne). What shipped:
   that does not exist ("PREPARED") — route and page now use READY_FOR_REVIEW, so the draft is visible
   before approval; (3) `createW9Request` locks the supplier row before replacing unused requests, so
   concurrent issuance cannot leave two live links (integration-tested).
+- **Review round on PR #656 (3 findings, all fixed)**: (1) the Form 8300 count restarts after a report —
+  receipts already covered by an earlier filing are not counted again, and the next $10,000 of cash
+  files a new Form 8300 (IRS reference guide); (2) an uploaded replacement W-9 clears the previously
+  transcribed tax ID and address until the new form is transcribed, so output building can never mix
+  an old TIN/address with a new form; (3) the 8300 deadline adds 15 Denver calendar days to the
+  business-date key instead of 15 UTC days to the instant (DST-safe).

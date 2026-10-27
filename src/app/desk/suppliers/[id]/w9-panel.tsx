@@ -41,8 +41,14 @@ export function W9Panel({
       <h2 id="supplier-w9" className="text-lg font-semibold text-ink">W-9 and tax ID</h2>
       {w9ReceivedOn ? (
         <p className="text-sm text-ink-soft">
-          W-9 on file since {w9ReceivedOn}. Tax ID on file: {tinType ?? ""} ending …{tinLast4 ?? "????"} — the full
-          number is encrypted and never shown.
+          W-9 on file since {w9ReceivedOn}.{" "}
+          {tinLast4 ? (
+            <>
+              Tax ID on file: {tinType ?? ""} ending …{tinLast4} — the full number is encrypted and never shown.
+            </>
+          ) : (
+            <>Its tax ID and mailing address still need to be typed in below — open the W-9 file and copy them over.</>
+          )}
           {mailingAddress ? <> Mailing address for 1099 copies: {mailingAddress}.</> : " No mailing address recorded yet — record it below so the 1099 copy can be mailed."}
           {hasW9File ? (
             <>

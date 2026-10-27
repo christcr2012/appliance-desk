@@ -93,6 +93,11 @@ async function completeW9(args: {
   tinDigits?: string;
   w9FileUrl?: string;
   address?: W9MailingAddress;
+  /** True when the supplier only uploaded the form: the document is on
+   * file, but its tax ID and address still have to be transcribed from
+   * it, so any previously transcribed details are cleared (PR #656
+   * review) instead of silently riding under the new form. */
+  uploadedOnly?: boolean;
   now: Date;
 }): Promise<{ supplierId: string }> {
   return prisma.$transaction(async (tx) => {
@@ -108,6 +113,18 @@ async function completeW9(args: {
       w9ReceivedOn: args.now,
       taxIdOnFile: true,
     };
+    if (args.uploadedOnly && !args.tinDigits) {
+      // The new form replaces whatever was transcribed from an older one:
+      // clear the structured details until someone transcribes this form.
+      data.tinEncrypted = null;
+      data.tinLast4 = null;
+      data.tinType = null;
+      data.mailingAddress = null;
+      data.mailingCity = null;
+      data.mailingState = null;
+      data.mailingZip = null;
+      data.taxIdOnFile = false;
+    }
     if (args.tinDigits && args.tinType) {
       if (!hasFieldCryptoKey()) {
         throw new Error("Ask your developer to set the encryption key before a tax ID can be saved.");
@@ -131,7 +148,7 @@ async function completeW9(args: {
         action: "supplier.w9_received",
         entityType: "Supplier",
         entityId: request.supplierId,
-        newValue: { changedFields: ["w9ReceivedOn", ...(args.tinDigits ? ["tin"] : []), ...(args.w9FileUrl ? ["w9FileUrl"] : []), ...(args.address ? ["mailingAddress"] : [])] },
+        newValue: { changedFields: ["w9ReceivedOn", ...(args.tinDigits ? ["tin"] : []), ...(args.w9FileUrl ? ["w9FileUrl"] : []), ...(args.address ? ["mailingAddress"] : []), ...(args.uploadedOnly && !args.tinDigits ? ["tinClearedPendingTranscription"] : [])] },
       },
     });
     return { supplierId: request.supplierId };
@@ -205,6 +222,7 @@ export async function submitUploadedW9(
     requestId: state.requestId,
     legalName: input.legalName,
     w9FileUrl: input.fileUrl,
+    uploadedOnly: true,
     now,
   });
 }

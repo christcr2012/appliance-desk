@@ -9,6 +9,7 @@ import {
   recordSupplierTin,
   setBackupWithholding,
   submitTypedW9,
+  submitUploadedW9,
   w9LinkState,
 } from "@/domains/compliance/w9";
 
@@ -133,6 +134,29 @@ describe.skipIf(!enabled)("w9 requests and supplier tax ids", () => {
     expect(supplier.mailingAddress).toBe("22 Paper Rd");
     expect(supplier.mailingState).toBe("CO");
     expect(supplier.backupWithholding).toBe(false);
+  });
+
+  it("an uploaded replacement W-9 clears the previously transcribed details until it is transcribed", async () => {
+    const { token: first } = await createW9Request(ownerId, supplierId);
+    await submitTypedW9(first, {
+      legalName: "Sample Services LLC",
+      tinType: "EIN",
+      tin: "12-3456789",
+      address: { street: "100 Main St", city: "Greeley", state: "CO", zip: "80631" },
+    });
+    expect((await prisma.supplier.findUniqueOrThrow({ where: { id: supplierId } })).tinLast4).toBe("6789");
+    const { token: second } = await createW9Request(ownerId, supplierId);
+    await submitUploadedW9(second, {
+      legalName: "Sample Services LLC",
+      fileUrl: "https://store.example/compliance/w9/uploaded.pdf",
+    });
+    const supplier = await prisma.supplier.findUniqueOrThrow({ where: { id: supplierId } });
+    expect(supplier.w9FileUrl).toBe("https://store.example/compliance/w9/uploaded.pdf");
+    expect(supplier.w9ReceivedOn).not.toBeNull();
+    expect(supplier.tinEncrypted).toBeNull();
+    expect(supplier.tinLast4).toBeNull();
+    expect(supplier.mailingAddress).toBeNull();
+    expect(supplier.taxIdOnFile).toBe(false);
   });
 
   it("an uploaded W-9 must be a real PDF of at most 4 MB", () => {
