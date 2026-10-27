@@ -2,7 +2,8 @@
 // AR-0 kit 4.2: an area's sections as a row of links. The caller passes only the items this role may see (filtered on
 // the server); `hidden` items are skipped. Current = exact path match, otherwise the longest matching prefix.
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { followRememberedClick } from "./remember-list";
 import { useEffect, useRef } from "react";
 
 export type AreaTabItem = { href: string; label: string; count?: number; hidden?: boolean };
@@ -39,6 +40,7 @@ export function currentAreaTab(items: AreaTabItem[], pathname: string, search = 
 }
 
 export function AreaTabs({ label, items }: { label: string; items: AreaTabItem[] }) {
+  const router = useRouter();
   const pathname = usePathname() ?? "/";
   const search = useSearchParams()?.toString() ?? "";
   const visible = items.filter((item) => !item.hidden);
@@ -57,6 +59,7 @@ export function AreaTabs({ label, items }: { label: string; items: AreaTabItem[]
               <Link
                 ref={isCurrent ? currentRef : undefined}
                 href={item.href}
+                onClick={(event) => followRememberedClick(event, item.href, (next) => router.push(next))}
                 aria-current={isCurrent ? "page" : undefined}
                 className={`inline-flex min-h-11 items-center gap-1.5 border-b-[3px] px-3 text-[15px] whitespace-nowrap lg:min-h-10 ${
                   isCurrent ? "border-primary font-extrabold text-primary" : "border-transparent font-semibold text-ink-soft hover:text-ink"
