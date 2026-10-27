@@ -67,7 +67,7 @@ export default async function DeliveryAreaPage({
     : undefined;
 
   return (
-    <main className="space-y-8">
+    <div className="space-y-8">
       <div>
         <h2 className="text-xl font-semibold">Delivery area</h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
@@ -362,6 +362,6 @@ export default async function DeliveryAreaPage({
           </table>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
