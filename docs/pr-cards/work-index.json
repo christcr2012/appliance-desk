@@ -4715,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662/#663; React 19.3 PR #665 and measured JS budget PR under review",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662/#663/#665; measured JavaScript bundle PR #691 in CI",
       "migration": "none",
       "budget": 480,
       "units": [

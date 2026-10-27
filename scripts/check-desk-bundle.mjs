@@ -84,7 +84,7 @@ export function pathsFromClientReferences(buildDir, bootstrap = []) {
       }
     };
     for (const record of records) {
-      for (const module of Object.values(record.clientModules ?? {})) collect(module.chunks);
+      for (const clientModule of Object.values(record.clientModules ?? {})) collect(clientModule.chunks);
       collect(record.entryJSFiles);
     }
     routes.set(route, chunks);
@@ -126,7 +126,7 @@ export function validateBudget(measured, budget) {
   for (const [route, size] of Object.entries(measured)) {
     const baseline = budget[route];
     if (!Number.isFinite(baseline) || baseline <= 0) {
-      failures.push(`${route}: new route has no committed JavaScript budget`);
+      failures.push(`${route}: new route has no committed JavaScript budget (measured ${size.toFixed(2)} KB gzip)`);
     } else if (size > baseline * MAX_GROWTH) {
       failures.push(`${route}: ${size.toFixed(2)} KB gzip exceeds ${baseline} KB budget by more than 10%`);
     }

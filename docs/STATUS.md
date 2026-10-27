@@ -1,5 +1,8 @@
-## October 27 — Lane 1 AR-11 measured desk bundle check (PR pending)
-Branch `ai/chatgpt/ar11-bundle-ci-20261027`: adds a production-build gate for per-page initial desk JavaScript, measured from real Next 16 client manifests; five regressions and 147-page baseline from isolated GitHub Actions run 40497979388 (largest `/desk/settings` 411.23 KB gzip). Fresh CI must verify newer routes and dependency changes before any merge; all AR-11 overall acceptance stays open until proven.
+## October 27 — AR-11 bundle guard: CI failure diagnosis, measured routes in next run (PR #691)
+The guard's five browser shards exposed three added routes after the first 147-page baseline: tax area and two vault pages. Its lint error was a reserved variable name. Fixed lint and made the guard report measured gzip sizes for any missing route; fresh CI will supply actual numbers before updating the committed baseline. React navigation PR #665 merged as `a0772141` after exact-head CI and resolved review.
+
+## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
+React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 
 ## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
 
