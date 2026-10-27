@@ -26,3 +26,17 @@ test("Today to Customers immediately shows loading or the destination, then a co
   await expect(heading).toBeVisible({ timeout: 3000 });
   await expect(page.getByRole("main")).toBeVisible();
 });
+
+test("record title remains accessible after following a customer link with motion enabled and reduced", async ({ page }) => {
+  for (const preference of ["no-preference", "reduce"] as const) {
+    await page.emulateMedia({ reducedMotion: preference });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/desk/customers", { waitUntil: "load" });
+    const record = page.locator('a[href^="/desk/customers/"]').first();
+    await expect(record).toBeVisible();
+    const name = (await record.innerText()).trim();
+    await record.click();
+    await expect(page).toHaveURL(/\/desk\/customers\/[^/?]+/);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1, name })).toBeVisible();
+  }
+});

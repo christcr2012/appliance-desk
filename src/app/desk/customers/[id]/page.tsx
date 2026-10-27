@@ -560,6 +560,7 @@ export default async function CustomerDetailPage({
       <div className="lg:flex lg:items-start lg:gap-5">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <RecordHeader
+            transitionId={id}
             title={name}
             pills={[
               { label: statusPill.label, tone: statusPill.tone },

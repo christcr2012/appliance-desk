@@ -148,7 +148,7 @@ export function DataTable<T>({
                   <td key={column.key} className={`px-4 py-3 ${align(column)} ${column.widthClass ?? ""} ${hideNarrow(column)}`}>
                     {columnIndex === 0 ? (
                       <PanelLink rowKey={key} panelParam={panelParam}>
-                        {column.cell(row)}
+                        <RecordTitleTransition id={key}>{column.cell(row)}</RecordTitleTransition>
                       </PanelLink>
                     ) : (
                       column.cell(row)

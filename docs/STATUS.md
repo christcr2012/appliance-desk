@@ -1,3 +1,10 @@
+## October 27 — Lane 1 AR-11 React 19.3 and native navigation (implementation branch)
+Branch `ai/chatgpt/ar-11-react-transitions-20261027`: pinned React/DOM and types at 19.3.0, committed registry-generated npm lockfile.
+Free read-only GitHub Actions verified npm ci and read installed Next 16.4.2 transition docs.
+Named customer-list-to-record title transitions and desk-area crossfades now have unit/mobile
+browser regression coverage; full product CI/review have not run. Temporary lockfile-generator
+workflow is removed before PR. All AR-11 acceptance stays in progress until CI and bundle budget pass.
+
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
 Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
