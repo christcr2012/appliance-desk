@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
-import { saveRefrigerantRecord } from "@/domains/refrigerant/actions";
+import { keepReceiptOnRecord, saveRefrigerantRecord } from "@/domains/refrigerant/actions";
 import type { RefrigerantOutcomeName } from "@/domains/refrigerant/rules";
 
 export type RefrigerantActionState = { status: "idle" } | { status: "success"; message: string } | { status: "error"; message: string };
@@ -27,6 +27,19 @@ export async function saveRefrigerantAction(applianceId: string, _: RefrigerantA
     revalidatePath(`/desk/inventory/${applianceId}`);
     revalidatePath("/desk/inventory/retired");
     return { status: "success", message: "Saved and signed. You can print the statement for the scrap yard." };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't save that." };
+  }
+}
+
+export async function keepReceiptAction(applianceId: string, _: RefrigerantActionState): Promise<RefrigerantActionState> {
+  void _;
+  const session = await requireRole("OWNER");
+  try {
+    const { created } = await keepReceiptOnRecord(session.user.id, applianceId);
+    revalidatePath(`/desk/inventory/${applianceId}`);
+    revalidatePath("/desk/paperwork");
+    return { status: "success", message: created ? "Done. Open the receipt record to upload the photo or PDF." : "This appliance already has a receipt record." };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't save that." };
   }
