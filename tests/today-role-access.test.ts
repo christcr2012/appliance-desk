@@ -73,6 +73,9 @@ vi.mock("@/domains/exceptions/insurance-attention", () => ({
 vi.mock("@/domains/exceptions/collection-attention", () => ({
   listCollectionAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/continuity-attention", () => ({
+  listContinuityAttention: vi.fn(async () => []), // covered by tests/ops8-continuity-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));

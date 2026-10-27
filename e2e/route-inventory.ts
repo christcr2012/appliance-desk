@@ -204,6 +204,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/inventory", role: "OWNER", fixture: "/desk/inventory" },
   { path: "/desk/disputes", role: "OWNER", fixture: "/desk/disputes" },
   { path: "/desk/collections", role: "OWNER", fixture: "/desk/collections" },
+  { path: "/desk/continuity", role: "OWNER", fixture: "/desk/continuity" },
+  { path: "/desk/continuity/checkup", role: "OWNER", fixture: "/desk/continuity/checkup" },
   {
     path: "/desk/collections/[agreementId]",
     role: "OWNER",

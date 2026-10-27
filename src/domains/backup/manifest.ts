@@ -240,6 +240,8 @@ export const BACKUP_MODEL_POLICY = {
   RecallMatch: "recallMatch",
   RecallWatchState: "recallWatchState",
   SafetyIncident: "safetyIncident",
+  // OPS-8: which December check-up items the owner looked at, per year.
+  YearlyCheckup: "yearlyCheckup",
 
   // OPS-3: the delivery vehicle and its mileage log are business records.
   FleetVehicle: "fleetVehicle",

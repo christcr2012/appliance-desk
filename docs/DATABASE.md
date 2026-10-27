@@ -1466,6 +1466,9 @@ All three tables are in the backup manifest.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
 
+### OPS-8: continuity (migration `20261109000000_continuity`)
+- `BusinessSettings` gains the "If something happens to me" details (`continuityEmergencyName/Contact`, `continuitySuccessorName/Contact`, `continuityCpaName/Contact`, `continuityAttorneyName/Contact`, `continuityRecordsNote`, `continuityReviewedAt`) and the owner-only pause switch (`chargesPausedAt`, `chargesPausedByUserId`, `chargesPausedNote`). Null `chargesPausedAt` = charges run normally.
+- `YearlyCheckup` — one row per calendar year the December check-up was finished: `year` (primary key), `completedAt`, `completedByUserId`, `ticked` (list of item keys), `note`. In the backup manifest.
 ### OPS-7: privacy and security (additive migration `20261105000000_privacy_security`)
 - `SecurityIncident` — one row per possible leak: what happened, when found, when decided, how many Colorado residents, the kinds of information involved (required before the notice letter opens), and the date Chris did each step (people, Attorney General, credit bureaus, service providers). Deadlines are never stored; they are computed from the dated rule book.
 - `ServiceVendor` — the providers that hold customer information (seeded: Vercel, Neon, Stripe, Google Workspace, Twilio, Resend) and the date their security terms were last reviewed.

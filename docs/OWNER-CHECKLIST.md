@@ -59,6 +59,12 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   the compliance key; the Set up your business guide shows how to make one) in Vercel → Settings → Environment
   Variables (Production and Preview). Never paste it in a chat or GitHub. Worked when Business › Logins lets you save
   one login.
+- [ ] **Fill in "If something happens to me" and ask your attorney about a successor member (about 15 minutes).** Open
+  More › If something happens to me and type who to call, who would keep the business running, your CPA and attorney, and
+  where records are kept (never passwords). Then ask your attorney whether your LLC agreement names a successor member
+  (a Colorado LLC with no members dissolves 91 days later, C.R.S. 7-80-801; Decisions question DQ-OPS8-1). Ready when
+  OPS-8 is live. Worked when the page's "Still missing" note is gone. The page's pause switch works for you today;
+  letting your successor press it needs the records vault (VAULT-1), which is not built yet.
 - [ ] **If you have no employees: send the workers' comp rejection form (Colorado).** As an LLC member you may reject
   coverage by sending the state's form by certified mail (C.R.S. 8-41-202). The Insurance screen (OPS-4) will hold the
   date and the certified-mail number. Worked when the Division or your insurer confirms.
@@ -288,5 +294,6 @@ on readiness).
 | 2026-10-26 | Turn on late fees for real card customers | FEE-1: fees only reach a customer's real automatic charge when you switch it on. |
 | 2026-10-26 | Add three payment events to your Stripe webhook | BILL-1: the app can only show "Being confirmed" for bank payments if Stripe sends those events. |
 | 2026-10-26 | Add three dispute events to your Stripe webhook | OPS-5: the app only hears about disputes if Stripe sends those events. |
+| 2026-10-26 | Fill in "If something happens to me", successor-member question | OPS-8: the page only helps if the contacts are real, and only your attorney can answer the successor question. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |
 | 2026-10-26 | Check the recall list answers as expected | OPS-1: the live government recall answer could not be fetched while building. |
