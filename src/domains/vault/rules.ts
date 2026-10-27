@@ -43,18 +43,20 @@ export function vaultLockFromFailures(
 }
 
 /**
- * Word-wraps text for the emergency-export PDF without ever dropping a
- * character: words longer than a line are split across lines. Joining the
- * lines of a hard-split word restores it exactly; joining wrapped lines
- * with a space restores ordinary text.
+ * Word-wraps text for the emergency-export PDF without ever dropping or
+ * changing a character — whitespace included, because a password with two
+ * spaces in a row must export with two spaces. Tokens alternate between
+ * words and the whitespace runs between them; a line break falls between
+ * tokens or inside an over-long token, never over a character, so joining
+ * the lines with "" restores the text exactly.
  */
 export function wrapPdfText(text: string, maxChars = 105): string[] {
   const lines: string[] = [];
   for (const paragraph of text.split("\n")) {
-    const words = paragraph.split(" ");
+    const tokens = paragraph.match(/\S+|\s+/g) ?? [""];
     let current = "";
-    const pushWord = (word: string) => {
-      let rest = word;
+    const pushToken = (token: string) => {
+      let rest = token;
       while (rest.length > maxChars) {
         if (current) {
           lines.push(current);
@@ -65,16 +67,43 @@ export function wrapPdfText(text: string, maxChars = 105): string[] {
       }
       if (!rest) return;
       if (!current) current = rest;
-      else if (current.length + 1 + rest.length <= maxChars) current = `${current} ${rest}`;
+      else if (current.length + rest.length <= maxChars) current += rest;
       else {
         lines.push(current);
         current = rest;
       }
     };
-    for (const word of words) pushWord(word);
+    for (const token of tokens) pushToken(token);
     lines.push(current);
   }
   return lines;
+}
+
+/**
+ * The emergency PDF is drawn with the standard Helvetica fonts, which can
+ * only print the WinAnsi character set; the PDF library throws on anything
+ * else, so one login with an emoji in its password would sink the whole
+ * export. Characters outside the set become "?" in the PDF — and only in
+ * the PDF: the export's logins.txt carries every value exactly as saved,
+ * and the PDF says so whenever a character had to be substituted.
+ */
+const WINANSI_EXTRA_CODE_POINTS = new Set([
+  0x20ac, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160, 0x2039, 0x0152, 0x017d,
+  0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0x017e,
+  0x0178,
+]);
+
+export function pdfSafeText(text: string): string {
+  let out = "";
+  for (const ch of text) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (ch === "\n" || (cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || WINANSI_EXTRA_CODE_POINTS.has(cp)) {
+      out += ch;
+    } else {
+      out += "?";
+    }
+  }
+  return out;
 }
 
 export const VAULT_FIELDS = ["username", "password", "notes"] as const;

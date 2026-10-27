@@ -89,6 +89,7 @@ import {
 } from "@/domains/vault/emergency";
 import { listVaultRotationAttention } from "@/domains/vault/attention";
 import { revokeOtherSessions } from "@/domains/security/sessions";
+import { setMethodSettings } from "@/domains/security/second-step";
 import { createPaperwork } from "@/domains/paperwork";
 
 let enabled = false;
@@ -520,6 +521,78 @@ describe.skipIf(!enabled)("VAULT-2 logins vault and emergency access (real Postg
     await denyEmergencyRequest(ownerId, view.active!.id);
   });
 
+  it("emergency: the code is emailed, not texted, while the owner's security-texting switch is off", async () => {
+    const savedEnv = {
+      VERCEL: process.env.VERCEL,
+      VERCEL_ENV: process.env.VERCEL_ENV,
+      TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+      TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+      TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
+    };
+    const restoreEnv = () => {
+      for (const [key, value] of Object.entries(savedEnv)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    };
+    try {
+      // A production-shaped environment with texting keys present, so the
+      // ONLY thing that can stop the text is the owner's switch (Codex P1:
+      // purpose "security" bypasses the sender's own gate by design).
+      process.env.VERCEL = "1";
+      process.env.VERCEL_ENV = "production";
+      process.env.TWILIO_ACCOUNT_SID = "test-sid";
+      process.env.TWILIO_AUTH_TOKEN = "test-token";
+      process.env.TWILIO_PHONE_NUMBER = "+13035550100";
+      // The failed-warning test above leaves a one-time REJECTED queued on
+      // the SMS mock (its send was never attempted, so the Once never fired);
+      // reset both channel mocks to their capturing defaults so it can't
+      // leak into this test's positive control.
+      vi.mocked(sendSms).mockReset();
+      vi.mocked(sendSms).mockImplementation(async (input) => {
+        m.sentSms.push(input);
+        return { sent: true, outcome: "SENT" as const };
+      });
+      vi.mocked(sendEmail).mockReset();
+      vi.mocked(sendEmail).mockImplementation(async (input: { to: string; subject: string; text: string }) => {
+        m.sentMail.push(input);
+        return { sent: true, outcome: "SENT" };
+      });
+      await setMethodSettings(ownerId, { policy: {}, securitySmsEnabled: false });
+      const contactPhone = "+13035550199";
+      await updateEmergencySettings(ownerId, { enabled: true, contactName: "Pat", contactEmail: CONTACT_EMAIL, contactPhone, waitDays: 1 });
+      const { token } = await createEmergencyLink(ownerId);
+      await requestEmergencyAccess(token);
+      const view = await getEmergencyOwnerView(ownerId);
+      await prisma.emergencyAccessRequest.update({
+        where: { id: view.active!.id },
+        data: { waitEndsAt: new Date(Date.now() - 60_000) },
+      });
+      m.sentSms.length = 0;
+      m.sentMail.length = 0;
+      const emailed = await sendEmergencyCode(token);
+      expect(emailed.channel).toBe("email");
+      expect(m.sentSms).toHaveLength(0);
+      expect(m.sentMail.some((mail) => mail.subject.includes("emergency access code"))).toBe(true);
+
+      // The same setup with the switch ON texts the code instead — proving
+      // the gate above was the switch, not the keys or the environment.
+      await setMethodSettings(ownerId, { policy: {}, securitySmsEnabled: true });
+      await prisma.emergencyAccessRequest.update({
+        where: { id: view.active!.id },
+        data: { codeSentAt: new Date(Date.now() - 120_000) },
+      });
+      const texted = await sendEmergencyCode(token);
+      expect(texted.channel).toBe("text");
+      expect(m.sentSms).toHaveLength(1);
+      expect(m.sentSms[0]?.to).toBe(contactPhone);
+      await denyEmergencyRequest(ownerId, view.active!.id);
+    } finally {
+      await setMethodSettings(ownerId, { policy: {}, securitySmsEnabled: false });
+      restoreEnv();
+    }
+  });
+
   it("emergency: the code goes to the saved contact, and the export downloads exactly once", async () => {
     await updateEmergencySettings(ownerId, { enabled: true, contactName: "Pat", contactEmail: CONTACT_EMAIL, contactPhone: "", waitDays: 1 });
     await grantVaultUnlock(ownerId, sessionId);
@@ -536,6 +609,22 @@ describe.skipIf(!enabled)("VAULT-2 logins vault and emergency access (real Postg
       title: `Long export ${tag}`,
       url: null,
       password: LONG_PASS,
+      totpHint: null,
+      rotateEveryMonths: null,
+    });
+    const UNI_PASS = `päss🔑word-${tag}`;
+    const { id: uniId } = await createCredential(ownerId, sessionId, {
+      title: `Unicode export ${tag}`,
+      url: null,
+      password: UNI_PASS,
+      totpHint: null,
+      rotateEveryMonths: null,
+    });
+    const SPACE_PASS = `two  spaces-${tag}`;
+    const { id: spaceId } = await createCredential(ownerId, sessionId, {
+      title: `Spaced export ${tag}`,
+      url: null,
+      password: SPACE_PASS,
       totpHint: null,
       rotateEveryMonths: null,
     });
@@ -591,6 +680,7 @@ describe.skipIf(!enabled)("VAULT-2 logins vault and emergency access (real Postg
     const entries = unzipAll(download.bytes);
     const names = entries.map((e) => e.name);
     expect(names).toContain("logins-vault.pdf");
+    expect(names).toContain("logins.txt");
     expect(names).toContain("READ-ME.txt");
     expect(names.some((n) => n.endsWith(".zip"))).toBe(true);
     const pdf = entries.find((e) => e.name === "logins-vault.pdf");
@@ -600,11 +690,24 @@ describe.skipIf(!enabled)("VAULT-2 logins vault and emergency access (real Postg
     // A 300-character password survives the export in full — wrapped across
     // PDF lines, never truncated (the pieces are drawn back to back).
     expect(text).toContain(LONG_PASS);
+    // A password whose spaces are part of the secret keeps them, in both
+    // copies (the old wrapper collapsed them in the PDF).
+    expect(text).toContain(SPACE_PASS);
+    // A character the PDF fonts cannot print no longer sinks the export:
+    // the PDF shows ? for it, and the plain-text copy carries it exactly.
+    expect(text).toContain("päss?word");
+    const txtEntry = entries.find((e) => e.name === "logins.txt");
+    const txt = new TextDecoder().decode(txtEntry!.data);
+    expect(txt).toContain(UNI_PASS);
+    expect(txt).toContain(SPACE_PASS);
+    expect(txt).toContain(LONG_PASS);
 
     expect((await getPublicEmergencyState(token)).state).toBe("consumed");
     await expect(downloadEmergencyExport(token)).rejects.toThrow();
     await deleteCredential(ownerId, id);
     await deleteCredential(ownerId, longId);
+    await deleteCredential(ownerId, uniId);
+    await deleteCredential(ownerId, spaceId);
     await prisma.businessPaperwork.delete({ where: { id: recordId } });
   });
 });

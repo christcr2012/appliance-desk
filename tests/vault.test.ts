@@ -8,7 +8,7 @@ import {
   hasFieldCryptoKey,
   hasVaultCryptoKey,
 } from "@/lib/field-crypto";
-import { isVaultField, maskUsername, rotationState, vaultLockFromFailures, wrapPdfText } from "@/domains/vault/rules";
+import { isVaultField, maskUsername, pdfSafeText, rotationState, vaultLockFromFailures, wrapPdfText } from "@/domains/vault/rules";
 
 /**
  * VAULT-2 unit tests: masking, rotation dates, and the vault key trio of
@@ -160,20 +160,46 @@ describe("wrapPdfText", () => {
     expect(lines.join("")).toBe(secret);
   });
 
-  it("wraps ordinary text at spaces and restores it with single spaces", () => {
+  it("wraps ordinary text at spaces and restores it exactly", () => {
     const text = "the quick brown fox jumps over the lazy dog again and again";
     const lines = wrapPdfText(text, 20);
     expect(lines.length).toBeGreaterThan(1);
     expect(lines.every((l) => l.length <= 20)).toBe(true);
-    expect(lines.join(" ")).toBe(text);
+    expect(lines.join("")).toBe(text);
   });
 
   it("splits a long word that follows short words without losing it", () => {
     const word = "tok_" + "a".repeat(300);
-    const lines = wrapPdfText(`Password: ${word}`, 105);
-    expect(lines[0]).toBe("Password:");
-    expect(lines.slice(1).join("")).toBe(word);
+    const text = `Password: ${word}`;
+    const lines = wrapPdfText(text, 105);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join("")).toBe(text);
     expect(lines.every((l) => l.length <= 105)).toBe(true);
+  });
+
+  it("keeps repeated, leading and trailing spaces exactly (Codex P2)", () => {
+    // A password whose spaces ARE part of the secret: the old wrapper split
+    // on single spaces and silently collapsed them in the export.
+    const secret = "Password: alpha  beta   gamma ";
+    const lines = wrapPdfText(secret, 105);
+    expect(lines.join("")).toBe(secret);
+    const wrapped = wrapPdfText("  aa  bb  cc  dd  ee", 7);
+    expect(wrapped.every((l) => l.length <= 7)).toBe(true);
+    expect(wrapped.join("")).toBe("  aa  bb  cc  dd  ee");
+  });
+});
+
+describe("pdfSafeText", () => {
+  it("replaces characters the PDF fonts cannot print with ?", () => {
+    expect(pdfSafeText("code 🔑 done")).toBe("code ? done");
+    expect(pdfSafeText("パスワード")).toBe("?????");
+    expect(pdfSafeText("tab\there")).toBe("tab?here");
+  });
+
+  it("keeps everything WinAnsi can print, including accents and punctuation", () => {
+    const text = "pässwörd — “quoted” • €5 … it’s";
+    expect(pdfSafeText(text)).toBe(text);
+    expect(pdfSafeText("line one\nline two")).toBe("line one\nline two");
   });
 });
 

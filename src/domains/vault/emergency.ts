@@ -8,9 +8,9 @@ import { sendSms } from "@/lib/sms";
 import { createZip } from "@/lib/zip";
 import { buildExportPack } from "@/domains/paperwork/records";
 import { makeSixDigitCode } from "@/domains/security/second-step-rules";
-import { textCodesReady, twilioKeysPresent } from "@/domains/security/second-step";
+import { textCodesReady } from "@/domains/security/second-step";
 import { VaultError } from "./unlock";
-import { wrapPdfText } from "./rules";
+import { pdfSafeText, wrapPdfText } from "./rules";
 
 /**
  * VAULT-2: emergency access (spec §7) — designed in full, shipped OFF.
@@ -323,7 +323,10 @@ export async function sendEmergencyCode(token: string, now = new Date()): Promis
   }
   const code = makeSixDigitCode((max) => randomInt(max));
   let channel: "text" | "email" | null = null;
-  if (row.contactPhone && twilioKeysPresent()) {
+  // purpose "security" bypasses the customer-texting gate in the SMS sender,
+  // whose contract makes the CALLER honour the owner's security-texting
+  // switch — the same check remindOwner makes. Switch off means email only.
+  if (row.contactPhone && (await textCodesReady())) {
     const sms = await sendSms({
       to: row.contactPhone,
       body: `Robinson Appliance Rentals emergency access: your one-time code is ${code}. It works for 15 minutes.`,
@@ -439,6 +442,7 @@ export async function downloadEmergencyExport(
 
   const bytes = createZip([
     { name: "logins-vault.pdf", data: vaultPdf },
+    { name: "logins.txt", data: new TextEncoder().encode(buildVaultText(credentials, now)) },
     ...(recordsPack ? [{ name: recordsPack.fileName, data: recordsPack.bytes }] : []),
     {
       name: "READ-ME.txt",
@@ -447,8 +451,8 @@ export async function downloadEmergencyExport(
           "Emergency export for Robinson Appliance Rentals.",
           `Prepared ${now.toISOString()} for the owner's emergency contact after the waiting period.`,
           recordsPack
-            ? "logins-vault.pdf lists every saved business login. The records file is the business records export (index plus attachments)."
-            : "logins-vault.pdf lists every saved business login. No business records were on file, so there is no records file in this export.",
+            ? "logins-vault.pdf lists every saved business login, and logins.txt has the same logins in plain text, exactly as saved. The records file is the business records export (index plus attachments)."
+            : "logins-vault.pdf lists every saved business login, and logins.txt has the same logins in plain text, exactly as saved. No business records were on file, so there is no records file in this export.",
           "This export was generated once, under the owner's emergency-access settings, and the download was recorded in the app's activity log.",
         ].join("\n"),
       ),
@@ -487,16 +491,53 @@ type CredentialForPdf = {
   lastRotatedOn: Date | null;
 };
 
+/** One login's export lines, shared by the PDF and the plain-text copy so the two can never drift apart. */
+function credentialLines(c: CredentialForPdf): string[] {
+  const lines: string[] = [];
+  if (c.url) lines.push(`Website: ${c.url}`);
+  if (c.usernameEncrypted) lines.push(`Username: ${decryptVaultField(c.usernameEncrypted)}`);
+  if (c.passwordEncrypted) lines.push(`Password: ${decryptVaultField(c.passwordEncrypted)}`);
+  if (c.notesEncrypted) lines.push(`Notes: ${decryptVaultField(c.notesEncrypted)}`);
+  if (c.totpHint) lines.push(`Second step: ${c.totpHint}`);
+  if (c.lastRotatedOn) lines.push(`Password last changed: ${c.lastRotatedOn.toISOString().slice(0, 10)}`);
+  return lines;
+}
+
+/**
+ * The export's exact copy: a UTF-8 text file where every login survives
+ * character for character — repeated spaces, emoji, non-Latin text — while
+ * the PDF's fonts can only print part of that range (see pdfSafeText).
+ */
+function buildVaultText(credentials: CredentialForPdf[], now: Date): string {
+  const out = [
+    "Business logins — emergency export (plain text)",
+    `Prepared ${now.toISOString()}. Keep this file somewhere safe; it contains passwords.`,
+    "Every login below is exactly as it was saved.",
+    "",
+  ];
+  if (credentials.length === 0) out.push("No logins were saved in the vault.");
+  for (const c of credentials) {
+    out.push(c.title, ...credentialLines(c), "");
+  }
+  return out.join("\n");
+}
+
 async function buildVaultPdf(credentials: CredentialForPdf[], now: Date): Promise<Uint8Array> {
+  const entries = credentials.map((c) => ({ title: c.title, lines: credentialLines(c) }));
+  const pdfLossy = entries.some(
+    (e) => pdfSafeText(e.title) !== e.title || e.lines.some((l) => pdfSafeText(l) !== l),
+  );
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   let page = doc.addPage([612, 792]);
   let y = 740;
   const line = (text: string, size = 10, isBold = false) => {
-    // wrapPdfText is lossless: a long password or token is split across
-    // lines, never cut — the export must carry every secret in full.
-    for (const piece of wrapPdfText(text)) {
+    // wrapPdfText is character-exact (a long secret is split across lines,
+    // never cut) and pdfSafeText keeps every drawn string inside the fonts'
+    // character set, so an unusual password can neither be truncated nor
+    // sink the whole export.
+    for (const piece of wrapPdfText(pdfSafeText(text))) {
       if (y < 60) {
         page = doc.addPage([612, 792]);
         y = 740;
@@ -505,23 +546,20 @@ async function buildVaultPdf(credentials: CredentialForPdf[], now: Date): Promis
       y -= size + 5;
     }
   };
-  const wrap = (label: string, value: string) => {
-    line(`${label}: ${value}`);
-  };
   line("Business logins — emergency export", 15, true);
   line(`Prepared ${now.toISOString()}. Keep this file somewhere safe; it contains passwords.`);
+  if (pdfLossy) {
+    line(
+      "Note: some characters in these logins can't be printed in a PDF and show as ? here. The logins.txt file in this export has every login exactly as saved.",
+    );
+  }
   y -= 6;
-  for (const c of credentials) {
-    line(c.title, 12, true);
-    if (c.url) wrap("Website", c.url);
-    if (c.usernameEncrypted) wrap("Username", decryptVaultField(c.usernameEncrypted));
-    if (c.passwordEncrypted) wrap("Password", decryptVaultField(c.passwordEncrypted));
-    if (c.notesEncrypted) wrap("Notes", decryptVaultField(c.notesEncrypted));
-    if (c.totpHint) wrap("Second step", c.totpHint);
-    if (c.lastRotatedOn) wrap("Password last changed", c.lastRotatedOn.toISOString().slice(0, 10));
+  for (const e of entries) {
+    line(e.title, 12, true);
+    for (const l of e.lines) line(l);
     y -= 8;
   }
-  if (credentials.length === 0) line("No logins were saved in the vault.");
+  if (entries.length === 0) line("No logins were saved in the vault.");
   return doc.save();
 }
 
