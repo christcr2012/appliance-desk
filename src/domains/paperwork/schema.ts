@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PAPERWORK_GROUPS } from "./rules";
+import { PAPERWORK_GROUPS, RECORD_KINDS } from "./rules";
 
 const optionalText = (max: number) =>
   z.string().trim().max(max).transform((v) => (v === "" ? null : v)).nullable().optional();
@@ -24,6 +24,23 @@ export const paperworkInputSchema = z.object({
   referenceNumber: optionalText(80),
   startedOn: optionalDate,
   dueOn: optionalDate,
+  // VAULT-1: business-record fields.
+  kind: z.enum(RECORD_KINDS).default("TASK"),
+  issuedOn: optionalDate,
+  expiresOn: optionalDate,
+  numberLabel: optionalText(60),
+  /** Write-only: when present and non-blank, replaces the stored (encrypted) number. Never echoed back. */
+  numberValue: optionalText(120),
+  portalUrl: optionalText(500).refine(
+    (v) => v == null || /^https:\/\/[^\s]+$/.test(v),
+    "A website address must start with https://",
+  ),
+  /** Dollars as typed on the screen ("1200" or "1200.50"); converted to cents in the domain. */
+  costDollars: optionalText(12).refine(
+    (v) => v == null || /^\d{1,7}(\.\d{1,2})?$/.test(v),
+    "Use a cost like 1200 or 1200.50.",
+  ),
+  linkedObligationKeys: z.array(z.string().trim().min(1).max(60)).max(24).default([]),
   remindDaysBefore: z.coerce.number().int().min(0).max(365).default(30),
   repeatEveryMonths: z
     .union([z.literal(""), z.coerce.number().int().min(1).max(120)])
