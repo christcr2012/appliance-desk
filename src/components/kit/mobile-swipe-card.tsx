@@ -107,8 +107,8 @@ export function MobileSwipeCard({
       ) : null}
       <div
         data-swipe-face
-        style={{ transform: open ? "translateX(-min(65vw, 280px))" : undefined }}
-        className="relative z-10 flex items-start gap-3 bg-surface px-4 py-3.5 [touch-action:pan-y] transition-transform duration-180 ease-out motion-reduce:transition-none"
+        style={{ transform: open ? "translateX(calc(-1 * min(65vw, 280px)))" : undefined }}
+        className="relative z-10 flex items-start gap-3 bg-surface px-4 py-3.5 [touch-action:pan-y] transition-transform duration-[180ms] ease-out motion-reduce:transition-none"
       >
         {children}
       </div>
