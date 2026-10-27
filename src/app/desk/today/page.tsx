@@ -29,7 +29,7 @@ import { addBusinessDays, businessDateKey, formatBusinessTime, formatShortDate, 
 import { formatMoney } from "@/lib/money-ui";
 import { jobTypeLabel } from "@/lib/status-labels";
 import { visibleOwnerActions } from "@/lib/owner-actions";
-import { ActionButton, EmptyState, Icon, InboxCard, InfoTip, StatusTabs, TONE_DOT, Toaster, mapHref, type ActionSpec, type Tone } from "@/components/kit";
+import { ActionButton, AutoRefresh, EmptyState, Icon, InboxCard, InfoTip, StatusTabs, TONE_DOT, Toaster, mapHref, type ActionSpec, type Tone } from "@/components/kit";
 import { SetupCard } from "./setup-card";
 import { decisionsTodayCount } from "@/domains/decisions/today";
 import { recordBankPaymentAction } from "../billing/reconciliation/actions";
@@ -460,6 +460,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
     // The kit lays out for a 20 px phone gutter (KIT 1); the current shell gives 16 px, so add the difference until AR-1.
     <div className="w-full min-w-0 max-w-full px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
       <div className="flex w-full min-w-0 max-w-full flex-1 flex-col gap-4 lg:max-w-[760px]">
+        <AutoRefresh />
         {notInJobRole ? (
           <p role="status" className="rounded-card border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink">
             You don&apos;t have access to that screen.
