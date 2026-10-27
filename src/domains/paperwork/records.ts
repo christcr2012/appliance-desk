@@ -15,6 +15,7 @@ import {
   nextDueAfterRenewal,
   RECOMMENDED_ADMIN_KINDS,
   RECORD_PDF_MAX_BYTES,
+  accountantCanSeeRecord,
   adminCanSeeRecord,
   effectiveRecordDate,
   isRecordKind,
@@ -76,6 +77,8 @@ export type BusinessRecordDto = {
   costDollars: string | null;
   linkedObligationKeys: string[];
   credentialId: string | null;
+  /** ACCT-1: the owner marked this record "Share with my accountant". */
+  shareWithAccountant: boolean;
   notes: string | null;
   lastDoneOn: Date | null;
   version: number;
@@ -113,6 +116,7 @@ function toDto(row: BusinessPaperwork & { recordFiles?: BusinessRecordFile[] }, 
     costDollars: row.costCents != null ? String(row.costCents / 100) : null,
     linkedObligationKeys: row.linkedObligationKeys,
     credentialId: row.credentialId,
+    shareWithAccountant: row.shareWithAccountant,
     notes: forAdmin ? null : row.notes,
     lastDoneOn: row.lastDoneOn,
     version: row.version,
@@ -167,7 +171,7 @@ export function recommendedAdminKinds(): RecordKind[] {
 }
 
 export async function listRecords(role: string | undefined): Promise<BusinessRecordDto[]> {
-  if (role !== "OWNER" && role !== "ADMIN") {
+  if (role !== "OWNER" && role !== "ADMIN" && role !== "ACCOUNTANT") {
     throw new Error("Only the owner and admins can see business records.");
   }
   const rows = await prisma.businessPaperwork.findMany({
@@ -176,6 +180,10 @@ export async function listRecords(role: string | undefined): Promise<BusinessRec
     include: { recordFiles: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } } },
   });
   if (role === "OWNER") return rows.map((r) => toDto(r, false));
+  // ACCT-1: an accountant sees only the records the owner shared with them, numbers masked.
+  if (role === "ACCOUNTANT") {
+    return rows.filter((r) => accountantCanSeeRecord(r)).map((r) => toDto(r, true));
+  }
   const kinds = await adminKinds();
   return rows
     .filter((r) => adminCanSeeRecord({ kind: r.kind, hasNumber: r.numberEncrypted != null }, kinds))
@@ -184,18 +192,34 @@ export async function listRecords(role: string | undefined): Promise<BusinessRec
 
 /** One record with its current files, or null when it does not exist or this role may not see it. */
 export async function getRecord(role: string | undefined, id: string): Promise<BusinessRecordDto | null> {
-  if (role !== "OWNER" && role !== "ADMIN") return null;
+  if (role !== "OWNER" && role !== "ADMIN" && role !== "ACCOUNTANT") return null;
   const row = await prisma.businessPaperwork.findUnique({
     where: { id },
     include: { recordFiles: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } } },
   });
   if (!row) return null;
+  if (role === "ACCOUNTANT") {
+    if (!accountantCanSeeRecord(row)) return null;
+    return toDto(row, true);
+  }
   if (role === "ADMIN") {
     const kinds = await adminKinds();
     if (!adminCanSeeRecord({ kind: row.kind, hasNumber: row.numberEncrypted != null }, kinds)) return null;
     return toDto(row, true);
   }
   return toDto(row, false);
+}
+
+/** ACCT-1 (owner only): mark or unmark a record "Share with my accountant". */
+export async function setRecordSharedWithAccountant(userId: string, id: string, shared: boolean): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER"]);
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
+    if (!rows[0]) throw new Error("That record no longer exists.");
+    await tx.businessPaperwork.update({ where: { id }, data: { shareWithAccountant: shared } });
+    await audit(tx, userId, shared ? "records.share_accountant" : "records.unshare_accountant", id);
+  });
 }
 
 async function audit(
@@ -333,6 +357,32 @@ export type AttachFileInput = {
  * path — the caller enforces the 900 KB limit; large PDFs go through
  * registerUploadedRecordFile). Type is sniffed from the bytes, never the name.
  */
+/**
+ * ACCT-1: who may add a file to a record — the owner (any record), or the accountant (a record the owner
+ * shared with them; their uploads are stamped "Prepared by accountant"). Runs after the record row is locked.
+ */
+async function assertRecordFileWriter(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  recordId: string,
+): Promise<{ role: string }> {
+  const actor = await assertActiveTeamActor(tx, userId, ["OWNER", "ACCOUNTANT"]);
+  if (actor.role === "ACCOUNTANT") {
+    const record = await tx.businessPaperwork.findUnique({
+      where: { id: recordId },
+      select: { shareWithAccountant: true },
+    });
+    if (!record?.shareWithAccountant) throw new Error("That record isn't shared with you.");
+  }
+  return actor;
+}
+
+function fileLabelFor(actor: { role: string }, label: string | null | undefined): string | null {
+  const clean = label?.slice(0, 120) || null;
+  if (actor.role !== "ACCOUNTANT") return clean;
+  return `Prepared by accountant${clean ? `: ${clean}` : ""}`.slice(0, 120);
+}
+
 export async function attachRecordFile(
   userId: string,
   recordId: string,
@@ -342,10 +392,10 @@ export async function attachRecordFile(
   if (!kind) throw new Error("That file isn't a PDF or a photo (PNG, JPEG or WebP). It wasn't saved.");
   const store = privateStoreOrThrow();
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const rows = await tx.$queryRaw<{ id: string }[]>`
       SELECT "id" FROM "BusinessPaperwork" WHERE "id" = ${recordId} FOR UPDATE`;
     if (!rows[0]) throw new Error("That record no longer exists.");
+    const actor = await assertRecordFileWriter(tx, userId, recordId);
     const fileId = randomUUID();
     const pathname = `records/${recordId}/${fileId}.${kind.extension}`;
     await put(pathname, Buffer.from(input.bytes), {
@@ -363,7 +413,7 @@ export async function attachRecordFile(
         contentType: kind.contentType,
         sizeBytes: input.bytes.length,
         sha256: createHash("sha256").update(input.bytes).digest("hex"),
-        label: input.label?.slice(0, 120) || null,
+        label: fileLabelFor(actor, input.label),
         uploadedByUserId: userId,
       },
       select: { id: true },
@@ -402,10 +452,10 @@ export async function registerUploadedRecordFile(
     throw new Error("Only PDF files can be uploaded this way. That file wasn't saved.");
   }
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const rows = await tx.$queryRaw<{ id: string }[]>`
       SELECT "id" FROM "BusinessPaperwork" WHERE "id" = ${recordId} FOR UPDATE`;
     if (!rows[0]) throw new Error("That record no longer exists.");
+    const actor = await assertRecordFileWriter(tx, userId, recordId);
     const existing = await tx.businessRecordFile.findUnique({
       where: { pathname: input.pathname },
       select: { id: true },
@@ -419,7 +469,7 @@ export async function registerUploadedRecordFile(
         contentType: kind.contentType,
         sizeBytes: bytes.length,
         sha256: createHash("sha256").update(bytes).digest("hex"),
-        label: input.label?.slice(0, 120) || null,
+        label: fileLabelFor(actor, input.label),
         uploadedByUserId: userId,
       },
       select: { id: true },
