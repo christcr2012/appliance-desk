@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MobileSwipeCard, SWIPE_REVEAL_PX, swipeIntent } from "@/components/kit/mobile-swipe-card";
+import type { MenuItem } from "@/components/kit/types";
 import { resetNav } from "./kit-test-env";
 
 vi.mock("next/navigation", () => import("./kit-test-env"));
@@ -23,7 +24,7 @@ const actions = [
   { kind: "link" as const, label: "Third action", href: "/desk/other" },
 ];
 
-function card(items = actions) {
+function card(items: MenuItem[] = actions) {
   return render(
     <ul>
       <MobileSwipeCard label="Bill 1" actions={items}>
