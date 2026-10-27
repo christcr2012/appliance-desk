@@ -1,3 +1,7 @@
+## October 27 — Lane 2 MCP-3 secure assistant connection (in progress, not shipped)
+
+Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Four focused tests and Prisma validate/client generation passed. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 has an updated rebased merge commit and is still pending exact-head CI. No customer data, hosting settings, production keys or live communications changed.
+
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
 Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided

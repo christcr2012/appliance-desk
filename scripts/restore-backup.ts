@@ -296,6 +296,12 @@ async function restore(file: string, target: string): Promise<void> {
       const delegate = delegates[table];
       if (!delegate?.createMany) throw new Error(`Restore delegate "${table}" is unavailable.`);
       const data = reviveRows(table, rows, dateFields, bigIntFields, nullableJsonFields);
+      if (table === "mcpConnection") {
+        for (const row of data) {
+          row.revokedAt = new Date();
+          row.revokedReason = "Restored from backup — connect again";
+        }
+      }
       if(table === "signingBusinessReview")data.sort((a,b)=>String(a.agreementId).localeCompare(String(b.agreementId))||Number(a.revision)-Number(b.revision));
       if (table === "appliance") {
         for (const row of data) {

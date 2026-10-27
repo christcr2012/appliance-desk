@@ -43,7 +43,11 @@
     "vercel-build:testing": "npm run check:migrations && npm run db:migrate:deploy && npm run db:verify-schema-health && npm run db:seed:testing && npm run build"
   },
   "dependencies": {
+    "@better-auth/core": "1.7.12",
+    "@better-auth/oauth-provider": "1.7.12",
+    "@better-fetch/fetch": "1.3.2",
     "@hookform/resolvers": "^5.9.1",
+    "@modelcontextprotocol/sdk": "1.32.0",
     "@prisma/adapter-neon": "^7.10.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
@@ -53,7 +57,8 @@
     "@sentry/nextjs": "11.8.0",
     "@vercel/blob": "^2.8.0",
     "@vercel/speed-insights": "^2.0.0",
-    "better-auth": "^1.7.6",
+    "better-auth": "1.7.12",
+    "better-call": "1.4.4",
     "cmdk": "1.1.1",
     "date-fns": "^4.4.0",
     "docx": "9.9.0",

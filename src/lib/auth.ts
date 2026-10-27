@@ -1,6 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { twoFactor } from "better-auth/plugins";
+import { jwt, twoFactor } from "better-auth/plugins";
+import { oauthProvider } from "@better-auth/oauth-provider";
+import { getMcpIssuer, validateMcpRedirectUri } from "@/mcp/issuer";
+import { MCP_SCOPES } from "@/mcp/scopes";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
@@ -103,6 +106,24 @@ export const auth = betterAuth({
         ],
       },
     },
+    // No OAuth or MCP endpoint is installed unless the owner has set a canonical issuer.
+    ...(getMcpIssuer() ? [
+      jwt(),
+      oauthProvider({
+        loginPage: "/login",
+        consentPage: "/connect/consent",
+        scopes: MCP_SCOPES,
+        resources: [`${getMcpIssuer()}/api/mcp`],
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+        clientRegistrationRequirePKCE: true,
+        clientRegistrationAllowedScopes: MCP_SCOPES,
+        validateRedirectUri: validateMcpRedirectUri,
+        accessTokenExpiresIn: 600,
+        refreshTokenExpiresIn: 60 * 60 * 24 * 30,
+        // Existing emailAndPassword.disableSignUp keeps invitation-only accounts.
+      }),
+    ] : []),
   ],
   secret: process.env.BETTER_AUTH_SECRET,
   hooks: {
@@ -111,6 +132,19 @@ export const auth = betterAuth({
     // for the team; our own server code calls the library directly and is not affected. Customers cannot change
     // their sign-in email at all (their customer record is matched on it).
     before: createAuthMiddleware(async (ctx) => {
+      // Public OAuth dynamic registration is deliberately throttled in the shared database.
+      // Do not trust a caller-supplied X-Forwarded-For: a conservative shared bucket
+      // stops request bursts across server instances even without a trusted source IP.
+      if (getMcpIssuer() && ctx.path === "/oauth2/register") {
+        const { isRateLimited } = await import("@/lib/rate-limit");
+        if (await isRateLimited("mcp-register:all", { max: 100, windowMs: 3_600_000 })) {
+          throw APIError.fromStatus("TOO_MANY_REQUESTS", { message: "Too many assistant registrations. Try again later." });
+        }
+        const ip = ctx.request?.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        if (await isRateLimited(`mcp-register:${ip}`, { max: 10, windowMs: 3_600_000 })) {
+          throw APIError.fromStatus("TOO_MANY_REQUESTS", { message: "Too many assistant registrations. Try again later." });
+        }
+      }
       // ACC-4: an account that had too many wrong passwords waits (the per-address rate limit stays as well).
       if (ctx.path === "/sign-in/email") {
         const attempted = typeof (ctx.body as { email?: unknown } | undefined)?.email === "string" ? (ctx.body as { email: string }).email : "";
@@ -200,7 +234,7 @@ export const auth = betterAuth({
   // work without hand-setting a URL for each one. Once a real custom
   // domain is bought (see docs/ARCHITECTURE.md), add it here too.
   baseURL:
-    process.env.BETTER_AUTH_URL ??
+    getMcpIssuer() ?? process.env.BETTER_AUTH_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
     {
       allowedHosts: [

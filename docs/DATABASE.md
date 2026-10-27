@@ -1,3 +1,7 @@
+## October 27 — MCP-3 assistant connections (development, not deployed)
+
+The additive OAuth schema adds Better Auth `jwks`, `oauthClient`, `oauthResource`, `oauthClientResource`, `oauthRefreshToken`, `oauthAccessToken`, `oauthConsent`, and `oauthClientAssertion` plus an app-owned `McpConnection` ledger. The OAuth models, private signing keys, client secrets, grants, access and refresh tokens are explicitly excluded from backup snapshots. Connection labels, scopes, last use and revocation status are retained; restore marks each restored connection revoked, requiring reconnection. The OAuth feature remains disabled unless the host explicitly sets `MCP_ISSUER_URL`. Migration and client-generation validation alone do not establish live-provider proof.
+
 ## November 10 — Income tax helpers (CMP-2, additive)
 
 Migration `20261110000000_cmp2_income_tax`.

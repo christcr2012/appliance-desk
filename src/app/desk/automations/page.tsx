@@ -8,6 +8,7 @@ import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { Button, PageHeader } from "@/components/ui";
 import { saveLateGraceAction, setAutomationPausedAction } from "./actions";
 import { HealthLegend, HealthRow } from "./health-row";
+import { AssistantConnections } from "./assistant-connections";
 
 export const metadata = { title: "System health" };
 
@@ -45,6 +46,8 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
         lastUsedAt: key.lastUsedAt ? timestamp(key.lastUsedAt) : null,
         revokedAt: key.revokedAt ? timestamp(key.revokedAt) : null,
       }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
+
+      <AssistantConnections userId={session.user.id} />
 
       <HealthLegend />
 

@@ -43,3 +43,7 @@ type definitions and the repo's identity/2FA rules. Acceptance requires:
 
 This card and plan commit are not proof of implementation. Nothing is released yet.
 
+
+### Working checkpoint, 2026-10-27
+
+Branch `ai/chatgpt/mcp-3-oauth-connect` contains the saved acceptance plan, correctly pinned OAuth/MCP SDKs, conditional issuer and read-only scope definitions, initial OAuth metadata/MCP bearer route, generated eight OAuth models and additive `McpConnection` migration, backup exclusions, restore-to-revoked treatment, and draft consent/disconnect screens. Four issuer/scope/redirect tests passed; Prisma schema validation and client generation passed with **synthetic local connection strings**. This is **not shipped** and must not be treated as working OAuth until the SDK end-to-end roundtrip, real disposable database tests, quick checks, screen/accessibility acceptance, and exact-head CI/review are all verified. In particular, registration abuse limits, audit on approval, and token/consent edge cases still require verification and repair.
