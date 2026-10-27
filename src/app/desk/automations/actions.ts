@@ -66,3 +66,30 @@ export async function revokeOpsAgentKeyAction(formData: FormData): Promise<void>
   await revokeOpsAgentKey(session.user.id, String(formData.get("keyId") ?? ""));
   revalidatePath("/desk/automations");
 }
+
+
+import { redirect } from "next/navigation";
+import { BACKUP_RETENTION_RECOMMENDED_DAYS, saveBackupRetentionDays } from "@/domains/backup/dashboard";
+import { retryBackupNow } from "@/domains/backup/manual";
+
+export async function saveBackupRetentionAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const next = formData.get("operation") === "restore"
+    ? BACKUP_RETENTION_RECOMMENDED_DAYS : Number(formData.get("days"));
+  await saveBackupRetentionDays(session.user.id, next, Number(formData.get("expected")));
+  revalidatePath("/desk/automations");
+}
+
+export async function retryBackupAction(): Promise<void> {
+  const session = await requireRole("OWNER");
+  let message: string;
+  try {
+    const result = await retryBackupNow(session.user.id);
+    message = result.outcome === "RAN" ? "verified" :
+      result.outcome === "ALREADY_RAN" ? "busy" : "failed";
+  } catch {
+    message = "unavailable";
+  }
+  revalidatePath("/desk/automations");
+  redirect("/desk/automations?backupMessage=" + message + "#backup-settings");
+}

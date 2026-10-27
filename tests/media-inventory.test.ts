@@ -87,6 +87,12 @@ vi.mock("../src/lib/prisma", () => ({
     },
     // MCP-10a: no app-feedback screenshots in these cases.
     feedbackAttachment: { findMany: vi.fn(async () => [...state.feedback]) },
+    backupArtifact: {
+      findUnique: vi.fn(async ({ where }: { where: { id: string } }) => ({
+        id: where.id, kind: "DATABASE", state: "VERIFIED", pathname: where.id,
+      })),
+      create: vi.fn(async ({ data }: { data: unknown }) => ({ id: "synthetic-media-ledger", ...data as object })),
+    },
     // VAULT-1: no business-record files in these cases.
     businessRecordFile: { findMany: vi.fn(async () => [...state.recordFiles]) },
   },
@@ -228,6 +234,8 @@ beforeEach(() => {
   process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN = PRIVATE_TOKEN;
   process.env.PRIVATE_PHOTO_BLOB_STORE_ID = "store_test";
   process.env.BLOB_READ_WRITE_TOKEN = BACKUP_TOKEN;
+  process.env.BACKUP_BLOB_STORE_ID = "store_backup";
+  process.env.BACKUP_BLOB_READ_WRITE_TOKEN = BACKUP_TOKEN;
   delete process.env.VERCEL;
   delete process.env.VERCEL_ENV;
   installBlobFake();
@@ -247,6 +255,7 @@ describe("Batch F private-media recovery", () => {
     );
 
     const result = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-1.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-1.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
@@ -275,8 +284,8 @@ describe("Batch F private-media recovery", () => {
     ]);
     expect(storeFor(PRIVATE_TOKEN).has(orphanPath)).toBe(true);
     expect(state.delOrder).toEqual([]);
-    expect(pathnameOf(result.manifestUrl)).toBe(
-      "backups/2026-10-06-1.json.media.json",
+    expect(pathnameOf(result.manifestUrl)).toMatch(
+      /^backups\/2026-10-06-1\.json\.[0-9a-f-]{36}\.media\.json$/,
     );
 
     await expect(verifyMediaRecoverySample(result.manifestUrl, 2)).resolves.toEqual({
@@ -285,11 +294,40 @@ describe("Batch F private-media recovery", () => {
     });
   });
 
+  it("retries a media manifest after its first readback fails without overwriting the failed artifact", async () => {
+    const originalGet = blob.get.getMockImplementation()!;
+    const photoPath = "jobs/synthetic-retry/photo.jpg";
+    const sourceUrl = seed(PRIVATE_TOKEN, photoPath, "untouched-photo");
+    state.photos.push({ id: "photo-synthetic-retry", url: sourceUrl });
+    let failManifestOnce = true;
+    blob.get.mockImplementation(async (...args: unknown[]) => {
+      if (failManifestOnce && typeof args[0] === "string" &&
+          pathnameOf(args[0]).endsWith(".media.json")) {
+        failManifestOnce = false;
+        return null;
+      }
+      return originalGet(...args);
+    });
+    const input = {
+      databaseArtifactId: "backups/2026-10-06-retry.json",
+      databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-retry.json`,
+      now: new Date("2026-10-06T09:00:00.000Z"),
+    };
+    await expect(runMediaInventoryAndCopy(input)).rejects.toThrow("MEDIA_COPY");
+    const succeeded = await runMediaInventoryAndCopy(input);
+    expect(succeeded.counts.missing).toBe(0);
+    const paths = state.putOrder.filter((value) => value.endsWith(".media.json"));
+    expect(paths).toHaveLength(2);
+    expect(new Set(paths).size).toBe(2);
+    expect(succeeded.manifestUrl).toContain(paths[1]!);
+  });
+
   it("MCP-10a: copies live app-feedback screenshots too (they are not Photo rows)", async () => {
     const shot = "feedback/report-1/fa01.webp";
     seed(PRIVATE_TOKEN, shot, "screenshot", "image/webp");
     state.feedback.push({ id: "fa01", pathname: shot });
     const result = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-2.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-2.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
@@ -304,6 +342,7 @@ describe("Batch F private-media recovery", () => {
     seed(PRIVATE_TOKEN, doc, "ein letter", "application/pdf");
     state.recordFiles.push({ id: "file-1", pathname: doc });
     const result = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-3.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-3.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
@@ -319,6 +358,7 @@ describe("Batch F private-media recovery", () => {
     state.photos.push({ id: "photo-versioned", url: sourceUrl });
 
     const first = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-2.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-2.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
@@ -326,6 +366,7 @@ describe("Batch F private-media recovery", () => {
 
     seed(PRIVATE_TOKEN, sourcePath, "version-two");
     const second = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-07-1.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-07-1.json`,
       now: new Date("2026-10-07T09:00:00.000Z"),
     });
@@ -338,6 +379,49 @@ describe("Batch F private-media recovery", () => {
       checked: 1,
       skippedTombstoned: 0,
     });
+  });
+
+  it("restores a missing photo from a verified fake recovery copy and checks its hash", async () => {
+    const path = "jobs/test-restored/photo.jpg";
+    const sourceUrl = seed(PRIVATE_TOKEN, path, "synthetic-image-original");
+    state.photos.push({id:"photo-to-restore",url:sourceUrl});
+    const copy = await runMediaInventoryAndCopy({
+      databaseArtifactId:"backups/2026-10-06-restore.json",
+      databaseBackupUrl:`https://${BACKUP_HOST}/backups/2026-10-06-restore.json`,
+      now:new Date("2026-10-06T09:00:00.000Z"),
+    });
+    const recovery = copy.manifest.entries[0]!.recoveryPath!;
+    const expected = createHash("sha256").update("synthetic-image-original").digest("hex");
+    storeFor(PRIVATE_TOKEN).delete(path);
+    expect(storeFor(PRIVATE_TOKEN).has(path)).toBe(false);
+    expect(await restoreMediaFromManifest(copy.manifestUrl)).toEqual({
+      restored:1,alreadyPresent:0,skippedTombstoned:0,
+    });
+    expect(createHash("sha256").update(storeFor(PRIVATE_TOKEN).get(path)!.bytes).digest("hex")).toBe(expected);
+    expect(storeFor(PRIVATE_TOKEN).has(recovery)).toBe(true);
+  });
+
+  it("never copies a photo that receives a privacy deletion tombstone during inventory", async () => {
+    const path="jobs/delete-during-copy/photo.jpg";
+    const sourceUrl=seed(PRIVATE_TOKEN,path,"to-be-erased");
+    state.photos.push({id:"photo-deleting",url:sourceUrl});
+    const prior=blob.get.getMockImplementation()!;
+    let tombstoned=false;
+    blob.get.mockImplementation(async (...args: unknown[])=>{
+      const result=await prior(...args);
+      if(!tombstoned && typeof args[0]==="string" && args[0]===sourceUrl){
+        tombstoned=true;
+        seed(PRIVATE_TOKEN,privacyDeletionTombstonePath(path),"{}","application/json");
+      }
+      return result;
+    });
+    const manifest=await runMediaInventoryAndCopy({
+      databaseArtifactId:"backups/2026-10-06-deleted.json",
+      databaseBackupUrl:`https://${BACKUP_HOST}/backups/2026-10-06-deleted.json`,
+      now:new Date("2026-10-06T09:00:00.000Z"),
+    });
+    expect(manifest.manifest.entries[0]).toMatchObject({status:"TOMBSTONED",recoveryPath:null});
+    expect(blob.copy).not.toHaveBeenCalled();
   });
 
   it("writes a tombstone before deleting primary and recovery bytes", async () => {
@@ -371,6 +455,7 @@ describe("Batch F private-media recovery", () => {
     const sourceUrl = seed(PRIVATE_TOKEN, sourcePath, "customer-private");
     state.photos.push({ id: "photo-private", url: sourceUrl });
     const backup = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-private.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-private.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });

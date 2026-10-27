@@ -35,7 +35,7 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
   switch (input.kind) {
     case "AUTOMATION_FAILED":
       id(input.ruleKey); id(input.runId); date(input.startedAt);
-      if (!AUTOMATION_RULES.some((rule) => rule.ruleKey === input.ruleKey)) throw new Error("Unrecognized automation rule");
+      if (input.ruleKey !== "backup-manual" && !AUTOMATION_RULES.some((rule) => rule.ruleKey === input.ruleKey)) throw new Error("Unrecognized automation rule");
       if (!knownErrorNames.has(input.errorName) || (input.errorCode && !knownErrorCodes.has(input.errorCode))) throw new Error("Unrecognized error code");
       fingerprint = "automation:" + input.ruleKey;
       severity = /^(billing|backup|media-copy)/.test(input.ruleKey) ? "HIGH" : "MEDIUM";
@@ -48,6 +48,12 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       // Only allowlisted identifiers and the code's fixed explanation: never the original error text.
       detail = `Rule ${input.ruleKey}; run ${input.runId}; started ${date(input.startedAt)}; class ${input.errorName}; code ${input.failure?.code ?? input.errorCode ?? "UNCLASSIFIED"}.` +
         (input.failure ? " " + failureExplanation(input.failure.code).explain : "");
+      break;
+    case "BACKUP_RETENTION_ATTENTION":
+      fingerprint = "backup-prune";
+      severity = "MEDIUM";
+      summary = "Old backup copies need tidying up.";
+      detail = "Today's verified database backup is safe. Removing old copies didn't finish; storage may grow until this is fixed.";
       break;
     case "AUTOMATION_STALE":
       id(input.ruleKey); date(input.dueAt);
