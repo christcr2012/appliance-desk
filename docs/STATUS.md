@@ -1,3 +1,15 @@
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
+
+
+
 ## October 27 — VAULT-2: Logins vault and emergency access (in build)
 
 Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
@@ -30,9 +42,9 @@ selector; all unit and browser groups, checks and secret scan green. Codex revie
 Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
 optimistic Snooze and bundle budget remain. No user payment or permission path changed.
 
-## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR pending)
+## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR #669)
 
-Branch `ai/vivienne/feetax-2`. Every place within 50 miles of Greeley is seeded with its delivery
+Branch `ai/vivienne/feetax-2-final` (successor to the first PR, #666). Every place within 50 miles of Greeley is seeded with its delivery
 readiness (city license rule, how returns are filed, source and review state — no tax rates
 seeded, and no rent-tax decisions either: whether a place taxes rentals stays in the tax rules). Before an address can be quoted, ordered
 or scheduled, the new readiness check refuses it with a plain reason when a place's rules are
@@ -42,9 +54,34 @@ one override — owner-only, with a reason, written to Activity — covers "rule
 a missing license can never be overridden. Delivery counts are recorded when a delivery job
 finishes. New screen **Taxes › Delivery area** lists every place and runs "Check an address";
 a "Get ready to deliver in {city}" item lands on the To do list only for places a real customer
-address needs. Proof so far: `tests/delivery-readiness-integration.test.ts` (13 tests) and the
-wired-path suites on throwaway Postgres; full preflight + PR next. Starting values filed as
+address needs. Proof so far: `tests/delivery-readiness-integration.test.ts` (19 tests), the
+conversion suite and the wired-path suites on throwaway Postgres; PR #669 carries the full
+verification record. Starting values filed as
 DQ-FEETAX2-1 (Boulder rent "likely") and DQ-FEETAX2-2 (presumed city licenses).
+
+## October 27 — CMP-4 merged (PR #670)
+
+CMP-4 is on main (squash 95de266b): the Colorado and local filings — the Weld County business personal
+property declaration (January 1 snapshot from the asset records with possession read from the custody
+episodes, the $56,000 exemption check with an owner-confirmed close when under, the filled DS 056 /
+DS 060 forms gated on the vendored printing being the filing's own year, and the itemized spreadsheet),
+the Secretary of State periodic report with the exact values to type, the trade name entry (an LLC's
+Colorado trade name never needs renewal — C.R.S. § 7-71-104), the Greeley business license on its
+two-year cycle from the recorded license date, the truck registration month, and the USDOT biennial
+schedule read off the recorded USDOT number. Two PRs (#668, then its successor #670) and six Codex
+findings — all real, all fixed with regression tests. Lane 5's compliance line is now complete except
+CMP-5, which stays dormant until the business has employees.
+
+## October 27 — CMP-2 merged (PR #660)
+
+CMP-2 is on main (squash e4e9cf31): every books account mapped to a Schedule C line, the year-end
+accountant packet (CSV + PDF) prepared from posted journals under the approve flow, the 4562 and 4797
+worksheets, quarterly federal and Colorado estimates by the prior-year safe harbor from owner-entered
+tax-year facts (no prior year → words only, no number), the DR 0104EP and 1040-ES vouchers filled at
+download time with nothing stored, and the 1099-K tie-out. One PR, one review round: three Codex
+findings, all real, fixed with regression tests. CMP-2 merging unblocked Lane 4's TAXBEN-1. Two honest
+gaps recorded in the PR: no TXF export (no authoritative TXF 042 spec could be confirmed) and the
+Colorado 70%-of-actual-tax estimate prong is not computed (DQ-CMP-CO-EST).
 
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
@@ -62,13 +99,11 @@ also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthrou
 `tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
 saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
-## October 27 — CMP-3 merged (PR #656); CMP-2 in progress
+## October 27 — CMP-3 merged (PR #656)
 
 CMP-3 is on main (squash f103c7fc): 1099s and W-9s, the IRIS portal CSV and A2A client, and the Form 8300
 detector, after three PRs (#654, #655, #656) and ten Codex findings — all real, all fixed with regression
-tests. Lane 5 is now building **CMP-2** (income tax helpers: Schedule C packet, 4562/4797 worksheets,
-quarterly federal and Colorado estimates, 1099-K tie-out) on branch `ai/vivienne/cmp-2`; the CMP-3 close-out
-rides at the base of that branch. CMP-2 merging also unblocks Lane 4's TAXBEN-1.
+tests.
 
 ## October 26 — Lane 7 (back-office operations) close-out
 Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653. Each merged at a green exact-head `ci` with Codex findings answered. Not built: letting a successor use the pause switch in an emergency needs VAULT-1 (does not exist yet). Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
