@@ -134,6 +134,7 @@ export async function listActiveOfficialSourceWatches(): Promise<
     id: string;
     label: string;
     url: string;
+    parserKey: string | null;
     lastHash: string | null;
     lastText: string | null;
     lastCheckedAt: Date | null;
@@ -149,6 +150,7 @@ export async function listActiveOfficialSourceWatches(): Promise<
       id: true,
       label: true,
       url: true,
+      parserKey: true,
       lastHash: true,
       lastText: true,
       lastCheckedAt: true,
