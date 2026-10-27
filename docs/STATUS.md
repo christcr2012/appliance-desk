@@ -30,16 +30,18 @@ selector; all unit and browser groups, checks and secret scan green. Codex revie
 Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
 optimistic Snooze and bundle budget remain. No user payment or permission path changed.
 
-## October 27 — CMP-4 in progress (Lane 5)
+## October 27 — CMP-4 merged (PR #670)
 
-Lane 5 is building **CMP-4** (Colorado and local filings) on branch `ai/vivienne/cmp-4-final`, baseline
-`dd5f7ff1`: the Weld County business personal property declaration (January 1 snapshot from the asset
-records, the $56,000 exemption check, filled DS 056 / DS 060 forms and the itemized spreadsheet), the
-Secretary of State periodic report with the exact values to type, the trade name entry (research now
-confirms an LLC's Colorado trade name never needs renewal — C.R.S. § 7-71-104), the Greeley business
-license on its two-year cycle from the recorded license date, the truck registration month, and the
-USDOT biennial schedule read off the recorded USDOT number. The CMP-2 close-out rides at the base of
-this branch.
+CMP-4 is on main (squash 95de266b): the Colorado and local filings — the Weld County business personal
+property declaration (January 1 snapshot from the asset records with possession read from the custody
+episodes, the $56,000 exemption check with an owner-confirmed close when under, the filled DS 056 /
+DS 060 forms gated on the vendored printing being the filing's own year, and the itemized spreadsheet),
+the Secretary of State periodic report with the exact values to type, the trade name entry (an LLC's
+Colorado trade name never needs renewal — C.R.S. § 7-71-104), the Greeley business license on its
+two-year cycle from the recorded license date, the truck registration month, and the USDOT biennial
+schedule read off the recorded USDOT number. Two PRs (#668, then its successor #670) and six Codex
+findings — all real, all fixed with regression tests. Lane 5's compliance line is now complete except
+CMP-5, which stays dormant until the business has employees.
 
 ## October 27 — CMP-2 merged (PR #660)
 
