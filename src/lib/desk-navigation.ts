@@ -73,7 +73,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["automations", "System health", "Whether the background jobs and connections are running.", "finance"],
   ["control-center", "Manage my business", "Everything you can do, grouped by what you want to get done, with a search box.", "finance"],
   ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
-  ["paperwork", "Business paperwork", "Your LLC, EIN, licenses and insurance, with reminders before anything needs renewing.", "owner"],
+  ["paperwork", "Business records", "Your LLC, EIN, licenses, insurance and accounts, with reminders before anything needs renewing.", "owner"],
   ["continuity", "If something happens to me", "Who to call, a live snapshot of the business, the pause-charges switch and your yearly check-up.", "owner"],
   ["vehicle", "Vehicle and mileage", "The delivery vehicle, its license rules, the mileage log and the yearly mileage deduction.", "finance"],
   ["insurance", "Insurance", "Your policies, when each one ends, workers' compensation and certificate requests.", "owner"],
