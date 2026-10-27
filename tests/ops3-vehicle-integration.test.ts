@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
-import { addManualTrip, archiveVehicle, finishRouteDay, recordMaintenance, saveVehicle, saveVehicleSettings, startRouteDay } from "@/domains/vehicle/actions";
+import { addManualTrip, archiveVehicle, finishRouteDay, latestOdometer, recordMaintenance, saveVehicle, saveVehicleSettings, startRouteDay } from "@/domains/vehicle/actions";
 import { loadDriverMileage, loadVehicleOverview } from "@/domains/vehicle/reads";
 import { listVehicleAttention } from "@/domains/exceptions/vehicle-attention";
 
@@ -105,6 +105,24 @@ describe.skipIf(!enabled)("vehicle and mileage (real Postgres)", () => {
     await expect(saveVehicleSettings(staffId, { mileageMethod: "STANDARD_RATE", medicalCardRequired: false })).rejects.toThrow();
     await saveVehicleSettings(ownerId, { mileageMethod: "STANDARD_RATE", medicalCardRequired: false });
     expect((await listVehicleAttention(new Date())).some((r) => r.title.includes(van.nickname))).toBe(false);
+  });
+
+  it("never counts the same miles twice, remembers service readings, and keeps an unfinished day on the driver card", async () => {
+    await expect(addManualTrip(ownerId, { vehicleId, dateKey: businessDateKey(new Date()), startOdometer: 12_040, endOdometer: 12_060, purpose: "Overlaps the route" })).rejects.toThrow(/overlap/);
+    await recordMaintenance(ownerId, vehicleId, businessDateKey(new Date()), 14_000);
+    expect(await latestOdometer(prisma, vehicleId)).toBe(14_000);
+
+    const second = await saveVehicle(ownerId, null, { ...van, nickname: `Van2 ${tag}` });
+    const yesterday = new Date(businessDayBounds(new Date()).start.getTime() - 12 * 3_600_000);
+    const day = businessDayBounds(yesterday).start;
+    await prisma.mileageTrip.create({ data: { vehicleId: second, tripDate: day, startOdometer: 12_000, source: "ROUTE", purpose: "Deliveries", createdByUserId: ownerId } });
+    const card = (await loadDriverMileage(new Date())).find((v) => v.id === second);
+    expect(card?.trip?.endOdometer).toBeNull();
+    await expect(startRouteDay(ownerId, second, 12_100)).rejects.toThrow(/never finished/);
+    await finishRouteDay(ownerId, card!.trip!.id, 12_080);
+    await startRouteDay(ownerId, second, 12_080);
+    await prisma.mileageTrip.deleteMany({ where: { vehicleId: second } });
+    await prisma.fleetVehicle.deleteMany({ where: { id: second } });
   });
 
   it("retires a vehicle: it drops off the driver view", async () => {

@@ -53,7 +53,7 @@ export async function latestOdometer(db: Pick<typeof prisma, "mileageTrip" | "fl
     db.mileageTrip.aggregate({ where: { vehicleId }, _max: { endOdometer: true } }),
     db.mileageTrip.aggregate({ where: { vehicleId }, _max: { startOdometer: true } }),
   ]);
-  return Math.max(vehicle.odometerAtPurchase, end._max.endOdometer ?? 0, start._max.startOdometer ?? 0);
+  return Math.max(vehicle.odometerAtPurchase, vehicle.lastMaintenanceMiles ?? 0, end._max.endOdometer ?? 0, start._max.startOdometer ?? 0);
 }
 
 /** The driver starts the day: records the starting odometer. One route trip per vehicle per day. */
@@ -67,6 +67,8 @@ export async function startRouteDay(actorUserId: string, vehicleId: string, star
     const tripDate = businessDayBounds(now).start;
     const existing = await tx.mileageTrip.findFirst({ where: { vehicleId, tripDate, source: "ROUTE" }, select: { id: true } });
     if (existing) throw new VehicleError("Today's trip was already started for this vehicle.");
+    const unfinished = await tx.mileageTrip.findFirst({ where: { vehicleId, source: "ROUTE", endOdometer: null }, orderBy: { tripDate: "desc" }, select: { tripDate: true } });
+    if (unfinished) throw new VehicleError(`The trip from ${businessDateKey(unfinished.tripDate)} was never finished. Enter its ending reading first.`);
     const known = await latestOdometer(tx, vehicleId);
     if (startOdometer < known) throw new VehicleError(`That's lower than the last reading we have (${known.toLocaleString("en-US")}). Check the number.`);
     const jobs = await tx.job.findMany({ where: { scheduledAt: { gte: tripDate, lt: businessDayBounds(now).end }, status: { not: "CANCELLED" } }, select: { type: true } });
@@ -107,6 +109,18 @@ export async function addManualTrip(actorUserId: string, input: { vehicleId: str
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     await tx.$queryRaw`SELECT "id" FROM "FleetVehicle" WHERE "id" = ${input.vehicleId} FOR UPDATE`;
     if (!(await tx.fleetVehicle.findUnique({ where: { id: input.vehicleId }, select: { id: true } }))) throw new VehicleError("Couldn't find that vehicle.");
+    // The odometer can only be counted once: a new trip may not share any miles with a trip already on file.
+    const overlapping = await tx.mileageTrip.findFirst({
+      where: {
+        vehicleId: input.vehicleId,
+        OR: [
+          { endOdometer: { not: null }, startOdometer: { lt: input.endOdometer }, AND: [{ endOdometer: { gt: input.startOdometer } }] },
+          { endOdometer: null, startOdometer: { gte: input.startOdometer, lt: input.endOdometer } },
+        ],
+      },
+      select: { startOdometer: true, endOdometer: true },
+    });
+    if (overlapping) throw new VehicleError(`Those miles overlap a trip already recorded (${overlapping.startOdometer.toLocaleString("en-US")}${overlapping.endOdometer != null ? `–${overlapping.endOdometer.toLocaleString("en-US")}` : ", not finished"}). Check the readings so no mile is counted twice.`);
     const trip = await tx.mileageTrip.create({
       data: { vehicleId: input.vehicleId, tripDate: date, startOdometer: input.startOdometer, endOdometer: input.endOdometer, miles, purpose, source: "MANUAL", notes: t(input.notes, 300) || null, createdByUserId: actorUserId },
     });

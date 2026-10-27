@@ -45,7 +45,10 @@ export async function loadDriverMileage(now: Date) {
   const vehicles = await prisma.fleetVehicle.findMany({ where: { archivedAt: null }, orderBy: { createdAt: "asc" }, take: 5, select: { id: true, nickname: true } });
   const result = [];
   for (const v of vehicles) {
-    const trip = await prisma.mileageTrip.findFirst({ where: { vehicleId: v.id, tripDate: today, source: "ROUTE" }, select: { id: true, startOdometer: true, endOdometer: true, miles: true } });
+    // A day that was never finished stays on the card until it is, even after midnight, so it can be closed out.
+    const select = { id: true, startOdometer: true, endOdometer: true, miles: true, tripDate: true } as const;
+    const open = await prisma.mileageTrip.findFirst({ where: { vehicleId: v.id, source: "ROUTE", endOdometer: null }, orderBy: { tripDate: "desc" }, select });
+    const trip = open ?? await prisma.mileageTrip.findFirst({ where: { vehicleId: v.id, tripDate: today, source: "ROUTE" }, select });
     result.push({ ...v, lastOdometer: await latestOdometer(prisma, v.id), trip });
   }
   return result;
