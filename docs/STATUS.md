@@ -8,6 +8,10 @@ scan clean with the fingerprints removed, and planted real-shaped keys still fla
 including inside the registry files. Merge is sequenced by the lane heartbeat.
 Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
 
+## October 26 — CI speed fixes across parallel lanes (PR pending)
+
+Branch `ai/chatgpt/ci-lane-throughput` adds a fourth disposable-Postgres unit runner after OPS-6's 187.38s passing test phase crossed the 180s budget (run 40434874127), makes the CI topology guard require all five actual browser groups, and adds a fast job-role mapping test for desk menu changes (OPS-4 missed that before CI). The local-test guide now covers disposable database limits, reading complete job logs through GitHub MCP and real commit ancestry when main advances. Focused and exact-head CI, review and merge still pending; the separate Gitleaks issue is handled by PR #643. No changes to production, providers, coverage or CI phase budget.
+
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-2`. A retired refrigerator, freezer or mini-fridge can no longer be marked "scrapped" or "thrown away" (one at a time, in bulk, or as the leftovers of a parts-stripping) until its **refrigerant record** is signed on screen: refrigerant type, whether it was recovered (by whom, their address, certification number, equipment, date) or had already leaked, and the scrap yard's receipt number. The app prints the signed **statement** (PDF) to hand the scrap yard. The record is kept for **6 years** (a dated rule-book number; the federal rule asks for 3; not confirmed). Owner setting on the Retired appliances page: which kinds of appliance have refrigerant (starting value: refrigerators, freezers and mini-fridges; washers and dryers no). Migration `20261106000000_refrigerant` (additive). Proof: pure tests (`tests/ops2-refrigerant-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops2-refrigerant-integration.test.ts`), typecheck and lint clean.

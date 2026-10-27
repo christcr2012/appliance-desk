@@ -15,7 +15,7 @@ npm run test:browser -- e2e/z.spec.ts                  # builds if needed; never
 npm run bundle:preflight      # optional: runs the paperwork checks CI runs and explains failures in plain English
 ```
 
-Never run watch modes, `npm run dev` or `--no-verify`. Wrap slow commands in `timeout 600`.
+Never run watch modes, `npm run dev` or `--no-verify`. Wrap slow commands in `timeout 600`. **Before a push**, run the focused regression for changed behavior, then `npm run check:quick`; a desk menu/job-role mapping edit also runs the fast job-role permission test. Do not run the full local suite after every edit.
 
 ## Hosted provider acceptance
 
@@ -32,8 +32,7 @@ read every review comment → merge with the expected-head SHA → short STATUS 
 
 ## When CI is red
 
-Read the annotations of the failed check (`gh api repos/<owner>/<repo>/check-runs/<id>/annotations`; raw logs are not
-downloadable). Fix **all** failures, reproduce locally, push once.
+Read **all** failed CI jobs before editing. The connected Robinson GitHub MCP provides `github_actions_get_run`, `github_actions_get_job_log` and `github_workflow_ci_failure_summary` for job logs and complete failure summaries; REST check-run annotations remain a fallback. Distinguish a failed assertion, missing test fake, secret finding and a passing command over the 180-second phase budget. Fix **all** failures, reproduce locally, push once. A green check on an older SHA is not proof for your latest push.
 
 | What CI says | Real cause | Fix |
 |---|---|---|
@@ -50,6 +49,12 @@ downloadable). Fix **all** failures, reproduce locally, push once.
 | a menu test counts links | you added a desk menu link | update the expected count and assert the new link |
 | typed value doubled in a form test (e.g. "1012") | typing before the client form loaded its saved value | wait for the saved value to show, then fill |
 | "capacity baselines" timing | noisy shared runner | rerun that job once; it is not a gate on its own, but a repeat means look at the change |
+
+## Local tests and GitHub publishing without repeat work
+
+For money, permissions, migrations and concurrency, run `npm run test:db -- tests/<file>-integration.test.ts` or diagnostic `npm run work -- probe tests/<file>.test.ts`: the launcher starts a **new localhost-only, throwaway Postgres**, migrates and seeds it; never point tests at production or testing Neon. The launcher needs a **non-root** user and local PostgreSQL server binaries. Run only **one test command at a time** against a shared database. Use `npm run preflight -- --plan --db tests/<file>.test.ts` to inspect selectors without executing (not passing evidence). If the sandbox cannot run a non-root Postgres, run pure unit tests locally and let the complete GitHub CI provide disposable-DB and browser evidence. Do not claim local tests passed when they could not run.
+
+When publishing via REST/snapshot rather than an actual Git push, first branch from the current `main` and commit using real Git ancestry. **Copying a merged-looking tree onto an old branch does not merge its history**: GitHub may still report conflicts and force a PR rebuild. If main advances, use a real merge/rebase commit, not a tree-only copy or force-push. Confirm the remote branch SHA, run `npm run check:quick` before publishing if the tool bypasses the pre-push hook, and use the repo's `docs/runbooks/SANDBOX-PUBLISH.md` for supported transfers. If local checks are blocked, say exactly which and rely on required exact-head CI.
 
 ## Sandbox notes (agent sessions, learned 2026-10-25)
 - `prisma generate` downloads are blocked: set `PRISMA_SCHEMA_ENGINE_BINARY` to any placeholder file and placeholder
