@@ -6,6 +6,7 @@ import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import { listPendingRdfSwitches } from "@/domains/tax/rdf-switches";
 import { listRuleChangeAttention } from "@/domains/rules/observations";
+import { listDeliveryReadinessAttention } from "@/domains/tax/delivery-readiness";
 import { ruleDef } from "@/domains/rules/registry";
 import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
@@ -62,6 +63,7 @@ import {
   officialRateReviewException,
   officialRateScheduledException,
   ruleChangeReviewException,
+  deliveryReadinessException,
   rdfSwitchException,
   taxSourceChangedException,
   taxSourceUnreachableException,
@@ -400,6 +402,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     officialRateAttention,
     rdfSwitchesPending,
     ruleChangeAttention,
+    deliveryReadinessAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -558,6 +561,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     canViewFinance ? listOfficialRateAttention(now) : Promise.resolve([]),
     canViewFinance ? listPendingRdfSwitches(now) : Promise.resolve([]),
     canViewFinance ? listRuleChangeAttention(now) : Promise.resolve([]),
+    canViewFinance ? listDeliveryReadinessAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -1005,6 +1009,17 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         now,
       }),
     ),
+    ...deliveryReadinessAttention.map((item) =>
+      deliveryReadinessException({
+        jurisdictionId: item.jurisdictionId,
+        name: item.name,
+        problems: item.problems,
+        sourceUrl: item.sourceUrl,
+        filesThrough: item.filesThrough,
+        licenseRequired: item.licenseRequired,
+        since: item.since,
+      }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -1250,6 +1265,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           officialRateAttention.length +
           rdfSwitchesPending.length +
           ruleChangeAttention.length +
+          deliveryReadinessAttention.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))

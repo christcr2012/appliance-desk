@@ -17,6 +17,7 @@ import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "./scope";
 import { assertNotFeedbackPicture } from "@/lib/photo-storage";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
+import { assertDeliveryReadyInTx } from "@/domains/tax/delivery-readiness";
 import { assertSigningPaymentReadyForDispatchInTx } from "@/domains/billing/signing-dispatch-readiness";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
@@ -269,6 +270,29 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
       });
       if (!request || !input.customerId || request.customerId !== input.customerId) {
         throw new Error("Choose a service request belonging to this customer.");
+      }
+    }
+
+    // FEETAX-2: delivery, installation and removal visits may only be
+    // put on the schedule for an address that is ready to deliver to.
+    // The agreement's own owner override (recorded at order save) is
+    // honoured; there is no override at the schedule itself.
+    if (["DELIVERY", "INSTALLATION", "REMOVAL"].includes(input.type)) {
+      const readinessAddressId =
+        input.serviceAddressId ??
+        (input.agreementId
+          ? (
+              await tx.rentalAgreement.findUnique({
+                where: { id: input.agreementId },
+                select: { serviceAddressId: true },
+              })
+            )?.serviceAddressId
+          : null);
+      if (readinessAddressId) {
+        await assertDeliveryReadyInTx(tx, {
+          serviceAddressId: readinessAddressId,
+          agreementId: input.agreementId ?? null,
+        });
       }
     }
 

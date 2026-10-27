@@ -22,9 +22,29 @@ function makeTx() {
     serviceAddress: {
       findUnique: async () => ({
         customerId: "cust-1",
+        state: "CO",
+        city: "Greeley",
         customer: { archivedAt: null },
       }),
     },
+    // FEETAX-2: the draft save runs the delivery readiness check; the
+    // fake address is confirmed into the state-collected jurisdiction.
+    addressTaxLocation: {
+      findFirst: async () => ({
+        status: "VERIFIED",
+        jurisdictions: [
+          {
+            jurisdiction: {
+              id: "tax-jurisdiction-co",
+              name: "State of Colorado",
+              level: "STATE",
+              administration: "STATE_COLLECTED",
+            },
+          },
+        ],
+      }),
+    },
+    jurisdictionReadiness: { findUnique: async () => null },
     rentalAgreement: {
       create: rentalAgreementCreate,
       findUniqueOrThrow: (...args: unknown[]) => findUniqueOrThrow(...args),
