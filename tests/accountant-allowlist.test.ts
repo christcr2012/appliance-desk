@@ -122,6 +122,7 @@ const DOMAIN_ALLOWLIST = [
   "domains/decisions/index.ts",
   "domains/exceptions/index.ts",
   "domains/paperwork/records.ts",
+  "domains/tax/filing-packet.ts",
   "domains/tax/policy-choices.ts",
   "domains/tax/retention.ts",
   "domains/tax/returns-view.ts",

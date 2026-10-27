@@ -88,6 +88,21 @@ describe.skipIf(!enabled)("ACCT-1 cash-basis adjusting entries on real Postgres"
     expect(after.summary.rows.find((r) => r.accountId === suppliesId)?.amountCents ?? 0).toBe(0);
   });
 
+  it("an adjusting entry dated before the Books opening date refuses", async () => {
+    await expect(
+      createAdjustingEntry(
+        { kind: "person", userId: ownerId },
+        {
+          dateKey: "2025-12-15", memo: "Too early",
+          lines: [
+            { accountId: repairsId, debitCents: 100, creditCents: 0 },
+            { accountId: suppliesId, debitCents: 0, creditCents: 100 },
+          ],
+        },
+      ),
+    ).rejects.toThrow(/books opening date/);
+  });
+
   it("an adjustment touching the bank account is left out of cash figures WITH a review note", async () => {
     const entry = await prisma.journalEntry.create({
       data: {

@@ -47,6 +47,14 @@ export async function createAdjustingEntry(
   }
   return prisma.$transaction(async (tx) => {
     await assertBooksWriter(tx, writer, ["OWNER", "ADMIN", "ACCOUNTANT"]);
+    // An entry dated before the Books opening date would sit in the journal and the balance
+    // sheet but outside every profit period and export range — refuse it up front.
+    const settings = await tx.businessSettings.findUnique({
+      where: { id: "singleton" }, select: { booksStartDate: true },
+    });
+    if (settings?.booksStartDate && date.getTime() < settings.booksStartDate.getTime()) {
+      throw new BooksInputError("That date is before your books opening date, so the entry would fall outside your reports and exports. Use the opening date or later.");
+    }
     const accounts = await tx.ledgerAccount.findMany({
       where: { id: { in: input.lines.map((l) => l.accountId) } },
       select: { id: true, systemRole: true, active: true, name: true },
