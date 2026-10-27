@@ -18,6 +18,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   COLLECTION_STEP: "money",
   CONTINUITY: "system",
   SETUP_GUIDE: "system",
+  VAULT: "system",
   PRIVACY_DUTY: "system",
   LATE_FEE_REVIEW: "money",
   DECISIONS_STARTING_VALUES: "taxes",

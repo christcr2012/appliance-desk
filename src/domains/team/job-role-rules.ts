@@ -53,6 +53,7 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   "privacy-security": "management",
   // SETUP-1: owner-only; a job role that includes Settings can open it, nobody else.
   "setup-guide": "management",
+  vault: "management",
   feedback: "feedback",
 };
 

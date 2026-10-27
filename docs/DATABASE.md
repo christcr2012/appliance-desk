@@ -1,3 +1,9 @@
+## November 11 — Colorado and local filings (CMP-4, additive)
+
+Migration `20261111000000_cmp4_colorado_local`.
+- `ComplianceProfile` gains the local-filing facts: `tradeName` (the name the business trades under, if any — an LLC's statement of trade name never renews, C.R.S. § 7-71-104, so it carries no dates), `usdotNumber` (digits only; the FMCSA biennial update month and odd/even years are read off its last two digits), `truckRegistrationMonth` (1–12), `greeleyLicenseDate` (the date on the city's license; renewals fall every two years on that date), and the Secretary of State registered-agent block (`registeredAgentName`, `registeredAgentAddress`, `registeredAgentCity`, `registeredAgentState`, `registeredAgentZip`) printed as exact values to type on the SOS periodic report. All nullable: a missing fact means the obligation shows without dates, never an invented deadline.
+- Two dated rules are seeded as RESEARCHED `LegalRuleVersion` rows by the migration: `co.bpp.exemption_threshold` (5,600,000 cents — the $56,000 Weld County total-actual-value exemption for 2026, compared against the fleet's total original cost, the figure the assessor's actual value derives from) and `co.bpp.extension` (the declaration extension fees, $20 for 10 days / $40 for 20 days). The Weld forms DS 056 and DS 060 are vendored as fillable PDFs under `src/domains/compliance/forms/co/` and pinned in the forms manifest; the forms are never pre-filled with the owner's tax ID or a signature.
+
 ## November 10 — Income tax helpers (CMP-2, additive)
 
 Migration `20261110000000_cmp2_income_tax`.
@@ -1422,7 +1428,6 @@ The starting Manager job role gains the new owner/admin `feedback` screen. All f
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
 
-
 ### BA-1: books autopilot (implementation branch)
 
 The additive `20261026050000_books_autopilot` migration adds an automatic-enrollment marker,
@@ -1485,6 +1490,17 @@ All three tables are in the backup manifest.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
 
+## MCP-2 backup-artifact ledger (additive, 2026-10-25)
+
+`BackupArtifact` tracks the protected storage **pathname only**, file hash and size, database migration/revision,
+the source automation run, verification stage, and an optional media-manifest parent link. The database artifact and
+its latest complete media pair must be retained even when past the configured 30-day default. Never store Blob tokens,
+signed URLs or private image payloads in this table. It participates in the backup manifest and disaster restore;
+restored ledger rows are historical facts, not permission to use the restored store or automatically restart a job.
+`BusinessSettings.backupRetentionDays` defaults to 30 (owner range 7–365).
+Migration: `20261026010000_mcp2_backup_artifacts`; additive with no data rewrite.
+
+
 ### OPS-8: continuity (migration `20261109000000_continuity`)
 - `BusinessSettings` gains the "If something happens to me" details (`continuityEmergencyName/Contact`, `continuitySuccessorName/Contact`, `continuityCpaName/Contact`, `continuityAttorneyName/Contact`, `continuityRecordsNote`, `continuityReviewedAt`) and the owner-only pause switch (`chargesPausedAt`, `chargesPausedByUserId`, `chargesPausedNote`). Null `chargesPausedAt` = charges run normally.
 - `YearlyCheckup` — one row per calendar year the December check-up was finished: `year` (primary key), `completedAt`, `completedByUserId`, `ticked` (list of item keys), `note`. In the backup manifest.
@@ -1499,3 +1515,13 @@ The three new tables are in the backup manifest.
 ### BA-3 review evidence (implementation branch)
 
 Additive migration `20261026070000_books_month_review` retains review reasons and accountant-send evidence per month, owner review reminder day (default 15), optional accountant destination, and expense no-receipt explanations. It never rewrites the original ledger or opens a provider connection. Accountants receive a report only when the OWNER explicitly selects Send.
+
+## November 12 — Logins vault and emergency access (VAULT-2, additive)
+
+Migration `20261112000000_vault`.
+- `VaultCredential` — one saved business login: `title`, `url`, and the three secret columns `usernameEncrypted`, `passwordEncrypted`, `notesEncrypted` (AES-256-GCM `v1:` format via `src/lib/field-crypto.ts`, but under the separate `VAULT_ENCRYPTION_KEY` — never the compliance key, never plaintext, never logged; DTOs carry only a masked username and has-value flags). `totpHint` is plain text by design (where the second-step code comes from — never a TOTP secret). `lastRotatedOn` + `rotateEveryMonths` drive the To do rotation reminder; `version` supports edit-conflict checks. Owner-only at the domain boundary: every other role gets the same not-found answer as a missing row. In the backup manifest — backed up still encrypted (a restore without the vault key leaves the values unreadable). Linked from `BusinessPaperwork.credentialId` (VAULT-1).
+- `VaultUnlock` — one row per live unlock: `userId`, `sessionId` (the exact sign-in session), `expiresAt` (grant + 5 minutes). Created only after Better Auth verifies a fresh second-step code. Deleted by sign-out-everywhere, password/email change and second-step change, at the same points ACC-6 forgets remembered devices. Not backed up (null in the manifest).
+- `EmergencyAccessRequest` — the emergency-access lifecycle: `tokenHash` (only the SHA-256 hash of the link token is stored; the token itself is shown to the owner once), `status` (LINK_READY, WAITING, DENIED, CODE_SENT, VERIFIED, CONSUMED, SUPERSEDED), the contact snapshot (`contactName`, `contactEmail`, `contactPhone` — copied from the settings at link creation, so later setting edits never redirect a live request), `requestedAt`, `waitEndsAt`, the reminder stamps (`remindedHalfwayAt`, `remindedDayBeforeAt` — each reminder sends once), `startNoticeFailedAt` (set when the start warning could not be delivered on any channel; shown on the owner's vault page and retried by the daily sweep until a delivery lands, then cleared), `deniedAt`, the one-time code kept only as `codeHash` (SHA-256 of request id + code) with `codeExpiresAt` and `codeAttempts`, and `exportExpiresAt` (code confirmed + 24 hours) with `downloadedAt` set when the one-time export is taken. Not backed up (null in the manifest): a restore re-issues links instead of resurrecting one-time state.
+- `BusinessSettings` gains the emergency settings: `emergencyAccessEnabled` (default false — the feature ships off), `emergencyContactName`, `emergencyContactEmail`, `emergencyContactPhone`, `emergencyWaitDays` (default 7, CHECK 1–30).
+
+Routes: `/desk/vault` and `/desk/vault/[id]` (OWNER only); the public `/emergency/[token]` page and its one-time `/emergency/[token]/download`; the daily reminder sweep at `/api/cron/emergency-access` (registered in `vercel.json` and the automation health registry). The vault lockout is not a column: it is derived from `vault.unlock_failed` audit rows (5 within 15 minutes → locked until 30 minutes after the latest failure).

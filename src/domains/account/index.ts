@@ -99,7 +99,7 @@ export async function recordAccountEvent(userId: string, action: AccountEvent, d
 }
 
 export type AccountNoticeKind = "profile" | "password" | "email_requested" | "email_changed" | "backup_codes" | "two_step_off" | "access_changed" | "team_removed" | "team_restored"
-  | "sign_in_paused" | "new_device" | "sign_in_reset" | "two_step_changed" | "job_role_changed";
+  | "sign_in_paused" | "new_device" | "sign_in_reset" | "two_step_changed" | "job_role_changed" | "vault_locked";
 
 const NOTICE_TEXT: Record<AccountNoticeKind, { subject: string; line: (extra?: string) => string }> = {
   profile: { subject: "Your account details were changed", line: () => "Your name or phone number on Appliance Desk was just changed." },
@@ -122,6 +122,7 @@ const NOTICE_TEXT: Record<AccountNoticeKind, { subject: string; line: (extra?: s
   job_role_changed: { subject: "Your job role was changed", line: (extra) => `Your job role on Appliance Desk was changed${extra ? ` to ${extra}` : ""}, which changes the screens you can open. You were signed out; sign in again to continue.` },
   two_step_changed: { subject: "Your second sign-in step was changed", line: (extra) => `The way you get your second sign-in step on Appliance Desk was changed${extra ? ` to ${extra}` : ""}.` },
   two_step_off: { subject: "Two-step sign-in was turned off", line: () => "Two-step sign-in was turned off for your Appliance Desk account and you were signed out everywhere." },
+  vault_locked: { subject: "Your logins vault is locked", line: (extra) => `Too many wrong codes were tried on your logins vault, so it is locked${extra ? ` until ${extra}` : ""}. No login was shown or changed. If that was not you, change your password right away.` },
 };
 
 export type NoticeOutcome = "SENT" | "NOT_ATTEMPTED" | "REJECTED" | "UNKNOWN" | "ERROR";
@@ -224,6 +225,13 @@ export async function finishPasswordChange(
   } catch (error) {
     console.error("[account] forgetting remembered devices after password change failed", error instanceof Error ? error.name : "unknown");
   }
+  // VAULT-2: a changed password also ends any logins-vault unlock.
+  try {
+    const { clearVaultUnlocks } = await import("@/domains/vault/unlock");
+    await clearVaultUnlocks(userId);
+  } catch (error) {
+    console.error("[account] clearing vault unlocks after password change failed", error instanceof Error ? error.name : "unknown");
+  }
   await recordAccountEvent(userId, "account.password_changed", { signedOutOtherDevices: signedOut, otherDevicesSignOutFailed: signOutFailed });
   const warning = await noticeWarning(userId, "password");
   return { signedOut, signOutFailed, ...(warning ? { warning } : {}) };
@@ -256,6 +264,9 @@ export async function completeEmailChange(user: { id: string; email: string }): 
     // ACC-6: a changed sign-in email forgets remembered devices.
     const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
     await forgetTrustedDevices(user.id);
+    // VAULT-2: and ends any logins-vault unlock.
+    const { clearVaultUnlocks } = await import("@/domains/vault/unlock");
+    await clearVaultUnlocks(user.id);
     if (detail?.oldEmail) await noticeWarning(user.id, "email_changed", { to: detail.oldEmail, extra: maskEmail(user.email) });
   } catch {
     // The change itself already happened; a failed note must never break the sign-in flow.

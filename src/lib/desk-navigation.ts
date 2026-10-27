@@ -60,7 +60,7 @@ export const DESK_NAV_ALIASES: Record<string, string[]> = {
   // CMP-1: Compliance belongs to the Taxes area (next to sales tax).
   "/desk/sales-tax": ["/desk/compliance"],
   "/desk/more": [
-    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/setup-guide", "/desk/vehicle", "/desk/continuity", "/desk/insurance", "/desk/account", "/desk/feedback",
+    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/setup-guide", "/desk/vault", "/desk/vehicle", "/desk/continuity", "/desk/insurance", "/desk/account", "/desk/feedback",
   ],
 };
 
@@ -75,6 +75,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
   ["paperwork", "Business records", "Your LLC, EIN, licenses, insurance and accounts, with reminders before anything needs renewing.", "owner"],
   ["setup-guide", "Set up your business", "Guided walkthroughs for your LLC, tax accounts, bank, licenses, insurance and backups, with automatic checks.", "owner"],
+  ["vault", "Logins vault", "Your business logins, kept encrypted and shown only after a fresh sign-in code, plus emergency access for someone you trust.", "owner"],
   ["continuity", "If something happens to me", "Who to call, a live snapshot of the business, the pause-charges switch and your yearly check-up.", "owner"],
   ["vehicle", "Vehicle and mileage", "The delivery vehicle, its license rules, the mileage log and the yearly mileage deduction.", "finance"],
   ["insurance", "Insurance", "Your policies, when each one ends, workers' compensation and certificate requests.", "owner"],

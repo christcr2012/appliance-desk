@@ -29,14 +29,19 @@ test("Today to Customers immediately shows loading or the destination, then a co
 
 test("record title remains accessible after following a customer link with motion enabled and reduced", async ({ page }) => {
   for (const preference of ["no-preference", "reduce"] as const) {
-    await page.emulateMedia({ reducedMotion: preference });
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/desk/customers", { waitUntil: "load" });
-    const record = page.locator('ul[aria-label="Customers"] a[href^="/desk/customers/"]').first();
+    for (const width of [390, 1280]) {
+      await page.emulateMedia({ reducedMotion: preference });
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/desk/customers", { waitUntil: "load" });
+      const selector = width < 768
+        ? 'ul[aria-label="Customers"] a[href^="/desk/customers/"]'
+        : 'table a[href^="/desk/customers/"]';
+      const record = page.locator(selector).first();
     await expect(record).toBeVisible();
     const name = (await record.innerText()).trim();
     await record.click();
     await expect(page).toHaveURL(/\/desk\/customers\/[^/?]+/);
     await expect(page.getByRole("main").getByRole("heading", { level: 1, name })).toBeVisible();
+    }
   }
 });

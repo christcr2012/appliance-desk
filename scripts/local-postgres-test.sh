@@ -76,6 +76,9 @@ case "$*" in
   *compliance.spec*) ;;
   *) export COMPLIANCE_ENCRYPTION_KEY="$(printf '0123456789abcdef0123456789abcdef' | base64)" ;;
 esac
+# The vault key has no no-key spec, so every spec gets it (a different
+# throwaway string from the compliance key, so the keys differ in tests).
+export VAULT_ENCRYPTION_KEY="$(printf 'fedcba9876543210fedcba9876543210' | base64)"
 export BETTER_AUTH_URL=http://localhost:3000
 export NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Never allow an inherited deployment setting to activate a real provider.

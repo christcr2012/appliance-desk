@@ -37,4 +37,5 @@ test("offline desk uses only the public fallback and restores online page", asyn
     await tryAgain.click({ timeout: 3000 }).catch(() => undefined);
   }
   await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+
 });

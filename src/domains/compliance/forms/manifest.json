@@ -34,19 +34,31 @@
       "retrievedOn": "2026-10-26",
       "sha256": "66f57ff425c780706f82e243921b207f523e0b13080214ef4111cc69791d4102",
       "source": "https://www.irs.gov/e-file-providers/iris-taxpayer-portal-csv-templates (template formatting guides)",
-      "title": "IRIS Taxpayer Portal CSV header — Form 1099-NEC (column list transcribed from the IRS IRIS template formatting guide)"
+      "title": "IRIS Taxpayer Portal CSV header \u2014 Form 1099-NEC (column list transcribed from the IRS IRIS template formatting guide)"
     },
     "irs/iris_csv_misc_header.csv": {
       "retrievedOn": "2026-10-26",
       "sha256": "ac248690fe87c672a9657b250d599fb742b004bdc918a711d73c13e5e2b0d362",
       "source": "https://www.irs.gov/e-file-providers/iris-taxpayer-portal-csv-templates (template formatting guides)",
-      "title": "IRIS Taxpayer Portal CSV header — Form 1099-MISC (column list transcribed from the IRS IRIS template formatting guide)"
+      "title": "IRIS Taxpayer Portal CSV header \u2014 Form 1099-MISC (column list transcribed from the IRS IRIS template formatting guide)"
     },
     "co/dr0104ep_2026.pdf": {
       "retrievedOn": "2026-10-27",
       "sha256": "2b4e33fe2bdc4f5e3b324687f11ef7a0b22698673341a7a8b07764203946b12c",
       "source": "https://tax.colorado.gov/sites/tax/files/documents/DR_0104EP_2026.pdf",
       "title": "DR 0104EP, Colorado Estimated Income Tax Payment Form (2026; worksheet page index 2, fillable payment voucher page index 4)"
+    },
+    "co/ds056_2022.pdf": {
+      "retrievedOn": "2026-10-27",
+      "sha256": "15575c69dfd98232c2a5569da98a84254fcb7f9fccdfe4bcc5d7e76418d1d5ce",
+      "source": "https://www.weld.gov/files/sharedassets/public/departments/assessor/documents/personal-property-ds056-declaration-and-instructions_1.pdf",
+      "title": "DS 056, Personal Property Declaration Schedule (Weld County Assessor; instructions pages 0-1, form pages 2-3)"
+    },
+    "co/ds060_2022.pdf": {
+      "retrievedOn": "2026-10-27",
+      "sha256": "1b126326757d97c04fd9546d00ee8940803c73bb01cf49d87015017307ca8bc3",
+      "source": "https://www.weld.gov/files/sharedassets/public/departments/assessor/documents/personal-property-ds060-leasing-declaration-and-instructions_1.pdf",
+      "title": "DS 060, Lessor's Personal Property Declaration Schedule (Weld County Assessor; instructions pages 0-1, form pages 2-3)"
     }
   }
 }

@@ -13,6 +13,75 @@ Named customer-list-to-record title transitions and desk-area crossfades now hav
 browser regression coverage; full product CI/review have not run. Temporary lockfile-generator
 workflow is removed before PR. All AR-11 acceptance stays in progress until CI and bundle budget pass.
 
+
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
+
+
+
+## October 27 — VAULT-2: Logins vault and emergency access (in build)
+
+Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
+encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
+beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
+Copy and saving a secret all need an **unlock**: a fresh second-step code verified by Better Auth itself (the
+same methods as sign-in), good for 5 minutes on that session only; every reveal is audited with the field
+name, never the value; shown values hide after 30 seconds. Five wrong codes in 15 minutes lock the vault for
+30 minutes and email the owner (a new `vault_locked` account notice); sign-out-everywhere, password/email
+change and second-step change clear unlocks at the same points ACC-6 forgets devices. A grep test keeps the
+four encrypted-secret column names inside the vault and paperwork domains only (SETUP-1's guide now reads
+record facts through a paperwork helper). Logins link to VAULT-1 records both ways (the record page shows
+"Login: …"); rotation reminders land on To do as a `VAULT` item when a login carries a change-every setting.
+Backups keep credentials still encrypted; unlock rows and emergency requests are never backed up.
+**Emergency access ships switched off**: an owner setting (contact name/email/phone, wait 1–30 days, starting
+value 7) plus a one-time link whose token is stored only as a hash. The public `/emergency/[token]` page runs
+the flow — request (owner reminded by email and text at the start), a daily cron sweep reminding halfway and
+a day before the wait ends, deny at any time, then a code sent to the SAVED contact only, and one download
+(records pack + the vault decrypted into a PDF) that works once inside 24 hours. Filed DQ-VAULT-BANK (bank
+logins allowed, with the honest on-screen note) and DQ-CONT-SUCCESSOR. Proof: `tests/vault.test.ts` (masking,
+rotation, key separation), `tests/vault-secret-fields-grep.test.ts`, `tests/vault-integration.test.ts` (real
+Postgres, serial: owner boundary, unlock lifecycle, lockout, emergency end to end), `e2e/vault.spec.ts`
+(browser-e). Next for this lane: **ACCT-1** (accountant sign-in), which also unblocks Lane 4's TAXBEN-2.
+
+## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
+GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
+selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings
+(portalled Confirm interactions and long labels) were fixed and regression-tested; replies posted.
+Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
+optimistic Snooze and bundle budget remain. No user payment or permission path changed.
+
+## October 27 — CMP-4 merged (PR #670)
+
+CMP-4 is on main (squash 95de266b): the Colorado and local filings — the Weld County business personal
+property declaration (January 1 snapshot from the asset records with possession read from the custody
+episodes, the $56,000 exemption check with an owner-confirmed close when under, the filled DS 056 /
+DS 060 forms gated on the vendored printing being the filing's own year, and the itemized spreadsheet),
+the Secretary of State periodic report with the exact values to type, the trade name entry (an LLC's
+Colorado trade name never needs renewal — C.R.S. § 7-71-104), the Greeley business license on its
+two-year cycle from the recorded license date, the truck registration month, and the USDOT biennial
+schedule read off the recorded USDOT number. Two PRs (#668, then its successor #670) and six Codex
+findings — all real, all fixed with regression tests. Lane 5's compliance line is now complete except
+CMP-5, which stays dormant until the business has employees.
+
+## October 27 — CMP-2 merged (PR #660)
+
+CMP-2 is on main (squash e4e9cf31): every books account mapped to a Schedule C line, the year-end
+accountant packet (CSV + PDF) prepared from posted journals under the approve flow, the 4562 and 4797
+worksheets, quarterly federal and Colorado estimates by the prior-year safe harbor from owner-entered
+tax-year facts (no prior year → words only, no number), the DR 0104EP and 1040-ES vouchers filled at
+download time with nothing stored, and the 1099-K tie-out. One PR, one review round: three Codex
+findings, all real, fixed with regression tests. CMP-2 merging unblocked Lane 4's TAXBEN-1. Two honest
+gaps recorded in the PR: no TXF export (no authoritative TXF 042 spec could be confirmed) and the
+Colorado 70%-of-actual-tax estimate prong is not computed (DQ-CMP-CO-EST).
+
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
 Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
@@ -29,13 +98,11 @@ also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthrou
 `tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
 saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
-## October 27 — CMP-3 merged (PR #656); CMP-2 in progress
+## October 27 — CMP-3 merged (PR #656)
 
 CMP-3 is on main (squash f103c7fc): 1099s and W-9s, the IRIS portal CSV and A2A client, and the Form 8300
 detector, after three PRs (#654, #655, #656) and ten Codex findings — all real, all fixed with regression
-tests. Lane 5 is now building **CMP-2** (income tax helpers: Schedule C packet, 4562/4797 worksheets,
-quarterly federal and Colorado estimates, 1099-K tie-out) on branch `ai/vivienne/cmp-2`; the CMP-3 close-out
-rides at the base of that branch. CMP-2 merging also unblocks Lane 4's TAXBEN-1.
+tests.
 
 ## October 26 — Lane 7 (back-office operations) close-out
 Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653. Each merged at a green exact-head `ci` with Codex findings answered. Not built: letting a successor use the pause switch in an emergency needs VAULT-1 (does not exist yet). Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
@@ -79,7 +146,16 @@ remembered lists, optimistic helper and bundle speed check.
 Branch `ai/chatgpt/ar-11-keyboard-freshness`, head after latest main merge. Adds on-desktop
 navigation keys and a searchable help dialog, plus guarded refresh on Today, Bills and Customers.
 The shifted-key ordering bug was fixed; exact-head CI and review passed before merge. AR-11 is not yet complete (touch, view transitions, skeletons, bundle budget).
+
+## October 26 — MCP-2 PR #611 all tests green, finishing merge sync
+
+Branch `ai/chatgpt/mcp-2-backup-reliability`, PR #611. Full CI 40443264938
+passed all 11 jobs on previous head, including throwaway PostgreSQL, backup
+restore and five browser groups. Latest `main` merged before final exact-head
+CI/review; no real backup provider or production data was touched.
+
 ## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
+
 ## October 26 — TFA-3: official-page watches with strict parsers (in progress)
 
 Branch `ai/claude/ops-3`. New **More → Vehicle and mileage** screen (`/desk/vehicle`): the delivery vehicle (year, make, model, VIN shown masked, plate, registration month, odometer at purchase, maintenance every N miles/months, medical card date) with the **weight rating (GVWR) required**. From the weight the screen says, in plain words, "No special license" (under 16,001 lb), "No CDL, but Colorado's commercial-vehicle rules apply" (16,001–26,000 lb; a medical card is asked for, a setting) or "A commercial driver's license is needed" (26,001 lb and up). The **Driver view** gets a "Mileage today" card: type the odometer when you start and when you finish; the trip's purpose ("Deliveries and pickups", "Service visits") and stops come from that day's visits, and only one route trip per vehicle per day can exist. The owner can add a trip by hand (a supply run) and sees business miles per year, the IRS rate from the dated rule book (`us.mileage_rate`, 72.5¢ for 2026) and the standard-rate deduction in whole cents. To do items: registration month (this month and the month before), maintenance due (by miles or months), medical card missing/expiring/expired.
@@ -98,6 +174,8 @@ the city publishes one (never a guess). Local proof: parsers 13/13, observation 
 ## October 26 — BA-3: guided monthly Books review (PR #624)
 
 Completed four month-end source checks, immutable accountant CSV package and explicit owner-approved email with honest provider outcomes, owner-only audited month closing, expense receipt explanations, reminder items and role-safe screens. BA-1 and BA-2 prerequisites are merged. CI run 40441051070 passed full tests, browser/accessibility (all five shards), secret scan and typecheck at `d0fa86a2`; all 10 Codex findings dispositioned and threads resolved. Reconciled newer main without discarding other lanes. The final documentation-only commit must still pass its exact-head CI before guarded merge. No customer email, payment, live settings or production data changed.
+
+## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
@@ -343,6 +421,7 @@ learn about a payment from events already sent; the nightly check can only follo
 ## October 26 — Tax and fee rule book (TFA-1, merged PR #617)
 
 Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit kept for their next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 20 unit tests pass here; 53 database tests pass on a fresh database migrated from scratch. First CI run came back red (secret scan, two unit shards, two browser shards, 4 review comments); one fix patch follows: the owner's existing settings are carried into the rule book, a second value for the same start date supersedes the first, late changes adjust incrementally, the credit is kept for the next bill instead of an old open one, the database check that blocked rule-versioned delivery-fee records is relaxed, and the Rules browser tests use the right labels. Two more fixes after that: the carry-over only carries a setting the owner actually changed (an unguarded carry created default OWNER rows on every fresh database and blocked other versions for the same date), and the branch merged main (BA-1 #610) to clear a merge conflict. The checks never started on the fix commit — snapshot pushes don't reliably start them — so the run was started by hand (run #2618) and came back red with 2 failures: the secret scan flagged the `.gitleaksignore` comment itself (it spelled out the flagged pattern), and the Rules browser tests failed on an accessibility duplicate-`<main>` and on the Change sheet never opening. Second fix patch: the comment is rewritten so it no longer spells out the pattern, with a fingerprint entry covering the historical occurrence; the page no longer renders its own `<main>` (the desk shell already provides one); and the Change sheet now receives only plain data — the full rule definition carries a zod schema and a `describe` function, which React refuses to pass from a Server Component, so the sheet never opened at all. Proof: all 3 Rules browser tests pass locally against a production build on the lane's own database (port 5434). That patch was pushed through the custom GitHub MCP, which started CI on its own; run 40346700557 came back all green at head `98da4545`. All 4 Codex review threads were answered and resolved. The PR would not merge at first — GitHub's test merge conflicted on `.gitleaksignore` alone (the branch and main had both appended allowlist blocks after the same base line). Fixed by taking main's block verbatim on the branch and moving the 463b1043 entry to the middle of the file, where it merges cleanly (verified with a local test merge); that push also started CI on its own and went green at head `af3fda28`. **Merged 2026-10-26 as `cb1c3618` (squash, PR #617).** The merge commit's secret scan flagged the three rule-key lines under the merge commit, so a small follow-up PR refreshes those three fingerprints to `cb1c3618`. Next: TFA-2.
+
 
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 

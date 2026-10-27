@@ -44,6 +44,13 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   codes or the app; staff may use any method). It's a setting you can change later.
 - [x] **Decision: when should accounts and sign-in (ACC-1…ACC-5) be built?** Answered 2026-10-23 in chat: **right after
   O-2B** (the admin-limits piece now in review).
+- [ ] **Confirm your private backup storage (MCP-2).** When the recovery update reaches the testing app,
+  open Desk → System health → Backup and recovery; confirm it says **backup store** or **private photo store**
+  (never public pictures), and the private photo check says Connected. If it says not set up, ask whoever manages
+  Vercel to connect a private store using only the setting names the screen needs — do not paste any storage
+  credential in chat or source control. Ready when: the checked nightly release has installed MCP-2.
+  You'll know it worked when a daily backup has a checked date and the last complete recovery set shows a date;
+  do not tick this for a local test or until that hosted evidence appears.
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 
@@ -55,9 +62,10 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   Encryption keys (same key as the CMP-1 row above). Never paste it in a chat or GitHub. Worked when
   Compliance › Business facts lets you enter your EIN.
 
-- [ ] **Vault encryption key (about 5 minutes).** When VAULT-2 ships, follow the same walkthrough: More → Set up
+- [ ] **Vault encryption key (about 5 minutes).** Follow the same walkthrough: More → Set up
   your business → Encryption keys (the second step — a different key from the compliance key). Never paste it in a
-  chat or GitHub. Worked when Business › Logins lets you save one login.
+  chat or GitHub. Worked when More → Logins vault lets you save one login (until the key is set, that page says
+  "Not set up yet").
 - [ ] **Fill in "If something happens to me" and ask your attorney about a successor member (about 15 minutes).** Open
   More › If something happens to me and type who to call, who would keep the business running, your CPA and attorney, and
   where records are kept (never passwords). Then ask your attorney whether your LLC agreement names a successor member
