@@ -26,6 +26,12 @@ async function withOneOwner(run: (ownerId: string) => Promise<void>) {
   });
   await prisma.user.updateMany({ where: { id: { in: others.map((row) => row.id) } }, data: { archivedAt: started } });
   const settings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+  // Another real-database test that runs the nightly job leaves system-made starting-value records behind in this
+  // shared throwaway database; start from none so "once per question" is judged only on this test's own run.
+  const leftovers = await prisma.decisionRecord.findMany({
+    where: { via: "MIGRATION", answeredByUserId: null }, select: { id: true } });
+  await prisma.decisionScheduledChange.deleteMany({ where: { decisionRecordId: { in: leftovers.map((row) => row.id) } } });
+  await prisma.decisionRecord.deleteMany({ where: { id: { in: leftovers.map((row) => row.id) } } });
   try {
     await run(owner.id);
   } finally {

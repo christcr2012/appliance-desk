@@ -290,14 +290,18 @@ export async function createDraftAgreement(
   const requestedId = input.requestKey
     ? draftRequestId(userId, input.requestKey)
     : undefined;
-  const settings = await getBusinessSettings();
+  // Late fee terms the person left out come from Settings, and are only looked up when a new draft is really created.
+  // A repeated save request is compared on what the person actually sent, so a Settings change between the first
+  // save and a retry never turns the retry into "different terms".
   const terms = {
     customerId: input.customerId,
     serviceAddressId: input.serviceAddressId,
     termMonths,
     depositCents: input.depositCents ?? 0,
     damageWaiverCents: input.damageWaiverCents ?? 0,
-    ...lateFeeTermsForNewAgreement(input, settings),
+    ...(input.lateFeeGraceDays !== undefined ? { lateFeeGraceDays: input.lateFeeGraceDays } : {}),
+    ...(input.lateFeeCents !== undefined ? { lateFeeCents: input.lateFeeCents } : {}),
+    ...(input.lateFeePercent !== undefined ? { lateFeePercent: input.lateFeePercent } : {}),
     paidInFullInAdvance,
   };
 
@@ -322,6 +326,7 @@ export async function createDraftAgreement(
   const saved = await savedRequest();
   if (saved) return saved;
 
+  const settings = await getBusinessSettings();
   try {
     return await prisma.$transaction((tx) =>
       createDraftAgreementInTx(tx, userId, input, {

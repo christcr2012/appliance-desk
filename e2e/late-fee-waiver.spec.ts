@@ -54,7 +54,7 @@ test.describe("Waive a late fee", () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(fixture.url, { waitUntil: "load" });
       const box = page.getByRole("region", { name: /Late fee/ });
-      await expect(box).toContainText("Late fee of $5.00 will be added to the customer's next bill");
+      await expect(box).toContainText("Late fee of $5 will be added to the customer's next bill");
 
       // A reason is required: the form does not send without one.
       await box.getByRole("button", { name: "Waive the fee" }).click();

@@ -101,6 +101,7 @@ vi.mock("@/lib/prisma", () => ({
     agreementSigningPayment: { findMany: mocks.signingPayment, count: mocks.signingPaymentCount },
     preDeliveryCancellation: { findMany: mocks.cancellationRefunds, count: mocks.cancellationRefundCount },
     auditLog: { findMany: mocks.audit },
+    decisionRecord: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null) },
     exceptionSnooze: { findMany: mocks.snoozes },
     customerTaxExemption: {
       findMany: mocks.taxExemption,
