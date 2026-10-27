@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { forgetTrustedDevicesInTx } from "./trusted-devices";
+import { clearVaultUnlocksInTx } from "@/domains/vault/unlock";
 
 export type SessionSummary = {
   id: string;
@@ -70,6 +71,8 @@ export async function revokeOtherSessions(
     });
     // ACC-6: signing out everywhere forgets remembered devices, so the next sign-in asks for a code again.
     await forgetTrustedDevicesInTx(tx, userId);
+    // VAULT-2: it also ends any logins-vault unlock, so a fresh code is needed to reveal again.
+    await clearVaultUnlocksInTx(tx, userId);
     await tx.auditLog.create({
       data: {
         userId,
@@ -99,6 +102,7 @@ export async function revokeStaffSessionsByOwner(
     const removed = await tx.session.deleteMany({ where: { userId: staffUserId } });
     // ACC-6: signing someone out everywhere forgets their remembered devices too.
     await forgetTrustedDevicesInTx(tx, staffUserId);
+    await clearVaultUnlocksInTx(tx, staffUserId);
     await tx.auditLog.create({
       data: {
         userId: ownerUserId,
