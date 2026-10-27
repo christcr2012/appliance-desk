@@ -14,4 +14,16 @@ records). Risk: **tax compliance** — refuses to schedule where the business is
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+In progress on `ai/vivienne/feetax-2` (2026-10-27). Built: the readiness catalogue (all 58
+incorporated places in the 50-mile table seeded with rent rule, license rule, filing channel,
+source and review state — no tax rates seeded, they still come from the rate versions), the
+`deliveryTaxReadiness` check (undecided rules, missing/expired license, delivery-count rules,
+out-of-state, unconfirmed address), the owner-only audited override for "rules not decided"
+only, refusals wired into the estimate quote, estimate approval, estimate conversion, desk
+order save, job create and job (re)schedule, the delivery counter written at job completion,
+the "Get ready to deliver in {city}" To do item for places a real address needs, and the
+Taxes › Delivery area screen with "Check an address". FEETAX-1 is listed as a dependency, but
+the check consumes none of FEETAX-1's code (verified — it reads the address lookup, the
+taxability rules, VAULT-1's business records and the existing order surfaces), so it landed
+first on the heartbeat's sequencing; VAULT-1 merged 2026-10-27 (#659). DQ-FEETAX2-1 (Boulder
+rent "likely") and DQ-FEETAX2-2 (presumed licenses) filed as starting values.
