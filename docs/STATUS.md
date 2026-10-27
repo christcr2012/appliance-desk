@@ -1,4 +1,18 @@
 ## October 26 — OPS-4: insurance (built, PR pending)
+## October 26 — AR-11 mobile refresh and safe-area chrome (PR pending)
+
+Branch `ai/chatgpt/ar-11-mobile-pull-refresh`: touch-only 72px downward pull refresh on Today, Bills and Customers,
+with cancelled/sideways/scrolled/dirty/offline and reduced-motion guards plus a manual
+Refresh button when motion is reduced. Phone chrome respects safe areas; static form and
+server-action paths are untouched. Unit/browser proof and exact-head CI still required.
+React transitions, swipe row actions, remembered lists, optimistic helper and bundle budget remain.
+## October 26 — Lane 3 complete: automatic Books, setup and monthly review
+BA-1 PR #610, BA-2 PR #613 and BA-3 PR #624 are merged into main. The final PR heads passed CI:
+BA-1 e85e4358 (run 40317413250), BA-2 6337a754 (run 40357496521) and BA-3 eb2a99c7
+(run 40444991438). BA-3 has no unresolved review threads. The nightly records, first-time setup,
+and month-end checks are built; accountant emailing requires a separate owner action. No live
+provider setting, customer message, production records or payments were changed. Lane 3 has no
+remaining implementation cards. Real-business acceptance and release status are separate from CI.
 ## October 26 — AR-11 desk-wide loading screens (in review)
 
 Branch `ai/chatgpt/ar-11-loading-skeletons` makes every top-level desk page area show a kit list or record skeleton while
