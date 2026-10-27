@@ -19,7 +19,7 @@ describe("AR-11 desk keyboard access", () => {
   it("ignores typing fields and editable elements", () => {
     const input = document.createElement("input");
     const editor = document.createElement("div");
-    editor.contentEditable = "true";
+    editor.setAttribute("contenteditable", "true");
     document.body.append(input, editor);
     expect(shortcutTypingTarget(input)).toBe(true);
     expect(shortcutTypingTarget(editor)).toBe(true);
@@ -59,6 +59,6 @@ describe("AR-11 desk keyboard access", () => {
   it("shows help using ? and closes on Escape", async () => {
     render(<DeskShortcuts role="OWNER" />);
     await act(async () => fireEvent.keyDown(document, { key: "?" }));
-    expect(screen.getByText("Keyboard shortcuts")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
   });
 });

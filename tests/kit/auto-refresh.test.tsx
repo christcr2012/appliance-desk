@@ -52,11 +52,13 @@ describe("AR-11 quiet page freshness", () => {
     render(<AutoRefresh everySeconds={60} />);
     act(() => vi.advanceTimersByTime(60_000));
     expect(nav.refresh).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Page freshness")).toHaveTextContent("Updated 1 min ago");
     form.remove();
     visible = false;
     act(() => fireEvent(document, new Event("visibilitychange")));
     act(() => vi.advanceTimersByTime(60_000));
     expect(nav.refresh).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Page freshness")).toHaveTextContent("Updated 2 min ago");
     visible = true;
     act(() => fireEvent(document, new Event("visibilitychange")));
     expect(nav.refresh).toHaveBeenCalledTimes(1);

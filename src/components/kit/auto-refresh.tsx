@@ -33,14 +33,16 @@ function pageHasUnfinishedWork(): boolean {
 /** No background fetch: polling stops at ten idle minutes, in hidden tabs and while a form/dialog is open. */
 export function AutoRefresh({ everySeconds = 60 }: { everySeconds?: number }) {
   const router = useRouter();
-  const updatedRef = useRef(Date.now());
-  const lastInteraction = useRef(Date.now());
+  const updatedRef = useRef(0);
+  const lastInteraction = useRef(0);
   const hiddenAt = useRef<number | null>(null);
-  const [updatedAt, setUpdatedAt] = useState(0);
-  const [clock, setClock] = useState(0);
+  const [ageMs, setAgeMs] = useState(0);
 
   useEffect(() => {
-    // This is an external browser subscription, not an effect to derive React state.
+    // Initialize the first page-load time only after mount; never call Date.now() during render.
+    const mounted = Date.now();
+    updatedRef.current = mounted;
+    lastInteraction.current = mounted;
     const activity = () => { lastInteraction.current = Date.now(); };
     const canRefresh = () => refreshPermitted({
       now: Date.now(),
@@ -54,8 +56,7 @@ export function AutoRefresh({ everySeconds = 60 }: { everySeconds?: number }) {
       router.refresh();
       const now = Date.now();
       updatedRef.current = now;
-      setUpdatedAt(now);
-      setClock(now);
+      setAgeMs(0);
     };
     const visibility = () => {
       const now = Date.now();
@@ -71,7 +72,8 @@ export function AutoRefresh({ everySeconds = 60 }: { everySeconds?: number }) {
     window.addEventListener("scroll", activity, { passive: true, capture: true });
     document.addEventListener("visibilitychange", visibility);
     const timer = window.setInterval(() => {
-      setClock(Date.now());
+      // Even if network or unsaved work blocks refreshing, tell the truth about data age.
+      setAgeMs(Math.max(0, Date.now() - updatedRef.current));
       update();
     }, Math.max(15, everySeconds) * 1000);
     return () => {
@@ -83,6 +85,5 @@ export function AutoRefresh({ everySeconds = 60 }: { everySeconds?: number }) {
     };
   }, [everySeconds, router]);
 
-  const age = updatedAt === 0 ? 0 : clock - updatedAt;
-  return <span aria-label="Page freshness" className="text-xs font-medium text-ink-soft">{freshnessLabel(age)}</span>;
+  return <span aria-label="Page freshness" className="text-xs font-medium text-ink-soft">{freshnessLabel(ageMs)}</span>;
 }
