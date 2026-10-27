@@ -1,8 +1,12 @@
-## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (in progress)
-Branch `ai/chatgpt/ar-11-optimistic-snooze-20261027`: a shared non-money optimistic-action helper, Today Snooze integration,
-plain server-failure rollback, Undo, duplicate-submit guard and focused tests. Not yet verified by CI,
-reviewed or merged. Do not mark the full AR-11 card complete; swipe PR #662 has merged,
-and React 19.3, view/title transitions and bundle performance budget still remain.
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
 
 ## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
 GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
