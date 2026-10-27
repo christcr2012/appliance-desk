@@ -5353,7 +5353,7 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "IN PROGRESS — Lane 5 (Vivienne), branch ai/vivienne/cmp-4, baseline dd5f7ff1",
+      "status": "MERGED — PR #670, squash 95de266b on main (2026-10-27)",
       "migration": "20261111000000_cmp4_colorado_local (ComplianceProfile CMP-4 facts, co.bpp rule seeds)",
       "budget": 400,
       "units": [
