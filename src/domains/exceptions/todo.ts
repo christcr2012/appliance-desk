@@ -32,6 +32,7 @@ const ACTION_LABEL: Record<string, string> = {
   COLLECTION_STEP: "Open collections",
   CONTINUITY: "Open continuity",
   SETUP_GUIDE: "Set up",
+  VAULT: "Update login",
   PRIVACY_DUTY: "Open privacy and security",
   LATE_FEE_REVIEW: "Open the bill",
   DECISIONS_STARTING_VALUES: "Review",
