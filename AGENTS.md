@@ -138,6 +138,17 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
   (ready for review, review threads, auto-merge). A `create_blob` call does not move a branch: commit and update the
   ref within a few blobs, then verify the remote SHA.
 - External waits (CI) are checkpoints: do other eligible work, then re-check at a real transition. No poll loops.
+- **Assembly-line delivery (Chris, 2026-10-27):** At session start check open PRs and actual `main`, then take the
+  next approved, non-overlapping outcome. Prefer completing 2–3 closely related whole roadmap items in one usable
+  PR when they share the same screen/data and safety boundary; different providers or permission/money risks get
+  separate PRs. These numbers are a planning aid, never a PR quota or reason to delay a finished outcome.
+- **Build once, test once:** inspect existing code before adding new code, put data, server rules, UI, errors,
+  acceptance tests and a short card/STATUS update into the same change. Run focused tests and quick checks before
+  the push. Run the full CI suite once on the complete PR tree, not after each tiny edit.
+- **Coordinate concurrent agents by files, not age:** do not start work another open PR already owns, do not
+  rewrite another agent's branch, and prefer independent files while their CI runs. After a merge, take the next
+  item without rereading every evergreen document. Never synchronize branches merely because `main` advanced.
+  A *real* GitHub merge conflict does require careful reconciliation of both sides before merge.
 
 ## 6. Branches, PRs, review, merge
 
@@ -154,11 +165,15 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
   last push. The `review-gate` status (`.github/workflows/review-gate.yml`, `scripts/review-gate.mjs`) reads exactly
   that: it fails while a Codex finding has no reply (from the PR author or a collaborator, saying fixed / already fixed / superseded / still open) or while neither Codex nor a self-review note exists, and passes
   by itself the moment they do. A clean sync with main does not erase a self-review note that names your last real commit.
-- **Merge (authorized by Chris):** the `ci` and `review-gate` checks green at the exact head and acceptance met with
-  evidence → merge. **Turn on auto-merge (squash) as soon as the PR is open** and keep working: GitHub merges it the
-  moment both checks pass, and **main moving does not force a re-sync** (the "branch must be up to date" rule is off,
-  Chris 2026-10-27; CI runs again on `main` after every merge and the nightly release only takes checked commits).
-  Sync with main yourself only when GitHub reports a real conflict. A merge never covers a hard limit in section 1.
+- **Merge (authorized by Chris):** acceptance with evidence plus `ci` and `review-gate` green at the exact
+  head are mandatory; resolve blocking Codex findings first. Use squash auto-merge, **without an up-to-date-branch
+  requirement** (Chris 2026-10-27). If `review-gate` is verified as a *required* GitHub ruleset check, enable auto-merge
+  as soon as the PR is ready; GitHub waits for both checks. If it is only *running* but not required, GitHub could
+  merge on `ci` alone: do **not** arm auto-merge until `review-gate` is green and review comments are handled.
+  In that case enable auto-merge then, or merge yourself with an expected-head SHA after both green. Never assume
+  creating the check makes it required. A different agent merging to `main` does **not** require a re-sync; only a
+  real GitHub merge conflict does. CI runs on `main` after every merge; nightly release uses checked code.
+  A merge never covers a hard limit in section 1.
 - A security or money hole already on `main` is fixed immediately in its own PR.
 - **Never delete remote branches, tags or PRs without asking Chris.** Park or list stale ones instead.
 
