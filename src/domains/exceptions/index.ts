@@ -24,6 +24,7 @@ import { listUnsignedAgreements } from "./unsigned-agreements";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, listCleaningNeeded } from "./turning-points-attention";
 import { requireRole } from "@/lib/session";
 import { listBankPaymentSlow } from "./bank-payment-attention";
+import { listDisputeAttention } from "./dispute-attention";
 import { listLateFeeReview } from "./late-fee-attention";
 import { notInFlightWhere } from "@/domains/billing/in-flight";
 import type { Prisma } from "@prisma/client";
@@ -1093,6 +1094,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const signedDeliveryAttention = canViewFinance ? await listSignedDeliveryAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const noTurningPoints = { rows: [] as ExceptionItem[], total: 0 };
   const bankPaymentsSlow = canViewFinance ? await listBankPaymentSlow(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const paymentDisputes = canViewFinance ? await listDisputeAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const lateFeeReview = canViewFinance ? await listLateFeeReview(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const heldPayments = canViewFinance ? await listHeldPaymentAttention(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const depositDecisions = canViewFinance ? await listDepositDecisionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
@@ -1131,6 +1133,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...signedDeliveryAttention.rows,
     ...heldPayments.rows,
     ...bankPaymentsSlow.rows,
+    ...paymentDisputes.rows,
     ...newLeadContact.rows,
     ...leadFollowUps.rows,
     ...approvedQuotes.rows,
@@ -1191,6 +1194,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["CANCELLATION_REFUND_DUE", cancellationRefundAttention],
       ["SIGNED_DELIVERY_UNSCHEDULED", signedDeliveryAttention],
       ["BANK_PAYMENT_SLOW", bankPaymentsSlow],
+      ["PAYMENT_DISPUTE", paymentDisputes],
       ["LATE_FEE_REVIEW", lateFeeReview],
       ["HELD_PAYMENT_DECISION", heldPayments],
       ["DEPOSIT_DECISION", depositDecisions],

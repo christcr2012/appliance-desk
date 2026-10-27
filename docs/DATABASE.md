@@ -1392,6 +1392,16 @@ null for background operations; automatic audit records explicitly say `by: auto
 `BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
 Existing financial entries remain append-only and closed months stay immutable.
 
+### OPS-5: payment disputes (additive migration `20261103000000_disputes`)
+
+- `PaymentDispute` — one row per Stripe dispute (unique `stripeDisputeId`): amount, reason, Stripe status, our state
+  (`DisputeState`: NEEDS_RESPONSE, UNDER_REVIEW, WON, LOST, CLOSED), `isBank`, `dueBy`, links to the payment, bill and
+  customer (all Restrict), who sent the one evidence answer and when (`evidenceSubmittedAt`, `evidenceFileId`), and for bank
+  disputes whether the owner marked it handled. In the backup manifest.
+- `Customer.bankDebitBlockedAt` / `bankDebitBlockedReason` — set by a bank dispute (the saved bank method is also cleared);
+  only the owner or an admin clears it.
+- `BusinessSettings.achDisputeWindowDays` (default 60) — days a deposit paid by bank debit waits before it can be refunded.
+
 
 ### OPS-1: recalls (additive migration `20261102000000_recalls`)
 

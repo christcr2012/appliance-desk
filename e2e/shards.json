@@ -97,6 +97,7 @@
       "my-account.spec.ts",
       "feedback.spec.ts",
       "fleet-report.spec.ts",
+      "disputes.spec.ts",
       "decisions.spec.ts"
     ]
   }

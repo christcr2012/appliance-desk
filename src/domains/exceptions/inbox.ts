@@ -13,6 +13,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   BOOKS_SETUP: "taxes",
   PAST_DUE_INVOICE: "money",
   BANK_PAYMENT_SLOW: "money",
+  PAYMENT_DISPUTE: "money",
   LATE_FEE_REVIEW: "money",
   HELD_PAYMENT_DECISION: "money",
   DEPOSIT_DECISION: "money",

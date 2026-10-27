@@ -25,6 +25,7 @@ const ACTION_LABEL: Record<string, string> = {
   CLEANING_NEEDED: "Open appliance",
   PAST_DUE_INVOICE: "Review unpaid invoice",
   BANK_PAYMENT_SLOW: "See bank payment",
+  PAYMENT_DISPUTE: "Answer dispute",
   LATE_FEE_REVIEW: "Open the bill",
   HELD_PAYMENT_DECISION: "Decide",
   DEPOSIT_DECISION: "Decide",
