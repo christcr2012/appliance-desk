@@ -7,6 +7,7 @@ import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { recordedRetailSales } from "./rdf-sales-evidence";
 import { recordShopSaleDeliveryFeeInTx } from "./rdf-shop-sale";
+import { rdfFeeAbsorbedByLateApproval } from "./rdf-switches";
 import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 
 type Tx = Prisma.TransactionClient;
@@ -130,21 +131,10 @@ async function decide(
   if (rental.taxability === "UNDECIDED") return pending(rental.reason);
   if (rental.taxability === "EXEMPT") return notDue(rental.reason);
   const year = Number(businessDateKey(deliveredOn).slice(0, 4));
-  const [previous, current, account] = await Promise.all([
+  const [previous, current] = await Promise.all([
     recordedRetailSales(tx, year - 1),
     recordedRetailSales(tx, year),
-    tx.taxFilingAccount.findFirst({
-      where: {
-        kind: "SALES_RETURN",
-        jurisdictions: { some: { level: "STATE" } },
-      },
-      select: { frequency: true },
-    }),
   ]);
-  if (!account && previous === 0 && current > thresholdCents)
-    return pending(
-      "Confirm the Colorado filing frequency before calculating the 90-day grace period.",
-    );
   const applicability = retailDeliveryFeeStatus({
     today: deliveredOn,
     saleType: "RENTAL",
@@ -153,7 +143,6 @@ async function decide(
     currentYearRetailCents: current,
     thresholdCents,
     thresholdCrossedOn: settings.rdfThresholdCrossedOn,
-    frequency: account?.frequency ?? "MONTHLY",
     handling: settings.rdfHandling,
     cpaConfirmedOn: settings.rdfCpaConfirmedOn,
   });
@@ -186,13 +175,16 @@ async function decide(
       ),
       saleOn,
     };
+  // TFA-2 §6.3/§4a: a delivery made while its START switch awaited approval
+  // is never charged to the customer later; the business carries the fee.
+  const absorbed = await rdfFeeAbsorbedByLateApproval(tx, saleOn);
   return {
     status: "READY",
     reason: applicability.reason,
     saleOn,
     ruleVersionId: rate.version.id,
     amountCents: rate.value,
-    collectedFromCustomer: settings.rdfHandling === "COLLECT_FROM_CUSTOMER",
+    collectedFromCustomer: settings.rdfHandling === "COLLECT_FROM_CUSTOMER" && !absorbed,
   };
 }
 
