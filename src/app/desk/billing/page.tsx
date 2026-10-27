@@ -115,7 +115,7 @@ function hrefWith(params: URLSearchParams, changes: Record<string, string | null
   return query ? `/desk/billing?${query}` : "/desk/billing";
 }
 
-function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row: BillRow | undefined; closeHref: string; now: Date }) {
+function BillPanel({ detail, row, closeHref, now, readOnly }: { detail: InvoiceDetail; row: BillRow | undefined; closeHref: string; now: Date; readOnly?: boolean }) {
   const beingConfirmed = row?.beingConfirmed ?? detail.beingConfirmedCents > 0;
   const pill = billPill(
     { status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents, beingConfirmed },
@@ -181,16 +181,21 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
           </h3>
           <Timeline items={timeline} emptyLabel="Nothing recorded yet" now={now} />
         </section>
-        <Link href={fullHref} className="inline-flex min-h-10 items-center text-[15px] font-bold text-primary hover:underline">
-          Open full bill →
-        </Link>
+        {!readOnly && (
+          <Link href={fullHref} className="inline-flex min-h-10 items-center text-[15px] font-bold text-primary hover:underline">
+            Open full bill →
+          </Link>
+        )}
       </div>
     </SidePanel>
   );
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<Search> }) {
-  await requireRole("OWNER", "ADMIN");
+  // ACCT-1: the accountant sees the bills and payments lists read-only (the money row of the
+  // accountant spec). Every money action stays OWNER/ADMIN in its own action gate.
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
+  const accountant = session.user.role === "ACCOUNTANT";
   const search = await searchParams;
   const legacy = legacyBillsRedirect(search);
   if (legacy) redirect(legacy);
@@ -200,7 +205,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     Object.entries(search).flatMap(([key, value]) => (typeof value === "string" ? [[key, value]] : Array.isArray(value) && value[0] ? [[key, value[0]]] : [])),
   );
 
-  const header = (
+  const header = accountant ? (
+    <ScreenHeader title="Money" list />
+  ) : (
     <ScreenHeader
       title="Money"
       list
@@ -301,7 +308,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             mobileCardLink={false}
             rowHref={(row) => billHref(row)}
             selectedKey={params.open}
-            rowActions={billRowActions}
+            rowActions={accountant ? () => [] : billRowActions}
             currentSort={params.sort}
             empty={
               filtered ? (
@@ -315,7 +322,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           />
           <div className="hidden lg:block">{list.rows.length > 0 ? summaryLine : null}</div>
         </section>
-        {openDetail ? <BillPanel detail={openDetail} row={openRow} closeHref={closeHref} now={now} /> : null}
+        {openDetail ? <BillPanel detail={openDetail} row={openRow} closeHref={closeHref} now={now} readOnly={accountant} /> : null}
       </div>
     </div></PullToRefresh>
   );
