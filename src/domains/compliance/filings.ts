@@ -245,7 +245,8 @@ export async function prepareFiling(
   assertNoFullTaxId(preparedData);
   const preparedHash = hashPreparedData(preparedData);
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
+    // ACCT-1: editing the prepared figures (with the note in preparedData) is an accountant's allowed change.
+    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "ACCOUNTANT"]);
     const filing = await lockFilingInTx(tx, filingId);
     if (!["UPCOMING", "READY_FOR_REVIEW", "REJECTED"].includes(filing.state)) {
       throw new Error("This filing can't be prepared again in its current state.");
@@ -256,6 +257,9 @@ export async function prepareFiling(
         preparedData: preparedData as Prisma.InputJsonValue,
         preparedHash,
         state: "READY_FOR_REVIEW",
+        // New figures un-review and un-approve the filing: both marks were about the old numbers.
+        reviewedByUserId: null,
+        reviewedAt: null,
         approvedByUserId: null,
         approvedAt: null,
         version: { increment: 1 },
@@ -271,6 +275,48 @@ export async function prepareFiling(
       },
     });
   });
+}
+
+/**
+ * ACCT-1: the "Reviewed" mark — the accountant (or the owner/admin) has checked the prepared figures.
+ * It approves nothing and files nothing; preparing new figures clears it (see prepareFiling). The same
+ * mark serves the sales-tax side, whose returns are compliance filings too.
+ */
+export async function markFilingReviewed(actorId: string, filingId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "ACCOUNTANT"]);
+    const filing = await lockFilingInTx(tx, filingId);
+    if (filing.state !== "READY_FOR_REVIEW" || !filing.preparedHash) {
+      throw new Error("Only a prepared filing can be marked reviewed.");
+    }
+    await tx.complianceFiling.update({
+      where: { id: filingId },
+      data: { reviewedByUserId: actorId, reviewedAt: new Date(), version: { increment: 1 } },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId: actorId,
+        action: "compliance.review",
+        entityType: "ComplianceFiling",
+        entityId: filingId,
+        newValue: { preparedHash: filing.preparedHash },
+      },
+    });
+  });
+}
+
+/** Who marked this filing reviewed, and when — for the filing page's "Reviewed by …" line. */
+export async function getFilingReview(filingId: string): Promise<{ byName: string; at: Date } | null> {
+  const filing = await prisma.complianceFiling.findUnique({
+    where: { id: filingId },
+    select: { reviewedByUserId: true, reviewedAt: true },
+  });
+  if (!filing?.reviewedByUserId || !filing.reviewedAt) return null;
+  const reviewer = await prisma.user.findUnique({
+    where: { id: filing.reviewedByUserId },
+    select: { name: true, email: true },
+  });
+  return { byName: reviewer?.name || reviewer?.email || "A team member", at: filing.reviewedAt };
 }
 
 /**

@@ -27,7 +27,7 @@ async function completed(tx:Tx,id:string,dates:Date[]){
 }
 export async function getBankMatchDesk(userId:string,accountId:string){
  return prisma.$transaction(async tx=>{
-  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
   const bank=await tx.cashAccount.findUnique({where:{id:accountId}});
   if(!bank?.active)throw new CashEvidenceError("Account not found.");
   const observations=await tx.bankObservation.findMany({where:{cashAccountId:accountId,isActive:true},
@@ -60,7 +60,7 @@ export async function confirmBankMatch(userId:string,input:{
  if(!/^[A-Za-z0-9_-]{10,120}$/.test(input.commandKey))
   throw new CashEvidenceError("Safe match command key required.");
  return prisma.$transaction(async tx=>{
-  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
   const bank=await lockAccount(tx,input.accountId);
   const existing=await tx.bankMatchGroup.findUnique({where:{key:input.commandKey},include:{items:true}});
   if(existing){
@@ -108,7 +108,7 @@ export async function voidBankMatch(userId:string,groupId:string,version:number,
  const why=reason.trim();
  if(!why||why.length>300)throw new CashEvidenceError("A correction reason is required.");
  return prisma.$transaction(async tx=>{
-  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
   const old=await tx.bankMatchGroup.findUnique({where:{id:groupId}});
   if(!old)throw new CashEvidenceError("Match not found.");
   await lockAccount(tx,old.cashAccountId);
