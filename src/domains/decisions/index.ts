@@ -320,6 +320,8 @@ type ApplyInput = {
   now: Date;
   /** The context `previous` was read from (decides whether saving the same value again changes anything). */
   ctx: DecisionContext;
+  /** ACCT-1: see DecisionWriteMeta.professionalAnswer — set only by the accountant branch below. */
+  professionalAnswer?: boolean;
 };
 
 /** Record the decision, then save it now or keep it for its start date. Returns the record id. */
@@ -342,6 +344,7 @@ async function applyDecisionInTx(tx: Prisma.TransactionClient, actorId: string, 
     await input.subject.write(tx, actorId, input.value, null, {
       kind: input.kind, confirmedOn: input.confirmedOn, reason: input.reason, sources: input.sources,
       effectiveFrom: start.start, previousValue: input.previous,
+      professionalAnswer: input.professionalAnswer === true,
     });
   }
   return recordId;
@@ -464,7 +467,7 @@ async function professionalAudience(tx: Prisma.TransactionClient, subject: Decis
 
 async function recordProfessionalAnswerInTx(
   tx: Prisma.TransactionClient, actorId: string, subject: DecisionSubject, input: ProfessionalAnswerInput,
-  via: DecisionVia, now: Date, attachmentUrl: string | null,
+  via: DecisionVia, now: Date, attachmentUrl: string | null, professionalAnswer = false,
 ) {
   const professionalName = cleanText(input.professionalName, 120, "name of who answered");
   if (!professionalName) throw new Error("Enter who answered.");
@@ -492,7 +495,7 @@ async function recordProfessionalAnswerInTx(
   await applyDecisionInTx(tx, actorId, {
     subject, kind: "PROFESSIONAL_ANSWER", value: chosen, previous, effectiveFrom: input.effectiveFrom,
     confirmedOn: answeredOn, reason: `Answered by ${who}${explanation ? ": " + explanation : ""}`.slice(0, 500),
-    sources: [], record: { ...professional, explanation }, now, ctx,
+    sources: [], record: { ...professional, explanation }, now, ctx, professionalAnswer,
   });
 }
 
@@ -523,7 +526,10 @@ export async function recordProfessionalAnswer(
         professionalName: me?.name?.trim() ? me.name : input.professionalName,
         professionalFirm: me?.firm?.trim() ? me.firm : input.professionalFirm,
       };
-      await recordProfessionalAnswerInTx(tx, actorId, subject, mine, via, now, attachmentUrl);
+      if (input.value !== null && input.effectiveFrom && new Date(input.effectiveFrom).getTime() > now.getTime()) {
+        throw new Error("An accountant's answer takes effect right away. For an answer that starts later, the owner records it instead.");
+      }
+      await recordProfessionalAnswerInTx(tx, actorId, subject, mine, via, now, attachmentUrl, true);
       return;
     }
     await beginWrite(tx, actorId);

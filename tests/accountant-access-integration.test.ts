@@ -49,6 +49,8 @@ import {
 } from "@/domains/books/management";
 import { getTaxWorkspaceOverview } from "@/domains/tax/workspace-overview";
 import { getCashDesk } from "@/domains/books/cash/desk";
+import { getCashReadiness } from "@/domains/books/cash/cash-readiness";
+import { saveTaxPolicyChoiceInTx } from "@/domains/tax/policy-choices";
 import { getCashAccounts } from "@/domains/books/cash/accounts";
 import { updateMyProfile } from "@/domains/account";
 import { createAdjustingEntry, reverseAdjustingEntry } from "@/domains/books/adjustments";
@@ -316,6 +318,42 @@ describe.skipIf(!enabled)("ACCT-1 accountant access on real Postgres", () => {
     });
     expect(record.professionalName).toBe("Casey CPA");
     expect(record.professionalFirm).toBe("Casey & Co");
+  });
+
+  it("decisions: a value-changing CPA answer applies through the setting writer; future starts refuse", async () => {
+    const before = await prisma.businessSettings.findUniqueOrThrow({
+      where: { id: "singleton" }, select: { shortTermLeaseElection: true },
+    });
+    try {
+      await recordProfessionalAnswer(accountantId, "IN-33-ELECTION", {
+        value: "PAY_ON_ACQUISITION", effectiveFrom: null,
+        professionalName: "Forged Name", professionalFirm: "Forged LLC", answeredOn: businessDateKey(new Date()),
+      }, "SCREEN");
+      const after = await prisma.businessSettings.findUniqueOrThrow({
+        where: { id: "singleton" }, select: { shortTermLeaseElection: true },
+      });
+      expect(after.shortTermLeaseElection).toBe("PAY_ON_ACQUISITION");
+      // The same writer called directly, without the decisions professional-answer path, still refuses.
+      await expect(
+        prisma.$transaction((tx) => saveTaxPolicyChoiceInTx(tx, accountantId, "shortTermLeaseElection", "COLLECT_ON_RENTALS")),
+      ).rejects.toThrow();
+      // A future-dated accountant answer refuses (the scheduled path is the owner's).
+      await expect(
+        recordProfessionalAnswer(accountantId, "IN-33-ELECTION", {
+          value: "COLLECT_ON_RENTALS", effectiveFrom: "2999-01-01",
+          professionalName: "Casey CPA", professionalFirm: "Casey & Co", answeredOn: businessDateKey(new Date()),
+        }, "SCREEN"),
+      ).rejects.toThrow(/takes effect right away/);
+    } finally {
+      await prisma.businessSettings.update({
+        where: { id: "singleton" }, data: { shortTermLeaseElection: before.shortTermLeaseElection },
+      });
+    }
+  });
+
+  it("cash readiness: the bank checks page's reader admits the accountant", async () => {
+    const readiness = await getCashReadiness(accountantId);
+    expect(Array.isArray(readiness.banks)).toBe(true);
   });
 
   it("paperwork: shared-only, masked, and uploads are stamped as the accountant's", async () => {

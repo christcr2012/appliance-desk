@@ -105,8 +105,11 @@ const DECISION_GUARD_ALLOWLIST = [
 // Every domain file whose actor gates may name the accountant.
 const DOMAIN_ALLOWLIST = [
   "domains/account/index.ts",
+  "domains/billing/setup-tax-planning.ts",
   "domains/books/adjustments.ts",
+  "domains/books/bad-debt-policy.ts",
   "domains/books/cash/accounts.ts",
+  "domains/books/cash/cash-readiness.ts",
   "domains/books/cash/desk.ts",
   "domains/books/cash/matches.ts",
   "domains/books/exports/index.ts",
@@ -119,7 +122,10 @@ const DOMAIN_ALLOWLIST = [
   "domains/decisions/index.ts",
   "domains/exceptions/index.ts",
   "domains/paperwork/records.ts",
+  "domains/tax/policy-choices.ts",
+  "domains/tax/retention.ts",
   "domains/tax/returns-view.ts",
+  "domains/tax/setup.ts",
   "domains/tax/workspace-overview.ts",
 ];
 

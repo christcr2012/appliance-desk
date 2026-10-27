@@ -85,6 +85,19 @@ async function cashJournalLines(tx:Tx,rows:JournalRows):Promise<{
    result.push(...mapEntry(entry).filter(x=>["EXPENSE","CONTRA_INCOME"].includes(x.accountType)));
    continue;
   }
+  // ACCT-1: an adjusting entry that only moves amounts between income/expense accounts is a
+  // reclassification of figures the cash basis already counted (a paid expense recategorized),
+  // so its lines belong in the cash figures too — including its reversal. One that touches a
+  // balance-sheet account (cash itself, receivables, assets) cannot be mapped onto cash safely:
+  // leave it out and say so, never silently.
+  if(entry.sourceType==="ADJUSTMENT"){
+   const lines=mapEntry(entry);
+   if(lines.length&&lines.every(l=>["EXPENSE","INCOME","CONTRA_INCOME"].includes(l.accountType))){
+    result.push(...lines);continue;
+   }
+   needsReview.push("Adjusting entry "+entry.id+" ("+entry.periodKey+") changes balance-sheet accounts, so it is not in the cash-basis figures — check it against the accrual report.");
+   continue;
+  }
   if(entry.sourceType!=="PAYMENT"||entry.eventKind!=="PAYMENT_APPLIED")continue;
   const payment=await tx.payment.findUnique({where:{id:entry.sourceId},include:{receipt:true,invoice:true}});
   if(!payment?.receipt||payment.invoice.status==="DRAFT"||payment.invoice.status==="VOID"||
