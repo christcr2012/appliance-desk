@@ -1,6 +1,6 @@
 "use client";
 // AR-11: a touch-only shortcut to the same guarded row actions that remain available in the ⋯ menu.
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ActionButton } from "./action-button";
 import type { MenuItem } from "./types";
 
@@ -35,7 +35,7 @@ export function MobileSwipeCard({
 
   useEffect(() => {
     if (!open) return;
-    const closeOutside = (event: globalThis.PointerEvent) => {
+    const closeOutside = (event: PointerEvent) => {
       if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
     };
     document.addEventListener("pointerdown", closeOutside);
@@ -48,13 +48,14 @@ export function MobileSwipeCard({
     };
   }, [open]);
 
-  const pointerDown = (event: PointerEvent<HTMLLIElement>) => {
+  const pointerDown = (event: ReactPointerEvent<HTMLLIElement>) => {
+    if (!root.current?.contains(event.target as Node)) return;
     suppressNextClick.current = false;
     if (!swipable || event.pointerType !== "touch" || prefersReducedMotion()) return;
     if ((event.target as Element).closest("[data-swipe-actions]")) return;
     start.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
   };
-  const pointerUp = (event: PointerEvent<HTMLLIElement>) => {
+  const pointerUp = (event: ReactPointerEvent<HTMLLIElement>) => {
     const gesture = start.current;
     start.current = null;
     if (!gesture || event.pointerId !== gesture.id) return;
@@ -65,6 +66,8 @@ export function MobileSwipeCard({
     suppressNextClick.current = true;
   };
   const clickCapture = (event: MouseEvent<HTMLLIElement>) => {
+    // Radix dialogs are portals: events bubble through React but not through this DOM row.
+    if (!root.current?.contains(event.target as Node)) return;
     if (suppressNextClick.current) {
       suppressNextClick.current = false;
       event.preventDefault();
