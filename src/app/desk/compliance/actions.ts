@@ -15,6 +15,7 @@ import { saveBusinessFacts, ENTITY_TYPES, type EntityType } from "@/domains/comp
 import { obligationByKey } from "@/domains/compliance/registry";
 import { getComplianceProfile } from "@/domains/compliance/profile";
 import { businessDateKey } from "@/lib/business-date";
+import { formatMoney } from "@/lib/money-ui";
 
 // CMP-1: Compliance screen actions. Reads are OWNER/ADMIN; approvals and
 // submissions are OWNER-only in the domain. Staff job roles narrow by the
@@ -59,6 +60,14 @@ export async function saveFactsAction(
       truckGvwrLbs: gvwr === "" ? null : Number(gvwr),
       employees: Number(String(formData.get("employees") ?? "0")) || 0,
       hasHomeOffice: formData.get("hasHomeOffice") === "on",
+      payer: {
+        businessLegalName: String(formData.get("businessLegalName") ?? "").trim() || null,
+        businessAddress: String(formData.get("businessAddress") ?? "").trim() || null,
+        businessCity: String(formData.get("businessCity") ?? "").trim() || null,
+        businessState: String(formData.get("businessState") ?? "").trim().toUpperCase() || null,
+        businessZip: String(formData.get("businessZip") ?? "").trim() || null,
+        businessPhone: String(formData.get("businessPhone") ?? "").trim() || null,
+      },
     });
     // New facts can make new obligations apply (or schedule ones that were
     // waiting on a fact) — refresh the filing rows right away.
@@ -81,6 +90,31 @@ export async function prepareGuidedAction(filingId: string): Promise<ComplianceA
     const filing = await prisma.complianceFiling.findUnique({ where: { id: filingId } });
     if (!filing) return { error: "That filing no longer exists." };
     const obligation = obligationByKey(filing.obligationKey);
+    // CMP-3: the 1099 filings prepare from the year's books.
+    if (filing.obligationKey === "fed.1099_nec" || filing.obligationKey === "fed.1099_misc") {
+      const { build1099PreparedData } = await import("@/domains/compliance/information-returns");
+      const data = await build1099PreparedData(filing);
+      if (!data) return { error: "That filing's year could not be read." };
+      await prepareFiling(user.id, filingId, data);
+      revalidatePath(`/desk/compliance/${filingId}`);
+      revalidatePath("/desk/compliance");
+      return { ok: true };
+    }
+    // CMP-3: a Form 8300 filing prepares from the triggering cash receipt.
+    if (filing.obligationKey === "fed.8300") {
+      const data = (filing.preparedData ?? {}) as { totalCashCents?: number; receivedOn?: string; dueBy?: string };
+      await prepareFiling(user.id, filingId, {
+        // The detector's fields ride along — the filled form is built from them.
+        ...data,
+        what: "Form 8300 — cash over $10,000 from one customer. Download the filled draft, check it, and file it on the BSA E-Filing system.",
+        totalCashReceived: data.totalCashCents !== undefined ? formatMoney(data.totalCashCents) : "see the receipt",
+        cashReceivedOn: data.receivedOn ?? "",
+        fileBy: data.dueBy ?? businessDateKey(filing.dueOn),
+      });
+      revalidatePath(`/desk/compliance/${filingId}`);
+      revalidatePath("/desk/compliance");
+      return { ok: true };
+    }
     if (filing.obligationKey !== "co.sos.periodic_report") {
       return {
         error: `This filing is prepared by ${obligation?.unit ?? "a later step"} — it isn't ready to prepare here yet.`,
@@ -183,6 +217,28 @@ export async function notApplicableAction(filingId: string, note: string): Promi
     await markFilingNotApplicable(user.id, filingId, note || "Marked not needed.");
     revalidatePath(`/desk/compliance/${filingId}`);
     revalidatePath("/desk/compliance");
+    return { ok: true };
+  } catch (error) {
+    return { error: message(error) };
+  }
+}
+
+/** CMP-3: classify an expense category for 1099 reporting (never guessed). */
+export async function classifyCategoryAction(
+  filingId: string,
+  categoryId: string,
+  box: string,
+): Promise<ComplianceActionState> {
+  try {
+    const { user } = await requireRole("OWNER", "ADMIN");
+    await requireTaxesScreen(user);
+    const { setCategory1099Box, refresh1099Preparation } = await import("@/domains/compliance/information-returns");
+    await setCategory1099Box(user.id, categoryId, box === "" ? null : (box as "NEC_1" | "MISC_1" | "MISC_3"));
+    // The filing's prepared numbers must include the classification before
+    // the owner can approve them — refresh in place when it's waiting for
+    // review (PR #654 review finding).
+    await refresh1099Preparation(user.id, filingId);
+    revalidatePath(`/desk/compliance/${filingId}`);
     return { ok: true };
   } catch (error) {
     return { error: message(error) };
