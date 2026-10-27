@@ -90,7 +90,7 @@ const enabled = process.env.CI === "true" && parsed !== null && ["localhost", "1
 
 describe.skipIf(!enabled)("scenario 9: restore from backup and media recovery", () => {
   const tag = randomUUID().replaceAll("-", "");
-  const ids = { user: `sc9-user-${tag}`, customer: `sc9-customer-${tag}`, op: `sc9-op-${tag}`, openInvoice: `sc9-inv-open-${tag}`, paidInvoice: `sc9-inv-paid-${tag}` };
+  const ids = { user: `sc9-user-${tag}`, customer: `sc9-customer-${tag}`, op: `sc9-op-${tag}`, openInvoice: `sc9-inv-open-${tag}`, backupArtifact: `sc9-backup-${tag}`, paidInvoice: `sc9-inv-paid-${tag}` };
   const photoIds = [`sc9-photo-a-${tag}`, `sc9-photo-b-${tag}`];
   const photoPaths = [`jobs/sc9${tag.slice(0, 12)}/before.jpg`, `maintenance-requests/sc9${tag.slice(0, 12)}/after.png`];
   const photoBytes = ["scenario nine photo alpha", "scenario nine photo bravo"].map(bytesOf);
@@ -101,10 +101,12 @@ describe.skipIf(!enabled)("scenario 9: restore from backup and media recovery", 
   let backupFile = "";
 
   beforeAll(async () => {
-    for (const key of ["PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN", "PRIVATE_PHOTO_BLOB_STORE_ID", "BLOB_READ_WRITE_TOKEN", "VERCEL", "VERCEL_ENV"]) saved[key] = process.env[key];
+    for (const key of ["PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN", "PRIVATE_PHOTO_BLOB_STORE_ID", "BLOB_READ_WRITE_TOKEN", "BACKUP_BLOB_STORE_ID", "BACKUP_BLOB_READ_WRITE_TOKEN", "VERCEL", "VERCEL_ENV"]) saved[key] = process.env[key];
     process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN = PRIVATE_TOKEN;
     process.env.PRIVATE_PHOTO_BLOB_STORE_ID = "store_test";
     process.env.BLOB_READ_WRITE_TOKEN = BACKUP_TOKEN;
+    process.env.BACKUP_BLOB_STORE_ID = "store_backup";
+    process.env.BACKUP_BLOB_READ_WRITE_TOKEN = BACKUP_TOKEN;
     delete process.env.VERCEL;
     delete process.env.VERCEL_ENV;
     directory = await mkdtemp(path.join(tmpdir(), "appliance-desk-sc9-"));
@@ -125,6 +127,15 @@ describe.skipIf(!enabled)("scenario 9: restore from backup and media recovery", 
     await prisma.receipt.create({ data: { customerId: ids.customer, source: "MANUAL", amountCents: 4000, method: "check", receivedOn: new Date() } });
     await prisma.customerCredit.create({ data: { customerId: ids.customer, amountCents: 1500, remainingCents: 1500, reason: "sc9" } });
     await prisma.providerOperation.create({ data: { id: ids.op, kind: "SUBSCRIPTION_CREATE", subjectType: "RentalAgreement", subjectId: `sc9-agreement-${tag}`, idempotencyKey: `sc9-op-key-${tag}`, status: "UNKNOWN", attempts: 2, lastError: "provider outcome unknown" } });
+    // A media manifest can only belong to a hash-verified database artifact.
+    // Keep the fake ledger row in the disposable snapshot and remove it on cleanup.
+    await prisma.backupArtifact.create({ data: {
+      id: ids.backupArtifact,
+      kind: "DATABASE", state: "VERIFIED",
+      pathname: "backups/sc9-" + tag + ".json",
+      formatVersion: 2, sizeBytes: 42, sha256: "a".repeat(64),
+      verifiedAt: new Date("2026-10-06T08:00:00Z"),
+    } });
     for (const [i, pathname] of photoPaths.entries()) {
       storeOf(PRIVATE_TOKEN).set(pathname, { bytes: photoBytes[i], contentType: i === 0 ? "image/jpeg" : "image/png", etag: etagOf(photoBytes[i]) });
       await prisma.photo.create({ data: { id: photoIds[i], url: urlOf(PRIVATE_TOKEN, pathname) } });
@@ -133,6 +144,8 @@ describe.skipIf(!enabled)("scenario 9: restore from backup and media recovery", 
   afterAll(async () => {
     await purgeScenarioQueues(scenarioStartedAt);
     for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    await prisma.backupArtifact.deleteMany({ where: { databaseArtifactId: ids.backupArtifact } });
+    await prisma.backupArtifact.deleteMany({ where: { id: ids.backupArtifact } });
     await prisma.photo.deleteMany({ where: { id: { in: photoIds } } });
     await prisma.providerOperation.deleteMany({ where: { id: ids.op } });
     await prisma.customerCredit.deleteMany({ where: { customerId: ids.customer } });
@@ -192,7 +205,11 @@ describe.skipIf(!enabled)("scenario 9: restore from backup and media recovery", 
 
   it("copies the private photos with their hashes, then brings them back after the originals are lost", async () => {
     const backupUrl = urlOf(BACKUP_TOKEN, `backups/sc9-${tag}.json`);
-    const result = await runMediaInventoryAndCopy({ databaseBackupUrl: backupUrl, now: new Date("2026-10-06T09:00:00Z") });
+    const result = await runMediaInventoryAndCopy({
+      databaseArtifactId: ids.backupArtifact,
+      databaseBackupUrl: backupUrl,
+      now: new Date("2026-10-06T09:00:00Z"),
+    });
     const mine = result.manifest.entries.filter((e) => photoIds.includes(e.photoId));
     expect(mine).toHaveLength(2);
     for (const [i, entry] of photoIds.map((id) => mine.find((e) => e.photoId === id)!).entries()) {

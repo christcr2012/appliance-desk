@@ -3623,6 +3623,7 @@ model BusinessSettings {
   feedbackReopenDays     Int @default(90)
   // MCP-1: minutes after a job's usual (UTC cron) time before System health calls it late. Owner-editable, 15-1440.
   automationLateGraceMinutes Int @default(120)
+  backupRetentionDays Int @default(30)
   inspectionChecklist Json @default("[]")
 
   // Batch B D10: null means policy not set; dependent actions stay unavailable.
@@ -4157,6 +4158,44 @@ enum AutomationRunState {
   FAILED
   UNKNOWN
   SKIPPED
+}
+
+enum BackupArtifactKind {
+  DATABASE
+  MEDIA_MANIFEST
+}
+
+enum BackupArtifactState {
+  VERIFIED
+  UPLOADED_UNVERIFIED
+  FAILED
+  PRUNED
+}
+
+// MCP-2: immutable artifact identities plus verified state. Protected paths only;
+// bearer URLs, tokens and snapshot data never go into this ledger.
+model BackupArtifact {
+  id                 String @id @default(cuid())
+  kind               BackupArtifactKind
+  state              BackupArtifactState
+  runId              String?
+  databaseArtifactId String?
+  databaseArtifact   BackupArtifact?  @relation("BackupPair", fields: [databaseArtifactId], references: [id], onDelete: Restrict)
+  mediaManifests     BackupArtifact[] @relation("BackupPair")
+  pathname           String @unique
+  formatVersion      Int
+  migrationId        String?
+  appRevision        String?
+  sizeBytes          Int
+  sha256             String @db.Char(64)
+  tableCounts        Json?
+  photoCounts        Json?
+  failureStage       String?
+  createdAt          DateTime @default(now())
+  verifiedAt         DateTime?
+  prunedAt           DateTime?
+  @@index([kind, state, createdAt])
+  @@index([databaseArtifactId])
 }
 
 model AutomationRun {

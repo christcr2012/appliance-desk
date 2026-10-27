@@ -1,7 +1,13 @@
 ## October 27 — Lane 2 MCP-3 secure assistant connection (in progress, not shipped)
 
-Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Four focused tests and Prisma validate/client generation passed. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 has an updated rebased merge commit and is still pending exact-head CI. No customer data, hosting settings, production keys or live communications changed.
+Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Thirteen focused tests passed; scoped TypeScript checking exposed three fixable errors. New OAuth revocation tests require disposable PostgreSQL verification. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 merged at bc204189 after exact-head CI and resolved reviews. No customer data, hosting settings, production keys or live communications changed.
 
+## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
+GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
+selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings
+(portalled Confirm interactions and long labels) were fixed and regression-tested; replies posted.
+Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
+optimistic Snooze and bundle budget remain. No user payment or permission path changed.
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
 Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
@@ -68,7 +74,16 @@ remembered lists, optimistic helper and bundle speed check.
 Branch `ai/chatgpt/ar-11-keyboard-freshness`, head after latest main merge. Adds on-desktop
 navigation keys and a searchable help dialog, plus guarded refresh on Today, Bills and Customers.
 The shifted-key ordering bug was fixed; exact-head CI and review passed before merge. AR-11 is not yet complete (touch, view transitions, skeletons, bundle budget).
+
+## October 26 — MCP-2 PR #611 all tests green, finishing merge sync
+
+Branch `ai/chatgpt/mcp-2-backup-reliability`, PR #611. Full CI 40443264938
+passed all 11 jobs on previous head, including throwaway PostgreSQL, backup
+restore and five browser groups. Latest `main` merged before final exact-head
+CI/review; no real backup provider or production data was touched.
+
 ## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
+
 ## October 26 — TFA-3: official-page watches with strict parsers (in progress)
 
 Branch `ai/claude/ops-3`. New **More → Vehicle and mileage** screen (`/desk/vehicle`): the delivery vehicle (year, make, model, VIN shown masked, plate, registration month, odometer at purchase, maintenance every N miles/months, medical card date) with the **weight rating (GVWR) required**. From the weight the screen says, in plain words, "No special license" (under 16,001 lb), "No CDL, but Colorado's commercial-vehicle rules apply" (16,001–26,000 lb; a medical card is asked for, a setting) or "A commercial driver's license is needed" (26,001 lb and up). The **Driver view** gets a "Mileage today" card: type the odometer when you start and when you finish; the trip's purpose ("Deliveries and pickups", "Service visits") and stops come from that day's visits, and only one route trip per vehicle per day can exist. The owner can add a trip by hand (a supply run) and sees business miles per year, the IRS rate from the dated rule book (`us.mileage_rate`, 72.5¢ for 2026) and the standard-rate deduction in whole cents. To do items: registration month (this month and the month before), maintenance due (by miles or months), medical card missing/expiring/expired.
@@ -87,6 +102,8 @@ the city publishes one (never a guess). Local proof: parsers 13/13, observation 
 ## October 26 — BA-3: guided monthly Books review (PR #624)
 
 Completed four month-end source checks, immutable accountant CSV package and explicit owner-approved email with honest provider outcomes, owner-only audited month closing, expense receipt explanations, reminder items and role-safe screens. BA-1 and BA-2 prerequisites are merged. CI run 40441051070 passed full tests, browser/accessibility (all five shards), secret scan and typecheck at `d0fa86a2`; all 10 Codex findings dispositioned and threads resolved. Reconciled newer main without discarding other lanes. The final documentation-only commit must still pass its exact-head CI before guarded merge. No customer email, payment, live settings or production data changed.
+
+## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
@@ -332,6 +349,7 @@ learn about a payment from events already sent; the nightly check can only follo
 ## October 26 — Tax and fee rule book (TFA-1, merged PR #617)
 
 Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit kept for their next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 20 unit tests pass here; 53 database tests pass on a fresh database migrated from scratch. First CI run came back red (secret scan, two unit shards, two browser shards, 4 review comments); one fix patch follows: the owner's existing settings are carried into the rule book, a second value for the same start date supersedes the first, late changes adjust incrementally, the credit is kept for the next bill instead of an old open one, the database check that blocked rule-versioned delivery-fee records is relaxed, and the Rules browser tests use the right labels. Two more fixes after that: the carry-over only carries a setting the owner actually changed (an unguarded carry created default OWNER rows on every fresh database and blocked other versions for the same date), and the branch merged main (BA-1 #610) to clear a merge conflict. The checks never started on the fix commit — snapshot pushes don't reliably start them — so the run was started by hand (run #2618) and came back red with 2 failures: the secret scan flagged the `.gitleaksignore` comment itself (it spelled out the flagged pattern), and the Rules browser tests failed on an accessibility duplicate-`<main>` and on the Change sheet never opening. Second fix patch: the comment is rewritten so it no longer spells out the pattern, with a fingerprint entry covering the historical occurrence; the page no longer renders its own `<main>` (the desk shell already provides one); and the Change sheet now receives only plain data — the full rule definition carries a zod schema and a `describe` function, which React refuses to pass from a Server Component, so the sheet never opened at all. Proof: all 3 Rules browser tests pass locally against a production build on the lane's own database (port 5434). That patch was pushed through the custom GitHub MCP, which started CI on its own; run 40346700557 came back all green at head `98da4545`. All 4 Codex review threads were answered and resolved. The PR would not merge at first — GitHub's test merge conflicted on `.gitleaksignore` alone (the branch and main had both appended allowlist blocks after the same base line). Fixed by taking main's block verbatim on the branch and moving the 463b1043 entry to the middle of the file, where it merges cleanly (verified with a local test merge); that push also started CI on its own and went green at head `af3fda28`. **Merged 2026-10-26 as `cb1c3618` (squash, PR #617).** The merge commit's secret scan flagged the three rule-key lines under the merge commit, so a small follow-up PR refreshes those three fingerprints to `cb1c3618`. Next: TFA-2.
+
 
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 

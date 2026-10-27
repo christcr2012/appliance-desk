@@ -170,6 +170,7 @@ export const BACKUP_MODEL_POLICY = {
   LaunchSubscriber: "launchSubscriber",
   LaunchDelivery: "launchDelivery",
   AutomationRun: "automationRun",
+  BackupArtifact: "backupArtifact",
   SystemIssue: "systemIssue",
   SystemIssueNote: "systemIssueNote",
   OpsAgentKey: null,
