@@ -31,8 +31,10 @@ describe("AR-12 How do I guides", () => {
     expect(jobRoleAllowsPath([], "/desk/help")).toBe(true);
     expect(visibleHelpGuides("CUSTOMER", null)).toEqual([]);
     expect(visibleHelpGuides("STAFF", null).every(guide => !["card-payment", "refund-payment", "add-team", "retire-appliance", "practice-safely"].includes(guide.id))).toBe(true);
-    expect(visibleHelpGuides("STAFF", []).map(guide => guide.id)).toEqual(["snooze-task", "install-desk"]);
+    expect(visibleHelpGuides("STAFF", []).map(guide => guide.id)).toEqual(["install-desk"]);
+    expect(visibleHelpGuides("STAFF", null).map(guide => guide.id)).toEqual(["add-expense", "install-desk"]);
     expect(visibleHelpGuides("OWNER", null)).toHaveLength(15);
+    expect(HELP_GUIDES.find(guide => guide.id === "give-up-bill")?.href).toBe("/desk/billing");
     expect(visibleHelpGuides("ADMIN", ["tasks"]).map(guide => guide.id)).toEqual(["snooze-task", "install-desk"]);
   });
 });

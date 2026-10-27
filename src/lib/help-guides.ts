@@ -37,8 +37,8 @@ export const HELP_GUIDES: HelpGuide[] = [
   {
     id: "give-up-bill", question: "How do I give up on collecting a bill?",
     keywords: ["collections", "forgive", "uncollectible", "waive"],
-    steps: ["Open the Collections screen and locate the unpaid bill.", "Review the balance and any choices available for that bill.", "Use the give-up action only after checking the confirmation and its effect on what is owed."],
-    href: "/desk/collections",
+    steps: ["Open Money → Bills and find the unpaid bill.", "Choose Give up on this bill… from the bill actions to open the customer statement.", "Review the amount and confirmation carefully before giving up on collecting the bill."],
+    href: "/desk/billing",
   },
   {
     id: "start-rental", question: "How do I start a new rental?",
@@ -102,7 +102,8 @@ export const HELP_GUIDES: HelpGuide[] = [
   },
 ];
 
-const STAFF_GUIDES = new Set(["schedule-delivery", "schedule-pickup", "add-expense", "snooze-task", "install-desk"]);
+const STAFF_GUIDES = new Set(["add-expense", "install-desk"]);
+// Staff can submit expenses but cannot snooze Today, schedule visits, take/refund payments, or change Settings.
 
 /** Never advertise restricted destination actions to a role that cannot use them. The destination still guards itself. */
 export function visibleHelpGuides(role: string | undefined, jobScreens: readonly string[] | null): HelpGuide[] {
