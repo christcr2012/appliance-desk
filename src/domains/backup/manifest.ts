@@ -44,6 +44,8 @@ export const BACKUP_MODEL_POLICY = {
   PurchaseOrderReceiptOperation: "purchaseOrderReceiptOperation",
   PartStockMovement: "partStockMovement",
   RetiredAppliancePlan: "retiredAppliancePlan",
+  // OPS-2: the signed refrigerant statement details for scrapped or discarded appliances are business records.
+  RefrigerantRecord: "refrigerantRecord",
   ScrapPayment: "scrapPayment",
   StaffCapabilityOverride: "staffCapabilityOverride",
   // ACC-2: invitations are short-lived and hold only a hash of a link code; a restore re-invites instead.

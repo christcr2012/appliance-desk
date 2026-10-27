@@ -569,6 +569,9 @@ model ApplianceType {
   // Empty means the nightly check falls back to the type's own name.
   recallProductTerms String[] @default([])
 
+  // OPS-2: appliances of this type have a sealed refrigerant system, so scrapping or throwing one away needs a refrigerant record.
+  hasRefrigerant Boolean @default(false)
+
   // Soft-delete: an appliance type is never hard-deleted once it's been
   // referenced by a Lead/PricingRule/Appliance (that would break history).
   // Retiring a category sets isActive=false instead, which hides it from
@@ -1008,6 +1011,7 @@ enum RetiredPlanChoice {
 model RetiredAppliancePlan {
   applianceId     String            @id
   appliance       Appliance         @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  refrigerantRecord RefrigerantRecord?
   choice          RetiredPlanChoice
   note            String?
   // STRIP only: what happened to the rest once the parts were taken ("SCRAPPED" or "THROWN_AWAY").
@@ -5804,4 +5808,31 @@ model SafetyIncident {
   @@index([applianceId])
   @@index([maintenanceRequestId])
   @@index([jobId])
+}
+
+enum RefrigerantOutcome {
+  RECOVERED
+  LEAKED_BEFORE
+}
+
+// OPS-2: what happened to the refrigerant in a retired appliance before it was scrapped or thrown away (40 CFR 82.155:
+// the scrap yard must get a signed statement). Kept for the rule-book number of years (records.refrigerant_keep_years).
+model RefrigerantRecord {
+  applianceId      String   @id
+  plan             RetiredAppliancePlan @relation(fields: [applianceId], references: [applianceId], onDelete: Restrict)
+  refrigerantType  String
+  outcome          RefrigerantOutcome
+  recoveredByName  String
+  recoveredByAddress String
+  certificationNumber String?
+  equipmentUsed    String?
+  recoveredOn      DateTime
+  recyclerName     String?
+  receiptReference String?
+  statementSignedAt DateTime
+  statementSignedByUserId String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([recoveredOn])
 }

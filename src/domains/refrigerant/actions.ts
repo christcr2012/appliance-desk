@@ -1,0 +1,100 @@
+// OPS-2: save the refrigerant record for a retired appliance and build the signed statement. Owner and admins only.
+import { prisma } from "@/lib/prisma";
+import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
+import { ruleAsOf } from "@/domains/rules/reads";
+import { checkRefrigerantInput, keepUntil, refrigerantRecordRequired, type RefrigerantInput } from "./rules";
+import type { StatementFacts } from "./statement";
+
+export class RefrigerantError extends Error {}
+
+const dateText = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", month: "long", day: "numeric", year: "numeric" }).format(d);
+
+export async function saveRefrigerantRecord(actorUserId: string, applianceId: string, input: RefrigerantInput): Promise<void> {
+  const checked = checkRefrigerantInput(input);
+  if (checked.problems.length) throw new RefrigerantError(checked.problems[0]);
+  const recoveredOn = businessDateFromKey(input.recoveredOnKey);
+  if (!recoveredOn || businessDateKey(recoveredOn) !== input.recoveredOnKey) throw new RefrigerantError("Choose an actual date.");
+  if (businessDateKey(new Date()) < input.recoveredOnKey) throw new RefrigerantError("The date can't be in the future.");
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+    const appliance = await tx.appliance.findUnique({
+      where: { id: applianceId },
+      select: { status: true, applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true } } },
+    });
+    if (!appliance) throw new RefrigerantError("Couldn't find that appliance.");
+    if (appliance.status !== "RETIRED" || !appliance.retiredPlan) throw new RefrigerantError("Retire the appliance and choose what's next for it first.");
+    if (!appliance.applianceType.hasRefrigerant) throw new RefrigerantError("This kind of appliance has no refrigerant system.");
+    if (!refrigerantRecordRequired(true, appliance.retiredPlan)) throw new RefrigerantError("The statement is only needed when the appliance is scrapped or thrown away.");
+    if (appliance.retiredPlan.doneOn) throw new RefrigerantError("This appliance is already marked done. Reopen it to change the record.");
+    const now = new Date();
+    const data = {
+      refrigerantType: checked.clean.refrigerantType, outcome: checked.clean.outcome,
+      recoveredByName: checked.clean.recoveredByName, recoveredByAddress: checked.clean.recoveredByAddress,
+      certificationNumber: checked.clean.certificationNumber ?? null, equipmentUsed: checked.clean.equipmentUsed ?? null,
+      recoveredOn, recyclerName: checked.clean.recyclerName ?? null, receiptReference: checked.clean.receiptReference ?? null,
+      statementSignedAt: now, statementSignedByUserId: actorUserId,
+    };
+    await tx.refrigerantRecord.upsert({ where: { applianceId }, create: { applianceId, ...data }, update: data });
+    await tx.auditLog.create({
+      data: { userId: actorUserId, action: "appliance.refrigerant_recorded", entityType: "Appliance", entityId: applianceId, newValue: { type: data.refrigerantType, outcome: data.outcome } },
+    });
+  });
+}
+
+export async function loadRefrigerantPanel(applianceId: string, now: Date) {
+  const appliance = await prisma.appliance.findUnique({
+    where: { id: applianceId },
+    select: { applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true, refrigerantRecord: true } } },
+  });
+  if (!appliance?.applianceType.hasRefrigerant || !appliance.retiredPlan) return null;
+  if (!refrigerantRecordRequired(true, appliance.retiredPlan)) return null;
+  const years = (await ruleAsOf<number>("records.refrigerant_keep_years", now)).value;
+  const record = appliance.retiredPlan.refrigerantRecord;
+  return { record, locked: appliance.retiredPlan.doneOn !== null, years, keepUntil: record ? keepUntil(record.recoveredOn, years) : null };
+}
+
+export async function loadStatementFacts(applianceId: string): Promise<StatementFacts | null> {
+  const record = await prisma.refrigerantRecord.findUnique({
+    where: { applianceId },
+    select: {
+      refrigerantType: true, outcome: true, recoveredByName: true, recoveredByAddress: true, certificationNumber: true,
+      equipmentUsed: true, recoveredOn: true, statementSignedAt: true, statementSignedByUserId: true,
+      plan: { select: { appliance: { select: { assetNumber: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true } } } } } },
+    },
+  });
+  if (!record) return null;
+  const signer = await prisma.user.findUnique({ where: { id: record.statementSignedByUserId }, select: { name: true, email: true } });
+  const a = record.plan.appliance;
+  return {
+    businessName: "Robinson Appliance Rentals",
+    assetNumber: a.assetNumber,
+    applianceDescription: [a.manufacturer, a.model, a.applianceType.name].filter(Boolean).join(" "),
+    serialNumber: a.serialNumber ?? null,
+    refrigerantType: record.refrigerantType,
+    outcome: record.outcome,
+    recoveredByName: record.recoveredByName,
+    recoveredByAddress: record.recoveredByAddress,
+    certificationNumber: record.certificationNumber,
+    equipmentUsed: record.equipmentUsed,
+    recoveredOnText: dateText(record.recoveredOn),
+    signedByName: signer?.name ?? signer?.email ?? "the owner",
+    signedOnText: dateText(record.statementSignedAt),
+  };
+}
+
+/** Owner setting: which kinds of appliance have a sealed refrigerant system. Applies to future scrap/dispose steps only. */
+export async function saveRefrigerantTypes(actorUserId: string, typeIds: string[]): Promise<void> {
+  const wanted = new Set(typeIds);
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    const types = await tx.applianceType.findMany({ select: { id: true, hasRefrigerant: true } });
+    for (const type of types) {
+      const next = wanted.has(type.id);
+      if (next === type.hasRefrigerant) continue;
+      await tx.applianceType.update({ where: { id: type.id }, data: { hasRefrigerant: next } });
+      await tx.auditLog.create({ data: { userId: actorUserId, action: "settings.refrigerant_type", entityType: "ApplianceType", entityId: type.id, newValue: { hasRefrigerant: next } } });
+    }
+  });
+}

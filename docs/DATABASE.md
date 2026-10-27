@@ -1413,3 +1413,10 @@ Existing financial entries remain append-only and closed months stay immutable.
 - `SafetyIncident` — a marked injury or safety event (appliance, repair request or job), decision PENDING / REPORTED /
   NOT_REPORTED with the owner's note.
 All three tables are in the backup manifest.
+
+### OPS-2: refrigerant records (additive migration `20261106000000_refrigerant`)
+
+- `ApplianceType.hasRefrigerant` — set true at migration time for types whose name or slug mentions refrigerator, fridge or freezer; the owner can change it on Retired appliances.
+- `RefrigerantRecord` — one per retired-appliance plan: refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when). The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
+- One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
+`RefrigerantRecord` is in the backup manifest.
