@@ -99,6 +99,7 @@
       "disputes.spec.ts",
       "decisions.spec.ts",
       "collections.spec.ts",
+      "continuity.spec.ts",
       "late-fee-waiver.spec.ts",
       "books-closing.spec.ts",
       "compliance.spec.ts"

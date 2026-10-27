@@ -5673,7 +5673,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-8)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5685,7 +5685,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-8-integration.test.ts"
+        "tests/ops8-continuity-rules.test.ts",
+        "tests/ops8-continuity-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-8.md"

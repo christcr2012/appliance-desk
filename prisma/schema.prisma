@@ -3541,6 +3541,20 @@ model BusinessSettings {
   autoRenewEnabled Boolean @default(false)
   // Batch E: durable automation pause state and versioned, owner-editable lead scoring policy.
   pausedAutomations Json @default("[]")
+  // OPS-8: the owner's "If something happens to me" page, and the owner-only switch that stops new automatic charges and reminders.
+  continuityEmergencyName String?
+  continuityEmergencyContact String?
+  continuitySuccessorName String?
+  continuitySuccessorContact String?
+  continuityCpaName String?
+  continuityCpaContact String?
+  continuityAttorneyName String?
+  continuityAttorneyContact String?
+  continuityRecordsNote String?
+  continuityReviewedAt DateTime?
+  chargesPausedAt DateTime?
+  chargesPausedByUserId String?
+  chargesPausedNote String?
   leadScoringPolicy Json @default("{\"version\":1,\"termPoints\":{\"month-to-month\":0,\"6-month\":10,\"12-month\":20},\"additionalUnitPoints\":5,\"businessAccountPoints\":10,\"multiUnitPropertyManagerPoints\":25,\"highValueThreshold\":30}")
   draftReservationHoldDays Int @default(7)
   // Older review findings: how long a removed receipt file / an unsent request photo waits before the nightly clean-up deletes it.
@@ -6061,4 +6075,13 @@ model RefrigerantRecord {
   updatedAt        DateTime @updatedAt
 
   @@index([recoveredOn])
+}
+
+// OPS-8: one row per calendar year the owner finished the December business check-up. Nothing here changes money or customers.
+model YearlyCheckup {
+  year              Int      @id
+  completedAt       DateTime @default(now())
+  completedByUserId String
+  ticked            Json     @default("[]")
+  note              String?
 }

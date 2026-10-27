@@ -236,6 +236,8 @@ export const BACKUP_MODEL_POLICY = {
   RecallMatch: "recallMatch",
   RecallWatchState: "recallWatchState",
   SafetyIncident: "safetyIncident",
+  // OPS-8: which December check-up items the owner looked at, per year.
+  YearlyCheckup: "yearlyCheckup",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

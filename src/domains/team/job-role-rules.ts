@@ -43,6 +43,8 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   "sales-tax": "sales-tax", books: "books", expenses: "expenses", suppliers: "suppliers", activity: "activity",
   settings: "management", paperwork: "management", privacy: "management", automations: "management", growth: "management",
   launch: "management", "control-center": "management", approvals: "management",
+  // OPS-8: owner-only; a job role that includes Settings can open it, nobody else.
+  continuity: "management",
   feedback: "feedback",
 };
 
