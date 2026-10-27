@@ -64,6 +64,26 @@ describe.skipIf(!enabled)("refrigerant records (real Postgres)", () => {
     await expect(saveRefrigerantRecord(adminId, id, good)).rejects.toThrow(/already marked done/);
   });
 
+  it("keeps a signed statement exactly as signed, even if the appliance or signer is edited afterwards", async () => {
+    const id = await retired(fridgeType, "SCRAP");
+    await saveRefrigerantRecord(adminId, id, good);
+    const before = await loadStatementFacts(id);
+    await prisma.appliance.update({ where: { id }, data: { manufacturer: "Changed Later", model: "ZZZ" } });
+    await prisma.user.update({ where: { id: adminId }, data: { name: "Renamed Person" } });
+    expect(await loadStatementFacts(id)).toEqual(before);
+    expect(before?.applianceDescription).toContain("Frigidaire");
+  });
+
+  it("lets Chris choose 'decide later' after a record is saved, and keeps the signed record", async () => {
+    const id = await retired(fridgeType, "SCRAP");
+    await saveRefrigerantRecord(adminId, id, good);
+    await setRetiredPlan(ownerId, id, { choice: null });
+    expect(await prisma.retiredAppliancePlan.findUnique({ where: { applianceId: id } })).toBeNull();
+    expect(await prisma.refrigerantRecord.findUnique({ where: { applianceId: id } })).not.toBeNull();
+    await setRetiredPlan(ownerId, id, { choice: "DISPOSE" }); // choosing again finds the record still on file
+    await completeRetiredPlan(adminId, id, { doneOnKey: today() });
+  });
+
   it("applies the same gate to throw-away, strip-then-discard and the bulk 'mark done' path, naming the appliance", async () => {
     const dispose = await retired(fridgeType, "DISPOSE");
     await expect(completeRetiredPlan(adminId, dispose, { doneOnKey: today() })).rejects.toThrow(/refrigerant/);

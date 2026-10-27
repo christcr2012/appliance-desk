@@ -692,6 +692,7 @@ model Appliance {
   staffTasks  StaffTask[]
   // Batch M-2: what the owner decided to do with it after retiring it, and parts taken from it.
   retiredPlan RetiredAppliancePlan?
+  refrigerantRecord RefrigerantRecord?
   saleLines InvoiceLineItem[] @relation("ApplianceSaleLine")
   saleDispositions RetiredSaleDisposition[]
   salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
@@ -1011,7 +1012,6 @@ enum RetiredPlanChoice {
 model RetiredAppliancePlan {
   applianceId     String            @id
   appliance       Appliance         @relation(fields: [applianceId], references: [id], onDelete: Restrict)
-  refrigerantRecord RefrigerantRecord?
   choice          RetiredPlanChoice
   note            String?
   // STRIP only: what happened to the rest once the parts were taken ("SCRAPPED" or "THROWN_AWAY").
@@ -5819,7 +5819,7 @@ enum RefrigerantOutcome {
 // the scrap yard must get a signed statement). Kept for the rule-book number of years (records.refrigerant_keep_years).
 model RefrigerantRecord {
   applianceId      String   @id
-  plan             RetiredAppliancePlan @relation(fields: [applianceId], references: [applianceId], onDelete: Restrict)
+  appliance        Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
   refrigerantType  String
   outcome          RefrigerantOutcome
   recoveredByName  String
@@ -5831,6 +5831,11 @@ model RefrigerantRecord {
   receiptReference String?
   statementSignedAt DateTime
   statementSignedByUserId String
+  // What the statement said when it was signed. Reprints use these, so later edits to a name or appliance never change a signed statement.
+  signedByName     String
+  assetNumberSnapshot String
+  applianceDescriptionSnapshot String
+  serialNumberSnapshot String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

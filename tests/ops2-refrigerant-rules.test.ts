@@ -59,3 +59,11 @@ describe("the signed statement", () => {
     expect(Buffer.from(bytes.slice(0, 5)).toString()).toBe("%PDF-");
   });
 });
+
+import { looksRefrigerated as __looks } from "@/domains/refrigerant/rules";
+describe("starting value for new kinds of appliance", () => {
+  it("flags refrigerators, freezers and mini-fridges but not washers", () => {
+    for (const n of ["Refrigerator", "Chest Freezer", "Mini-Fridge"]) expect(__looks(n)).toBe(true);
+    for (const n of ["Washer", "Dryer", "Stove"]) expect(__looks(n)).toBe(false);
+  });
+});

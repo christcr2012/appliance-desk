@@ -158,9 +158,9 @@ async function completeInTx(tx: Tx, actorUserId: string, applianceId: string, in
   // OPS-2: a refrigerator-type appliance can't be scrapped or thrown away until its refrigerant statement is on file.
   const refrigerant = await tx.appliance.findUnique({
     where: { id: applianceId },
-    select: { assetNumber: true, applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { refrigerantRecord: { select: { applianceId: true } } } } },
+    select: { assetNumber: true, applianceType: { select: { hasRefrigerant: true } }, refrigerantRecord: { select: { applianceId: true } } },
   });
-  if (refrigerantRecordRequired(refrigerant?.applianceType.hasRefrigerant === true, { choice: plan.choice, remainder: remainder ?? plan.remainder }) && !refrigerant?.retiredPlan?.refrigerantRecord) {
+  if (refrigerantRecordRequired(refrigerant?.applianceType.hasRefrigerant === true, { choice: plan.choice, remainder: remainder ?? plan.remainder }) && !refrigerant?.refrigerantRecord) {
     throw new RetiredPlanError(`${MISSING_RECORD_MESSAGE}${bulk ? ` (${refrigerant?.assetNumber ?? "one of the appliances"})` : ""}`);
   }
   await tx.retiredAppliancePlan.update({

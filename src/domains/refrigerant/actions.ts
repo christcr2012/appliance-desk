@@ -21,7 +21,7 @@ export async function saveRefrigerantRecord(actorUserId: string, applianceId: st
     await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
     const appliance = await tx.appliance.findUnique({
       where: { id: applianceId },
-      select: { status: true, applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true } } },
+      select: { status: true, assetNumber: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true, hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true } } },
     });
     if (!appliance) throw new RefrigerantError("Couldn't find that appliance.");
     if (appliance.status !== "RETIRED" || !appliance.retiredPlan) throw new RefrigerantError("Retire the appliance and choose what's next for it first.");
@@ -29,7 +29,12 @@ export async function saveRefrigerantRecord(actorUserId: string, applianceId: st
     if (!refrigerantRecordRequired(true, appliance.retiredPlan)) throw new RefrigerantError("The statement is only needed when the appliance is scrapped or thrown away.");
     if (appliance.retiredPlan.doneOn) throw new RefrigerantError("This appliance is already marked done. Reopen it to change the record.");
     const now = new Date();
+    const signer = await tx.user.findUnique({ where: { id: actorUserId }, select: { name: true, email: true } });
     const data = {
+      signedByName: signer?.name ?? signer?.email ?? "the owner",
+      assetNumberSnapshot: appliance.assetNumber,
+      applianceDescriptionSnapshot: [appliance.manufacturer, appliance.model, appliance.applianceType.name].filter(Boolean).join(" "),
+      serialNumberSnapshot: appliance.serialNumber ?? null,
       refrigerantType: checked.clean.refrigerantType, outcome: checked.clean.outcome,
       recoveredByName: checked.clean.recoveredByName, recoveredByAddress: checked.clean.recoveredByAddress,
       certificationNumber: checked.clean.certificationNumber ?? null, equipmentUsed: checked.clean.equipmentUsed ?? null,
@@ -46,32 +51,24 @@ export async function saveRefrigerantRecord(actorUserId: string, applianceId: st
 export async function loadRefrigerantPanel(applianceId: string, now: Date) {
   const appliance = await prisma.appliance.findUnique({
     where: { id: applianceId },
-    select: { applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true, refrigerantRecord: true } } },
+    select: { applianceType: { select: { hasRefrigerant: true } }, retiredPlan: { select: { choice: true, remainder: true, doneOn: true } }, refrigerantRecord: true },
   });
   if (!appliance?.applianceType.hasRefrigerant || !appliance.retiredPlan) return null;
   if (!refrigerantRecordRequired(true, appliance.retiredPlan)) return null;
   const years = (await ruleAsOf<number>("records.refrigerant_keep_years", now)).value;
-  const record = appliance.retiredPlan.refrigerantRecord;
+  const record = appliance.refrigerantRecord;
   return { record, locked: appliance.retiredPlan.doneOn !== null, years, keepUntil: record ? keepUntil(record.recoveredOn, years) : null };
 }
 
 export async function loadStatementFacts(applianceId: string): Promise<StatementFacts | null> {
-  const record = await prisma.refrigerantRecord.findUnique({
-    where: { applianceId },
-    select: {
-      refrigerantType: true, outcome: true, recoveredByName: true, recoveredByAddress: true, certificationNumber: true,
-      equipmentUsed: true, recoveredOn: true, statementSignedAt: true, statementSignedByUserId: true,
-      plan: { select: { appliance: { select: { assetNumber: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true } } } } } },
-    },
-  });
+  const record = await prisma.refrigerantRecord.findUnique({ where: { applianceId } });
   if (!record) return null;
-  const signer = await prisma.user.findUnique({ where: { id: record.statementSignedByUserId }, select: { name: true, email: true } });
-  const a = record.plan.appliance;
+  // Everything printed comes from what was saved when the statement was signed, never from today's records.
   return {
     businessName: "Robinson Appliance Rentals",
-    assetNumber: a.assetNumber,
-    applianceDescription: [a.manufacturer, a.model, a.applianceType.name].filter(Boolean).join(" "),
-    serialNumber: a.serialNumber ?? null,
+    assetNumber: record.assetNumberSnapshot,
+    applianceDescription: record.applianceDescriptionSnapshot,
+    serialNumber: record.serialNumberSnapshot ?? null,
     refrigerantType: record.refrigerantType,
     outcome: record.outcome,
     recoveredByName: record.recoveredByName,
@@ -79,7 +76,7 @@ export async function loadStatementFacts(applianceId: string): Promise<Statement
     certificationNumber: record.certificationNumber,
     equipmentUsed: record.equipmentUsed,
     recoveredOnText: dateText(record.recoveredOn),
-    signedByName: signer?.name ?? signer?.email ?? "the owner",
+    signedByName: record.signedByName,
     signedOnText: dateText(record.statementSignedAt),
   };
 }

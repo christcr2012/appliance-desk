@@ -64,3 +64,8 @@ export function keepUntil(recoveredOn: Date, years: number): Date {
   d.setUTCFullYear(d.getUTCFullYear() + years);
   return d;
 }
+
+/** Starting value for a newly added kind of appliance: refrigerators, freezers and mini-fridges have a sealed refrigerant system. */
+export function looksRefrigerated(name: string): boolean {
+  return /(refrigerator|fridge|freezer)/i.test(name);
+}
