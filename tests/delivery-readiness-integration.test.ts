@@ -720,4 +720,91 @@ maybeDescribe("FEETAX-2 delivery readiness (real Postgres)", () => {
       /needs a city license first/,
     );
   });
+
+  it("an installation already on the truck counts toward the delivery threshold", async () => {
+    const { customerId, addressId } = await makeAddress();
+    const city = await makeJurisdiction("installcounts", {
+      readiness: {
+        licenseRequired: "AFTER_SECOND_DELIVERY_IN_12_MONTHS",
+      },
+      rentalRule: "TAXABLE",
+    });
+    await locate(addressId, [city]);
+
+    const installation = await createJob(ownerId, {
+      type: "INSTALLATION",
+      customerId,
+      serviceAddressId: addressId,
+    });
+    const delivery = await createJob(ownerId, {
+      type: "DELIVERY",
+      customerId,
+      serviceAddressId: addressId,
+    });
+
+    // The installation goes out (nothing delivered anywhere yet)...
+    await updateJobStatus(ownerId, installation.id, "IN_PROGRESS");
+    // ...and while it is on the truck, the delivery cannot also go
+    // out: completed installations count as deliveries, so the
+    // in-flight one does too.
+    await expect(
+      updateJobStatus(ownerId, delivery.id, "IN_PROGRESS"),
+    ).rejects.toThrow(/needs a city license first/);
+  });
+
+  it("a scheduled rental-tax decision counts once its date arrives, and not before", async () => {
+    // Only Greeley's rent cell has a Decisions subject, so this uses a
+    // Greeley-shaped place (self-collected city named Greeley).
+    const cityId = `dr-jur-${tag}-greeleydated`;
+    await prisma.taxJurisdiction.create({
+      data: {
+        id: cityId,
+        code: `DR${tag.slice(0, 6)}-GREELEYDATED`,
+        name: `Greeley Dated ${tag}`,
+        level: "CITY",
+        administration: "SELF_COLLECTED",
+        reviewStatus: "REVIEWED",
+      },
+    });
+    await prisma.jurisdictionReadiness.create({
+      data: {
+        jurisdictionId: cityId,
+        licenseRequired: "NONE",
+        filesThrough: "SUTS",
+        reviewStatus: "REVIEWED",
+      },
+    });
+    await prisma.taxabilityRule.create({
+      data: { jurisdictionId: cityId, category: "RENTAL", taxability: "UNDECIDED" },
+    });
+    const { addressId } = await makeAddress();
+    await locate(addressId, [cityId]);
+
+    const change = await prisma.decisionScheduledChange.create({
+      data: {
+        subjectId: "IN-33-GREELEY",
+        value: "TAXABLE",
+        effectiveFrom: new Date("2026-10-20T00:00:00.000Z"),
+        decisionRecordId: `dr-decision-${tag}`,
+      },
+    });
+    try {
+      // Before the decision's date, the stored cell still rules.
+      const before = await deliveryTaxReadiness(
+        addressId,
+        new Date("2026-10-15T16:00:00.000Z"),
+      );
+      expect(before.ready).toBe(false);
+      expect(before.places[0]?.problem?.code).toBe("RULES_UNDECIDED");
+      // Once the date has arrived, the scheduled decision counts as
+      // decided even though the nightly run has not applied it yet.
+      const after = await deliveryTaxReadiness(
+        addressId,
+        new Date("2026-10-27T16:00:00.000Z"),
+      );
+      expect(after.ready).toBe(true);
+    } finally {
+      await prisma.decisionScheduledChange.delete({ where: { id: change.id } });
+    }
+  });
 });

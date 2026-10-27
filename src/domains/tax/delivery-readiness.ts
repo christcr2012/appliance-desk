@@ -87,7 +87,9 @@ async function deliveryCounts(
   };
   const dispatched = await db.job.count({
     where: {
-      type: "DELIVERY",
+      // Completion counts DELIVERY and INSTALLATION jobs alike (both
+      // put appliances in the home), so the in-flight count does too.
+      type: { in: ["DELIVERY", "INSTALLATION"] },
       status: "IN_PROGRESS",
       id: { not: countDispatchedForJobId },
       OR: [
@@ -151,6 +153,7 @@ export async function evaluatePlaceReadiness(
     const rentalRule = await getJurisdictionRentalTaxability(
       db as Prisma.TransactionClient,
       jurisdiction.id,
+      now,
     );
     if (rentalRule === null || rentalRule === "UNDECIDED") {
       rulesProblem = {
@@ -516,6 +519,7 @@ export async function listDeliveryAreaPlaces(
           ? ((await getJurisdictionRentalTaxability(
               db as Prisma.TransactionClient,
               row.jurisdictionId,
+              now,
             )) ?? "UNDECIDED")
           : null,
       licenseRequired: row.licenseRequired,
@@ -569,6 +573,7 @@ export async function listDeliveryAreaPlaces(
         ((await getJurisdictionRentalTaxability(
           db as Prisma.TransactionClient,
           jurisdiction.id,
+          now,
         )) ?? "UNDECIDED"),
       licenseRequired: null,
       filesThrough: null,

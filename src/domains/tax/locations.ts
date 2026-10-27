@@ -721,14 +721,17 @@ export async function getSaleTaxContext(
 export async function getJurisdictionRentalTaxability(
   tx: Prisma.TransactionClient,
   jurisdictionId: string,
+  at: Date,
 ): Promise<Taxability | null> {
-  const rule = await tx.taxabilityRule.findUnique({
-    where: {
-      jurisdictionId_category: { jurisdictionId, category: "RENTAL" },
-    },
-    select: { taxability: true },
-  });
-  return rule?.taxability ?? null;
+  // Resolve at the check's effective date, not just the stored cell:
+  // a decision the owner scheduled that is due by `at` counts as
+  // decided even before the nightly run applies it — the same dated
+  // resolution the tax engine prices with.
+  const cells = await getTaxabilityRulesAsOf(tx, at);
+  const cell = cells.find(
+    (entry) => entry.jurisdictionId === jurisdictionId && entry.category === "RENTAL",
+  );
+  return cell?.taxability ?? null;
 }
 
 export async function listTaxabilityRuleCells(tx: Prisma.TransactionClient) {
