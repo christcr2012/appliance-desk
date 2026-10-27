@@ -28,7 +28,7 @@ const field = "w-full rounded border border-border bg-background p-2";
 export default async function AmendmentPage({ params }: {
   params: Promise<{ periodId: string }>;
 }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const owner = session.user.role === "OWNER";
   const { periodId } = await params;
   if (!/^[A-Za-z0-9_-]{5,128}$/.test(periodId)) throw new Error("Invalid filing period.");
@@ -43,7 +43,7 @@ export default async function AmendmentPage({ params }: {
     <Link className="text-sm underline" href={"/desk/sales-tax/returns/" + periodId}>← Original return</Link>
     <h2 className="text-xl font-semibold">Amendments — {period.filingAccount.name}</h2>
     <p className="text-sm text-muted-foreground">Corrections never overwrite the filed worksheet. Additional tax must be handled through a real amendment; zero/credit adjustments have their own documented resolution option.</p>
-    {!owner && <p className="text-sm text-muted-foreground">Administrator view only — ask the owner to decide or file amendments.</p>}
+    {!owner && <p className="text-sm text-muted-foreground">View only — ask the owner to decide or file amendments.</p>}
     {!period.amendments.length && <p className="text-sm">No detected amendments for this period.</p>}
     {period.amendments.map(a => <section key={a.id} className="space-y-3 rounded-lg border border-border p-4">
       <h3 className="font-semibold">Amendment #{a.sequence} — {a.status}</h3>
