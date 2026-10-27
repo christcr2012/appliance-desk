@@ -8,7 +8,7 @@ import { formatMoney } from "@/lib/money-ui";
  * it (money fields in dollars on the screen, cents in storage).
  */
 
-export type RuleArea = "SALES_TAX" | "USE_TAX" | "RDF" | "FEDERAL" | "RECORDS" | "LEASES";
+export type RuleArea = "SALES_TAX" | "USE_TAX" | "RDF" | "FEDERAL" | "RECORDS" | "LEASES" | "PROPERTY_TAX";
 export type RuleChangeKind = "FIXED_JUL_1" | "FIXED_JAN_1" | "ANY_DATE";
 
 export type RuleFieldKind = "money" | "integer" | "percent" | "month-day" | "text";
@@ -158,6 +158,35 @@ export const RULES = {
     describe: () => "December 31 of odd years",
     change: "ANY_DATE",
     fields: [{ name: "rule", label: "Expiry rule", kind: "text" }],
+  }),
+  "co.bpp.exemption_threshold": defineRule({
+    key: "co.bpp.exemption_threshold",
+    title: "Weld property declaration exemption",
+    explain: "No Weld County business personal property declaration is required when the total actual value of the business's personal property is at or under this amount. Set by Colorado law and the county assessor each year.",
+    area: "PROPERTY_TAX",
+    schema: z.number().int().min(0),
+    describe: (v: number) => `${formatMoney(v)} or less in total value — no declaration needed`,
+    change: "FIXED_JAN_1",
+    fields: [moneyField("value", "Exemption limit ($)")],
+    watch: "https://www.weldgov.com/departments/assessor",
+  }),
+  "co.bpp.extension": defineRule({
+    key: "co.bpp.extension",
+    title: "Weld declaration extension fees",
+    explain: "What the Weld County Assessor charges to extend the April 15 declaration deadline, requested by April 15: one fee for 10 more days, a higher one for 20.",
+    area: "PROPERTY_TAX",
+    schema: z.object({
+      tenDayFeeCents: z.number().int().min(0),
+      twentyDayFeeCents: z.number().int().min(0),
+    }),
+    describe: (v: { tenDayFeeCents: number; twentyDayFeeCents: number }) =>
+      `${formatMoney(v.tenDayFeeCents)} for 10 more days, ${formatMoney(v.twentyDayFeeCents)} for 20`,
+    change: "ANY_DATE",
+    fields: [
+      moneyField("tenDayFeeCents", "10-day extension ($)"),
+      moneyField("twentyDayFeeCents", "20-day extension ($)"),
+    ],
+    watch: "https://www.weldgov.com/departments/assessor",
   }),
   "us.1099.threshold": defineRule({
     key: "us.1099.threshold",
