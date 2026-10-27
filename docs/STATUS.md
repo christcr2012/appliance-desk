@@ -1,3 +1,13 @@
+## October 27 — Lane 1 AR-11 measured desk JavaScript budget (implementation branch)
+Free isolated GitHub Actions build 40497979388 measured initial client JavaScript for
+147 desk routes using actual Next 16.4.2 Turbopack per-page client-reference manifests;
+the highest measured gzip load was Settings at 411.23 KB. A rounded 10 KB baseline for
+every route is committed. Browser CI now checks every route after the production build:
+>10% over its budget or an uncovered route fails. Five focused Node regression tests passed.
+No customer data or external service was used and the temporary measurement workflow is
+removed. Full exact-head PR CI/review and merger checks still pending; AR-11 remains
+in progress alongside optimistic Snooze PR #663 and React transitions PR #665.
+
 ## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
 GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
 selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings

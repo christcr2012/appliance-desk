@@ -436,6 +436,11 @@ jobs:
       - name: Production build
         run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run build
 
+      - name: Guard desk initial JavaScript size with measured gzip budgets
+        run: |
+          node --test scripts/check-desk-bundle.test.mjs
+          node scripts/check-desk-bundle.mjs
+
       - name: Wait for browser system libraries
         shell: bash
         run: |
