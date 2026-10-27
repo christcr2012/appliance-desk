@@ -5,6 +5,9 @@ import type {
 
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDateFromKey, businessDateKey, businessDayBounds } from "@/lib/business-date";
+import { allocateAcrossLines } from "@/domains/tax/allocate";
+import { shopSaleFeeKeptOnReturnInTx } from "@/domains/tax/rdf-shop-sale";
 
 export type TaxExemptionInput = {
   reason: TaxExemptionReason;
@@ -196,6 +199,9 @@ export async function createCustomerTaxExemption(
 ) {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    // Serialize certificate creation per customer so two back-dated
+    // certificates cannot both credit the same historical tax.
+    await tx.$queryRaw`SELECT "id" FROM "Customer" WHERE "id" = ${customerId} FOR UPDATE`;
     await tx.customer.findUniqueOrThrow({
       where: { id: customerId },
       select: { id: true },
@@ -220,8 +226,177 @@ export async function createCustomerTaxExemption(
         },
       },
     });
+    // TFA-2 §9: a certificate that was already in force while earlier
+    // bills were taxed earns the customer a credit for the tax charged
+    // since it took effect. Issued bills stay exactly as they are; the
+    // credit lands on a future bill (the section 4a pattern).
+    const validKey = businessDateKey(row.validFrom);
+    if (validKey < businessDateKey(new Date())) {
+      const since = businessDateFromKey(validKey);
+      // Only tax the certificate actually covered counts: nothing charged
+      // after its expiration day.
+      const until = row.expiresOn ? businessDayBounds(row.expiresOn).end : null;
+      const taxedInvoices = await tx.invoice.findMany({
+        where: {
+          customerId,
+          status: { notIn: ["DRAFT", "VOID", "WRITTEN_OFF"] },
+          issuedAt: { gte: since!, ...(until ? { lt: until } : {}) },
+          taxLines: { some: { taxCents: { gt: 0 } } },
+        },
+        select: {
+          id: true, amountDueCents: true,
+          taxLines: { select: { jurisdictionId: true, taxCents: true } },
+          refunds: { select: { amountCents: true } },
+        },
+        orderBy: [{ issuedAt: "asc" }, { id: "asc" }],
+      });
+      // The credit is tracked per invoice from the start: a later refund
+      // on one of these invoices must not hand the same tax back a second
+      // time, and the refund path can only enforce that if it knows how
+      // much of THIS invoice's tax was already credited (see
+      // exemptionBackdateCreditCentsForInvoiceInTx below).
+      const perInvoice: Array<{ invoiceId: string; cents: number }> = [];
+      for (const invoice of taxedInvoices) {
+        const lines = invoice.taxLines;
+        const totalTax = lines.reduce((sum, line) => sum + line.taxCents, 0);
+        const totalRefunds = invoice.refunds.reduce((sum, refund) => sum + refund.amountCents, 0);
+        // Mirror the filing packet's refund allocation: a refund returns
+        // tax and principal in proportion, so only the unrefunded share
+        // of each tax line can still be credited here — the customer must
+        // never receive the same tax back twice. The allocation base
+        // excludes a delivery fee the customer never gets back on a
+        // return (it is not part of any refund, so no refund share may
+        // be attributed to it). An invoice whose numbers do not
+        // reconcile earns no credit (the packet blocks filing on it for
+        // the same reason; the owner can credit by hand).
+        const keptFeeCents = await shopSaleFeeKeptOnReturnInTx(tx, invoice.id);
+        const basisCents = invoice.amountDueCents - keptFeeCents;
+        if (basisCents <= 0 || totalTax < 0 || totalTax > basisCents
+          || totalRefunds < 0 || totalRefunds > basisCents
+          || lines.some((line) => line.taxCents < 0)) continue;
+        const taxRefunded = totalRefunds === 0 ? 0
+          : allocateAcrossLines(totalRefunds, [totalTax, basisCents - totalTax])[0]!;
+        const perLineRefunded = taxRefunded === 0 ? lines.map(() => 0)
+          : allocateAcrossLines(taxRefunded, lines.map((line) => line.taxCents));
+        let invoiceCents = 0;
+        lines.forEach((line, index) => {
+          if (line.taxCents <= 0) return;
+          if (data.jurisdictionIds.length && !data.jurisdictionIds.includes(line.jurisdictionId)) return;
+          invoiceCents += line.taxCents - perLineRefunded[index]!;
+        });
+        if (invoiceCents > 0) perInvoice.push({ invoiceId: invoice.id, cents: invoiceCents });
+      }
+      let creditCents = perInvoice.reduce((sum, entry) => sum + entry.cents, 0);
+      if (creditCents > 0) {
+        // Never credit the same tax twice: subtract back-dated credits
+        // already granted for certificates whose covered days and areas
+        // overlap this one. Partial day/area overlap subtracts the whole
+        // earlier credit, so any error credits too little (the owner can
+        // add a manual credit) rather than paying the same tax twice.
+        const priorCredits = await tx.customerCredit.findMany({
+          where: { customerId, sourceType: "EXEMPTION_BACKDATE" },
+          select: { amountCents: true, sourceId: true },
+        });
+        const priorIds = [...new Set(priorCredits.map((credit) => credit.sourceId).filter((id): id is string => !!id))];
+        if (priorIds.length) {
+          const priorRows = await tx.customerTaxExemption.findMany({
+            where: { id: { in: priorIds }, customerId },
+            select: { id: true, validFrom: true, expiresOn: true, jurisdictionIds: true },
+          });
+          const priorById = new Map(priorRows.map((prior) => [prior.id, prior]));
+          for (const credit of priorCredits) {
+            const prior = credit.sourceId ? priorById.get(credit.sourceId) : undefined;
+            if (!prior) continue;
+            const priorFrom = businessDateFromKey(businessDateKey(prior.validFrom))!;
+            const priorUntil = prior.expiresOn ? businessDayBounds(prior.expiresOn).end : null;
+            const daysOverlap = priorFrom < (until ?? new Date(8_640_000_000_000_000)) && (!priorUntil || priorUntil > since!);
+            if (!daysOverlap) continue;
+            const priorAreas = Array.isArray(prior.jurisdictionIds)
+              ? prior.jurisdictionIds.filter((value): value is string => typeof value === "string")
+              : [];
+            const areasOverlap = !data.jurisdictionIds.length || !priorAreas.length
+              || data.jurisdictionIds.some((id) => priorAreas.includes(id));
+            if (!areasOverlap) continue;
+            creditCents -= credit.amountCents;
+          }
+        }
+        // Attribute what the earlier credits already covered to the
+        // earliest invoices first, so the per-invoice record below sums
+        // to the credit actually granted and each invoice's share is the
+        // part of its tax no earlier certificate already returned.
+        let unsubtracted = perInvoice.reduce((sum, entry) => sum + entry.cents, 0) - creditCents;
+        for (const entry of perInvoice) {
+          if (unsubtracted <= 0) break;
+          const cut = Math.min(entry.cents, unsubtracted);
+          entry.cents -= cut;
+          unsubtracted -= cut;
+        }
+      }
+      if (creditCents > 0) {
+        const credit = await tx.customerCredit.create({
+          data: {
+            customerId,
+            amountCents: creditCents,
+            remainingCents: creditCents,
+            reason: "Exemption certificate covered this tax",
+            authorizedByUserId: actorUserId,
+            sourceType: "EXEMPTION_BACKDATE",
+            sourceId: row.id,
+            side: "CUSTOMER",
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            userId: actorUserId,
+            action: "tax.exemption.backdate_credit",
+            entityType: "CustomerCredit",
+            entityId: credit.id,
+            newValue: {
+              customerId, exemptionId: row.id, creditCents,
+              validFrom: row.validFrom.toISOString(),
+              perInvoice: perInvoice.filter((entry) => entry.cents > 0),
+            },
+          },
+        });
+      }
+    }
     return row;
   });
+}
+
+/**
+ * How much of one invoice's tax has already been handed back as a
+ * back-dated exemption credit. The refund path subtracts this from what
+ * the invoice can still refund: the credit and a later refund must never
+ * return the same tax twice. The per-invoice split is recorded on the
+ * grant's audit row (back-dated credits are rare — one per late
+ * certificate — so reading this customer's grant rows is cheap). Credits
+ * granted before per-invoice tracking existed have no split and count 0;
+ * none exist outside tests, because the credit itself ships with TFA-2.
+ */
+export async function exemptionBackdateCreditCentsForInvoiceInTx(
+  tx: Pick<Prisma.TransactionClient, "auditLog">,
+  customerId: string,
+  invoiceId: string,
+): Promise<number> {
+  const grants = await tx.auditLog.findMany({
+    where: { action: "tax.exemption.backdate_credit", entityType: "CustomerCredit" },
+    select: { newValue: true },
+  });
+  let total = 0;
+  for (const grant of grants) {
+    const value = (grant.newValue ?? {}) as {
+      customerId?: string;
+      perInvoice?: Array<{ invoiceId?: string; cents?: number }>;
+    };
+    if (value.customerId !== customerId || !Array.isArray(value.perInvoice)) continue;
+    for (const entry of value.perInvoice) {
+      if (entry.invoiceId === invoiceId && typeof entry.cents === "number") {
+        total += entry.cents;
+      }
+    }
+  }
+  return total;
 }
 
 export async function updateCustomerTaxExemption(
