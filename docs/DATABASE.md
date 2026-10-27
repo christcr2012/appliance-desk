@@ -23,6 +23,13 @@ Migration `20261101000000_legal_rules`.
 - `RetailDeliveryFeeRecord.ruleVersionId` — the rule version that set the amount on new records (old rows keep `rateId`). `BusinessSettings.costlyChangeTimingPercent` (90, CHECK 85–95) and `timingSafetyMarginBusinessDays` (3, CHECK 1–10): when the app suggests acting on a change that costs the business.
 - `LedgerAccount` `TAX_ABSORBED` (expense, "Tax/fee the business paid for a late change", seed id `k_seed_tax_absorbed`; same entry in `src/domains/books/system-chart.json`). Backups include `LegalRuleVersion` (`BACKUP_MODEL_POLICY`).
 
+## November 4 — Official-page rule watches (TFA-3, additive)
+
+Migration `20261104000000_tfa3_rule_watches`.
+- `LegalRuleObservation` — one stored reading from a strict parser over an official page: `ruleKey`, `value` (JSON, same shapes as the rule registry), `effectiveFrom` (nullable: a page may state no date), `watchId` (the `OfficialSourceWatch` read), `evidence` (the page words the reading came from), `observedAt`. Approval trail: `approvedVersionId` (the `LegalRuleVersion` an approval created), dismissal trail: `dismissedAt`, `dismissNote`, `dismissedByUserId`. A reading is never applied on its own; the same reading is stored once per business day. Backups include `LegalRuleObservation` (`BACKUP_MODEL_POLICY`).
+- `OfficialSourceWatch.parserKey` — which strict parser reads the page (`RDF_RATES`, `GREELEY_RATE`, `IRS_1099_THRESHOLD`, `CO_INTEREST`); null means hash-only watching. The migration turns the six seeded watches on, sets the Greeley parser, and adds the RDF rates, IRS 1099 instructions and Colorado penalties-and-interest watches.
+- `BusinessSettings.watchOfficialTaxPages` (default true): the owner's master switch for the watches, on Taxes › Rules. `BusinessSettings.autoApplyOfficialRateChanges` default flips to false and the existing row is set false: every new rate waits for the owner's approval on To do (the auto-apply code path stays, behind the setting).
+
 ## October 27 — Fair late fees (FEE-1, additive)
 
 Migration `20261027040000_fair_late_fees`. New table `PendingCharge`: a late fee recorded as its own charge (`kind` LATE_FEE,

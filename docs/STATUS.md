@@ -1,4 +1,15 @@
 ## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
+## October 26 — TFA-3: official-page watches with strict parsers (in progress)
+
+Branch `ai/vivienne/tfa-3-final`. The six seeded official-page watches are turned on behind an owner switch on the
+Rules screen, and three gain strict readers (Colorado RDF rates, IRS 1099 instructions, Colorado interest) plus
+the Greeley rate reader: pages are read weekly, and daily inside each rule's known change window. Every reading
+is stored; one that differs from the rule book waits on To do for Chris's Approve / Not right — nothing is
+applied on its own, and the old GIS rate auto-apply now starts off. Greeley readings go through the existing
+rate review path, and a Greeley approval also mirrors into the rule book so the two stores agree. Known limit:
+the live Greeley page does not state its rate in a sentence yet, so that reader reports "couldn't read" until
+the city publishes one (never a guess). Local proof: parsers 13/13, observation 9/9, watch 18/18, rate review
+6/6, Today access 11/11, registries 24/24 on throwaway Postgres. PR #646: CI green at the exact head, review round 1 resolved; merging.
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 
 One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance
@@ -8,6 +19,9 @@ lines came out of `.gitleaksignore`, including all of CMP-1's. Verified: full-hi
 scan clean with the fingerprints removed, and planted real-shaped keys still flag,
 including inside the registry files. Merge is sequenced by the lane heartbeat.
 Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
+
+## October 26 — CI speed fixes across parallel lanes (PR #645)
+Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-6` (stacked on OPS-5). A nightly pass now watches bills that are past due and prepares the next step for you — a **second notice** on day 10, a **final notice** on day 20 (email text plus a printable letter), and a **decision** on day 30 (payment plan, pick up the appliance, or small claims). All three days are your settings. Nothing is sent, nothing is picked up and no money moves until you press the button; sending still goes through the normal message path, so it stays off while live email is off. Every message is written in "Robinson Appliance Rentals"'s own name. A **pickup** can be made only after you record that the customer agreed (or a court order), and never for a customer marked on active military duty without a recorded court order; "Customer objected" ends the visit with nothing taken and brings up small claims. The **small-claims packet** (PDF) gathers the bills and payments, notices sent, the appliance cost and the claim amount; it checks the $7,500 limit, the filing fee ($31 up to $500, otherwise $55) and the court's 2-a-month / 18-a-year limits from the rule book. You file it yourself. A test now fails if any agreement, quote or notice wording offers ownership or a purchase option. Proved so far: 24 new tests (pure rules and wording, ownership-wording scan, and 9 on a throwaway database); CI still to run. Not built: the court's own claim form is not copied into the app — the packet tells you to fill in JDF 250 from the Colorado Judicial Branch site so it is always the current one.

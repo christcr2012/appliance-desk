@@ -88,6 +88,7 @@ export default async function TaxSetupPage() {
       <fieldset className="space-y-2 rounded border border-border p-3">
         <legend className="font-semibold">Official rate updates</legend>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="autoApplyOfficialRateChanges" defaultChecked={settings.autoApplyOfficialRateChanges} />Apply eligible reviewed rate updates within the limit</label>
+        <p className="text-sm text-muted-foreground">Off: every new rate waits for your approval on To do. This starts off — turn it on only if you want reviewed rate updates applied on their own, within the limit below. Greeley&rsquo;s own rate always waits for your approval either way.</p>
         <label className={field}>Maximum change (milli-percent)<input name="autoRateChangeMaxMilliPercent" type="number" min={0} max={100000} className={css} defaultValue={settings.autoRateChangeMaxMilliPercent} required /></label>
       </fieldset>
       <fieldset id="location" className="space-y-2 rounded border border-border p-3">

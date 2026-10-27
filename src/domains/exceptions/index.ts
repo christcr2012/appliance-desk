@@ -5,6 +5,8 @@ import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/b
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import { listPendingRdfSwitches } from "@/domains/tax/rdf-switches";
+import { listRuleChangeAttention } from "@/domains/rules/observations";
+import { ruleDef } from "@/domains/rules/registry";
 import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
@@ -52,6 +54,7 @@ import {
   taxRateReviewReminderException,
   officialRateReviewException,
   officialRateScheduledException,
+  ruleChangeReviewException,
   rdfSwitchException,
   taxSourceChangedException,
   taxSourceUnreachableException,
@@ -389,6 +392,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxSourceFailures,
     officialRateAttention,
     rdfSwitchesPending,
+    ruleChangeAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -546,6 +550,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       : empty<never>(),
     canViewFinance ? listOfficialRateAttention(now) : Promise.resolve([]),
     canViewFinance ? listPendingRdfSwitches(now) : Promise.resolve([]),
+    canViewFinance ? listRuleChangeAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -977,6 +982,22 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             since: item.observedAt,
           }),
     ),
+    ...ruleChangeAttention.map((item) =>
+      ruleChangeReviewException({
+        observationId: item.observationId,
+        ruleTitle: ruleDef(item.ruleKey).title,
+        describedValue: ruleDef(item.ruleKey).describe(item.value as never),
+        ruleKey: item.ruleKey,
+        effectiveFrom: item.effectiveFrom,
+        evidence: item.evidence,
+        watchUrl: item.watchUrl,
+        readOnTwoDays: item.readOnTwoDays,
+        plausible: item.plausible,
+        startPassed: item.startPassed,
+        since: item.since,
+        now,
+      }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -1205,6 +1226,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           taxSourceFailures.total +
           officialRateAttention.length +
           rdfSwitchesPending.length +
+          ruleChangeAttention.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))
