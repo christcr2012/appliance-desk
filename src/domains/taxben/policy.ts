@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -19,6 +20,11 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 export function policyTemplateKey(year: number): string {
   return `taxben-capitalization-policy-${year}`;
+}
+
+/** True for the business record that holds a signed capitalization policy. */
+export function isCapitalizationPolicyTemplateKey(templateKey: string | null | undefined): boolean {
+  return typeof templateKey === "string" && templateKey.startsWith("taxben-capitalization-policy-");
 }
 
 export type PolicyFacts = {
@@ -160,7 +166,9 @@ export async function signCapitalizationPolicy(
     await tx.auditLog.create({
       data: {
         userId: actorId, action: "taxben.policy_signed", entityType: "BusinessPaperwork", entityId: record.id,
-        newValue: { year, limitCents: facts.limitCents },
+        // The fingerprint of the exact signed text lives in this append-only
+        // audit row, so a later change to the record is always detectable.
+        newValue: { year, limitCents: facts.limitCents, textSha256: createHash("sha256").update(text).digest("hex") },
       },
     });
     return { year, status: "SIGNED" as const, recordId: record.id, signedOn: signedOnKey };

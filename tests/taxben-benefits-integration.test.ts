@@ -277,3 +277,43 @@ describe.skipIf(!enabled)("review fixes on PR #696 (real Postgres)", () => {
     ).rejects.toBeInstanceOf(Rollback);
   });
 });
+
+describe.skipIf(!enabled)("review fixes on PR #705 (real Postgres)", () => {
+  const tag = randomUUID().replaceAll("-", "");
+
+  it("runs the estimates on the deduction-based profit, not the full journal amounts", async () => {
+    await expect(
+      prisma.$transaction(async (tx) => {
+        const phone = await tx.ledgerAccount.findUniqueOrThrow({
+          where: { systemRole: "EXPENSE_PHONE_AND_INTERNET" },
+        });
+        await tx.businessSettings.upsert({
+          where: { id: "singleton" },
+          create: { id: "singleton", businessUsePercents: {} },
+          update: { businessUsePercents: {} },
+        });
+        const before = await computeTaxBenefits(2026, tx);
+        await tx.journalEntry.create({
+          data: {
+            entryDate: businessDateFromKey("2026-05-04")!, periodKey: "2026-05",
+            sourceType: "EXPENSE", sourceId: `tb705-phone-${tag}`, eventKind: "TAXBEN_TEST",
+            memo: "review fix test",
+            lines: { create: [{ ledgerAccountId: phone.id, debitCents: 100_000, creditCents: 0 }] },
+          },
+        });
+        // Unanswered: the phone bill deducts nothing, so it must not reduce
+        // the profit the SE-tax, retirement and QBI estimates run on.
+        const unanswered = await computeTaxBenefits(2026, tx);
+        expect(unanswered.netProfitCents).toBe(before.netProfitCents);
+        // Answered at 50%: exactly half of it reduces the estimates' profit.
+        await tx.businessSettings.update({
+          where: { id: "singleton" },
+          data: { businessUsePercents: { EXPENSE_PHONE_AND_INTERNET: 50 } },
+        });
+        const answered = await computeTaxBenefits(2026, tx);
+        expect(answered.netProfitCents).toBe(before.netProfitCents - 50_000);
+        throw new Rollback();
+      }),
+    ).rejects.toBeInstanceOf(Rollback);
+  });
+});

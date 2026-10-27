@@ -561,7 +561,7 @@ export function retirementComparisonException(input: {
     severity: "medium",
     title: `Compare retirement plans for ${input.year - 1} before the deadlines`,
     detail: `January to March is the window: a SEP-IRA for ${input.year - 1} can still be set up and funded up to the filing deadline, while a first-year solo 401(k) has an earlier setup deadline. Taxes > Tax benefits shows both estimates side by side — your CPA confirms which fits.`,
-    href: "/desk/sales-tax/benefits",
+    href: `/desk/sales-tax/benefits?year=${input.year - 1}`,
     todoKey: `taxben-retirement:${input.year}`,
     since: input.since,
   };

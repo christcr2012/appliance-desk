@@ -193,9 +193,20 @@ export async function computeTaxBenefits(year: number, db: Db = prisma): Promise
     db.businessSettings.findUnique({ where: { id: "singleton" } }),
     db.taxYearFacts.findUnique({ where: { year } }),
   ]);
-  const profit = books.netProfitCents;
-  const rows: BenefitRow[] = [];
   const businessUsePercents = settings?.businessUsePercents ?? null;
+  // The estimates run on the deduction-based profit: a shared or partly
+  // personal expense counts only at its deducted percent (the same percent
+  // the ordinary-deductions checklist below applies), never at the full
+  // journal amount — otherwise answering the business-use question would
+  // move the checklist but none of the estimates it feeds. (PR #705 review.)
+  let nonDeductedCents = 0;
+  for (const [role, total] of books.byRole) {
+    const percent = effectiveDeductionPercent(role, businessUsePercents);
+    if (percent === null) continue;
+    nonDeductedCents += total.cents - Math.round((total.cents * percent) / 100);
+  }
+  const profit = books.netProfitCents + nonDeductedCents;
+  const rows: BenefitRow[] = [];
 
   // --- Depreciation and expensing -------------------------------------------
   const assets = await db.bookAsset.findMany({

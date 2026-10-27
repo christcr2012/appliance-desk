@@ -10,6 +10,8 @@ import {
   previewCapitalizationPolicy,
   signCapitalizationPolicy,
 } from "@/domains/taxben/policy";
+import { updatePaperwork } from "@/domains/paperwork";
+import type { PaperworkInput } from "@/domains/paperwork/schema";
 
 // TAXBEN-1 section 1: the written capitalization policy — generated from
 // the rule book, signed by the owner on screen, stored as a business
@@ -117,6 +119,35 @@ describe.skipIf(!enabled)("capitalization policy signing (real Postgres)", () =>
     // December attention no longer asks for the signed year.
     const december = await listPolicyAttention(businessDateFromKey("2026-12-21")!);
     expect(december.map((item) => item.year)).not.toContain(SIGN_YEAR);
+  });
+
+  it("keeps a signed policy immutable: the general record editor refuses it (PR #705 review)", async () => {
+    await signCapitalizationPolicy(ownerId, SIGN_YEAR, businessDateFromKey("2026-12-15")!);
+    const record = await prisma.businessPaperwork.findUniqueOrThrow({
+      where: { templateKey: policyTemplateKey(SIGN_YEAR) },
+    });
+    const attempt: PaperworkInput = {
+      title: record.title,
+      groupName: "Taxes",
+      status: "DONE",
+      kind: "DOCUMENT",
+      notes: "Rewritten after signing.",
+      linkedObligationKeys: [],
+      remindDaysBefore: record.remindDaysBefore,
+    };
+    await expect(updatePaperwork(ownerId, record.id, attempt, record.version)).rejects.toThrow(
+      /signed capitalization policy/,
+    );
+    const after = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: record.id } });
+    expect(after.notes).toBe(record.notes);
+    expect(after.version).toBe(record.version);
+    const state = await getPolicyState(prisma, SIGN_YEAR);
+    expect(state.status).toBe("SIGNED");
+    // The signing audit row carries the fingerprint of the exact signed text.
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      where: { userId: ownerId, action: "taxben.policy_signed" },
+    });
+    expect((audit.newValue as { textSha256?: string }).textSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("refuses a non-owner signer", async () => {
