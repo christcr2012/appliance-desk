@@ -48,3 +48,4 @@ export { PullToRefresh, pullDistance, canPullRefresh, PULL_REFRESH_THRESHOLD } f
 export { RememberList, rememberedListHref, followRememberedClick, readListPosition, saveListPosition, clearRememberedLists } from "./remember-list";
 export { useOptimisticAction, type OptimisticChangeOptions, type OptimisticFormAction } from "./use-optimistic-action";
 export { SegmentedControl, Select, SearchablePicker, OptionCards, Switch, PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from "./selection-controls";
+export { Stepper, type StepperStep } from "./stepper";
