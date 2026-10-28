@@ -1,4 +1,4 @@
-## October 27 — ACCT-1: Accountant sign-in
+## October 27 — ACCT-1: Accountant sign-in (MERGED — PR #709, squash dc839ad6)
 
 ## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (MERGED — PR #705, squash bbc3f78f)
 
