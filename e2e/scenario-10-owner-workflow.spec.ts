@@ -71,12 +71,15 @@ test("the owner changes a price, publishes site words, schedules a delivery, rec
     expect(scheduled.scheduledAt).not.toBeNull();
 
     // 4. Check: recorded against the open bill; it is applied once and the bill is paid.
+    // AR-3: the statement page opens the same record form in a sheet ("Record cash or check");
+    // success closes the sheet and toasts the applied total.
     await page.goto(`/desk/billing/customer/${customer.id}`);
-    await page.getByRole("button", { name: "+ Record payment" }).click();
-    await page.getByLabel("Amount ($)").fill("60.00");
-    await page.getByLabel("Apply to").selectOption(invoice.id);
-    await page.getByRole("button", { name: "Record payment", exact: true }).click();
-    await expect(page.getByRole("status").filter({ hasText: /Applied \$60 across 1 invoice/ })).toBeVisible();
+    await page.getByRole("button", { name: "Record cash or check" }).click();
+    const recordSheet = page.getByRole("dialog", { name: "Record cash or check" });
+    await recordSheet.getByLabel("Amount ($)").fill("60.00");
+    await recordSheet.getByLabel("Apply to").selectOption(invoice.id);
+    await recordSheet.getByRole("button", { name: "Record payment", exact: true }).click();
+    await expect(page.getByText("Recorded $60.00")).toBeVisible();
     const paid = await prisma.invoice.findUniqueOrThrow({ where: { id: invoice.id } });
     expect(paid.status).toBe("PAID");
     expect(await prisma.payment.count({ where: { invoiceId: invoice.id, status: { in: ["SUCCEEDED", "succeeded"] } } })).toBe(1);

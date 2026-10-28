@@ -29,6 +29,15 @@ describe("job role screens", () => {
     expect(jobRoleAllowsPath(["customers"], "/api/whatever")).toBe(false);
   });
 
+  it("AR-3: the Money overview and Payments addresses belong to the billing screen", () => {
+    // An admin whose job role includes Money keeps the new pages (and the billing view that redirects to one).
+    for (const p of ["/desk/money", "/desk/payments", "/desk/payments?status=deposits", "/desk/billing?view=waiting"]) {
+      expect(screenForPath(p)).toBe("billing");
+      expect(jobRoleAllowsPath(["billing"], p)).toBe(true);
+      expect(jobRoleAllowsPath(["customers"], p)).toBe(false);
+    }
+  });
+
   it("every screen address in the menu belongs to a known screen", () => {
     const links = [...deskNavigation("OWNER").flatMap((g) => g.links), ...deskMoreLinks("OWNER")];
     for (const link of links) expect(screenForPath(link.href), link.href).not.toBeNull();

@@ -33,7 +33,7 @@
     "Roles filtered at the boundary: approvals are OWNER only in the domain, the actions and the Sheet; staff task visibility keeps the existing selection(role) clauses",
     "Snooze stays on Today only; /desk/approvals, /desk/tasks and /desk/notices keep working unchanged for their own visitors"
   ],
-  "next": "AR-4c — Customers list (CUSTOMERS.md) on the CU-1 engine (Lane 5 queue after AR-2, per the 2026-10-28 direction).",
+  "next": "AR-4c \u2014 Customers list (CUSTOMERS.md) on the CU-1 engine (Lane 5 queue after AR-2, per the 2026-10-28 direction).",
   "outcome": "Chris can clear his day from Today without opening other pages: approval requests are decided in place from a Sheet (approve/decline through a confirmation, outcome shown as a toast), due tasks are marked done in place with Undo, and notices keep linking to their page. Built in three short laps, one PR per slice: (1) the approval server actions move out of the approvals page into actions.ts with an inline result mode and the outcome/status words move to the approvals domain; (2) the OWNER-only approvals Sheet on Today; (3) optimistic task completion with Undo plus the notices verification and the browser spec.",
   "parent": "AR-2",
   "proposedFiles": [
@@ -45,8 +45,9 @@
     "e2e/today-inline.spec.ts",
     "src/app/desk/approvals/actions.ts",
     "src/app/desk/approvals/page.tsx",
+    "src/app/desk/today/approvals-sheet.tsx",
     "src/app/desk/today/page.tsx",
-    "src/app/desk/today/today-client.tsx",
+    "src/app/desk/today/today-inbox.tsx",
     "src/domains/approvals/words.ts",
     "tests/approval-actions.test.ts"
   ],
@@ -57,7 +58,7 @@
       "purpose": "The card: the three steps in order, the exact confirmation and toast wording, the acceptance list"
     },
     {
-      "anchor": "# Screen spec — Today (the inbox)",
+      "anchor": "# Screen spec \u2014 Today (the inbox)",
       "path": "docs/build-specs/screens/TODAY.md",
       "purpose": "The inbox the card finishes: groups, item actions and words the Today page already renders (built in AR-0)"
     },

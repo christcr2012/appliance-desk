@@ -45,7 +45,8 @@ describe("AR-1 five-area navigation compatibility and security", () => {
     expect(active("/desk/jobs/abc")).toEqual({ area: "schedule", tab: "visits" });
     expect(active("/desk/parts")).toEqual({ area: "equipment", tab: "parts" });
     expect(active("/desk/revenue")).toEqual({ area: "money", tab: "overview" });
-    expect(active("/desk/billing", "view=waiting")).toEqual({ area: "money", tab: "payments" });
+    // AR-3: ?view=waiting redirects to /desk/payments (Payments current by href); the old URL itself is the Bills page.
+    expect(active("/desk/billing", "view=waiting")).toEqual({ area: "money", tab: "bills" });
     expect(active("/desk/privacy")).toBeNull();
   });
   it("uses one source for public area metadata", () => {

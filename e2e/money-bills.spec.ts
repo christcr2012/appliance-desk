@@ -23,10 +23,11 @@ test.describe("Money › Bills", () => {
       const card = page.getByRole("list", { name: "Bills" }).getByRole("listitem").first();
       await expect(card).toContainText(fixture.name);
       await expect(card).toContainText(`Bill #${fixture.billNumber}`);
-      await expect(card.getByRole("link", { name: "Record cash or check" })).toHaveAttribute(
-        "href",
-        `/desk/billing/customer/${fixture.customerId}#record-payment`,
-      );
+      // AR-3: the card's pay action is now a button that opens the record sheet in place.
+      await expect(card.getByRole("button", { name: "Record cash or check" })).toBeVisible();
+      await card.getByRole("button", { name: "Record cash or check" }).click();
+      await expect(page.getByRole("dialog", { name: "Record cash or check" })).toBeVisible();
+      await page.keyboard.press("Escape");
       await expect(page.getByRole("link", { name: "New bill" })).toBeVisible();
 
       await page.setViewportSize({ width: 1280, height: 800 });

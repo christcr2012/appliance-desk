@@ -1,3 +1,45 @@
+## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
+
+Slices 1 and 2 merged (PRs #727, #728). Slice 3 finishes AR-2: a due task's
+Done on Today now runs optimistically with AR-11's treatment — the card hides
+the moment it is tapped, the success toast offers Undo (which reopens the
+task with its post-completion version), and a failure brings the card back
+with the task action's own message. The card eyebrow reads "Task · {due
+label}" (overdue stays attention), the linked record's name stays the detail,
+and the secondary action is "Open" to the tasks page. When more tasks are due
+than Today shows, the "Showing n of total" line gains a "See all tasks" link.
+Notice items are unchanged: their primary still goes to the notice's own
+page, with no inline handling added.
+
+## October 28 — AR-2 slice 2 in progress: approvals Sheet on Today (PR #728)
+
+Slice 1 merged (PR #727). Slice 2 lets the owner decide approval requests
+without leaving Today: when the "Requests waiting for your approval" item is in
+the inbox, it also loads the waiting list, its primary action becomes "Review
+requests" and opens a "Waiting for your approval" Sheet (the approvals page
+stays in the item's menu). Each request is a card (summary; who asked, when,
+how much; when it expires — expired requests offer only Decline). Approve and
+Decline always go through the plain confirmation, never optimistic, never
+Undo; the outcome arrives as a toast with the same words the approvals page
+uses. The Sheet renders only for the owner, and the deciding action refuses
+anyone else itself. New browser spec e2e/today-inline.spec.ts covers approve
+and decline through the confirmation, the staff view, and axe at five sizes.
+
+## October 28 — AR-3 Money area MERGED (PR #730, squash a3726e8c, Lane 4)
+
+The Money area is on main: a Money overview (money in, still owed, past due, coming in 30 days,
+money-group decisions, recent payments), a Payments list (Received / Failed / Needs a decision /
+Deposits / Waiting for Stripe; the old billing `?view=deposits` and `?view=waiting` links redirect
+here), payment sheets that open in place (Take payment, Record cash or check, card payment) on the
+Bills list, the bill panel, the statement and the customer record, and the bill record rebuilt as a
+kit record page with an Activity tab. No money rules changed — every button is the existing server
+action. PR #725 was closed unmerged and replaced by #730 with the identical tree (git-data pushes
+carry no merge ancestry, so #725 computed as permanently conflicted after main advanced three
+times — the AUD-E trap; the replacement branch was recreated from current main). CI was fully green
+at the merged head, and Codex's two findings on #730 (reserve the card-payment tab inside the
+click so popup blockers cannot swallow the Stripe page; the bill section must print from either
+tab) were fixed before merge. Next on Lane 4's queue: AR-7 (Books and Taxes screens on the kit),
+then AR-10 (final sweep).
 ## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
 
 AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is
