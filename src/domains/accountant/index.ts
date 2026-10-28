@@ -72,6 +72,17 @@ async function summarize(row: {
       return { summary: "Matched a bank transaction to the books", href: "/desk/books/cash" };
     case "books.bank.match.void":
       return { summary: "Undid a bank match", href: "/desk/books/cash" };
+    case "taxben.elections.save": {
+      const classes = Array.isArray(value.bonusElectOutClasses)
+        ? (value.bonusElectOutClasses as unknown[]).filter((c) => typeof c === "string")
+        : [];
+      return {
+        summary: classes.length
+          ? `Changed the bonus depreciation election for ${row.entityId} (electing out for ${classes.length} ${classes.length === 1 ? "class" : "classes"})`
+          : `Cleared the bonus depreciation elect-out for ${row.entityId}`,
+        href: `/desk/sales-tax/benefits?year=${row.entityId}`,
+      };
+    }
     case "compliance.prepare":
       return { summary: "Edited the prepared figures on a filing", href: `/desk/compliance/${row.entityId}` };
     case "compliance.review":
