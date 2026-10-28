@@ -9,7 +9,6 @@ import {
   assertDeliveryReadyInTx,
   deliveryTaxReadinessWith,
   recordReadinessOverrideInTx,
-  withoutDeliveryLicenseProblems,
 } from "@/domains/tax/delivery-readiness";
 import {
   createLeadManually,
@@ -665,10 +664,10 @@ export async function approveEstimate(
       select: { serviceAddressId: true },
     });
     for (const prepared of preparedForReadiness) {
-      const computed = await deliveryTaxReadinessWith(tx, prepared.serviceAddressId);
       // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
-      const readiness = zoneLocationOf(estimate.deliveryZoneSnapshot, prepared.serviceAddressId)?.choice === "CUSTOMER_PICKUP"
-        ? withoutDeliveryLicenseProblems(computed) : computed;
+      const readiness = await deliveryTaxReadinessWith(tx, prepared.serviceAddressId, new Date(),
+        zoneLocationOf(estimate.deliveryZoneSnapshot, prepared.serviceAddressId)?.choice === "CUSTOMER_PICKUP"
+          ? { customerPickup: true } : undefined);
       if (!readiness.ready) {
         throw new Error("We don't deliver there yet — call us.");
       }
@@ -849,8 +848,8 @@ async function assertConversionReadinessInTx(
   for (const agreement of agreements) {
     // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
     const customerPickup = zoneLocationOf(estimateZoneSnapshot, agreement.serviceAddressId)?.choice === "CUSTOMER_PICKUP";
-    const computed = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId);
-    const readiness = customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
+    const readiness = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId, new Date(),
+      customerPickup ? { customerPickup: true } : undefined);
     if (readiness.ready) continue;
     if (overrideReason?.trim() && !agreement.readinessOverrideByUserId) {
       await recordReadinessOverrideInTx(tx, {

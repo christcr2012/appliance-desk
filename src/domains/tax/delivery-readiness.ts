@@ -122,7 +122,7 @@ export async function evaluatePlaceReadiness(
     administration: string;
   },
   now: Date,
-  opts?: { countDispatchedForJobId?: string },
+  opts?: { countDispatchedForJobId?: string; customerPickup?: boolean },
 ): Promise<PlaceReadiness> {
   const base = { jurisdictionId: jurisdiction.id, name: jurisdiction.name };
   const readiness = await db.jurisdictionReadiness.findUnique({
@@ -170,7 +170,9 @@ export async function evaluatePlaceReadiness(
     }
   }
 
-  const licenseRequired = readiness?.licenseRequired ?? "NONE";
+  // ZONE-1: a customer pickup sends no truck into the place, so its delivery-license rule is skipped here (not
+  // filtered afterwards), and a "rules not decided" problem for the place is still returned below.
+  const licenseRequired = opts?.customerPickup ? "NONE" : readiness?.licenseRequired ?? "NONE";
   if (licenseRequired === "ALWAYS" || licenseRequired === "AFTER_FIRST_DELIVERY" || licenseRequired === "AFTER_SECOND_DELIVERY_IN_12_MONTHS") {
     const onFile = await licenseOnFile(db, readiness?.licenseRecordId ?? null, now);
     if (licenseRequired === "ALWAYS") {
@@ -220,7 +222,7 @@ export async function deliveryTaxReadinessWith(
   db: Db,
   serviceAddressId: string,
   now = new Date(),
-  opts?: { countDispatchedForJobId?: string },
+  opts?: { countDispatchedForJobId?: string; customerPickup?: boolean },
 ): Promise<DeliveryReadiness> {
   const address = await db.serviceAddress.findUnique({
     where: { id: serviceAddressId },
@@ -299,16 +301,6 @@ export async function deliveryTaxReadiness(
   return deliveryTaxReadinessWith(prisma, serviceAddressId, now);
 }
 
-/** ZONE-1: the readiness of a customer pickup hand-over — delivery-license problems removed, everything else kept. */
-export function withoutDeliveryLicenseProblems(readiness: DeliveryReadiness): DeliveryReadiness {
-  const places = readiness.places.map((place) =>
-    place.problem?.code === "LICENSE_REQUIRED" ? { jurisdictionId: place.jurisdictionId, name: place.name } : place);
-  const problems = places.flatMap((place) => (place.problem ? [place.problem] : []));
-  if (problems.length === readiness.places.filter((place) => place.problem).length) return readiness;
-  return { ready: problems.length === 0, overrideable: problems.length > 0 && problems.every((p) => p.code === "RULES_UNDECIDED"),
-    places };
-}
-
 /**
  * Gate for order saves and scheduling. An agreement carrying the
  * owner's override passes only when every problem is the overrideable
@@ -354,10 +346,8 @@ export async function assertDeliveryReadyInTx(
       await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${jurisdictionId} FOR UPDATE`;
     }
   }
-  const computed = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, {
-    countDispatchedForJobId: input.customerPickup ? undefined : input.countDispatchedForJobId,
-  });
-  const readiness = input.customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
+  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, input.customerPickup
+    ? { customerPickup: true } : { countDispatchedForJobId: input.countDispatchedForJobId });
   if (readiness.ready) return;
 
   if (input.agreementId) {
@@ -399,8 +389,8 @@ export async function recordReadinessOverrideInTx(
   const reason = input.reason.trim();
   if (!reason) throw new Error("Say why this order may go ahead.");
 
-  const computed = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now);
-  const readiness = input.customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
+  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now,
+    input.customerPickup ? { customerPickup: true } : undefined);
   if (readiness.ready) return;
   if (!readiness.overrideable) {
     const first = readiness.places.find((place) => place.problem);

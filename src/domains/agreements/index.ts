@@ -3,7 +3,6 @@ import {
   assertDeliveryReadyInTx,
   deliveryTaxReadinessWith,
   recordReadinessOverrideInTx,
-  withoutDeliveryLicenseProblems,
 } from "@/domains/tax/delivery-readiness";
 import { LATE_FEE_CAP_CENTS, LATE_FEE_MIN_GRACE_DAYS, classifyLateFeeAgreement } from "@/domains/billing/late-fee-rules";
 import { draftRequestId } from "./draft-request";
@@ -303,10 +302,10 @@ export async function createDraftAgreementInTx(
   // for this one order with a reason (audited); a missing city license,
   // an out-of-state address or an unconfirmed address can never be
   // overridden, and the refusal rolls the whole save back.
-  const computed = options.skipDeliveryReadinessCheck
+  const readiness = options.skipDeliveryReadinessCheck
     ? null
-    : await deliveryTaxReadinessWith(tx, input.serviceAddressId);
-  const readiness = computed && options.customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
+    : await deliveryTaxReadinessWith(tx, input.serviceAddressId, new Date(),
+      options.customerPickup ? { customerPickup: true } : undefined);
   if (readiness && !readiness.ready) {
     if (input.overrideReason?.trim()) {
       await recordReadinessOverrideInTx(tx, {

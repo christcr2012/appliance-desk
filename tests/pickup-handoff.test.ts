@@ -106,16 +106,4 @@ describe("customer pickup: no retail delivery fee, no delivery-license gate (Cod
     expect(allocateReviewedRdfForLocation(rdf, "UNDECIDED", false, true).status).toBe("UNDECIDED");
     expect(allocateReviewedRdfForLocation(rdf, "REQUIRED", true)).toMatchObject({ status: "APPLIES", amountCents: 29 });
   });
-  it("drops only delivery-license problems for a hand-over; every other problem still stops it", async () => {
-    const { withoutDeliveryLicenseProblems } = await import("@/domains/tax/delivery-readiness");
-    const license = { jurisdictionId: "city", name: "City", problem: { code: "LICENSE_REQUIRED" as const, message: "license" } };
-    expect(withoutDeliveryLicenseProblems({ ready: false, overrideable: false, places: [license] }))
-      .toEqual({ ready: true, overrideable: false, places: [{ jurisdictionId: "city", name: "City" }] });
-    const located = { jurisdictionId: "co", name: "Colorado", problem: { code: "ADDRESS_NOT_LOCATED" as const, message: "x" } };
-    expect(withoutDeliveryLicenseProblems({ ready: false, overrideable: false, places: [license, located] }))
-      .toMatchObject({ ready: false, overrideable: false });
-    const undecided = { jurisdictionId: "co", name: "Colorado", problem: { code: "RULES_UNDECIDED" as const, message: "x" } };
-    expect(withoutDeliveryLicenseProblems({ ready: false, overrideable: false, places: [license, undecided] }))
-      .toMatchObject({ ready: false, overrideable: true });
-  });
 });

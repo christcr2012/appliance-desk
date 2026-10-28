@@ -154,8 +154,15 @@ describe.skipIf(!enabled)("ZONE-1 customer pickup hand-over", () => {
         .rejects.toThrow();
       await expect(prisma.$transaction((tx) => assertDeliveryReadyInTx(tx, { serviceAddressId: addressId, customerPickup: true })))
         .resolves.toBeUndefined();
+      // A self-collected place whose rental tax rule isn't decided still stops a pickup, even when the place also
+      // needs a delivery license (the license check is skipped, not filtered after it hid the undecided rule).
+      await prisma.taxJurisdiction.update({ where: { id: jurisdictionId }, data: { administration: "SELF_COLLECTED" } });
+      await prisma.taxabilityRule.deleteMany({ where: { jurisdictionId, category: "RENTAL" } });
+      await expect(prisma.$transaction((tx) => assertDeliveryReadyInTx(tx, { serviceAddressId: addressId, customerPickup: true })))
+        .rejects.toThrow(/rental tax rule/);
     } finally {
       await prisma.jurisdictionReadiness.deleteMany({ where: { jurisdictionId } });
+      await prisma.taxJurisdiction.update({ where: { id: jurisdictionId }, data: { administration: "STATE_COLLECTED" } });
     }
   });
 });
