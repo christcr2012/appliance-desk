@@ -12,7 +12,7 @@ async function loginAs(page: import("@playwright/test").Page, email: string, pas
   await page.getByRole("button", { name: "Log in" }).click();
 }
 
-// ACC-1: a team member reaches My account from More, saves their details, is refused a wrong current password,
+// ACC-1: a team member reaches My account from the profile menu, saves their details, is refused a wrong current password,
 // and cannot change their password by calling the sign-in route directly (it must go through My account).
 test.describe("My account", () => {
   test("a staff member saves details, is refused a wrong password, and cannot bypass the page", async ({ page }) => {
@@ -31,8 +31,8 @@ test.describe("My account", () => {
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(/\/desk\/today$/);
 
-    await page.goto("/desk/more");
-    await page.getByRole("link", { name: "My account" }).click();
+    await page.getByRole("button", { name: "Profile menu" }).click();
+    await page.getByRole("menuitem", { name: "Your account" }).click();
     await page.waitForURL(/\/desk\/account$/);
     await expect(page.getByRole("heading", { name: "My account" })).toBeVisible();
 

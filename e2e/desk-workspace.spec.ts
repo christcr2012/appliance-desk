@@ -13,85 +13,58 @@ for (const role of ["owner", "staff"] as const) {
       if (process.env.CI) expect(fs.existsSync(state)).toBe(true);
       test.skip(!fs.existsSync(state), "Requires isolated CI role fixture");
     });
-    test("mobile menu contains focus, survives scrolling, closes with Escape and restores focus", async ({
+    test("mobile navigation: bottom bar areas, profile menu focus, Escape and area tabs", async ({
       page,
     }) => {
       await page.setViewportSize({ width: 360, height: 800 });
       await page.goto("/desk/today");
-      const open = page.getByRole("button", { name: "More navigation", exact: true });
       const mainNav = page.getByRole("navigation", { name: "Main" });
-      const expectedTabs =
-        role === "owner"
-          ? ["Today", "Schedule", "Customers", "Money"]
-          : ["Today", "Schedule", "Equipment", "Customers"];
+      // AR-1: the bottom bar shows all five areas for both roles (each area has
+      // at least one tab the role may open; the tabs inside stay role-filtered).
+      const expectedTabs = ["Today", "Customers", "Schedule", "Equipment", "Money"];
+      // The Today link's accessible name carries the inbox count ("Today 26 inbox items").
+      const areaLink = (label: string) =>
+        label === "Today"
+          ? mainNav.getByRole("link", { name: /^Today/ })
+          : mainNav.getByRole("link", { name: label, exact: true });
       for (const label of expectedTabs) {
-        await expect(
-          mainNav.getByRole("link", { name: label, exact: true }),
-        ).toBeVisible();
+        await expect(areaLink(label)).toBeVisible();
       }
-      await mainNav
-        .getByRole("link", { name: expectedTabs[0], exact: true })
-        .focus();
+      await areaLink(expectedTabs[0]).focus();
       for (const label of expectedTabs.slice(1)) {
         await page.keyboard.press("Tab");
-        await expect(
-          mainNav.getByRole("link", { name: label, exact: true }),
-        ).toBeFocused();
+        await expect(areaLink(label)).toBeFocused();
       }
-      await page.keyboard.press("Tab");
-      await expect(open).toBeFocused();
-
+      // The profile menu is a sheet: restricted links are never rendered for
+      // staff, Escape closes it and focus returns to the opener.
+      const open = page.getByRole("button", { name: "Profile", exact: true });
       await open.click();
-      const dialog = page.getByRole("dialog", { name: "Appliance Desk" });
+      const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
-      await expect(
-        dialog.getByRole("link", { name: "Today", exact: true }),
-      ).toHaveAttribute("aria-current", "page");
-      // The menu entries (14 owner / 10 staff) plus the "App feedback" link under them (MCP-10a).
-      expect(await dialog.getByRole("link").count()).toBe(
-        role === "owner" ? 15 : 11,
-      );
-      await expect(
-        dialog.getByRole("link", { name: "App feedback", exact: true }),
-      ).toHaveAttribute("href", "/desk/feedback/new?from=%2Fdesk%2Ftoday");
-      await expect(
-        dialog.getByRole("link", { name: "Communications", exact: true }),
-      ).toHaveCount(1);
-      if (role === "owner") {
-        await expect(
-          dialog.getByRole("link", { name: "Money", exact: true }),
-        ).toHaveCount(1);
+      const menu = dialog.getByRole("navigation", { name: "Account and settings" });
+      const expectedLinks =
+        role === "owner"
+          ? ["Settings", "Your account", "Website", "Business paperwork", "Privacy requests", "System health", "Activity log", "Help"]
+          : ["Your account", "Activity log", "Help"];
+      expect(await menu.getByRole("link").count()).toBe(expectedLinks.length);
+      for (const label of expectedLinks) {
+        await expect(menu.getByRole("link", { name: label, exact: true })).toBeVisible();
       }
       if (role === "staff") {
-        await expect(
-          dialog.getByRole("link", { name: "Money", exact: true }),
-        ).toHaveCount(0);
-        await expect(
-          dialog.getByRole("link", { name: "Settings", exact: true }),
-        ).toHaveCount(0);
-        await expect(
-          page.getByRole("link", { name: "Create rental", exact: true }),
-        ).toHaveCount(0);
+        await expect(menu.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
+        await expect(menu.getByRole("link", { name: "Privacy requests", exact: true })).toHaveCount(0);
       }
-      await dialog
-        .getByRole("link", { name: "More", exact: true })
-        .scrollIntoViewIfNeeded();
-      await expect(dialog).toBeVisible();
-      await page.keyboard.press("Tab");
-      expect(
-        await page.evaluate(() =>
-          document
-            .querySelector("dialog[open]")
-            ?.contains(document.activeElement),
-        ),
-      ).toBe(true);
+      // The phone sheet is a drawer: Escape closes it and focus returns to the
+      // button that opened it (the kit sheet's documented behavior).
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible();
       await expect(open).toBeFocused();
-      await open.click();
-      await dialog.getByRole("link", { name: "Tasks", exact: true }).click();
+      // Area tabs navigate within the area and the bottom bar stays put.
+      await page
+        .getByRole("navigation", { name: "Today sections" })
+        .getByRole("link", { name: "Tasks", exact: true })
+        .click();
       await expect(page).toHaveURL(/\/desk\/tasks$/);
-      await expect(dialog).not.toBeVisible();
       await expect(mainNav).toBeVisible();
     });
   });
@@ -134,7 +107,7 @@ test.describe("owner daily work", () => {
           if (width === 1440 && route === "today") {
             await expect(
               page
-                .getByRole("navigation", { name: "Owner desk" })
+                .getByRole("navigation", { name: "Areas" })
                 .getByRole("link", { name: "Today", exact: true }),
             ).toHaveAttribute("aria-current", "page");
           }

@@ -26,7 +26,10 @@ export function currentAreaTab(items: AreaTabItem[], pathname: string, search = 
     const path = pathOf(item.href);
     if (pathname === path && firstOnPath < 0 && !item.query) firstOnPath = index;
     const queryParams = new URLSearchParams(item.href.includes("?") ? item.href.slice(item.href.indexOf("?") + 1) : "");
-    const wanted = [...queryParams.entries()];
+    // An explicit query rule owns its parameter: the href's default value for
+    // that parameter must not also be required (Payments: view=waiting counts,
+    // even though the tab's href defaults to view=deposits).
+    const wanted = [...queryParams.entries()].filter(([key]) => key !== item.query?.param);
     for (const candidate of [path, ...(item.matches ?? [])]) {
       const match = pathname === candidate || pathname.startsWith(candidate.endsWith("/") ? candidate : candidate + "/");
       if (!match) continue;
@@ -51,8 +54,8 @@ export function AreaTabs({ label, items }: { label: string; items: AreaTabItem[]
     currentRef.current?.scrollIntoView?.({ block: "nearest", inline: "center" });
   }, [current]);
   return (
-    <nav aria-label={label} className="-mx-5 border-b border-line lg:mx-0">
-      <ul className="flex gap-1 overflow-x-auto px-5 [scrollbar-width:none] lg:px-0 [&::-webkit-scrollbar]:hidden">
+    <nav aria-label={label} className="-mx-4 border-b border-line sm:-mx-6 lg:mx-0">
+      <ul className="flex gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:px-6 lg:px-0 [&::-webkit-scrollbar]:hidden">
         {visible.map((item, index) => {
           const isCurrent = index === current;
           return (

@@ -53,6 +53,7 @@ describe("kit AreaTabs (KIT 4.2)", () => {
     ];
     expect(currentAreaTab(tabs, "/desk/billing", "")).toBe(0);
     expect(currentAreaTab(tabs, "/desk/billing", "view=deposits")).toBe(1);
+    expect(currentAreaTab(tabs, "/desk/billing", "view=waiting")).toBe(1);
     expect(currentAreaTab(tabs, "/desk/billing/held-payments")).toBe(1);
     expect(currentAreaTab(tabs, "/desk/billing/customer/123")).toBe(0);
   });
