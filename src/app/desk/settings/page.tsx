@@ -1,3 +1,9 @@
+// AR-8: the settings page is the catalog. Sections and rows come from
+// src/domains/settings/catalog.ts; every scalar saves through the row
+// save with its revision; the big editors stay and open from their panel
+// rows. Old ?section= ids redirect to the new sections.
+import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { centsAsDollars } from "@/lib/money-ui";
 import { NoticeDeliveryForm } from "./notice-delivery-form";
 import { MonthToMonthForm } from "./month-to-month-form";
@@ -11,20 +17,13 @@ import { listCurrentTranslationDrafts } from "@/domains/language/drafts";
 import { SpanishDraftsEditor } from "./spanish-drafts-editor";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
-import { getShownFeatures } from "@/domains/features";
 import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
 import { servicePriceWarnings } from "@/domains/orders/service-cost-warnings";
 import { getTeam, getTeamSettings } from "@/domains/team";
 import { listJobRoles } from "@/domains/team/job-roles";
 import { requireRole } from "@/lib/session";
-import {
-  SETTINGS_SECTIONS,
-  settingsSection,
-} from "@/domains/settings/section-config";
 import { providerStatus } from "@/domains/settings/provider-status";
-import { FilterBar } from "@/components/desk/workspace";
-import { ButtonLink, Card, PageHeader } from "@/components/ui";
-import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import { ButtonLink, Card } from "@/components/ui";
 import { SettingsForm } from "./settings-form";
 import { SigningChargeForm } from "./signing-charge-form";
 import { BankPaymentForm } from "./bank-payment-form";
@@ -55,80 +54,169 @@ import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
 import { sectionRevision } from "@/domains/settings/preview";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
-import { updateSecondStepSettingsAction, updateSignInPauseAction, updateTrustedDeviceSettingsAction, updateTwoFactorRequiredRolesAction } from "./actions";
+import { updateSecondStepSettingsAction, updateSignInPauseAction, updateTwoFactorRequiredRolesAction } from "./actions";
 import { getPauseSettings } from "@/domains/security/sign-in-guard";
-import { getTrustedDeviceSettings } from "@/domains/security/trusted-devices";
 import { getMethodSettings, twilioKeysPresent } from "@/domains/security/second-step";
 import { EMAIL_WEAKER_WARNING, METHOD_LABEL } from "@/domains/security/second-step-rules";
-import { listOwnSessions } from "@/domains/security/sessions";
-import { SessionControls } from "./session-controls";
 import { DeliveryZonesForm } from "./delivery-zones-form";
 import { ServiceAreaMap } from "@/components/site/service-area-map";
 import { readZoneSettings } from "@/domains/delivery/zone";
 import { townsWithZones } from "@/domains/delivery/towns";
 import { zoneSettingsRevision } from "@/domains/delivery/settings";
+import {
+  OLD_SECTION_REDIRECTS,
+  SETTINGS_SECTIONS_V2,
+  type SettingsSectionId,
+} from "@/domains/settings/catalog";
+import { getSettingsPage } from "@/domains/settings/page-data";
+import { settingEffect } from "@/domains/settings/effects";
+import { formatSettingValue } from "@/domains/settings/history";
+import { PanelRow, RowAnchorFlash, SettingRow, SettingsIndex, type SettingRowData } from "@/components/kit";
+import { Toaster } from "@/components/kit/toaster";
+
+const FMT_KIND = {
+  money: "money", days: "days", hours: "hours", minutes: "number", number: "number",
+  percent: "percent", yesno: "yesno", text: "text", list: "list", choice: "choice",
+  panel: "text", link: "text",
+} as const;
+
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
 };
+
+function resolveSection(raw: string | undefined): SettingsSectionId | null {
+  if (!raw) return null;
+  if (SETTINGS_SECTIONS_V2.some((s) => s.id === raw)) return raw as SettingsSectionId;
+  return OLD_SECTION_REDIRECTS[raw] ?? "business";
+}
+
 export default async function DeskSettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ section?: string }>;
 }) {
   const session = await requireRole("OWNER", "ADMIN");
-  const section = settingsSection((await searchParams).section);
-  const settings = await getBusinessSettings();
-  const shownFeatures = await getShownFeatures();
-  const spanishReview = section === "notifications" ? await getSpanishReview() : null;
-  const spanishDrafts = section === "notifications" ? await listCurrentTranslationDrafts() : [];
-  const activeSetupTaxTreatment = section === "policies"
-    ? await getEffectiveSetupTaxTreatment() : "UNDECIDED";
-  const upcomingSetupPolicies = section === "policies"
-    ? await prisma.setupFeeTaxDecisionVersion.findMany({
-      where: { effectiveFromKey: { gt: businessDateKey(new Date()) },
-        cancelledAt: null },
-      orderBy: [{ effectiveFromKey: "asc" }, { ownerApprovedAt: "desc" }], take: 10,
-      select: { id: true, effectiveFromKey: true, treatment: true },
-    }) : [];
+  const role = session.user.role === "OWNER" ? "OWNER" : "ADMIN";
+  const raw = (await searchParams).section;
+  const section = resolveSection(raw);
+  if (raw && section && raw !== section) {
+    redirect(`/desk/settings?section=${section}`);
+  }
+  if (!section) {
+    return (
+      <div>
+        <SettingsIndex attention={[]} role={role} />
+        <Toaster />
+      </div>
+    );
+  }
 
-  const leadScoringPolicy = section === "policies" ? await getLeadScoringPolicy() : null;
-  // FEETAX-1 (S5): warn when a service price is well above its typical cost.
-  const serviceWarnings = section === "policies" ? await servicePriceWarnings() : [];
-  let content: React.ReactNode;
-  if (section === "products") {
-    const [applianceTypes, packages] = await Promise.all([getAllApplianceTypes(), listPackagesForSettings()]);
-    content = (
-      <>
-      <Card
-        title="Sets and packages"
-        description="Machines rented together for one lower monthly price, such as a washer and a dryer."
-        className="mb-6"
-      >
-        <PackageTable
-          packages={packages.map((p) => ({
-            id: p.id,
-            name: p.name,
-            monthlyPriceCents: p.monthlyPriceCents,
-            showOnWebsite: p.showOnWebsite,
-            isActive: p.isActive,
-            components: p.components.map((c) => ({
-              applianceTypeId: c.applianceTypeId,
-              name: c.applianceType.name,
-              quantity: c.quantity,
-              monthlyPriceCents: c.applianceType.monthlyPriceCents,
-              isActive: c.applianceType.isActive,
-            })),
-          }))}
-          types={applianceTypes
-            .filter((t) => t.isActive)
-            .map((t) => ({ id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents }))}
-        />
-      </Card>
-      <Card title="New-order setup and down payments"
-        description="Configure future signing charges; live collection remains gated.">
-        <SigningChargeForm editable={session.user.role === "OWNER"}
-          activeTaxTreatment={activeSetupTaxTreatment} upcomingPolicies={upcomingSetupPolicies} settings={{
+  const settings = await getBusinessSettings();
+  const page = await getSettingsPage(section);
+  const isOwner = role === "OWNER";
+
+  // ---- panel contents (the existing editors, opened from their rows) ----
+  const panels: Record<string, ReactNode> = {};
+  let extra: ReactNode = null;
+  let topExtra: ReactNode = null;
+
+  if (section === "business") {
+    const profileForm = (
+      <SettingsForm
+        section="profile"
+        revision={sectionRevision(settings, "profile")}
+        defaultValues={{
+          publicBusinessName: settings.publicBusinessName,
+          publicPhone: settings.publicPhone,
+          publicEmail: settings.publicEmail,
+          publicAddress: settings.publicAddress,
+          ...profileExtrasDefaults(settings),
+          serviceAreaCities: Array.isArray(settings.serviceAreaCities) ? (settings.serviceAreaCities as string[]).join(", ") : "",
+          serviceAreaZips: Array.isArray(settings.serviceAreaZips) ? (settings.serviceAreaZips as string[]).join(", ") : "",
+          deliveryFeeDollars: centsAsDollars(settings.oneTimeDeliveryFeeCents),
+          installationFeeDollars: centsAsDollars(settings.oneTimeInstallationFeeCents),
+          removalFeeDollars: centsAsDollars(settings.oneTimeRemovalFeeCents),
+          haulAwayFeeDollars: centsAsDollars(settings.oneTimeHaulAwayFeeCents),
+          damageWaiverEnabled: settings.damageWaiverEnabled,
+          depositEnabled: settings.depositEnabled,
+          lateFeeGraceDays: settings.lateFeeGraceDays,
+          lateFeeFlatDollars: centsAsDollars(settings.lateFeeFlatCents),
+          lateFeePercent: settings.lateFeePercent,
+          sixMonthPrepaySetDollars: centsAsDollars(settings.sixMonthPrepayDiscountSetCents),
+          sixMonthPrepaySingleDollars: centsAsDollars(settings.sixMonthPrepayDiscountSingleCents),
+          twelveMonthPrepaySetDollars: centsAsDollars(settings.twelveMonthPrepayDiscountSetCents),
+          twelveMonthPrepaySingleDollars: centsAsDollars(settings.twelveMonthPrepayDiscountSingleCents),
+          twelveMonthPrepayFreeMonthEnabled: settings.twelveMonthPrepayFreeMonthEnabled,
+          referralRewardDollars: centsAsDollars(settings.referralRewardCents),
+          draftReservationHoldDays: settings.draftReservationHoldDays,
+          receiptFileKeepDays: settings.receiptFileKeepDays,
+          unsentPhotoKeepDays: settings.unsentPhotoKeepDays,
+        }}
+      />
+    );
+    panels["hoursPanel"] = profileForm;
+    panels["socialLinksPanel"] = profileForm;
+    panels["logoPanel"] = profileForm;
+    panels["serviceAreaPanel"] = profileForm;
+    const zones = readZoneSettings(settings);
+    const towns = townsWithZones(zones);
+    panels["deliveryZonesPanel"] = (
+      <div>
+        <div className="mb-5 rounded-card border border-line bg-subtle p-4 text-sm text-ink-soft">
+          <p><strong className="text-ink">Starting values (your answer of 2026-10-13):</strong> up to 15 miles free, over 15 to 30 miles $75,
+            over 30 to 50 miles $125, beyond 50 miles pickup only. Distance is a straight line from the center (your answer of 2026-10-25).</p>
+          <p className="mt-2">Delivery is always optional: every estimate also offers “I’ll pick it up” for $0. Changes apply to estimates
+            checked from now on; sent estimates and signed agreements keep the zone they were given. Only the owner can change these.</p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <DeliveryZonesForm settings={zones} revision={zoneSettingsRevision(zones)} canChange={isOwner} />
+          <div>
+            <p className="mb-2 text-sm font-semibold text-ink">Map preview (saved zones)</p>
+            <ServiceAreaMap id="settings-zone-map" settings={zones} towns={towns}
+              copy={{ title: "Preview of your delivery zone map", north: "N", scale: "10 miles", center: "Center" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (section === "prices") {
+    const [applianceTypes, packages, activeSetupTaxTreatment, upcomingSetupPolicies] = await Promise.all([
+      getAllApplianceTypes(),
+      listPackagesForSettings(),
+      getEffectiveSetupTaxTreatment(),
+      prisma.setupFeeTaxDecisionVersion.findMany({
+        where: { effectiveFromKey: { gt: businessDateKey(new Date()) }, cancelledAt: null },
+        orderBy: [{ effectiveFromKey: "asc" }, { ownerApprovedAt: "desc" }], take: 10,
+        select: { id: true, effectiveFromKey: true, treatment: true },
+      }),
+    ]);
+    panels["appliancePricesPanel"] = (
+      <AppliancePricingTable
+        rows={applianceTypes.map((t) => ({
+          id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents,
+          showOnWebsite: t.showOnWebsite, isActive: t.isActive, photoUrl: t.photoUrl,
+        }))}
+      />
+    );
+    panels["packagesPanel"] = (
+      <PackageTable
+        packages={packages.map((p) => ({
+          id: p.id, name: p.name, monthlyPriceCents: p.monthlyPriceCents,
+          showOnWebsite: p.showOnWebsite, isActive: p.isActive,
+          components: p.components.map((c) => ({
+            applianceTypeId: c.applianceTypeId, name: c.applianceType.name,
+            quantity: c.quantity, monthlyPriceCents: c.applianceType.monthlyPriceCents,
+            isActive: c.applianceType.isActive,
+          })),
+        }))}
+        types={applianceTypes.filter((t) => t.isActive).map((t) => ({ id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents }))}
+      />
+    );
+    panels["signingChargesPanel"] = (
+      <SigningChargeForm editable={isOwner}
+        activeTaxTreatment={activeSetupTaxTreatment} upcomingPolicies={upcomingSetupPolicies} settings={{
           administrativeSetupFeeCents: settings.administrativeSetupFeeCents,
           largeOrderMachineThreshold: settings.largeOrderMachineThreshold,
           largeOrderCancellationFullRefundHours: settings.largeOrderCancellationFullRefundHours,
@@ -142,504 +230,316 @@ export default async function DeskSettingsPage({
           setupFeeTaxAdviserReference: settings.setupFeeTaxAdviserReference,
           updatedAt: settings.updatedAt,
         }} />
-      </Card>
-      <Card title="Bank payments" description="How long a bank transfer can wait before it needs your attention.">
-        <BankPaymentForm editable={session.user.role === "OWNER"} days={settings.bankPaymentSlowBusinessDays ?? 6} />
-      </Card>
-      <Card title="Late fee warning" description="A late fee is only added after the customer was told.">
-        <LateFeeNoticeForm editable={session.user.role === "OWNER"} days={settings.lateFeeNoticeDaysBefore ?? 2} />
-      </Card>
-      <Card title="Colorado consumer lease filing" description="Needed before the first household rental over 4 months.">
-        <UcccFilingForm editable={session.user.role === "OWNER"} filedOn={settings.ucccNotificationFiledOn ? businessDateKey(settings.ucccNotificationFiledOn) : null} />
-      </Card>
-      <Card title="Mandatory fees on complete estimates" description="Owner-only effective-dated rule revisions; charge collection stays disabled until independent clearance.">
-        <MandatorySigningPolicyForm editable={session.user.role === "OWNER"} effectiveDate={businessDateKey(new Date())}
-          current={effectiveMandatorySigningPolicy(settings.signingMandatoryPolicyVersions)}
-          history={parseMandatorySigningPolicyVersions(settings.signingMandatoryPolicyVersions)} />
-      </Card>
-      <Card
-        title="Products and pricing"
-        description="Signed agreements keep their existing prices. Catalog changes apply to new rentals."
-      >
-        <AppliancePricingTable
-          rows={applianceTypes.map((t) => ({
-            id: t.id,
-            name: t.name,
-            monthlyPriceCents: t.monthlyPriceCents,
-            showOnWebsite: t.showOnWebsite,
-            isActive: t.isActive,
-            photoUrl: t.photoUrl,
-          }))}
-        />
-      </Card>
-      </>
     );
-  } else if (section === "terms") {
+    panels["mandatoryFeesPanel"] = (
+      <MandatorySigningPolicyForm editable={isOwner} effectiveDate={businessDateKey(new Date())}
+        current={effectiveMandatorySigningPolicy(settings.signingMandatoryPolicyVersions)}
+        history={parseMandatorySigningPolicyVersions(settings.signingMandatoryPolicyVersions)} />
+    );
+  }
+
+  if (section === "rentals") {
+    const [leadScoringPolicy, serviceWarnings] = await Promise.all([getLeadScoringPolicy(), servicePriceWarnings()]);
     const status = termsPolicyStatus(settings);
     const line = (label: string, feature: { available: boolean; missing: string[] }) => (
       <li key={label}>
         <span className="font-medium text-ink">{label}:</span>{" "}
-        {feature.available
-          ? "available to use."
-          : `not available yet. Still needed: ${feature.missing.join("; ")}.`}
+        {feature.available ? "available to use." : `not available yet. Still needed: ${feature.missing.join("; ")}.`}
       </li>
     );
-    content = (
-      <Card
-        title="Ending and renewing rentals"
-        description="Set the rules here whenever you like. Agreements already signed keep working; new quotes use what is saved."
-      >
+    panels["endingTermsPanel"] = (
+      <div>
         <ul className="mb-6 space-y-1 rounded-card bg-subtle p-3 text-sm text-ink-soft">
           {line("Ending early", status.earlyEnding)}
           {line("Automatic renewal", status.autoRenew)}
         </ul>
-        <div className="mb-6">
-          <AutoRenewSwitch
-            enabled={settings.autoRenewEnabled === true}
-            canChange={(session.user as { role?: string }).role === "OWNER"}
-          />
-        </div>
         <TermsPolicyForm defaultValues={termsPolicyDefaults(settings)} />
-        <MonthToMonthForm
-          defaultValues={monthToMonthSettingsDefaults(settings as { monthToMonthChangeNoticeDays?: number; termsChangeNoticeText?: string | null; annualReminderText?: string | null })}
-          currentVersion={(await prisma.monthToMonthTermsVersion.findFirst({ orderBy: { version: "desc" }, select: { version: true } }))?.version ?? null}
-          startingDrafts={MONTH_TO_MONTH_STARTING_DRAFTS}
-        />
-        <EarlyReturnForm defaultValues={earlyReturnDefaults(earlyReturnSettingsFrom(settings))} />
-        <NoticeDeliveryForm
-          defaultValues={noticeDeliveryDefaults(settings as { noticeCertifierRoles?: string; mailNoticeTransitDays?: number })}
-          canChange={(session.user as { role?: string }).role === "OWNER"}
-        />
-      </Card>
+      </div>
     );
-  } else if (section === "service-area") {
-    const zones = readZoneSettings(settings);
-    const towns = townsWithZones(zones);
-    content = (
-      <Card
-        title="Delivery zones"
-        description="Delivery zones measured from the center of Greeley. The zone for each customer is found from their address and put on the estimate."
-      >
-        <div className="mb-5 rounded-card border border-line bg-subtle p-4 text-sm text-ink-soft">
-          <p><strong className="text-ink">Starting values (your answer of 2026-10-13):</strong> up to 15 miles free, over 15 to 30 miles $75,
-            over 30 to 50 miles $125, beyond 50 miles pickup only. Distance is a straight line from the center (your answer of 2026-10-25).
-            A 50-mile circle can be 60 or more road miles.</p>
-          <p className="mt-2">Delivery is always optional: every estimate also offers &ldquo;I&rsquo;ll pick it up&rdquo; for $0. Changes apply to estimates
-            checked from now on; sent estimates and signed agreements keep the zone they were given. Only the owner can change these.
-            Delivery prices stay off the website until you switch them on.</p>
-          <p className="mt-2">The old city and ZIP code lists were replaced by these zones; they are kept but no longer used.</p>
+    panels["autoRenewPanel"] = <AutoRenewSwitch enabled={settings.autoRenewEnabled === true} canChange={isOwner} />;
+    panels["monthToMonthPanel"] = (
+      <MonthToMonthForm
+        defaultValues={monthToMonthSettingsDefaults(settings as { monthToMonthChangeNoticeDays?: number; termsChangeNoticeText?: string | null; annualReminderText?: string | null })}
+        currentVersion={(await prisma.monthToMonthTermsVersion.findFirst({ orderBy: { version: "desc" }, select: { version: true } }))?.version ?? null}
+        startingDrafts={MONTH_TO_MONTH_STARTING_DRAFTS}
+      />
+    );
+    panels["earlyReturnPanel"] = <EarlyReturnForm defaultValues={earlyReturnDefaults(earlyReturnSettingsFrom(settings))} />;
+    panels["noticesPanel"] = (
+      <NoticeDeliveryForm
+        defaultValues={noticeDeliveryDefaults(settings as { noticeCertifierRoles?: string; mailNoticeTransitDays?: number })}
+        canChange={isOwner}
+      />
+    );
+    panels["pickupBillingPanel"] = <PickupBillingForm defaultValues={pickupBillingDefaults(pickupBillingSettingsFrom(settings))} />;
+    panels["jobSchedulingPanel"] = <JobSchedulingForm defaultValues={jobSchedulingDefaults(settings)} />;
+    panels["leadScoringPanel"] = <LeadScoringForm policy={leadScoringPolicy} />;
+    panels["bankPaymentSlowBusinessDays"] = <BankPaymentForm editable={isOwner} days={settings.bankPaymentSlowBusinessDays ?? 6} />;
+    panels["lateFeeNoticeDaysBefore"] = <LateFeeNoticeForm editable={isOwner} days={settings.lateFeeNoticeDaysBefore ?? 2} />;
+    if (serviceWarnings.length > 0) {
+      topExtra = (
+        <div className="mb-4 rounded-card border border-amber-300 bg-amber-50 p-4" role="note">
+          <p className="text-sm font-medium text-amber-900">Service prices well above cost</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-amber-900">
+            {serviceWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+          </ul>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <DeliveryZonesForm settings={zones} revision={zoneSettingsRevision(zones)}
-            canChange={(session.user as { role?: string }).role === "OWNER"} />
-          <div>
-            <p className="mb-2 text-sm font-semibold text-ink">Map preview (saved zones)</p>
-            <ServiceAreaMap id="settings-zone-map" settings={zones} towns={towns}
-              copy={{ title: "Preview of your delivery zone map", north: "N", scale: "10 miles", center: "Center" }} />
-          </div>
-        </div>
-      </Card>
-    );
-  } else if (section === "pickups") {
-    content = (
-      <Card
-        title="Pickups and deliveries"
-        description="What a customer is charged when an appliance comes back late, credited when one is delivered late, and whether the pickup day counts."
-      >
-        <PickupBillingForm defaultValues={pickupBillingDefaults(pickupBillingSettingsFrom(settings))} />
-        <p className="mt-4 text-sm">
-          <ButtonLink href="/desk/settings/rental-endings" variant="secondary">Rental ending reminder (days before a rental ends)</ButtonLink>
-        </p>
-      </Card>
-    );
-  } else if (section === "jobs") {
-    content = (
-      <Card
-        title="Visits and scheduling"
-        description="How long a visit is assumed to take when checking whether the same person is booked twice."
-      >
-        <JobSchedulingForm defaultValues={jobSchedulingDefaults(settings)} />
-      </Card>
-    );
-  } else if (section === "staff") {
-    const [team, teamSettings, jobRoles, certifications] = await Promise.all([getTeam(), getTeamSettings(), listJobRoles({ includeArchived: session.user.role === "OWNER" }), session.user.role === "OWNER" ? listTeamCertifications() : Promise.resolve([])]);
-    content = (
+      );
+    }
+    extra = (
       <>
-      <Card title="Team">
+        <Card title="Return inspection checklist" className="mt-6">
+          <p className="text-sm text-ink-soft">
+            The return inspection checklist is versioned separately so changing it never rewrites an inspection that
+            already happened.
+          </p>
+          <div className="mt-3">
+            <ButtonLink href="/desk/settings/policies" variant="secondary">Edit return inspection checklist</ButtonLink>
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  if (section === "team") {
+    const [team, teamSettings, jobRoles, certifications, methodSettings, pauseSettings] = await Promise.all([
+      getTeam(),
+      getTeamSettings(),
+      listJobRoles({ includeArchived: isOwner }),
+      isOwner ? listTeamCertifications() : Promise.resolve([]),
+      getMethodSettings(),
+      getPauseSettings(),
+    ]);
+    const teamNode = (
+      <div>
         <TeamSection
-          viewerRole={session.user.role === "OWNER" ? "OWNER" : "ADMIN"}
+          viewerRole={isOwner ? "OWNER" : "ADMIN"}
           viewerId={session.user.id}
           settings={teamSettings}
           jobRoles={jobRoles}
           members={team.members.map((m) => ({ ...m, lastSignIn: m.lastSignIn ? m.lastSignIn.toISOString() : null, accessEndsOn: m.accessEndsOn ? m.accessEndsOn.toISOString() : null }))}
           invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString(), firm: i.firm, accessEndsOn: i.accessEndsOn ? i.accessEndsOn.toISOString() : null }))}
         />
-      </Card>
-      {session.user.role === "OWNER" ? (
-        <Card title="Refrigerant certifications">
-          <CertificationSection people={certifications.map((c) => ({ id: c.id, name: c.name, role: c.role, certification: c.certification ? { certificationNumber: c.certification.certificationNumber, issuedOn: c.certification.issuedOn ? c.certification.issuedOn.toISOString().slice(0, 10) : null } : null }))} />
-        </Card>
-      ) : null}
-      </>
-    );
-  } else if (section === "website") {
-    content = (
-      <Card
-        title="Website controls"
-        description="The public site uses your saved business profile, service area and catalog pricing."
-      >
-        <div className="flex flex-wrap gap-2">
-          <ButtonLink href="/desk/settings/website" variant="secondary">
-            Edit the website
-          </ButtonLink>
-          <ButtonLink href="/desk/launch" variant="secondary">
-            Launch signup and announcement controls
-          </ButtonLink>
-          <ButtonLink
-            href="/"
-            variant="secondary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View public website
-          </ButtonLink>
-        </div>
-        <p className="mt-4 text-sm text-ink-soft">
-          Use Edit the website for the wording on your pages. Use Business
-          profile, Service area, and Products and pricing for contact details,
-          where you work and prices.
-        </p>
-      </Card>
-    );
-  } else if (section === "security") {
-    const requiredRoles = twoFactorRolesFromSetting(settings.twoFactorRequiredRoles);
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { twoFactorEnabled: true },
-    });
-    const canChange = session.user.role === "OWNER";
-    const ownSessions = await listOwnSessions(session.user.id, session.session.token);
-    const methodSettings = await getMethodSettings();
-    const pauseSettings = await getPauseSettings();
-    const trustedDeviceSettings = await getTrustedDeviceSettings();
-    content = (
-      <Card
-        title="Security"
-        description="Require an authenticator-app code after the password for people who can reach sensitive business data."
-      >
-        <div className="mb-6 rounded-card border border-line bg-subtle p-4">
-          <p className="font-medium text-ink">Your two-step login</p>
-          <p className="mt-1 text-sm text-ink-soft">
-            {currentUser?.twoFactorEnabled
-              ? "Authenticator setup is complete."
-              : "Authenticator setup is not complete yet."}
-          </p>
-          <div className="mt-3">
-            <ButtonLink href="/desk/security/setup" variant="secondary">
-              {currentUser?.twoFactorEnabled ? "Review setup" : "Set up authenticator"}
-            </ButtonLink>
-          </div>
-        </div>
-        <form action={updateTwoFactorRequiredRolesAction} className="space-y-4">
-          <fieldset disabled={!canChange} className="space-y-3">
-            <legend className="font-medium text-ink">Roles that must use two-step login</legend>
-            <p className="text-sm text-ink-soft">
-              Anyone in these roles must enter a 6-digit code from an authenticator app after their password.
-              Recommended: Owner and Admin, because they can refund money and see every customer.
-            </p>
-            {(["OWNER", "ADMIN", "STAFF"] as const).map((role) => (
-              <label key={role} className="flex items-center gap-2 text-sm text-ink">
-                <input
-                  type="checkbox"
-                  name="role"
-                  value={role}
-                  defaultChecked={requiredRoles.includes(role)}
-                  className="h-4 w-4"
-                />
-                {role === "OWNER" ? "Owner" : role === "ADMIN" ? "Admin" : "Staff"}
-              </label>
-            ))}
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input type="checkbox" checked disabled className="h-4 w-4" />
-              Accountant — always required, it can&apos;t be switched off
-            </label>
-          </fieldset>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="submit"
-              disabled={!canChange}
-              className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50"
-            >
-              Save security policy
-            </button>
-            <button
-              type="submit"
-              name="restoreRecommended"
-              value="1"
-              disabled={!canChange}
-              className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50"
-            >
-              Restore recommended
-            </button>
-          </div>
-          {!canChange && (
-            <p className="text-sm text-ink-soft">Only the Owner can change which roles are required.</p>
-          )}
-          <p className="text-xs text-ink-soft">Customer accounts can never be required by this setting.</p>
-        </form>
-        <form action={updateSecondStepSettingsAction} className="mt-8 space-y-4 border-t border-line pt-6">
-          <fieldset disabled={!canChange} className="space-y-4">
-            <legend className="font-medium text-ink">How each access level may get its second step</legend>
-            <p className="text-sm text-ink-soft">
-              The authenticator app is always allowed. Starting value: owner and admins may use the authenticator or text codes; staff may also use email codes.
-              Changing this never signs anyone out: people already using a method keep it and are asked to switch.
-            </p>
-            {(["OWNER", "ADMIN", "STAFF"] as const).map((level) => (
-              <div key={level} className="space-y-1">
-                <p className="text-sm font-medium text-ink">{level === "OWNER" ? "Owner" : level === "ADMIN" ? "Admins" : "Staff"}</p>
-                <label className="flex items-center gap-2 text-sm text-ink-soft"><input type="checkbox" checked disabled className="h-4 w-4" /> {METHOD_LABEL.TOTP} (always)</label>
-                {(["SMS", "EMAIL"] as const).map((m) => (
-                  <label key={m} className="flex items-center gap-2 text-sm text-ink">
-                    <input type="checkbox" name={`method-${level}`} value={m} defaultChecked={methodSettings.policy[level].includes(m)} className="h-4 w-4" />
-                    {METHOD_LABEL[m]}
-                  </label>
-                ))}
-              </div>
-            ))}
-            <p className="text-xs text-ink-soft">{EMAIL_WEAKER_WARNING}</p>
-            <label className="flex items-start gap-2 text-sm text-ink">
-              <input type="checkbox" name="securitySmsEnabled" value="1" defaultChecked={methodSettings.securitySmsEnabled} className="mt-1 h-4 w-4" />
-              <span>
-                Send sign-in codes by text
-                <span className="block text-xs text-ink-soft">
-                  Separate from customer texting. Starting value off. Text codes only go out on the live site, and only when your phone-provider keys are in place
-                  ({twilioKeysPresent() ? "keys are in place" : "keys are not in place yet"}).
-                </span>
-              </span>
-            </label>
-          </fieldset>
-          <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save sign-in code rules</button>
-            <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
-          </div>
-          {!canChange && <p className="text-sm text-ink-soft">Only the Owner can change these rules.</p>}
-        </form>
-        <form action={updateSignInPauseAction} className="mt-8 space-y-4 border-t border-line pt-6">
-          <fieldset disabled={!canChange} className="space-y-3">
-            <legend className="font-medium text-ink">Wrong passwords</legend>
-            <p className="text-sm text-ink-soft">
-              After this many wrong passwords on one account inside the wait time, that account waits before it can try again and the person gets an email.
-              Starting value: 10 wrong passwords, 15 minutes. It protects against guessing; it also means someone typing a wrong password for you can pause your account for a while, and Forgot password still works.
-            </p>
-            <label className="block text-sm text-ink">Wrong passwords allowed
-              <input name="attempts" type="number" min={3} max={50} defaultValue={pauseSettings.attempts} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
-            </label>
-            <label className="block text-sm text-ink">Wait (minutes)
-              <input name="minutes" type="number" min={1} max={240} defaultValue={pauseSettings.minutes} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
-            </label>
-          </fieldset>
-          <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save wrong-password rules</button>
-            <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
-          </div>
-        </form>
-        <form action={updateTrustedDeviceSettingsAction} className="mt-8 space-y-4 border-t border-line pt-6">
-          <fieldset disabled={!canChange} className="space-y-3">
-            <legend className="font-medium text-ink">Remember devices</legend>
-            <p className="text-sm text-ink-soft">
-              On a phone or computer someone ticks &quot;Remember this device&quot;, the app skips the code there for this many days.
-              Starting value 30 days, a common choice for small business apps. Set 0 to always ask for the code.
-              Lowering this shortens every remembered device at once; a changed password, a changed sign-in email, a
-              changed second step, or signing out everywhere always asks for the code again.
-            </p>
-            <label className="block text-sm text-ink">Remember devices for (days)
-              <input name="days" type="number" min={0} max={90} defaultValue={trustedDeviceSettings.days} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
-            </label>
-          </fieldset>
-          <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save remember-device rules</button>
-            <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
-          </div>
-          {!canChange && <p className="text-sm text-ink-soft">Only the Owner can change this.</p>}
-        </form>
-        <SessionControls
-          sessions={ownSessions.map((row) => ({
-            ...row,
-            createdAt: row.createdAt.toISOString(),
-            lastActiveAt: row.lastActiveAt.toISOString(),
-          }))}
-        />
-      </Card>
-    );
-  } else if (section === "notifications" || section === "integrations") {
-    const status = providerStatus();
-    content = (
-      <>
-      <Card
-        title={
-          section === "notifications"
-            ? "Notification configuration"
-            : "Connected services"
-        }
-        description="Configuration is shown separately from verified delivery. No credentials are displayed."
-      >
-        {section === "notifications" && (
-          <div className="mb-6 rounded-card border border-line p-4">
-            <CustomerEmailSwitch
-              enabled={settings.customerEmailEnabled === true}
-              canChange={(session.user as { role?: string }).role === "OWNER"}
-              preview={isNonProductionDeployment()}
-            />
+        {isOwner && (
+          <div className="mt-6">
+            <CertificationSection people={certifications.map((c) => ({ id: c.id, name: c.name, role: c.role, certification: c.certification ? { certificationNumber: c.certification.certificationNumber, issuedOn: c.certification.issuedOn ? c.certification.issuedOn.toISOString().slice(0, 10) : null } : null }))} />
           </div>
         )}
-        <dl className="space-y-4">
-          {status.map((item) => (
-            <div key={item.name}>
-              <dt className="font-medium text-ink">{item.name}</dt>
-              <dd className="mt-1 text-sm text-ink-soft">{item.state}</dd>
+      </div>
+    );
+    panels["teamPanel"] = teamNode;
+    panels["jobRolesPanel"] = teamNode;
+    const requiredRoles = twoFactorRolesFromSetting(settings.twoFactorRequiredRoles);
+    const canChange = isOwner;
+    panels["twoFactorPanel"] = (
+      <form action={updateTwoFactorRequiredRolesAction} className="space-y-4">
+        <fieldset disabled={!canChange} className="space-y-3">
+          <legend className="font-medium text-ink">Roles that must use two-step login</legend>
+          <p className="text-sm text-ink-soft">
+            Anyone in these roles must enter a 6-digit code from an authenticator app after their password.
+            Recommended: Owner and Admin, because they can refund money and see every customer.
+          </p>
+          {(["OWNER", "ADMIN", "STAFF"] as const).map((r) => (
+            <label key={r} className="flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" name="role" value={r} defaultChecked={requiredRoles.includes(r)} className="h-4 w-4" />
+              {r === "OWNER" ? "Owner" : r === "ADMIN" ? "Admin" : "Staff"}
+            </label>
+          ))}
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked disabled className="h-4 w-4" />
+            Accountant — always required, it can’t be switched off
+          </label>
+        </fieldset>
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save security policy</button>
+          <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
+        </div>
+        {!canChange && <p className="text-sm text-ink-soft">Only the Owner can change which roles are required.</p>}
+        <p className="text-xs text-ink-soft">Customer accounts can never be required by this setting.</p>
+      </form>
+    );
+    panels["secondStepPanel"] = (
+      <form action={updateSecondStepSettingsAction} className="space-y-4">
+        <fieldset disabled={!canChange} className="space-y-4">
+          <legend className="font-medium text-ink">How each access level may get its second step</legend>
+          <p className="text-sm text-ink-soft">
+            The authenticator app is always allowed. Starting value: owner and admins may use the authenticator or text codes; staff may also use email codes.
+            Changing this never signs anyone out: people already using a method keep it and are asked to switch.
+          </p>
+          {(["OWNER", "ADMIN", "STAFF"] as const).map((level) => (
+            <div key={level} className="space-y-1">
+              <p className="text-sm font-medium text-ink">{level === "OWNER" ? "Owner" : level === "ADMIN" ? "Admins" : "Staff"}</p>
+              <label className="flex items-center gap-2 text-sm text-ink-soft"><input type="checkbox" checked disabled className="h-4 w-4" /> {METHOD_LABEL.TOTP} (always)</label>
+              {(["SMS", "EMAIL"] as const).map((m) => (
+                <label key={m} className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" name={`method-${level}`} value={m} defaultChecked={methodSettings.policy[level].includes(m)} className="h-4 w-4" />
+                  {METHOD_LABEL[m]}
+                </label>
+              ))}
             </div>
           ))}
-        </dl>
-        <p className="mt-4 text-sm text-ink-soft">
-          Customer SMS preferences remain in each customer&apos;s account.
-          Launch email controls are managed separately.
-        </p>
-        <div className="mt-3">
-          <ButtonLink href="/desk/launch" variant="secondary">
-            Open launch email controls
-          </ButtonLink>
+          <p className="text-xs text-ink-soft">{EMAIL_WEAKER_WARNING}</p>
+          <label className="flex items-start gap-2 text-sm text-ink">
+            <input type="checkbox" name="securitySmsEnabled" value="1" defaultChecked={methodSettings.securitySmsEnabled} className="mt-1 h-4 w-4" />
+            <span>
+              Send sign-in codes by text
+              <span className="block text-xs text-ink-soft">
+                Separate from customer texting. Starting value off. Text codes only go out on the live site, and only when your phone-provider keys are in place
+                ({twilioKeysPresent() ? "keys are in place" : "keys are not in place yet"}).
+              </span>
+            </span>
+          </label>
+        </fieldset>
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save sign-in code rules</button>
+          <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
         </div>
-      </Card>
-      {section === "notifications" && spanishDrafts.length > 0 && (
-        <Card title="Draft translations" description="Spanish copy alongside English source">
-          <SpanishDraftsEditor sources={spanishDrafts} />
-        </Card>
-      )}
-      {section === "notifications" && spanishReview && (
-        <Card title="Spanish customer language: independently reviewed activation"
-          description="Owner-only review evidence. Spanish defaults off until the current copy and controlling-English legal text are verified.">
+        {!canChange && <p className="text-sm text-ink-soft">Only the Owner can change these rules.</p>}
+      </form>
+    );
+    panels["signInPausePanel"] = (
+      <form action={updateSignInPauseAction} className="space-y-4">
+        <fieldset disabled={!canChange} className="space-y-3">
+          <legend className="font-medium text-ink">Wrong passwords</legend>
+          <p className="text-sm text-ink-soft">
+            After this many wrong passwords on one account inside the wait time, that account waits before it can try again and the person gets an email.
+            Starting value: 10 wrong passwords, 15 minutes.
+          </p>
+          <label className="block text-sm text-ink">Wrong passwords allowed
+            <input name="attempts" type="number" min={3} max={50} defaultValue={pauseSettings.attempts} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
+          </label>
+          <label className="block text-sm text-ink">Wait (minutes)
+            <input name="minutes" type="number" min={1} max={240} defaultValue={pauseSettings.minutes} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
+          </label>
+        </fieldset>
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save wrong-password rules</button>
+          <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
+        </div>
+      </form>
+    );
+  }
+
+  if (section === "messages") {
+    const [spanishReview, spanishDrafts] = await Promise.all([getSpanishReview(), listCurrentTranslationDrafts()]);
+    panels["customerEmailPanel"] = (
+      <CustomerEmailSwitch enabled={settings.customerEmailEnabled === true} canChange={isOwner} preview={isNonProductionDeployment()} />
+    );
+    panels["spanishPanel"] = (
+      <div>
+        {spanishDrafts.length > 0 && (
+          <div className="mb-6">
+            <SpanishDraftsEditor sources={spanishDrafts} />
+          </div>
+        )}
+        {spanishReview && (
           <SpanishReviewForm surfacesReady={allSpanishSurfacesReady} digest={spanishReview.currentDigest}
             currentReview={spanishReview.currentReview}
             reviewedAt={spanishReview.reviewedAt?.toISOString() ?? null}
             legalReviewedAt={spanishReview.legalReviewedAt?.toISOString() ?? null}
             publishedAt={spanishReview.publishedAt?.toISOString() ?? null}
             reviewerName={spanishReview.reviewerName} />
-        </Card>
-      )}
-      {section === "notifications" && <div className="mb-4 flex flex-wrap gap-3">{shownFeatures.has("phoneCosts") && <ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink>}<ButtonLink href="/desk/settings/payment-links" variant="secondary">Payment link wording</ButtonLink><ButtonLink href="/desk/settings/lead-response" variant="secondary">Lead response time</ButtonLink><ButtonLink href="/desk/settings/unsigned-follow-up" variant="secondary">Unsigned agreement reminder</ButtonLink><ButtonLink href="/desk/settings/feedback" variant="secondary">App feedback</ButtonLink></div>}
-      {section === "notifications" && <SmsTemplatePreview />}
-    </>);
-  } else {
-    content = (
-      <Card
-        title={SETTINGS_SECTIONS.find((s) => s.id === section)!.label}
-        description="Save only this section. Prices, staff accounts and other sections are preserved."
-      >
-        {section === "policies" && leadScoringPolicy && (
-          <LeadScoringForm policy={leadScoringPolicy} />
         )}
-        {section === "policies" && serviceWarnings.length > 0 && (
-          <div className="mb-4 rounded-card border border-amber-300 bg-amber-50 p-4" role="note">
-            <p className="text-sm font-medium text-amber-900">Service prices well above cost</p>
-            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-amber-900">
-              {serviceWarnings.map((warning) => <li key={warning}>{warning}</li>)}
-            </ul>
-          </div>
-        )}
-        {section === "policies" && (
-          <div className="mb-4 rounded-card border border-line bg-subtle p-4">
-            <p className="text-sm text-ink-soft">
-              The return inspection checklist is versioned separately so changing it never rewrites an inspection that
-              already happened.
-            </p>
-            <div className="mt-3">
-              <ButtonLink href="/desk/settings/policies" variant="secondary">
-                Edit return inspection checklist
-              </ButtonLink>
-            </div>
-          </div>
-        )}
-        <SettingsForm
-          key={section}
-          section={section}
-          revision={sectionRevision(settings, section)}
-          defaultValues={{
-            publicBusinessName: settings.publicBusinessName,
-            publicPhone: settings.publicPhone,
-            publicEmail: settings.publicEmail,
-            publicAddress: settings.publicAddress,
-            ...profileExtrasDefaults(settings),
-            serviceAreaCities: Array.isArray(settings.serviceAreaCities)
-              ? (settings.serviceAreaCities as string[]).join(", ")
-              : "",
-            serviceAreaZips: Array.isArray(settings.serviceAreaZips)
-              ? (settings.serviceAreaZips as string[]).join(", ")
-              : "",
-            deliveryFeeDollars: centsAsDollars(settings.oneTimeDeliveryFeeCents),
-            installationFeeDollars: centsAsDollars(settings.oneTimeInstallationFeeCents),
-            removalFeeDollars: centsAsDollars(settings.oneTimeRemovalFeeCents),
-            haulAwayFeeDollars: centsAsDollars(settings.oneTimeHaulAwayFeeCents),
-            damageWaiverEnabled: settings.damageWaiverEnabled,
-            depositEnabled: settings.depositEnabled,
-            lateFeeGraceDays: settings.lateFeeGraceDays,
-            lateFeeFlatDollars: centsAsDollars(settings.lateFeeFlatCents),
-            lateFeePercent: settings.lateFeePercent,
-            sixMonthPrepaySetDollars:
-              centsAsDollars(settings.sixMonthPrepayDiscountSetCents),
-            sixMonthPrepaySingleDollars:
-              centsAsDollars(settings.sixMonthPrepayDiscountSingleCents),
-            twelveMonthPrepaySetDollars:
-              centsAsDollars(settings.twelveMonthPrepayDiscountSetCents),
-            twelveMonthPrepaySingleDollars:
-              centsAsDollars(settings.twelveMonthPrepayDiscountSingleCents),
-            twelveMonthPrepayFreeMonthEnabled:
-              settings.twelveMonthPrepayFreeMonthEnabled,
-            referralRewardDollars: centsAsDollars(settings.referralRewardCents),
-            draftReservationHoldDays: settings.draftReservationHoldDays,
-            receiptFileKeepDays: settings.receiptFileKeepDays,
-            unsentPhotoKeepDays: settings.unsentPhotoKeepDays,
-          }}
-        />
+      </div>
+    );
+    extra = <SmsTemplatePreview />;
+  }
+
+  if (section === "money") {
+    extra = (
+      <Card title="Colorado consumer lease filing" className="mt-6">
+        <p className="mb-3 text-sm text-ink-soft">Needed before the first household rental over 4 months.</p>
+        <UcccFilingForm editable={isOwner} filedOn={settings.ucccNotificationFiledOn ? businessDateKey(settings.ucccNotificationFiledOn) : null} />
       </Card>
     );
   }
+
+  if (section === "advanced") {
+    const status = providerStatus();
+    panels["connectedServicesPanel"] = (
+      <dl className="space-y-4">
+        {status.map((item) => (
+          <div key={item.name}>
+            <dt className="font-medium text-ink">{item.name}</dt>
+            <dd className="mt-1 text-sm text-ink-soft">{item.state}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  // ---- summaries the spec names ----
+  const summaries: Record<string, string> = {};
+  if (section === "business") {
+    const cities = Array.isArray(settings.serviceAreaCities) ? (settings.serviceAreaCities as unknown[]).length : 0;
+    const zips = Array.isArray(settings.serviceAreaZips) ? (settings.serviceAreaZips as unknown[]).length : 0;
+    summaries["serviceAreaPanel"] = `${cities} cities · ${zips} ZIP codes`;
+    summaries["drivingOriginPanel"] = settings.drivingOriginAddress && !String(settings.drivingOriginAddress).startsWith("UNVERIFIED")
+      ? String(settings.drivingOriginAddress)
+      : "Not set";
+  }
+  if (section === "prices") {
+    summaries["appliancePricesPanel"] = `${(await getAllApplianceTypes()).length} appliance types`;
+    summaries["packagesPanel"] = `${(await listPackagesForSettings()).length} sets`;
+  }
+
+  // ---- render the section's rows in catalog order, grouped ----
+  const groups: { name?: string; rows: typeof page.rows }[] = [];
+  for (const r of page.rows) {
+    const name = r.def.group;
+    const last = groups[groups.length - 1];
+    if (last && last.name === name) last.rows.push(r);
+    else groups.push({ name, rows: [r] });
+  }
+
+  const sectionLabel = SETTINGS_SECTIONS_V2.find((s) => s.id === section)!.label;
+
   return (
-    <div className="max-w-5xl">
-      <PageHeader
-        title="Settings"
-        description="Manage the business one section at a time."
-        secondaryActions={
-          <ButtonLink href="/desk/activity" variant="secondary">
-            View change history
-          </ButtonLink>
-        }
-      />
-      <div className="mb-3 flex flex-wrap gap-3">
-        <ButtonLink href="/desk/control-center" variant="secondary">Manage my business</ButtonLink>
-        <ButtonLink href="/desk/settings/decisions" variant="secondary">Decisions &amp; reviews</ButtonLink>
-        <ButtonLink href="/desk/settings/history" variant="secondary">Settings history and undo</ButtonLink>
-        <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
-        <ButtonLink href="/desk/settings/features" variant="secondary">Features</ButtonLink>
-        <ButtonLink href="/desk/settings/price-changes" variant="secondary">Price changes with a start date</ButtonLink>
-        {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/permissions" variant="secondary">What each admin may do</ButtonLink>}
-        <ButtonLink href="/desk/settings/goals" variant="secondary">Goals and alerts</ButtonLink>
-        {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/approvals" variant="secondary">Approval limits</ButtonLink>}
-        {session.user.role === "OWNER" && <ButtonLink href="/desk/approvals" variant="secondary">Approvals waiting</ButtonLink>}
-      </div>
-      <FilterBar
-        label="Settings sections"
-        items={SETTINGS_SECTIONS.map((s) => ({
-          href: `/desk/settings?section=${s.id}`,
-          label: s.label,
-          active: s.id === section,
-        }))}
-      />
-      <p className="mb-4 text-xs text-ink-soft">
-        Business settings last saved: {formatBusinessDate(settings.updatedAt)} ·{" "}
-        {formatBusinessTime(settings.updatedAt)}. Catalog and staff changes have
-        their own entries in change history.
-      </p>
-      {content}
+    <div>
+      <h1 className="sr-only">Settings — {sectionLabel}</h1>
+      {topExtra}
+      {groups.map((g) => (
+        <section key={g.name ?? "top"} className="mb-6">
+          {g.name && <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-soft">{g.name}</h2>}
+          <div>
+            {g.rows.map((r) => {
+              const def = r.def;
+              if (def.editor === "row" || (typeof def.editor === "object" && "domainWriter" in def.editor)) {
+                const data: SettingRowData = {
+                  key: def.key,
+                  label: def.label,
+                  kind: def.kind,
+                  choices: def.choices,
+                  min: def.min,
+                  max: def.max,
+                  what: def.what,
+                  why: def.why,
+                  who: def.who,
+                  effect: def.appliesTo ?? settingEffect(def.key),
+                  value: r.value,
+                  display: r.display,
+                  recommended: r.recommended,
+                  recommendedDisplay: r.recommended !== undefined ? formatSettingValue(FMT_KIND[def.kind], r.recommended) : undefined,
+                  lastChange: r.lastChange ? { by: r.lastChange.by, at: r.lastChange.at.toISOString() } : null,
+                  state: r.state,
+                  editable: r.editable,
+                  revision: r.revision,
+                };
+                return <SettingRow key={def.key} row={data} />;
+              }
+              const href = typeof def.editor === "object" && "panelHref" in def.editor ? def.editor.panelHref : undefined;
+              return (
+                <PanelRow key={def.key} label={def.label} what={def.what} summary={summaries[def.key]} href={href}>
+                  {href ? undefined : panels[def.key]}
+                </PanelRow>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+      {extra}
+      <RowAnchorFlash />
+      <Toaster />
     </div>
   );
 }

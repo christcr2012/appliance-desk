@@ -1,3 +1,7 @@
+## October 28 — AR-8 Settings rebuild: built (branch `ai/vivienne/ar-8`)
+
+Settings is rebuilt on one catalog: every BusinessSettings field is a row, a panel cover, or a named not-a-setting; nine sections, search, per-row Change sheets with a From → To preview and restore-recommended, a saved toast with Undo, per-row history, and old section URLs redirecting to the new sections. The spec section 1 fixes ride along (bounded undo scan, history read guards itself, the un-revisioned save fallback deleted). New unit/integration suites green locally on Lane 6's own cluster and preflight clean; the production build and the new browser spec (`e2e/ar8-settings.spec.ts`) run in CI — the sandbox VM killed the local build three times mid-run. Card `docs/pr-cards/AR-8.md`; packet `docs/pr-cards/execution/AR-8.json`.
+
 ## October 28 — AR-1 five-area navigation: tested and reviewed (PR #720)
 
 Mobile five-area bar and area tabs, desktop collapsible remembered sidebar, profile/workspace

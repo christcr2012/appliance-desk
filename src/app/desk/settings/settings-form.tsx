@@ -6,7 +6,7 @@ import { forwardRef, useState } from "react";
 import { Button, Checkbox, Field, Select, Textarea } from "@/components/ui";
 import { DAYS, SOCIAL_NETWORKS, BRAND_LOGO_FILES, MAX_CLOSURES, type ProfileExtrasForm } from "@/domains/settings/profile-extras";
 import { useForm } from "react-hook-form";
-import { updateSettingsAction, updateSettingsSectionAction, previewSettingsSectionAction, type SettingsPreviewState } from "./actions";
+import { updateSettingsSectionAction, previewSettingsSectionAction, type SettingsPreviewState } from "./actions";
 
 // Every "...Dollars" field here is entered and displayed in real dollars
 // and cents (e.g. 45.00), matching how Chris actually thinks about
@@ -69,9 +69,9 @@ export function SettingsForm({
     setPreview(null);
     let result;
     try {
-      result = section
-        ? await updateSettingsSectionAction(section, values, currentRevision)
-        : await updateSettingsAction(values);
+      // AR-8 (spec section 1): every save carries its section revision — the old no-revision
+      // whole-form fallback (updateSettingsAction) is deleted; the page always renders a section.
+      result = await updateSettingsSectionAction(section!, values, currentRevision);
     } catch {
       setMessage({
         kind: "error",
