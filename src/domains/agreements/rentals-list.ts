@@ -80,7 +80,11 @@ export type OwnerRentalRow = RentalListRowBase & {
 };
 export type StaffRentalRow = RentalListRowBase & {
   monthlyCents?: never;
-  lines: RentalListLine[];
+  lines?: never;
+  /** Staff see the count only, never line labels: a label is owner-written
+   * text that can carry a price ("…$60/mo"), exactly why the old list's
+   * staff branch selected only the count. */
+  applianceCount: number;
 };
 
 export type RentalsResult =
@@ -308,7 +312,7 @@ export async function getRentals(
   if (staff) {
     const rows = await prisma.rentalAgreement.findMany({
       where: { id: { in: ids } },
-      select: { ...baseSelect, lines: { select: LINE_SELECT } },
+      select: { ...baseSelect, _count: { select: { lines: true } } },
     });
     for (const r of rows) {
       byId.set(r.id, {
@@ -318,7 +322,7 @@ export async function getRentals(
         customerName: r.customer.user.name ?? r.customer.user.email, companyName: r.customer.companyName,
         addressLine1: r.serviceAddress?.line1 ?? null,
         city: r.serviceAddress?.city ?? null,
-        lines: r.lines,
+        applianceCount: r._count.lines,
       });
     }
     return {

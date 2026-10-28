@@ -23,21 +23,42 @@ import {
 } from "@/domains/agreements/end-reasons";
 
 /** AR-4a: record the optional "Why is it ending?" answer, when one was given. */
+/**
+ * Validates the optional why-it-ended fields WITHOUT writing anything, so a
+ * caller can run it BEFORE the ending itself: a reason the owner has since
+ * taken off the list then fails fast, before any money or state moves,
+ * instead of surfacing as a failed save after the ending already committed
+ * (Codex review, PR #722).
+ */
+async function parseEndReasonFromForm(
+  formData: FormData,
+): Promise<ReturnType<typeof parseEndReasonInput> | null> {
+  const rawReason = formData.get("endReason");
+  if (typeof rawReason !== "string" || !rawReason.trim()) return null;
+  const allowed = await getRentalEndReasons();
+  const rawNote = formData.get("endReasonNote");
+  return parseEndReasonInput(
+    rawReason,
+    typeof rawNote === "string" ? rawNote : null,
+    allowed,
+  );
+}
+
 async function recordEndReasonFromForm(
   userId: string,
   agreementId: string,
   formData: FormData,
 ): Promise<void> {
-  const rawReason = formData.get("endReason");
-  if (typeof rawReason !== "string" || !rawReason.trim()) return;
-  const allowed = await getRentalEndReasons();
-  const rawNote = formData.get("endReasonNote");
-  const input = parseEndReasonInput(
-    rawReason,
-    typeof rawNote === "string" ? rawNote : null,
-    allowed,
-  );
-  await recordAgreementEndReason(userId, agreementId, input);
+  const input = await parseEndReasonFromForm(formData);
+  if (input) await recordAgreementEndReason(userId, agreementId, input);
+}
+
+async function recordParsedEndReason(
+  userId: string,
+  agreementId: string,
+  input: ReturnType<typeof parseEndReasonInput> | null,
+): Promise<void> {
+  if (input) await recordAgreementEndReason(userId, agreementId, input);
 }
 
 export type AgreementActionState =
@@ -337,10 +358,12 @@ export async function endMonthToMonthForCustomerAction(formData: FormData): Prom
   const reason = String(formData.get("reason") ?? "");
   const quote = await getMonthToMonthEndQuote(agreementId);
   if (!quote) throw new Error("This rental can't be ended this way right now.");
+  // Validate the optional why-it-ended answer before the ending moves money.
+  const endReasonInput = await parseEndReasonFromForm(formData);
   await requestMonthToMonthEnd({ userId: session.user.id, kind: "team" }, agreementId, quote, {
     ...(earlier ? { earlierEffectiveOn: new Date(earlier), reason } : {}),
   });
-  await recordEndReasonFromForm(session.user.id, agreementId, formData);
+  await recordParsedEndReason(session.user.id, agreementId, endReasonInput);
   revalidatePath(`/desk/agreements/${agreementId}`);
   revalidatePath("/desk/dashboard");
 }
@@ -366,6 +389,8 @@ export async function confirmEarlyReturnAction(formData: FormData): Promise<void
       },
       choiceFromSettings(earlyReturnSettingsFrom(settings)),
     );
+    // Validate the optional why-it-ended answer before the return moves money.
+    const endReasonInput = await parseEndReasonFromForm(formData);
     const preview = parsePreview(String(formData.get("preview") ?? ""));
     if (choice.unusedDays === "REFUND" && preview.refundOrCreditCents > 0) {
       // An early-return refund goes to the card like any other refund, so the same owner limit applies.
@@ -373,7 +398,7 @@ export async function confirmEarlyReturnAction(formData: FormData): Promise<void
       await assertRefundWithinLimit(session.user.id, preview.refundOrCreditCents);
     }
     await applyEarlyReturn(session.user.id, agreementId, choice, preview);
-    await recordEndReasonFromForm(session.user.id, agreementId, formData);
+    await recordParsedEndReason(session.user.id, agreementId, endReasonInput);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     failure = message && message.length < 300 && !message.includes("prisma") ? message : "That could not be saved. Please try again.";

@@ -82,15 +82,19 @@ test.describe("Rentals list and record", () => {
     const active = await makeRental("List Active", "ACTIVE");
     const draft = await makeRental("List Draft", "DRAFT");
     try {
+      // Assertions scope to the desktop table: the kit table also renders a
+      // phone card list (hidden at desktop widths), and .first() would pick
+      // that hidden copy and never become visible.
+      const table = page.locator("table");
       await page.goto("/desk/agreements", { waitUntil: "load" });
       await expect(page.getByRole("heading", { level: 1, name: "Customers" })).toBeVisible();
-      await expect(page.getByText(active.name).first()).toBeVisible();
-      await expect(page.getByText(draft.name)).toHaveCount(0);
+      await expect(table.getByText(active.name)).toBeVisible();
+      await expect(table.getByText(draft.name)).toHaveCount(0);
       await page.getByRole("link", { name: /^Drafts/ }).click();
-      await expect(page.getByText(draft.name).first()).toBeVisible();
+      await expect(table.getByText(draft.name)).toBeVisible();
       await page.goto("/desk/agreements?status=ACTIVE", { waitUntil: "load" });
-      await expect(page.getByText(active.name).first()).toBeVisible();
-      await expect(page.getByText(draft.name)).toHaveCount(0);
+      await expect(table.getByText(active.name)).toBeVisible();
+      await expect(table.getByText(draft.name)).toHaveCount(0);
     } finally {
       await active.cleanup();
       await draft.cleanup();

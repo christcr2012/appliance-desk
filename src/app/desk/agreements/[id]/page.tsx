@@ -284,6 +284,20 @@ export default async function AgreementDetailPage({
             ? { kind: "link", label: "End this rental…", href: `/desk/agreements/${id}?end=1` }
             : undefined;
 
+  const endOpts = endOptions({
+    agreement: {
+      id: agreement.id,
+      status: agreement.status,
+      termMonths: agreement.termMonths,
+      endDate: agreement.endDate,
+      terminationRequestedAt: agreement.terminationRequestedAt,
+      firstDeliveredOn: agreement.firstDeliveredOn,
+      customerName,
+    },
+    monthToMonthEndAvailable: Boolean(endQuote),
+    returnPickupFound: Boolean(returnPickup),
+  });
+
   const stale = isReservationStale(agreement.status, agreement.reservationExpiresAt, now);
   const overflow: MenuItem[] = [
     { kind: "link", label: "Send a text…", href: `/desk/agreements/${id}?text=1` },
@@ -298,21 +312,14 @@ export default async function AgreementDetailPage({
     ...(agreement.status === "ACTIVE"
       ? [{ kind: "link", label: "Schedule a visit", href: `/desk/jobs/new?agreementId=${id}` } as MenuItem]
       : []),
+    // Cancellation (and every other ending) stays reachable for rentals
+    // that are not active yet: the End sheet offers cancel-before-delivery
+    // for drafts, waiting-for-signature and signed-not-delivered rentals
+    // (Codex review, PR #722). ACTIVE rentals already carry it as primary.
+    ...(endOpts.length > 0 && agreement.status !== "ACTIVE"
+      ? [{ kind: "link", label: "End this rental…", href: `/desk/agreements/${id}?end=1` } as MenuItem]
+      : []),
   ];
-
-  const endOpts = endOptions({
-    agreement: {
-      id: agreement.id,
-      status: agreement.status,
-      termMonths: agreement.termMonths,
-      endDate: agreement.endDate,
-      terminationRequestedAt: agreement.terminationRequestedAt,
-      firstDeliveredOn: agreement.firstDeliveredOn,
-      customerName,
-    },
-    monthToMonthEndAvailable: Boolean(endQuote),
-    returnPickupFound: Boolean(returnPickup),
-  });
 
   const showSigning = agreement.status === "DRAFT" || agreement.status === "AWAITING_SIGNATURE" ||
     Boolean(signingPayment) || hasFrozenSigningOffer || Boolean(signedArtifactId);

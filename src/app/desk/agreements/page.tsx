@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import {
   getRentals,
@@ -84,7 +85,14 @@ function rowActions(row: Row): MenuItem[] {
       href: `/desk/jobs/new?agreementId=${row.id}`,
     },
   ];
-  if (row.status === "ACTIVE") {
+  // Every state that can still end gets the End sheet link — it offers
+  // cancel-before-delivery for drafts, waiting-for-signature and
+  // signed-not-delivered rentals, not just endings for active ones
+  // (Codex review, PR #722).
+  if (
+    row.status === "ACTIVE" || row.status === "DRAFT" ||
+    row.status === "AWAITING_SIGNATURE" || row.status === "SCHEDULED"
+  ) {
     items.push({
       kind: "link",
       label: "End this rental…",
@@ -101,7 +109,13 @@ export default async function RentalsPage({
 }) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const role = session.user.role as "OWNER" | "ADMIN" | "STAFF";
-  const params = parseRentalsParams(await searchParams);
+  const raw = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Rentals have no side panel — the record page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there.
+  const open = typeof raw.open === "string" ? raw.open : undefined;
+  if (open) redirect(`/desk/agreements/${encodeURIComponent(open)}`);
+  const params = parseRentalsParams(raw);
   const now = new Date();
   const [list, counts] = await Promise.all([
     getRentals(params, now),
@@ -137,7 +151,10 @@ export default async function RentalsPage({
     {
       key: "rental",
       header: "Rental",
-      cell: (row) => row.lines.map(describeRentalLine).join(" + "),
+      cell: (row) =>
+        "lines" in row && row.lines
+          ? row.lines.map(describeRentalLine).join(" + ")
+          : `${row.applianceCount} appliance line(s)`,
     },
     {
       key: "rent",
@@ -203,6 +220,7 @@ export default async function RentalsPage({
             rowKey={(row) => row.id}
             columns={columns}
             rowHref={(row) => `/desk/agreements/${row.id}`}
+            mobileCardLink
             rowActions={rowActions}
             currentSort={params.sort}
             mobileCard={(row) => {
@@ -220,7 +238,9 @@ export default async function RentalsPage({
                     </span>
                   ) : null}
                   <span className="text-sm text-ink-soft">
-                    {row.lines.map(describeRentalLine).join(" + ")}
+                    {"lines" in row && row.lines
+                      ? row.lines.map(describeRentalLine).join(" + ")
+                      : `${row.applianceCount} appliance line(s)`}
                   </span>
                   <span className="flex items-center justify-between text-sm text-ink-soft">
                     <span>{detail}</span>

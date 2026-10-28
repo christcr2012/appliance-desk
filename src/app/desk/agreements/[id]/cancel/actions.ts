@@ -13,6 +13,13 @@ export async function approveCancellationAction(
   const session = await requireRole("OWNER", "ADMIN");
   const agreementId = String(form.get("agreementId") ?? "");
   try {
+    // AR-4a: validate the optional "Why is it ending?" answer BEFORE the
+    // approval commits, so a stale reason can never surface as a failed
+    // save after the cancellation already went through (PR #722 review).
+    const rawReason = form.get("endReason");
+    const endReasonInput = typeof rawReason === "string" && rawReason.trim()
+      ? parseEndReasonInput(rawReason, typeof form.get("endReasonNote") === "string" ? (form.get("endReasonNote") as string) : null, await getRentalEndReasons())
+      : null;
     await approvePreDeliveryCancellation({
       actorUserId: session.user.id,
       agreementId,
@@ -21,13 +28,8 @@ export async function approveCancellationAction(
       reason: String(form.get("reason") ?? ""),
       reviewedTerms: form.get("reviewedTerms") === "on",
     });
-    // AR-4a: the optional "Why is it ending?" answer rides along at approval.
-    const rawReason = form.get("endReason");
-    if (typeof rawReason === "string" && rawReason.trim()) {
-      const allowed = await getRentalEndReasons();
-      const rawNote = form.get("endReasonNote");
-      const input = parseEndReasonInput(rawReason, typeof rawNote === "string" ? rawNote : null, allowed);
-      await recordAgreementEndReason(session.user.id, agreementId, input);
+    if (endReasonInput) {
+      await recordAgreementEndReason(session.user.id, agreementId, endReasonInput);
     }
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to cancel. Refresh the review." };

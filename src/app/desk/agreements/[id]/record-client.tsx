@@ -109,7 +109,7 @@ export function RentalRecordClient({
   }
 
   return (
-    <div onClickCapture={onClickCapture}>
+    <div onClickCapture={onClickCapture} className="px-1 sm:px-0">
       {children}
       <Sheet
         open={endOpen}

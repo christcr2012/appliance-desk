@@ -17,14 +17,15 @@ async function decide(agreementId: string, choice: string, formData?: FormData) 
   const a = await prisma.rentalAgreement.findUnique({ where: { id: agreementId }, select: { termMonths: true, endDate: true } });
   if (!a?.endDate || !a.termMonths) throw new Error("This rental has no fixed end date.");
   if (choice === "pickup") {
-    const { jobId } = await decideEndingPickup(session.user.id, agreementId);
-    // AR-4a: the optional "Why is it ending?" answer rides along with pickup.
+    // AR-4a: validate the optional "Why is it ending?" answer BEFORE the
+    // pickup decision commits (PR #722 review).
     const rawReason = formData?.get("endReason");
-    if (typeof rawReason === "string" && rawReason.trim()) {
-      const allowed = await getRentalEndReasons();
-      const rawNote = formData?.get("endReasonNote");
-      const input = parseEndReasonInput(rawReason, typeof rawNote === "string" ? rawNote : null, allowed);
-      await recordAgreementEndReason(session.user.id, agreementId, input);
+    const endReasonInput = typeof rawReason === "string" && rawReason.trim()
+      ? parseEndReasonInput(rawReason, typeof formData?.get("endReasonNote") === "string" ? (formData?.get("endReasonNote") as string) : null, await getRentalEndReasons())
+      : null;
+    const { jobId } = await decideEndingPickup(session.user.id, agreementId);
+    if (endReasonInput) {
+      await recordAgreementEndReason(session.user.id, agreementId, endReasonInput);
     }
     revalidatePath("/desk/today");
     redirect("/desk/jobs/" + encodeURIComponent(jobId));
