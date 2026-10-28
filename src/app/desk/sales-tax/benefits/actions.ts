@@ -94,10 +94,10 @@ export async function saveElectionsAction(
       success: "",
       error: /failed|changed|already|only|missing|invalid|cannot|not in the rule book/i.test(raw)
         ? raw.slice(0, 250)
-        : "The elections couldn't be saved. Refresh and try again.",
+        : "Your choices couldn't be saved. Refresh and try again.",
     };
   }
   revalidatePath("/desk/sales-tax/benefits");
   revalidatePath("/desk");
-  return { success: `The ${year} elections are saved. The change is listed for the owner.`, error: "" };
+  return { success: `Your choices for ${year} are saved. The change is listed for the owner.`, error: "" };
 }

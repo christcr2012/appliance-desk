@@ -159,9 +159,9 @@ export default async function TaxBenefitsPage({
         ))}
       </div>
 
-      <TaxActionForm action={saveElectionsAction} title={`Elections for ${year}`} submitLabel="Save elections">
+      <TaxActionForm action={saveElectionsAction} title={`Tax choices for ${year}`} submitLabel="Save choices">
         <p className="text-sm text-muted-foreground">
-          The election statements below ride on the {year} accountant packet for your CPA to
+          The statements below ride on the {year} accountant packet for your CPA to
           attach to the return — due {electionStatements.dueOnKey}, or {electionStatements.extensionKey}{" "}
           with an extension. The owner, an admin or your accountant can set the elect-out choice;
           every change is listed for the owner.

@@ -26,6 +26,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/vault-integration.test.ts", // VAULT-2 changes and restores the shared emergency-access settings on the singleton row.
   "tests/taxben-classification.test.ts", // TAXBEN-1 writes the shared business-settings singleton inside a rolled-back transaction.
   "tests/taxben-benefits-integration.test.ts", // TAXBEN-1 writes the shared settings and compliance-profile singletons inside a rolled-back transaction.
+  "tests/taxben-elections.test.ts", // TAXBEN-2 changes and restores the shared de minimis elections map on the settings singleton.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.
