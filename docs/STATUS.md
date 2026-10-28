@@ -14,9 +14,13 @@ none are automatically replayed. This remains **unmerged** and requires
 database, browser, type and review evidence before any exposure.
 
 Local full TypeScript checks exhausted the 4 GB sandbox memory; that is not
-passing evidence. The first disposable-PostgreSQL probe passed **11 of 11** focused journal/
-execution integration tests with no skipped tests. Browser, full type/build
-GitHub CI and review are still outstanding. No live action was enabled.
+passing evidence. The extended disposable-PostgreSQL probe passed **16 of 16** tests across
+journal, one-time execution and real DEC-1 apply/schedule integration, with no
+skipped tests. A bounded focused TypeScript check (MCP-5 files) passed; full
+typecheck still OOMs in this sandbox. Browser, GitHub CI and review remain
+outstanding. New safety fixes: UUID-compatible stable backup idempotency key,
+post-claim actor/scope recheck, actual decision-state readback, and additive
+unknown-issue constraint migration. No live action was enabled.
 
 ## October 27 — MCP-5 approved assistant actions (branch ai/chatgpt/mcp-5-action-journal, local only)
 

@@ -75,3 +75,14 @@ state in its native transaction. Added concurrency/crash-recovery fixtures and b
 coverage. The focused disposable-Postgres probe passed **11 of 11** journal/
 execution tests; browser and exact-head CI remain outstanding. Local TypeScript preflight hit sandbox OOM; only exact-head
 GitHub CI can finish required type/build verification.
+
+**Safety test update (October 27).** Disposable PostgreSQL probe now passed
+**16/16** journal/execution/real DEC-1 integration tests, zero skipped:
+twenty-way duplicate execution, owner/role/disconnect gates, changed targets,
+stale worker fencing and readback after lost replies; real DEC-1 immediate
+settings, future scheduled answer, "Other" evidence and tampered args.
+The native backup scheduler rejects non-UUID run keys, so the journal now
+derives a stable UUID-shaped key from the operation id. UNKNOWN alerts required
+an additive `SystemIssue_kind_known` migration; the new constraint retains
+all previous kinds. A focused TypeScript check passed with the MCP-5 files.
+These checks are **not** full GitHub CI or browser evidence.

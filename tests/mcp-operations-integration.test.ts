@@ -5,6 +5,7 @@ import type { AgentContext } from "@/domains/agent-control/authorization";
 
 const fake = vi.hoisted(() => ({
   hash: "a".repeat(64), calls: 0, throwAfterEffect: false,
+  dispatchWait: null as Promise<void> | null, releaseDispatch: null as (() => void) | null,
 }));
 vi.mock("@/domains/agent-control/actions", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/domains/agent-control/actions")>();
@@ -19,6 +20,7 @@ vi.mock("@/domains/agent-control/actions", async (importOriginal) => {
     })),
     dispatchAgentAction: vi.fn(async (_ctx: unknown, _action: string, _args: unknown, operationId: string) => {
       fake.calls++;
+      if (fake.dispatchWait) await fake.dispatchWait;
       await db.auditLog.create({ data: {
         userId: null, action: "mcp.test_effect", entityType: "AgentOperation", entityId: operationId,
         newValue: { complete: true },
@@ -39,6 +41,7 @@ import {
   previewAgentOperation, executeAgentOperation, getAgentOperation, reconcileAgentOperations,
 } from "@/domains/agent-control/operations";
 import { decideJournalApproval } from "@/domains/agent-control/journal";
+import { operationBackupRunKey } from "@/domains/backup/manual";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && !process.env.VERCEL &&
@@ -69,6 +72,8 @@ describe.skipIf(!enabled)("MCP actions execute once on disposable PostgreSQL", (
     fake.hash = "a".repeat(64);
     fake.calls = 0;
     fake.throwAfterEffect = false;
+    fake.dispatchWait = null;
+    fake.releaseDispatch = null;
   });
   afterAll(async () => {
     const ids = await prisma.agentOperation.findMany({ where: { connectionId }, select: { id: true } });
@@ -86,6 +91,15 @@ describe.skipIf(!enabled)("MCP actions execute once on disposable PostgreSQL", (
     await prisma.mcpConnection.delete({ where: { id: connectionId } });
     await prisma.user.delete({ where: { id: userId } });
     await prisma.$disconnect();
+  });
+
+  it("uses an exact stable UUID-shaped manual backup idempotency key", () => {
+    const id = "cmcp5backup0123456789safe";
+    const first = operationBackupRunKey(id);
+    expect(first).toMatch(/^manual:[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/);
+    expect(operationBackupRunKey(id)).toBe(first);
+    expect(operationBackupRunKey("cmcp5backup9876543210safe")).not.toBe(first);
+    expect(() => operationBackupRunKey("arbitrary-user-key")).toThrow("INVALID_OPERATION_ID");
   });
 
   it("20 simultaneous executions and later retries dispatch one actual effect", async () => {
@@ -154,6 +168,36 @@ describe.skipIf(!enabled)("MCP actions execute once on disposable PostgreSQL", (
       previewId: denied.previewId, requestKey: key(7),
     })).resolves.toMatchObject({ state: "DENIED" });
     expect(fake.calls).toBe(0);
+  });
+
+  it("fences the stale worker before readback and refuses any second dispatch", async () => {
+    const created = await preview(9);
+    fake.dispatchWait = new Promise<void>((resolve) => { fake.releaseDispatch = resolve; });
+    try {
+      const executing = executeAgentOperation(ctx, {
+        previewId: created.previewId, requestKey: key(9),
+      });
+      await expect.poll(async () => (await prisma.agentOperation.findUniqueOrThrow({
+        where: { id: created.previewId }, select: { state: true },
+      })).state, { timeout: 15000 }).toBe("RUNNING");
+      await prisma.agentOperation.update({ where: { id: created.previewId },
+        data: { leaseExpiresAt: new Date(Date.now() - 1000) } });
+      const check = await reconcileAgentOperations(new Date(), 30);
+      expect(check.uncertain).toBeGreaterThanOrEqual(1);
+      expect((await prisma.agentOperation.findUniqueOrThrow({
+        where: { id: created.previewId },
+      })).state).toBe("UNKNOWN");
+      fake.releaseDispatch?.();
+      const stale = await executing;
+      expect(stale.state).toBe("UNKNOWN");
+      expect(fake.calls).toBe(1);
+      const recovered = await reconcileAgentOperations(new Date(), 30);
+      expect(recovered.recovered).toBeGreaterThanOrEqual(1);
+      expect((await getAgentOperation(ctx, created.previewId)).state).toBe("SUCCEEDED");
+      expect(fake.calls).toBe(1);
+    } finally {
+      fake.releaseDispatch?.();
+    }
   });
 
   it("reconciles an effect after its response was lost, without replaying", async () => {

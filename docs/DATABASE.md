@@ -1,3 +1,11 @@
+## MCP-5 typed uncertain-operation issue — additive migration 20261201000000_mcp5_uncertain_issue
+
+The existing `SystemIssue_kind_known` check now also allows
+`ASSISTANT_ACTION_UNCERTAIN`. All prior issue kinds remain allowed. This
+expands the database constraint only; it neither modifies issue rows nor
+starts any assistant effect. Without it, UNKNOWN reconciliation could fail to
+record the owner's required follow-up issue.
+
 ## MCP-5 execution and recovery notes (pending code review)
 
 The operation ledger keeps an immutable request-key digest and canonical

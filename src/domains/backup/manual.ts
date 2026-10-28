@@ -1,10 +1,22 @@
 import { businessDateKey } from "@/lib/business-date";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { runAutomation } from "@/domains/automation/runs";
 import { AutomationFailure } from "@/domains/automation/failures";
 import { exportDatabaseBackup } from "./index";
 import { runMediaInventoryAndCopy } from "./media";
+
+/**
+ * An assistant operation uses a deterministic UUID-shaped run key because
+ * runAutomation intentionally rejects all other manual-run identifiers.
+ * This keeps a lost-response retry bound to the one original backup attempt.
+ */
+export function operationBackupRunKey(operationId: string): string {
+  if (!/^c[a-z0-9]{12,80}$/i.test(operationId)) throw new Error("INVALID_OPERATION_ID");
+  const hex = createHash("sha256").update("backup-manual:" + operationId).digest("hex").slice(0, 32);
+  return "manual:" + [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16),
+    hex.slice(16, 20), hex.slice(20)].join("-");
+}
 
 /** Owner-only fresh attempt, separate from the next nightly slot.
  * The shared database advisory lock serializes a manual click with backup and media cron claims.
@@ -26,7 +38,7 @@ export async function retryBackupNow(actorUserId: string, operationId?: string):
   return runAutomation({
     ruleKey: "backup-manual",
     // Journal-owned retries use a stable run key, so a lost response cannot start a second backup.
-    runKeyOverride: "manual:" + (operationId ?? randomUUID()),
+    runKeyOverride: operationId ? operationBackupRunKey(operationId) : "manual:" + randomUUID(),
     actorUserId,
     budgetSeconds: 180,
     work: async ({ runId }) => {

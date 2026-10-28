@@ -5,10 +5,10 @@ import { businessDateKey } from "@/lib/business-date";
 import { getBackupStore } from "@/lib/photo-storage";
 import { sweepSystemIssues } from "@/domains/system-issues/sources";
 import { AUTOMATION_RULES, setAutomationPaused } from "@/domains/automation/health";
-import { retryBackupNow } from "@/domains/backup/manual";
+import { operationBackupRunKey, retryBackupNow } from "@/domains/backup/manual";
 import { runMediaInventoryAndCopy } from "@/domains/backup/media";
 import { verifyBackupReadback } from "@/domains/backup/artifacts";
-import { applyAnswers, previewAnswers, type ParsedAnswer } from "@/domains/decisions";
+import { applyAnswers, getDecision, previewAnswers, type ParsedAnswer } from "@/domains/decisions";
 import type { AgentContext } from "./authorization";
 import { canonicalAgentArgs, type JournalAction, type JournalPreview } from "./journal";
 
@@ -257,7 +257,7 @@ export async function dispatchAgentAction(
 }
 
 export async function verifyAgentAction(
-  _ctx: AgentContext, action: JournalAction, rawIntent: unknown,
+  ctx: AgentContext, action: JournalAction, rawIntent: unknown,
   operationId: string, startedAt: Date, safeResult: unknown,
 ): Promise<{ ok: boolean; observed: Record<string, unknown> }> {
   const intent = object(rawIntent);
@@ -270,7 +270,7 @@ export async function verifyAgentAction(
     }
     case "RETRY_DATABASE_BACKUP": {
       const run = await prisma.automationRun.findUnique({
-        where: { ruleKey_runKey: { ruleKey: "backup-manual", runKey: "manual:" + operationId } },
+        where: { ruleKey_runKey: { ruleKey: "backup-manual", runKey: operationBackupRunKey(operationId) } },
         select: { id: true, state: true },
       });
       const artifact = run ? await prisma.backupArtifact.findFirst({
@@ -311,16 +311,32 @@ export async function verifyAgentAction(
         const record = await prisma.decisionRecord.findFirst({ where: {
           subjectId: code, kind: "PROFESSIONAL_ANSWER", via: "MCP", createdAt: { gte: startedAt },
         }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
-        if (!record || (answer.other === true && record.value !== null)) continue;
-        if (answer.effectiveFrom) {
+        if (!record) continue;
+        if (answer.other === true) {
+          // "Other" is evidence, not an instruction to change a setting.
+          if (record.value === null) verified++;
+          continue;
+        }
+        if (record.value === null) continue;
+        const recordDigest = canonicalAgentArgs({ value: record.value }).digest;
+        const effectiveFrom = typeof answer.effectiveFrom === "string" ? answer.effectiveFrom : null;
+        const isFuture = !!effectiveFrom && effectiveFrom > businessDateKey(startedAt);
+        if (isFuture) {
           const scheduled = await prisma.decisionScheduledChange.findFirst({ where: {
-            decisionRecordId: record.id, cancelledAt: null,
-          }, select: { id: true } });
-          if (!scheduled && answer.other !== true) continue;
+            decisionRecordId: record.id, subjectId: code, cancelledAt: null,
+          }, select: { value: true, effectiveFrom: true } });
+          if (!scheduled || businessDateKey(scheduled.effectiveFrom) !== effectiveFrom ||
+              canonicalAgentArgs({ value: scheduled.value }).digest !== recordDigest) continue;
+        } else {
+          // A professional answer that should apply now must agree with the
+          // actual current setting, not merely with the existence of a record.
+          const current = await getDecision(ctx.userId, code);
+          if (canonicalAgentArgs({ value: current.current.value }).digest !== recordDigest) continue;
         }
         verified++;
       }
-      return { ok: verified === answers.length, observed: { verifiedAnswers: verified, expectedAnswers: answers.length } };
+      return { ok: verified === answers.length,
+        observed: { verifiedAnswers: verified, expectedAnswers: answers.length } };
     }
     default:
       throw new Error("UNKNOWN_ACTION");

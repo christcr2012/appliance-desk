@@ -137,7 +137,29 @@ export async function executeAgentOperation(ctx: AgentContext, input: {
   let verification: Record<string, unknown> | null = null;
   let state: AgentOperationState = "UNKNOWN";
   let failureCode: string | null = null;
+  let dispatchStarted = false;
   try {
+    // A revoked connection or downgraded user between the durable claim and
+    // actual dispatch cannot start a command. This closes the ordinary delay
+    // between those two stages; domain commands retain their own actor gates.
+    await prisma.$transaction(async (tx) => {
+      await lockConnection(tx, ctx.connectionId);
+      const current = await tx.mcpConnection.findUniqueOrThrow({
+        where: { id: ctx.connectionId },
+        select: { userId: true, scopes: true, revokedAt: true },
+      });
+      if (current.revokedAt || current.userId !== ctx.userId) throw new Error("CONNECTION_REVOKED");
+      const policy = policyFor(action);
+      if (!current.scopes.includes(policy.scope) || !ctx.scopes.includes(policy.scope))
+        throw new Error("FORBIDDEN_SCOPE");
+      await assertActiveTeamActor(tx, ctx.userId,
+        OWNER_ONLY_JOURNAL_ACTIONS.has(action) ? ["OWNER"] : ["OWNER", "ADMIN"]);
+      const claimRow = await tx.agentOperation.findUniqueOrThrow({ where: { id: op.id },
+        select: { state: true, leaseToken: true, expiresAt: true } });
+      if (claimRow.state !== "RUNNING" || claimRow.leaseToken !== claim.claimToken ||
+          claimRow.expiresAt.getTime() <= Date.now()) throw new Error("EXECUTION_LEASE_INVALID");
+    }, { timeout: 12000 });
+    dispatchStarted = true;
     safeResult = await dispatchAgentAction(ctx, action, args, op.id);
     const checked = await verifyAgentAction(ctx, action, op.verifyIntent, op.id, op.startedAt!, safeResult);
     verification = { ...checked.observed, checkedAt: new Date().toISOString() };
@@ -145,10 +167,15 @@ export async function executeAgentOperation(ctx: AgentContext, input: {
     else failureCode = "VERIFY_UNCERTAIN";
   } catch (error) {
     // A lost response is never proof of no effect. A DEC-1 transaction rejects atomically.
-    const noEffect = action === "APPLY_DECISION_ANSWERS" && error instanceof Error &&
-      /preview|answer|decision|form|changed|expired/i.test(error.message);
+    const noEffect = !dispatchStarted || (error instanceof Error && (
+      (action === "APPLY_DECISION_ANSWERS" &&
+        /preview|answer|decision|form|changed|expired/i.test(error.message)) ||
+      (["PAUSE_AUTOMATION", "RESUME_AUTOMATION"].includes(action) &&
+        error.message === "PREVIEW_CHANGED")
+    ));
     state = noEffect ? "FAILED" : "UNKNOWN";
-    failureCode = noEffect ? "DOMAIN_REFUSED" : "EFFECT_UNCERTAIN";
+    failureCode = !dispatchStarted ? "DISPATCH_AUTH_REVOKED" :
+      noEffect ? "DOMAIN_REFUSED" : "EFFECT_UNCERTAIN";
   }
 
   const finished = await prisma.$transaction(async (tx) => {
