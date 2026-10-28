@@ -20,6 +20,7 @@ import {
   type CustomerSummary,
 } from "@/domains/customers/record";
 import { getBills, type BillRow } from "@/domains/billing/bills-list";
+import { suggestPaymentLinkReason } from "@/domains/billing/payment-link-message";
 import { STATUS_NEXT } from "@/lib/status-next";
 import { inboxActions } from "@/domains/exceptions/inbox";
 import { rentForNextBill } from "@/domains/portal/next-bill";
@@ -555,8 +556,18 @@ export default async function CustomerDetailPage({
     { href: `${base}?tab=details`, label: "Details" },
   ];
 
+  const oldestBillRow = summary.oldestOpenBillId ? openBills?.rows.find((r) => r.id === summary.oldestOpenBillId) : undefined;
+  const takePaymentSheet =
+    summary.oldestOpenBillPayPath === "STRIPE_LINK" && summary.oldestOpenBillId
+      ? {
+          invoiceId: summary.oldestOpenBillId,
+          owedCents: oldestBillRow?.owedCents ?? summary.owedCents,
+          suggestedReason: suggestPaymentLinkReason({ status: oldestBillRow?.status ?? "OPEN", amountPaidCents: oldestBillRow?.paidCents ?? 0 }),
+        }
+      : null;
+
   return (
-    <CustomerRecordClient customerId={id} initialNoteOpen={search.note === "1"} accountNotice={accountNotice}>
+    <CustomerRecordClient customerId={id} initialNoteOpen={search.note === "1"} accountNotice={accountNotice} takePayment={takePaymentSheet}>
       <div className="lg:flex lg:items-start lg:gap-5">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <RecordHeader

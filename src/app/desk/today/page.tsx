@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InboxCountBeacon } from "@/components/kit/inbox-count-beacon";
 import { revalidatePath } from "next/cache";
 import { getExceptionOverview, getTodaysJobs, type ExceptionItem } from "@/domains/exceptions";
 import { syncComplianceFilings } from "@/domains/compliance/filings";
@@ -19,7 +20,7 @@ import { approveRuleChange, dismissRuleChange } from "@/domains/rules/observatio
 import { acknowledgeOfficialSourceChange } from "@/domains/tax/official-source-watch";
 import { snoozeTodo, todoDeadlineLabel, unsnoozeTodo } from "@/domains/exceptions/todo";
 import { getDueTaskSummary } from "@/domains/tasks/workspace";
-import { completeTaskAction } from "../tasks/actions";
+import { completeTaskAction, reopenTaskAction } from "../tasks/actions";
 import { getSetupChecklist } from "@/domains/setup/checklist";
 import { getBudgetPlanning } from "@/domains/budget/planning";
 import { getWeeklyHealth, type WeeklyHealth } from "@/domains/dashboard/weekly-health";
@@ -33,7 +34,10 @@ import { ActionButton, AutoRefresh, PullToRefresh, EmptyState, Icon, InboxCard, 
 import { SetupCard } from "./setup-card";
 import { decisionsTodayCount } from "@/domains/decisions/today";
 import { recordBankPaymentAction } from "../billing/reconciliation/actions";
+import { listWaitingApprovals } from "@/domains/approvals";
+import { decideApprovalAction } from "../approvals/actions";
 import { TodayInbox, type InboxEntry } from "./today-inbox";
+import type { ApprovalCardData } from "./approvals-sheet";
 
 export const metadata = { title: "Today" };
 
@@ -159,7 +163,19 @@ async function completeTaskFromTodayAction(formData: FormData) {
   return result.status === "success" ? { success: "Task done" } : { error: result.message };
 }
 
-type Search = { screen?: string; group?: string; snooze?: string };
+/** Undo for the task card's Done (AR-2 slice 3): completing moved the version
+ * by one, so the reopen presents version + 1 — the same reopenTaskAction the
+ * Tasks list uses. */
+async function reopenTaskFromTodayAction(formData: FormData) {
+  "use server";
+  const id = formData.get("taskId");
+  const version = Number(formData.get("version"));
+  if (typeof id !== "string" || !id || !Number.isSafeInteger(version)) return { error: "This task changed. Refresh and try again." };
+  const result = await reopenTaskAction(id, version);
+  return result.status === "success" ? { success: "Task reopened" } : { error: result.message };
+}
+
+type Search = { screen?: string; group?: string; snooze?: string; approvals?: string };
 type Group = InboxGroup | "all" | "snoozed";
 
 function parseGroup(value: string | undefined): Group {
@@ -254,6 +270,26 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const decisionsWaiting = await decisionsTodayCount({ id: session.user.id, role }, now);
   const hiddenOptional = new Set(workspace?.prefs.hiddenOptionalCardIds ?? []);
   const exceptions = sortInbox(allExceptions.filter((item) => !hiddenOptional.has(item.category)));
+  // AR-2 slice 2: when the approvals item is in the inbox, the owner also gets
+  // the waiting list itself so the item can open the approvals Sheet. Owner
+  // only — the domain action refuses anyone else, and the Sheet never renders
+  // for admins or staff. A read failure simply leaves the item as a link.
+  const approvalsWaiting: ApprovalCardData[] | null =
+    role === "OWNER" && exceptions.some((item) => item.category === "APPROVAL_REQUEST")
+      ? await listWaitingApprovals()
+          .then((rows) =>
+            rows.map((r) => ({
+              id: r.id,
+              summary: r.summary,
+              requestedBy: r.requestedBy,
+              createdAt: r.createdAt.toISOString(),
+              expiresAt: r.expiresAt.toISOString(),
+              amountCents: r.amountCents,
+              expired: r.expired,
+            })),
+          )
+          .catch(() => null)
+      : null;
   const truncated = allTruncated.filter((item) => !hiddenOptional.has(item.category));
   const hiddenNoteCount = allExceptions.filter((item) => hiddenOptional.has(item.category)).length;
   const myPins = workspace ? usablePins(workspace.prefs, visibleOwnerActions(role)) : [];
@@ -269,10 +305,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const snoozeHref = canManage
     ? (key: string) => `/desk/today?${new URLSearchParams({ ...(groupParam ? { group: groupParam } : {}), snooze: key }).toString()}`
     : undefined;
+  const approvalsHref = `/desk/today?${new URLSearchParams({ ...(groupParam ? { group: groupParam } : {}), approvals: "1" }).toString()}`;
 
   const itemCard = (item: ExceptionItem, index: number, bringBack = false): InboxEntry => {
     const key = `${item.todoKey ?? item.category + "-" + index}`;
-    const { actions, overflow } = bringBack
+    const base = bringBack
       ? {
           actions: [
             {
@@ -289,6 +326,21 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
           overflow: [],
         }
       : inboxActions(item, { handlers, snoozeHref });
+    // AR-2 slice 2: the approvals item's primary opens the Sheet instead of
+    // leaving for the approvals page; the page stays one tap away in the ⋯.
+    const { actions, overflow } =
+      !bringBack && item.category === "APPROVAL_REQUEST" && approvalsWaiting !== null
+        ? {
+            actions: [
+              { kind: "link", label: "Review requests", href: approvalsHref, primary: true } satisfies ActionSpec,
+              ...base.actions.slice(1),
+            ],
+            overflow: [
+              { kind: "link", label: "Open approvals page", href: "/desk/approvals" } satisfies ActionSpec,
+              ...base.overflow,
+            ],
+          }
+        : base;
     const until = item.snooze ? `Snoozed until ${formatShortDate(item.snooze.until, now)}` : null;
     return {
       key,
@@ -339,7 +391,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
       title: task.note,
       node: (
         <InboxCard
-          eyebrow={["Tasks", deadline].filter(Boolean).join(" · ")}
+          eyebrow={["Task", deadline].filter(Boolean).join(" · ")}
           eyebrowTone={deadline?.startsWith("Overdue") ? "attention" : "neutral"}
           title={task.note}
           detail={about ?? undefined}
@@ -352,7 +404,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
               primary: true,
               pendingLabel: "Saving…",
             },
-            { kind: "link", label: "Open tasks", href: "/desk/tasks" },
+            { kind: "link", label: "Open", href: "/desk/tasks" },
           ]}
         />
       ),
@@ -461,6 +513,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
     <PullToRefresh><div className="w-full min-w-0 max-w-full px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
       <div className="flex w-full min-w-0 max-w-full flex-1 flex-col gap-4 lg:max-w-[760px]">
         <AutoRefresh />
+        <InboxCountBeacon count={total} />
         {notInJobRole ? (
           <p role="status" className="rounded-card border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink">
             You don&apos;t have access to that screen.
@@ -521,6 +574,12 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
             resumeAction={canManage ? resumeToDoAction : undefined}
             dates={dates}
             initialSnoozeKey={query.snooze}
+            approvals={
+              approvalsWaiting !== null
+                ? { requests: approvalsWaiting, decideAction: decideApprovalAction, initialOpen: query.approvals === "1" }
+                : undefined
+            }
+            taskActions={{ complete: completeTaskFromTodayAction, reopen: reopenTaskFromTodayAction }}
           >
             {truncationLines.map((line) => (
               <p key={line.g} className="pt-2 text-sm text-ink-soft">
@@ -528,6 +587,13 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
                 {line.text}
               </p>
             ))}
+            {(group === "all" || group === "tasks") && followUps.totalCount > followUps.tasks.length ? (
+              <p className="pt-1">
+                <Link href="/desk/tasks" className="text-sm font-bold text-primary hover:underline">
+                  See all tasks
+                </Link>
+              </p>
+            ) : null}
           </TodayInbox>
         )}
         {group !== "snoozed" && snoozed.length > 0 ? (
@@ -535,10 +601,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
             Snoozed ({snoozed.length})
           </Link>
         ) : null}
+        {canManage ? <Link href="/desk/settings/workspace#my-workspace" className="inline-flex min-h-11 items-center self-start text-[15px] font-bold text-primary hover:underline">Manage my workspace</Link> : null}
         {hiddenNoteCount > 0 ? (
           <p className="text-sm text-ink-soft">
             {hiddenNoteCount} optional note{hiddenNoteCount === 1 ? " is" : "s are"} hidden.{" "}
-            <Link href="/desk/control-center#my-workspace" className="font-semibold text-primary underline">
+            <Link href="/desk/settings/workspace#my-workspace" className="font-semibold text-primary underline">
               Show again
             </Link>
           </p>

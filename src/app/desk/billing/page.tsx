@@ -34,9 +34,7 @@ import {
   type ViewDef,
 } from "@/components/kit";
 import { BILL_SORT_LABEL, hasBillFilters, legacyBillsRedirect, parseBillsParams, type BillsPageParams } from "./params";
-import { billColumns, billHref, billMobileCard, billPayActions, billRowActions } from "./bill-list-parts";
-import { DepositsTab } from "./deposits-tab";
-import { WaitingTab } from "./waiting-tab";
+import { BillPayButtons, billColumns, billHref, billMobileCard, billRowActions } from "./bill-list-parts";
 
 export const metadata = { title: "Bills" };
 
@@ -142,7 +140,7 @@ function BillPanel({ detail, row, closeHref, now, readOnly }: { detail: InvoiceD
       };
     }),
   ];
-  const actions = row ? billPayActions(row) : [];
+  const payButtons = !readOnly && row ? <BillPayButtons row={row} /> : null;
   return (
     <SidePanel title={`Bill #${detail.invoiceNumber}`} closeHref={closeHref} fullHref={fullHref}>
       <div className="flex flex-col gap-4">
@@ -167,16 +165,10 @@ function BillPanel({ detail, row, closeHref, now, readOnly }: { detail: InvoiceD
             </div>
           ))}
         </dl>
-        {actions.length > 0 || row ? (
+        {row ? (
           <div className="flex flex-wrap items-center gap-2">
-            {actions.map((spec, index) => (
-              <ActionButton
-                key={spec.label}
-                spec={spec.label === "Remind" ? { ...spec, label: "Send reminder" } : spec}
-                variant={index === 0 ? "primary" : "secondary"}
-              />
-            ))}
-            {row ? <OverflowMenu items={billRowActions(row)} label={`More for bill ${detail.invoiceNumber}`} /> : null}
+            {payButtons}
+            <OverflowMenu items={billRowActions(row)} label={`More for bill ${detail.invoiceNumber}`} />
           </div>
         ) : null}
         <section aria-labelledby="bill-panel-history">
@@ -206,6 +198,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const legacy = legacyBillsRedirect(search);
   if (legacy) redirect(legacy);
   const params = parseBillsParams(search);
+  // AR-3: Deposits and Waiting for Stripe live on the Payments list now; old links land on the right tab.
+  if (params.view === "deposits") redirect("/desk/payments?status=deposits");
+  if (params.view === "waiting") redirect("/desk/payments?status=waiting");
   const now = new Date();
   const urlParams = new URLSearchParams(
     Object.entries(search).flatMap(([key, value]) => (typeof value === "string" ? [[key, value]] : Array.isArray(value) && value[0] ? [[key, value[0]]] : [])),
@@ -238,28 +233,21 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   );
 
   if (params.view) {
-    const legacyTitle = params.view === "by-customer" ? "Who owes money" : params.view === "deposits" ? "Deposits" : "Waiting for Stripe";
-    const balances = params.view === "by-customer" ? await getCustomersWithOpenBalances() : [];
+    const balances = await getCustomersWithOpenBalances();
     return (
       <PullToRefresh><div className="px-1 sm:px-0">
         {header}
         <AutoRefresh />
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h2 className="flex-1 text-base font-bold text-ink">{legacyTitle}</h2>
+          <h2 className="flex-1 text-base font-bold text-ink">Who owes money</h2>
           <ActionButton spec={{ kind: "link", label: "All bills", href: "/desk/billing" }} variant="secondary" />
         </div>
-        {params.view === "deposits" ? (
-          <DepositsTab />
-        ) : params.view === "waiting" ? (
-          <WaitingTab />
-        ) : (
-          <DataList
-            rows={balances}
-            columns={balanceColumns}
-            caption="Who owes money"
-            empty={<LegacyEmptyState title="No one owes money right now" />}
-          />
-        )}
+        <DataList
+          rows={balances}
+          columns={balanceColumns}
+          caption="Who owes money"
+          empty={<LegacyEmptyState title="No one owes money right now" />}
+        />
       </div></PullToRefresh>
     );
   }

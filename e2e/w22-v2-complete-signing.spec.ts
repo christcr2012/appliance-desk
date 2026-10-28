@@ -18,7 +18,8 @@ test("V2 complete order clearance, customer signature, owner receipt and own-acc
  try{
   const path="/desk/agreements/"+fixture.ids[0];
   await page.setViewportSize({width:390,height:960});
-  await page.goto(path);
+  // AR-4a: signing work lives on the record's Signing tab now.
+  await page.goto(path+"?tab=signing");
   await expect(page.getByRole("heading",{name:"Signing business clearance"})).toBeVisible();
   await expect(page.getByText("$456.06",{exact:true})).toBeVisible();
   await page.getByRole("button",{name:"Send for signature",exact:true}).click();
@@ -56,7 +57,7 @@ test("V2 complete order clearance, customer signature, owner receipt and own-acc
   await customerPage.getByRole("button",{name:"Sign agreement",exact:true}).click();
   await expect.poll(async()=>prisma.agreementSigningPayment.count({where:{agreementId:fixture.ids[0],status:"AWAITING_PAYMENT",totalCents:28631}})).toBe(1);
   expect(await prisma.agreementSigningPayment.count({where:{agreementId:fixture.ids[1]}})).toBe(0);
-  await page.goto(path);
+  await page.goto(path+"?tab=signing");
   await page.getByLabel("Payment reference").fill("SYN-BROWSER-"+fixture.tag);
   await page.getByRole("checkbox",{name:/I verified that the full/}).check();
   await page.getByRole("button",{name:"Record signing payment",exact:true}).click();

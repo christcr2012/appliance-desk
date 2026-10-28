@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 /**
  * The one place that says which stored payment statuses mean "the money
  * arrived". Older records were saved as `SUCCEEDED` (capitals) and newer ones
@@ -8,6 +10,17 @@ export const SUCCESSFUL_PAYMENT_STATUSES = ["succeeded", "SUCCEEDED"] as const;
 
 export function isSuccessfulPaymentStatus(status: string | null | undefined): boolean {
   return (SUCCESSFUL_PAYMENT_STATUSES as readonly string[]).includes(status ?? "");
+}
+
+/** Both stored spellings of a payment that did not go through (see SUCCESSFUL_PAYMENT_STATUSES). */
+export const FAILED_PAYMENT_STATUSES = ["failed", "FAILED"] as const;
+
+/**
+ * AR-3: the revenue dashboard's failed-payments-this-month rule, extracted so the Money overview counts the
+ * exact same payments (an integration test holds the two pages to the same number).
+ */
+export function failedPaymentsWhere(period: Prisma.DateTimeFilter): Prisma.PaymentWhereInput {
+  return { status: "failed", createdAt: period };
 }
 
 /**

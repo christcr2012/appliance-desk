@@ -4378,7 +4378,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "APPROVED — not merged; #714 is TAXBEN-2 (not AR-1). Navigation implementation branch ai/chatgpt/ar1-five-area-navigation-20261027",
+      "status": "SOURCE PR #720 OPEN — five-area navigation and command search implemented; exact-head CI and review required before merge, owner phone look-over pending",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4436,7 +4436,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "COMPLETE — merged 2026-10-28 via PR #730 (squash a3726e8c; replaces #725)",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -5903,6 +5903,14 @@
   "activeExecution": "K-CASH-7",
   "executionPackets": [
     {
+      "id": "AR-4A",
+      "path": "docs/pr-cards/execution/AR-4A.json"
+    },
+    {
+      "id": "AR-2",
+      "path": "docs/pr-cards/execution/AR-2.json"
+    },
+    {
       "id": "FEETAX-2",
       "path": "docs/pr-cards/execution/FEETAX-2.json"
     },
@@ -6113,6 +6121,11 @@
     {
       "id": "ACCT-1",
       "path": "docs/pr-cards/execution/ACCT-1.json"
+    }
+  ,
+    {
+      "id": "AR-3",
+      "path": "docs/pr-cards/execution/AR-3.json"
     }
   ]
 }

@@ -6,4 +6,3 @@ export function practiceAppUrl(env: { PRACTICE_APP_URL?: string; APP_ENV?: strin
     return url.origin + url.pathname.replace(/\/$/, "") + url.search;
   } catch { return null; }
 }
-

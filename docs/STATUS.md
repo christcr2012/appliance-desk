@@ -1,105 +1,91 @@
-## October 28 — MCP-5 full-CI regression corrections (PR #717, branch only)
+## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
 
-Full CI at head 90f77371 exposed stale test assumptions after adding three
-assistant tools, a DEC-1 shared-settings test omitted from the serial inventory,
-a browser approval fixture missing the exact grant version, and an ambiguous
-Customers heading selector. All are corrected without weakening authorization
-or assertions. The books poster suite also moves to the serial settings
-project because it edits the shared accounting start date. On the combined
-current main + MCP-5 branch, 37 disposable-PostgreSQL integration tests
-passed (including 19 accounting and 18 assistant tests), none skipped; eight
-focused catalog/inventory tests passed. Full GitHub CI and the required
-review gates on this correction are still pending. No customer or production
-data changed.
+Slices 1 and 2 merged (PRs #727, #728). Slice 3 finishes AR-2: a due task's
+Done on Today now runs optimistically with AR-11's treatment — the card hides
+the moment it is tapped, the success toast offers Undo (which reopens the
+task with its post-completion version), and a failure brings the card back
+with the task action's own message. The card eyebrow reads "Task · {due
+label}" (overdue stays attention), the linked record's name stays the detail,
+and the secondary action is "Open" to the tasks page. When more tasks are due
+than Today shows, the "Showing n of total" line gains a "See all tasks" link.
+Notice items are unchanged: their primary still goes to the notice's own
+page, with no inline handling added.
 
-## October 28 — MCP-5 review fixes verified, merge pending (PR #717)
+## October 28 — AR-2 slice 2 in progress: approvals Sheet on Today (PR #728)
 
-Fixed three reviewed safety issues: previews and owner approvals now belong to
-the exact assistant grant even across disconnect/reconnect; DEC-1 answer readback
-is tied to the specific operation and expected normalized values; nightly
-uncertain-operation checks rotate through old unresolved work without replaying it.
-The additive migration preserves existing records. Disposable PostgreSQL:
-18/18 focused integration tests passed including grant rotation, operation
-evidence and reconciliation fairness. Focused TypeScript, migration-safety,
-owner wording and route-inventory checks passed. Full GitHub CI, browser and
-review on the new published head remain required. MCP-4 PR #704 remains green
-but GitHub's independent required-review protection blocks merging; never bypass.
-No live payments, texts, email or production data changed.
+Slice 1 merged (PR #727). Slice 2 lets the owner decide approval requests
+without leaving Today: when the "Requests waiting for your approval" item is in
+the inbox, it also loads the waiting list, its primary action becomes "Review
+requests" and opens a "Waiting for your approval" Sheet (the approvals page
+stays in the item's menu). Each request is a card (summary; who asked, when,
+how much; when it expires — expired requests offer only Decline). Approve and
+Decline always go through the plain confirmation, never optimistic, never
+Undo; the outcome arrives as a toast with the same words the approvals page
+uses. The Sheet renders only for the owner, and the deciding action refuses
+anyone else itself. New browser spec e2e/today-inline.spec.ts covers approve
+and decline through the confirmation, the staff view, and axe at five sizes.
 
-## October 27 — Lane 2 MCP-4 / MCP-5 verification checkpoint (local MCP-5 branch)
+## October 28 — AR-3 Money area MERGED (PR #730, squash a3726e8c, Lane 4)
 
-MCP-4 PR #704 has passed all GitHub CI groups (full browser, unit, static and
-secret scans) and Reviewgate at exact head `8d98fb27`. GitHub still reports
-its merge as blocked by branch requirements; squash auto-merge is enabled.
-Do **not** override rules or claim that MCP-4 has merged.
+The Money area is on main: a Money overview (money in, still owed, past due, coming in 30 days,
+money-group decisions, recent payments), a Payments list (Received / Failed / Needs a decision /
+Deposits / Waiting for Stripe; the old billing `?view=deposits` and `?view=waiting` links redirect
+here), payment sheets that open in place (Take payment, Record cash or check, card payment) on the
+Bills list, the bill panel, the statement and the customer record, and the bill record rebuilt as a
+kit record page with an Activity tab. No money rules changed — every button is the existing server
+action. PR #725 was closed unmerged and replaced by #730 with the identical tree (git-data pushes
+carry no merge ancestry, so #725 computed as permanently conflicted after main advanced three
+times — the AUD-E trap; the replacement branch was recreated from current main). CI was fully green
+at the merged head, and Codex's two findings on #730 (reserve the card-payment tab inside the
+click so popup blockers cannot swallow the Stripe page; the bill section must print from either
+tab) were fixed before merge. Next on Lane 4's queue: AR-7 (Books and Taxes screens on the kit),
+then AR-10 (final sweep).
+## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
 
-MCP-5 now has a local implementation for all seven named maintenance/decision
-commands through the durable action journal, original-preview hash checks,
-owner confirmation, row-lock/lease-fenced execution, readback-only UNKNOWN
-reconciliation, and an Assistant activity screen with an accessible change
-confirmation table. The nightly diagnostics path reads uncertain outcomes;
-none are automatically replayed. This remains **unmerged** and requires
-database, browser, type and review evidence before any exposure.
+AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is
+the refactor only: the approval server actions now live in
+src/app/desk/approvals/actions.ts (decideApprovalAction, finishApprovalAction) —
+same domain calls, same OWNER check, same outcome mapping — except with inline=1
+they return { outcome } instead of redirecting, and finish also revalidates
+/desk/today. OUTCOME_WORDS and STATUS_WORDS moved to src/domains/approvals/words.ts;
+the approvals page imports everything back and behaves exactly as before. New
+tests/approval-actions.test.ts pins the contract (domain spies, both revalidations,
+inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
+adds optimistic task completion with Undo.
 
-Local full TypeScript checks exhausted the 4 GB sandbox memory; that is not
-passing evidence. The extended disposable-PostgreSQL probe passed **16 of 16** tests across
-journal, one-time execution and real DEC-1 apply/schedule integration, with no
-skipped tests. A bounded focused TypeScript check (MCP-5 files) passed; full
-typecheck still OOMs in this sandbox. Browser, GitHub CI and review remain
-outstanding. New safety fixes: UUID-compatible stable backup idempotency key,
-post-claim actor/scope recheck, actual decision-state readback, and additive
-unknown-issue constraint migration. No live action was enabled.
+## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
-## October 27 — MCP-5 approved assistant actions (branch ai/chatgpt/mcp-5-action-journal, local only)
+AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
+gains status tabs with counts (Active, Waiting for signature, Starting,
+Drafts, Ended, Cancelled), search by name/address/appliance number, starts/
+ends filters, four sorts and the kit's growing cursor window; the old
+?status=ACTIVE links land on the right tab, and staff rows carry no money.
+The record is a kit record page: header with the status pill and the one
+primary action for its state, stat strip, a read-only progress stepper,
+the next-step card, and Details / Signing / Visits / Activity tabs. Visits
+now read in plain words (the old panel printed raw job codes). "Mark ended"
+is gone: every ending goes through the "End this rental" sheet, which steps
+Choose · Decide · Done into the existing ending pages, the month-to-month
+form, or "End it today" behind the danger confirmation. Every end path can
+record one optional "Why is it ending?" answer (owner-kept list, starting
+values on Settings › Rental endings; never required, never shown to the
+customer) — AR-9's "why customers left" will read it. Staff keep the
+operational view.
 
-The full acceptance plan is committed. The additive journal schema, preview-only
-deduplication, audited owner approval and live grant/actor gates are implemented; 20-way real-Postgres
-concurrency and full restore safety tests pass. No assistant write tools or
-business effects have been activated. Remaining: execute/verification/reconciliation,
-all domain actions, activity screen and exact-head CI. Do not publish or merge
-this incomplete high-risk feature.
+## October 28 — AR-1 five-area navigation: tested and reviewed (PR #720)
 
-## October 27 — MCP-4 read-only assistant diagnostics (PR #704; merge conflict resolved locally)
+Mobile five-area bar and area tabs, desktop collapsible remembered sidebar, profile/workspace
+controls, Help and Ctrl/⌘ K command search, staff/accountant job-role filtering, Today
+count without cross-page queries, existing deep URLs and safe redirects are implemented.
+Exact code head `5e5a1553c57c7903c6ad09bd2942f05754f737c6` passed CI run
+`40681386667` (all unit/database and browser shards, lint, typecheck, accessibility,
+security); all three Codex review findings were addressed and review-gate passed after
+self-review. PR #720 is the approved merge target; recheck the final docs-only head before
+squash merge. No production or live-provider changes; real-phone installation remains an
+unchecked owner task. Per owner request, pause after AR-1; do not start AR-2.
 
-Nine read-only diagnostic tools, scoped permission checks and pagination passed focused tests.
-Previous exact-head GitHub `ci` and `review-gate` were green. GitHub later reported a real
-`docs/STATUS.md` conflict with newer main; this integration reconciles both status notes.
-Re-run exact-head checks and review before squash merging; MCP-5 execution is still unfinished.
-
-## October 28 — FEETAX-1 merged: Optional, separately stated service lines and per-place fee rules
-
-Merged 2026-10-28 as PR #718 (squash `e2a1e45e`) — Lane 4's last card; the lane is
-complete. Paired build: Lane 4 built slices 1–3 (data, engine, seeds/decisions/email),
-Lane 5 built slices 4–6 (order capture, desk flow, integration tests) and verified
-slices 1–3 independently; Lane 4 integrated and shipped.
-
-Delivery, installation, pickup at the end and haul-away are separate optional choices
-with prices shown at ordering (gas appliances never offer self-install); every choice is
-saved with the order as `OrderServiceChoice` inside the order's locked transaction, and
-approval now checks the choices against the order's frozen charges — picking the free
-alternative for a service the quote still charges for asks for an updated quote instead
-of silently billing it. The tax engine applies a place's optional-and-separate answer
-only when the order proves the alternative was shown; old orders are treated as not
-optional. Starting rules are seeded "Researched — not confirmed" (state services not
-taxed when optional and separate; delivery taxed even when separate in Fort Collins,
-Thornton, Broomfield, Boulder, Aurora and Westminster; separately listed installation
-not taxed in Fort Collins, Thornton and Broomfield); Greeley's answers stay unset
-(taxed) until Greeley confirms in writing. Confirmed and researched taxability saves
-now carry the optional-and-separate answer, so a CPA answer settles the whole cell.
-The $45 setup fee is unchanged (IN-74) with its home-rule note; Settings warns when a
-service price runs well above its real cost. Nine DQ-FEETAX-* questions are filed in
-OWNER-INPUTS; the "Email Greeley" draft lives on Settings › Taxes (the app drafts it,
-Chris sends it). Customer-isolation, agreement/bill-line matching and the engine proof
-rule are covered by tests; CI was green at the exact head `4dcd14cf` and every review
-comment was read and answered (three P1 findings fixed before merge).
-
-## October 27 — AR-11 measured desk JavaScript guard (PR #691, review/checks pending)
-
-The real Next 16 production build records the gzip JavaScript actually requested by each private desk page and rejects missing route baselines or growth over 10%. PR #691 passed its previous exact-head CI and had a pending review gate; merging AR-12 and Help changed main, so the actual branch conflict is being reconciled without reverting those releases. Fresh exact-head CI and review are required. AR-1 was incorrectly marked merged via #714, which actually shipped tax benefits; work-index correction is included. Real-phone installation remains an owner verification item.
-
-## October 27 — AR-12 Settings → Features, Practice and Help (source merged)
-
-PRs #693/#695/#702/#716 all merged with exact-head CI and review gates. The Features screen's seven owner-controlled visibility choices, automatic rules and private Practice link are shipped in source; hiding navigation never revokes direct page access. Practice requires the owner's separate HTTPS testing-app setting and remains unchecked in OWNER-CHECKLIST. The 15 role-aware Help guides are also merged.
+## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
+The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
 
 ## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 
@@ -3744,3 +3730,22 @@ payment evidence or approval to collect; all such paths remain disabled.
 **Next: W-22C5 reviewed immutable per-agreement tax-inclusive freeze and
 server send/sign gates**, followed by W-22 checkout/manual payment, credit,
 refund/cancellation and delivery acceptance. IN-79 open; W-23 blocked.
+
+## October 28 — MCP-4 direct read diagnostics (PR #704; merge reconciliation)
+
+The nine privacy-safe MCP reads, authorization checks, continuation cursors and
+verified backup evidence were implemented and reviewed in PR #704. All Codex
+findings were answered and resolved; GitHub's exact-source CI and review-gate
+passed. This status note is deliberately kept outside the top-of-file latest
+updates so other lane agents can prepend their new work without creating the
+same merge conflict. Merge and deployed acceptance remain separate from checks.
+
+## October 28 — MCP-5 integration after MCP-4 merged (PR #717)
+
+MCP-4 merged under protected green checks as PR #704, squash `f11608ea`.
+MCP-5 action-journal now integrates the merged diagnostics and current main
+into its feature branch, preserving the approved MCP-5 scopes, preview/owner
+approval, execution journal and readback tools. This integration resolves
+the tool registry and read test alongside newer app routes. Exact-head CI
+and review are required again; no live provider actions or production data
+were changed.

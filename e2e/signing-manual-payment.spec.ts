@@ -42,7 +42,8 @@ test("manual signing collection is an owner-only, explicit accessible review —
     const path = "/desk/agreements/" + agreement.id;
     await page.addInitScript(() => localStorage.setItem("theme", "dark"));
     await page.setViewportSize({ width: 360, height: 900 });
-    await page.goto(path);
+    // AR-4a: signing work lives on the record's Signing tab now.
+    await page.goto(path + "?tab=signing");
     await expect(page.getByRole("heading", { name: "Signing payment", exact: true })).toBeVisible();
     await expect(page.getByText("Record money received at signing", { exact: false })).toBeVisible();
     await expect(page.getByLabel("How was it paid?")).toBeVisible();

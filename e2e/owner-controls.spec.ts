@@ -106,7 +106,7 @@ test("permissions: take one thing away from an admin, see it, and give it back",
 });
 
 test("workspace: pin a shortcut, see it under My workspace, unpin it, and reset", async ({ page }) => {
-  await page.goto("/desk/control-center");
+  await page.goto("/desk/settings/workspace");
   await expect(page.getByRole("heading", { name: "Manage my business", level: 1 })).toBeVisible();
   await expect(page.getByText("None yet. Use the Pin button on any card above.")).toBeVisible();
   const pin = page.getByRole("button", { name: /^Pin / }).first();

@@ -4,8 +4,9 @@ import { getAgreementById } from "@/domains/agreements";
 import { getPreDeliveryCancellationQuote } from "@/domains/agreements/pre-delivery-cancellation";
 import { formatMoney } from "@/lib/money-ui";
 import { CancellationApprovalForm } from "./cancellation-approval-form";
+import { getRentalEndReasons } from "@/domains/agreements/end-reasons";
 export const metadata = {title:"Review cancellation before delivery"};
-export default async function CancelPage({params}:{params:Promise<{id:string}>}) {
+export default async function CancelPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{from?:string}>}) {
  await requireRole("OWNER","ADMIN");
  const {id}=await params;
  const agreement=await getAgreementById(id);
@@ -15,6 +16,7 @@ export default async function CancelPage({params}:{params:Promise<{id:string}>})
  try { quote=await getPreDeliveryCancellationQuote(id); }
  catch(e) {blocker=e instanceof Error?e.message:"Reconciliation required.";}
  return <div className="max-w-2xl space-y-4">
+  {(await searchParams).from==="end" && <p className="rounded-lg border border-line bg-subtle p-3 text-sm" role="status">Ending {agreement.customer.user.name??agreement.customer.user.email}&apos;s rental — step 2 of 3 <Link href={"/desk/agreements/"+encodeURIComponent(id)} className="font-medium underline">&larr; Back to the rental</Link></p>}
   <Link href={"/desk/agreements/"+encodeURIComponent(id)} className="underline">Back to agreement</Link>
   <h1 className="text-xl font-semibold">Cancellation and refund review</h1>
   <p>Customer: {agreement.customer.user.name??agreement.customer.user.email}</p>
@@ -46,7 +48,7 @@ export default async function CancelPage({params}:{params:Promise<{id:string}>})
        the actual signed terms and finance history before approval.
      </p>
    )}
-   <CancellationApprovalForm agreementId={id} fingerprint={quote.fingerprint}
+   <CancellationApprovalForm agreementId={id} fingerprint={quote.fingerprint} endReasons={await getRentalEndReasons()}
      canRetain={quote.defaultPolicy==="RETAIN_SETUP"} defaultPolicy={quote.defaultPolicy} receiptCents={quote.signingAmountCents} setupCents={quote.setupAndTaxCents}/>
   </section>}
  </div>;

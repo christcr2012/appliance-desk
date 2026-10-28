@@ -5,6 +5,8 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { Sheet, toast } from "@/components/kit";
+import { TakePaymentSheetControlled } from "@/app/desk/billing/take-payment-sheet";
+import type { PaymentLinkReason } from "@/domains/billing/payment-link-message";
 import { AddNoteForm } from "./add-note-form";
 
 export function CustomerRecordClient({
@@ -12,16 +14,20 @@ export function CustomerRecordClient({
   initialNoteOpen,
   accountNotice,
   children,
+  takePayment,
 }: {
   customerId: string;
   initialNoteOpen: boolean;
   accountNotice?: string;
   children: ReactNode;
+  /** AR-3: the header's "Take payment" link opens the Take payment sheet in place (STRIPE_LINK bills). */
+  takePayment?: { invoiceId: string; owedCents: number; suggestedReason: PaymentLinkReason } | null;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? `/desk/customers/${customerId}`;
   const search = useSearchParams()?.toString() ?? "";
   const [open, setOpen] = useState(initialNoteOpen);
+  const [payOpen, setPayOpen] = useState(false);
   const announced = useRef(false);
 
   useEffect(() => {
@@ -41,8 +47,14 @@ export function CustomerRecordClient({
   function onClickCapture(event: MouseEvent<HTMLDivElement>) {
     const anchor = (event.target as Element | null)?.closest?.("a[href]");
     if (!anchor) return;
+    const href = anchor.getAttribute("href") ?? "";
+    if (takePayment && href.includes(`/invoice/${takePayment.invoiceId}`) && href.endsWith("#take-payment")) {
+      event.preventDefault();
+      setPayOpen(true);
+      return;
+    }
     try {
-      const url = new URL(anchor.getAttribute("href") ?? "", window.location.href);
+      const url = new URL(href, window.location.href);
       if (url.pathname !== pathname || url.searchParams.get("note") !== "1") return;
     } catch {
       return;
@@ -71,6 +83,15 @@ export function CustomerRecordClient({
           }}
         />
       </Sheet>
+      {takePayment ? (
+        <TakePaymentSheetControlled
+          invoiceId={takePayment.invoiceId}
+          owedCents={takePayment.owedCents}
+          suggestedReason={takePayment.suggestedReason}
+          open={payOpen}
+          onOpenChange={setPayOpen}
+        />
+      ) : null}
     </div>
   );
 }
