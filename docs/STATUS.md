@@ -1,3 +1,16 @@
+## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page
+
+AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is
+the refactor only: the approval server actions now live in
+src/app/desk/approvals/actions.ts (decideApprovalAction, finishApprovalAction) —
+same domain calls, same OWNER check, same outcome mapping — except with inline=1
+they return { outcome } instead of redirecting, and finish also revalidates
+/desk/today. OUTCOME_WORDS and STATUS_WORDS moved to src/domains/approvals/words.ts;
+the approvals page imports everything back and behaves exactly as before. New
+tests/approval-actions.test.ts pins the contract (domain spies, both revalidations,
+inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
+adds optimistic task completion with Undo.
+
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
 AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
