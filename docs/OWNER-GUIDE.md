@@ -7,7 +7,9 @@ section tabs to change what you are working on. Search at the top, or press **Ct
 Windows / **⌘ K** on Mac, to find a customer, an appliance, a screen or a common action.
 Open **Profile** to find Settings, Help, Your account, your theme and Sign out. Team members
 see only links permitted by their account and job role; an absent link does not change
-access to an existing screen. Your old saved desk links still work. These instructions
+access to an existing screen. Use **Today → Manage my workspace** to show hidden optional notes again, unpin a shortcut,
+remove a saved view or start over with your personal shortcuts. This changes only your own
+workspace preferences. Your old saved desk links still work. These instructions
 apply after AR-1 is merged and the normal tested release reaches the app.
 
 ## How do I…? — the short help guides (AR-12)
