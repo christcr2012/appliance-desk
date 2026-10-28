@@ -43,4 +43,3 @@ CREATE TABLE "OrderServiceChoice" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OrderServiceChoice_orderId_service_key" ON "OrderServiceChoice"("orderId", "service");
-
