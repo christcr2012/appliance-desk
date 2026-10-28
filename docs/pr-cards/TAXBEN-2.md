@@ -8,4 +8,4 @@ Build spec: `docs/build-specs/engines/TAX-BENEFITS.md` TAXBEN-2. Depends on TAXB
 - [ ] Accountant can edit; changes listed for Chris; `ci` green; every review comment read.
 
 ## Progress
-Not started.
+In progress — branch `ai/vivienne/taxben-2` (2026-10-27); execution packet registered.

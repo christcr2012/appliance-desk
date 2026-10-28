@@ -1,3 +1,24 @@
+## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (in progress)
+
+Branch `ai/vivienne/taxben-2`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` section
+TAXBEN-2; card `docs/pr-cards/TAXBEN-2.md`; execution packet
+`docs/pr-cards/execution/TAXBEN-2.json`. Built: the year's election statements on the CMP-2
+accountant packet (de minimis statement once the year's capitalization policy is signed and
+the election is on — business name, address and EIN last-4 only, never a full tax ID; the
+bonus elect-out statement for the classes chosen for the year; the Section 195 note), with
+the return due date (the filing's own) and the extension date six months later; the
+November 15 year-end planning To do with the year's facts (tentative profit, retirement
+room, mid-quarter status, safe-harbor expensed total — information, never advice to buy —
+plus the questions for the CPA); and the elect-out choice editable by the owner, an admin
+or the accountant through one audited save (taxben.elections.save) that lands in the
+owner's Changes by your accountant feed. The Tax benefits page now admits the accountant
+(registered in the ACCT-1 allowlist inventory) and shows the statement previews. One
+additive migration (TaxYearFacts.bonusElectOutClasses) — the card estimated none; the
+per-year choice needs a durable home. Local proof: typecheck clean; taxben-elections (13),
+taxben-policy, taxben-benefits-integration, rule-book lint, rules-registry, today role
+access, accountant access + allowlist, compliance filings and Schedule C mapping suites
+green on the repo's disposable-database route; lint clean.
+
 ## October 27 — ZONE-1: delivery zones from the address, zone map (in review, PR #604)
 
 Zones are owner settings (Settings › Delivery zones; starting values IN-06, straight line). An address is looked up
