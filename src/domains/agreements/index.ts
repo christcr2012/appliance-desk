@@ -697,10 +697,10 @@ export async function signAgreement(
     // current window, never book an appointment or alter frozen money.
     const { readOfferedSlots, assertAvailableDeliveryOption } =
       await import("@/domains/orders/delivery");
-    // ZONE-1: the address's frozen zone (copied from the estimate at conversion) decides delivery first.
-    const { readZoneSnapshot } = await import("@/domains/delivery/snapshot");
-    const ownZone = readZoneSnapshot({ version: 1, locations: agreement.deliveryZoneSnapshot ? [agreement.deliveryZoneSnapshot] : [] })
-      ?.locations[0] ?? null;
+    // ZONE-1: the address's zone decides delivery first — the agreement's frozen copy (made at conversion), or before
+    // conversion the source estimate's entry for this address (a prepared agreement can be sent for signature first).
+    const { agreementZoneLocationInTx } = await import("@/domains/delivery/pickup-guard");
+    const ownZone = await agreementZoneLocationInTx(tx, agreement);
     // Always, windows offered or not: the frozen order's delivery charge is exactly the one helper's answer ($0 for
     // pickup, an owner-recorded driving-route exception's frozen price, else the frozen zone price).
     const { expectedDeliveryChargeForAddressInTx, assertFrozenV2DeliveryOrderInTx } =

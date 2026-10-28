@@ -116,6 +116,30 @@ describe.skipIf(!enabled)("ZONE-1 12 straight-line miles / 20 road miles, end to
     expect(signed.every((row) => (row.deliveryZoneSnapshot as { priceCents?: number } | null)?.priceCents === 0)).toBe(true);
   });
 
+  it("signing a prepared agreement before conversion is checked against the source estimate's zone", async () => {
+    // Frozen order: $0 delivery. The estimate's zone for the first address is Nearby (paid) — signing must refuse.
+    const fixture = await createSyntheticW22V2Order({ firstDeliveryCents: 0 });
+    cleanups.push(fixture.cleanup);
+    owner = fixture.owner;
+    await freezeLocalZones(fixture);
+    await recordSigningBusinessReview(fixture.owner, review(fixture));
+    const first = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: fixture.ids[0] },
+      select: { serviceAddressId: true, deliveryZoneSnapshot: true } });
+    expect(first.deliveryZoneSnapshot).toBeNull(); // not converted: no frozen copy on the agreement yet
+    const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id: fixture.estimateId }, select: { deliveryZoneSnapshot: true } });
+    const snapshot = estimate.deliveryZoneSnapshot as unknown as { version: 1; locations: Array<{ serviceAddressId: string }> };
+    const nearby = buildZoneLocation({ serviceAddressId: first.serviceAddressId, settings, now: new Date(),
+      position: { status: "FOUND", point: { lat: STARTING_CENTER.lat + 20 / 69, lon: STARTING_CENTER.lon } } });
+    expect(nearby.priceCents).toBe(NEARBY_CENTS);
+    await prisma.estimate.update({ where: { id: fixture.estimateId }, data: { deliveryZoneSnapshot: {
+      version: 1, locations: snapshot.locations.map((row) => row.serviceAddressId === first.serviceAddressId ? nearby : row),
+    } as unknown as Prisma.InputJsonObject } });
+    const signature = await sendForSignature(fixture.owner, fixture.ids[0]);
+    await expect(signAgreement(signature.id, { signerName: "Synthetic Customer", signerEmail: "zone-route@test.invalid", ipAddress: null }))
+      .rejects.toThrow(/doesn't match its delivery zone/);
+    expect((await prisma.signatureRecord.findUniqueOrThrow({ where: { id: signature.id } })).signedAt).toBeNull();
+  });
+
   it("with an owner-recorded driving-route exception its frozen road price is the accepted charge, through approval and signing", async () => {
     const fixture = await createSyntheticW22V2Order();
     cleanups.push(fixture.cleanup);

@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { snapshotLocation } from "./snapshot";
+import { readZoneSnapshot, snapshotLocation, type ZoneSnapshotLocation } from "./snapshot";
 
 /**
  * ZONE-1: the ONE check every delivery-creating path uses (signing, payment settlement, staff-created delivery visits).
@@ -26,6 +26,23 @@ export async function isAgreementPickupInTx(tx: Prisma.TransactionClient, agreem
     select: { customerId: true, deliveryZoneSnapshot: true } });
   return !!estimate && estimate.customerId === agreement.customerId &&
     isPickupAddress(null, estimate.deliveryZoneSnapshot, agreement.serviceAddressId);
+}
+
+/**
+ * ZONE-1 (Codex finding on PR #604): the zone that decides an agreement's delivery charge. Its own frozen copy (made at
+ * conversion) wins; before conversion it is the source estimate's entry for the same address and customer — so a
+ * prepared agreement signed before conversion is still checked against its estimate's current zone.
+ */
+export async function agreementZoneLocationInTx(tx: Prisma.TransactionClient, agreement: {
+  serviceAddressId: string; deliveryZoneSnapshot: unknown; sourceEstimateId: string | null; customerId: string;
+}): Promise<ZoneSnapshotLocation | null> {
+  const own = agreement.deliveryZoneSnapshot
+    ? readZoneSnapshot({ version: 1, locations: [agreement.deliveryZoneSnapshot] })?.locations[0] ?? null : null;
+  if (own || !agreement.sourceEstimateId) return own;
+  const estimate = await tx.estimate.findUnique({ where: { id: agreement.sourceEstimateId },
+    select: { customerId: true, deliveryZoneSnapshot: true } });
+  if (!estimate || estimate.customerId !== agreement.customerId) return null;
+  return snapshotLocation(estimate.deliveryZoneSnapshot, agreement.serviceAddressId) ?? null;
 }
 
 /**
