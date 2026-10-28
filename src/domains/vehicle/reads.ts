@@ -61,3 +61,18 @@ export async function loadDriverMileage(now: Date) {
   }
   return result;
 }
+
+/**
+ * The driver's route progress for today: how many stops there are and how many are finished. The route list itself only
+ * shows unfinished stops, so this counts separately. Cancelled visits are not stops; customer pick-up hand-overs at our
+ * place are never on the route. Counts only, no customer data.
+ */
+export async function loadDriverStopCounts(now: Date): Promise<{ total: number; finished: number }> {
+  const { start, end } = businessDayBounds(now);
+  const base = { scheduledAt: { gte: start, lt: end }, customerPickupHandoff: false };
+  const [active, finished] = await Promise.all([
+    prisma.job.count({ where: { ...base, status: { in: ["SCHEDULED", "IN_PROGRESS"] } } }),
+    prisma.job.count({ where: { ...base, status: "COMPLETED" } }),
+  ]);
+  return { total: active + finished, finished };
+}

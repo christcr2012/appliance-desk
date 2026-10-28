@@ -3,6 +3,7 @@ import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import systemChart from "@/domains/books/system-chart.json";
 import { vehicleYearFigures } from "@/domains/vehicle/yearly";
+import { wrapLine } from "@/domains/compliance/wrap-line";
 
 /**
  * CMP-2 — Schedule C mapping and the year's totals.
@@ -366,9 +367,11 @@ export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
   push("");
   push(`Prepared ${businessDateKey(new Date())}. Amounts tie to the approved filing numbers.`);
 
+  // Long lines wrap (at word breaks, keeping the indent) instead of being cut off, so no figure or caveat is lost.
+  const wrapped = text.flatMap((entry) => wrapLine(entry.s, 105).map((s) => ({ s, b: entry.b })));
   let page = pdf.addPage();
   let y = 720;
-  for (const line of text) {
+  for (const line of wrapped) {
     if (y < 60) {
       page = pdf.addPage();
       y = 720;
