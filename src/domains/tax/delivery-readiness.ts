@@ -390,6 +390,8 @@ export async function recordReadinessOverrideInTx(
     actorUserId: string;
     reason: string;
     serviceAddressId: string;
+    /** ZONE-1: a customer pickup address — the delivery-license rule doesn't apply (see assertDeliveryReadyInTx). */
+    customerPickup?: boolean;
   },
   now = new Date(),
 ): Promise<void> {
@@ -397,7 +399,8 @@ export async function recordReadinessOverrideInTx(
   const reason = input.reason.trim();
   if (!reason) throw new Error("Say why this order may go ahead.");
 
-  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now);
+  const computed = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now);
+  const readiness = input.customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
   if (readiness.ready) return;
   if (!readiness.overrideable) {
     const first = readiness.places.find((place) => place.problem);

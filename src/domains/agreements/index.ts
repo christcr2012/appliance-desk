@@ -3,6 +3,7 @@ import {
   assertDeliveryReadyInTx,
   deliveryTaxReadinessWith,
   recordReadinessOverrideInTx,
+  withoutDeliveryLicenseProblems,
 } from "@/domains/tax/delivery-readiness";
 import { LATE_FEE_CAP_CENTS, LATE_FEE_MIN_GRACE_DAYS, classifyLateFeeAgreement } from "@/domains/billing/late-fee-rules";
 import { draftRequestId } from "./draft-request";
@@ -203,6 +204,8 @@ export type CreateDraftAgreementInTxOptions = {
    * Real order saves (desk wizard, estimate conversion) leave it unset.
    */
   skipDeliveryReadinessCheck?: boolean;
+  /** ZONE-1: the customer picks this address's items up — no city delivery license needed (other readiness applies). */
+  customerPickup?: boolean;
 };
 
 function validateDraftTerms(input: NewAgreementInput) {
@@ -300,9 +303,10 @@ export async function createDraftAgreementInTx(
   // for this one order with a reason (audited); a missing city license,
   // an out-of-state address or an unconfirmed address can never be
   // overridden, and the refusal rolls the whole save back.
-  const readiness = options.skipDeliveryReadinessCheck
+  const computed = options.skipDeliveryReadinessCheck
     ? null
     : await deliveryTaxReadinessWith(tx, input.serviceAddressId);
+  const readiness = computed && options.customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
   if (readiness && !readiness.ready) {
     if (input.overrideReason?.trim()) {
       await recordReadinessOverrideInTx(tx, {
@@ -310,11 +314,13 @@ export async function createDraftAgreementInTx(
         actorUserId: userId,
         reason: input.overrideReason,
         serviceAddressId: input.serviceAddressId,
+        customerPickup: options.customerPickup === true,
       });
     }
     await assertDeliveryReadyInTx(tx, {
       serviceAddressId: input.serviceAddressId,
       agreementId: agreement.id,
+      customerPickup: options.customerPickup === true,
     });
   }
 

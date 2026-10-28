@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getReviewedSigningOrderReadbackInTx } from "@/domains/billing/signing-order-readback";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import { assertDeliveryReadyInTx } from "@/domains/tax/delivery-readiness";
+import { snapshotLocation as zoneLocationOf } from "@/domains/delivery/snapshot";
 import { computeTax } from "@/domains/tax/engine";
 import { effectiveMandatorySigningPolicy } from "@/domains/billing/signing-mandatory-policy";
 import { verifyPreparedEstimateScope } from "./preapproval-agreements";
@@ -221,6 +222,8 @@ export async function getPreparedEstimateQuoteInTx(
         await assertDeliveryReadyInTx(tx, {
           serviceAddressId: agreement.serviceAddressId,
           agreementId: agreement.id,
+          // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
+          customerPickup: zoneLocationOf(estimate.deliveryZoneSnapshot, agreement.serviceAddressId)?.choice === "CUSTOMER_PICKUP",
         }, effectiveOn);
       } catch (error) {
         return rejected([

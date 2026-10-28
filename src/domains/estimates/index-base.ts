@@ -9,6 +9,7 @@ import {
   assertDeliveryReadyInTx,
   deliveryTaxReadinessWith,
   recordReadinessOverrideInTx,
+  withoutDeliveryLicenseProblems,
 } from "@/domains/tax/delivery-readiness";
 import {
   createLeadManually,
@@ -18,6 +19,7 @@ import {
 } from "@/domains/leads";
 
 import { estimateExpiresAt, isEstimatePastValidity } from "./validity";
+import { snapshotLocation as zoneLocationOf } from "@/domains/delivery/snapshot";
 import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
 import { validatePreparedConversion, validateConvertedEstimateReplay } from "./prepared-conversion";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -663,7 +665,10 @@ export async function approveEstimate(
       select: { serviceAddressId: true },
     });
     for (const prepared of preparedForReadiness) {
-      const readiness = await deliveryTaxReadinessWith(tx, prepared.serviceAddressId);
+      const computed = await deliveryTaxReadinessWith(tx, prepared.serviceAddressId);
+      // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
+      const readiness = zoneLocationOf(estimate.deliveryZoneSnapshot, prepared.serviceAddressId)?.choice === "CUSTOMER_PICKUP"
+        ? withoutDeliveryLicenseProblems(computed) : computed;
       if (!readiness.ready) {
         throw new Error("We don't deliver there yet — call us.");
       }
@@ -834,6 +839,7 @@ async function assertConversionReadinessInTx(
   userId: string,
   agreementIds: string[],
   overrideReason: string | undefined,
+  estimateZoneSnapshot: unknown = null,
 ): Promise<void> {
   const agreements = await tx.rentalAgreement.findMany({
     where: { id: { in: agreementIds } },
@@ -841,7 +847,10 @@ async function assertConversionReadinessInTx(
     orderBy: [{ id: "asc" }],
   });
   for (const agreement of agreements) {
-    const readiness = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId);
+    // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
+    const customerPickup = zoneLocationOf(estimateZoneSnapshot, agreement.serviceAddressId)?.choice === "CUSTOMER_PICKUP";
+    const computed = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId);
+    const readiness = customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
     if (readiness.ready) continue;
     if (overrideReason?.trim() && !agreement.readinessOverrideByUserId) {
       await recordReadinessOverrideInTx(tx, {
@@ -849,11 +858,13 @@ async function assertConversionReadinessInTx(
         actorUserId: userId,
         reason: overrideReason,
         serviceAddressId: agreement.serviceAddressId,
+        customerPickup,
       });
     }
     await assertDeliveryReadyInTx(tx, {
       serviceAddressId: agreement.serviceAddressId,
       agreementId: agreement.id,
+      customerPickup,
     });
   }
 }
@@ -952,6 +963,7 @@ export async function convertEstimateToAgreements(
             actorUserId: userId,
             reason: input.overrideReason,
             serviceAddressId: agreement.serviceAddressId,
+            customerPickup: zoneLocationOf(estimate.deliveryZoneSnapshot, agreement.serviceAddressId)?.choice === "CUSTOMER_PICKUP",
           });
         }
       }
@@ -972,7 +984,8 @@ export async function convertEstimateToAgreements(
         estimateDepositCents: estimate.depositCents,
         estimateDepositPaidAt: estimate.depositPaidAt, quote: reviewedQuote,
       });
-      await assertConversionReadinessInTx(tx, userId, evidence.agreementIds, input.overrideReason);
+      await assertConversionReadinessInTx(tx, userId, evidence.agreementIds, input.overrideReason,
+        estimate.deliveryZoneSnapshot);
       await tx.estimate.update({
         where: { id: estimateId }, data: { status: "CONVERTED", convertedAt: new Date() },
       });
@@ -1016,7 +1029,8 @@ export async function convertEstimateToAgreements(
           depositCents: estimate.depositCents,
           overrideReason: input.overrideReason,
         },
-        { sourceEstimateId: estimate.id, settings },
+        { sourceEstimateId: estimate.id, settings,
+          customerPickup: zoneLocationOf(estimate.deliveryZoneSnapshot, serviceAddressId)?.choice === "CUSTOMER_PICKUP" },
       );
 
       if (applyPrepaidDepositHere) {
@@ -1035,7 +1049,8 @@ export async function convertEstimateToAgreements(
       where: { id: estimateId },
       data: { status: "CONVERTED", convertedAt: new Date() },
     });
-    await assertConversionReadinessInTx(tx, userId, createdAgreementIds, input.overrideReason);
+    await assertConversionReadinessInTx(tx, userId, createdAgreementIds, input.overrideReason,
+      estimate.deliveryZoneSnapshot);
     await tx.auditLog.create({
       data: {
         userId,

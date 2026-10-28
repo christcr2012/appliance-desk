@@ -145,4 +145,17 @@ describe.skipIf(!enabled)("ZONE-1 customer pickup hand-over", () => {
     expect(await prisma.retailDeliveryFeeRecord.count({ where: { agreementId: pickup.agreementId } })).toBe(0);
     expect(await prisma.jurisdictionDeliveryCount.count({ where: { orderId: truck.agreementId, jurisdictionId } })).toBe(1);
   });
+
+  it("a city's delivery-license rule stops a delivery but not a customer pickup (Codex finding on PR #604)", async () => {
+    const { assertDeliveryReadyInTx } = await import("@/domains/tax/delivery-readiness");
+    await prisma.jurisdictionReadiness.create({ data: { jurisdictionId, licenseRequired: "ALWAYS" } });
+    try {
+      await expect(prisma.$transaction((tx) => assertDeliveryReadyInTx(tx, { serviceAddressId: addressId })))
+        .rejects.toThrow();
+      await expect(prisma.$transaction((tx) => assertDeliveryReadyInTx(tx, { serviceAddressId: addressId, customerPickup: true })))
+        .resolves.toBeUndefined();
+    } finally {
+      await prisma.jurisdictionReadiness.deleteMany({ where: { jurisdictionId } });
+    }
+  });
 });
