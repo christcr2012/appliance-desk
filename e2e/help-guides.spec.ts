@@ -49,9 +49,10 @@ test("staff can reach Help without gaining links to money or settings", async ({
   const context = await browser.newContext({ storageState: staff });
   try {
     const page = await context.newPage();
-    await page.goto("/desk/more");
-    await expect(page.getByRole("link", { name: "How do I…?" })).toHaveAttribute("href", "/desk/help");
-    await page.getByRole("link", { name: "How do I…?" }).click();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/desk/today");
+    await page.getByRole("button", { name: "Profile menu" }).click();
+    await page.getByRole("menuitem", { name: "Help" }).click();
     await expect(page.getByRole("heading", { name: "How do I…?" })).toBeVisible();
     await expect(page.getByText("How do I take a card payment?")).toHaveCount(0);
   } finally {

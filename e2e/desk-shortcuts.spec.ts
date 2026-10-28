@@ -13,12 +13,15 @@ test.describe("owner keyboard desk controls", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/desk/today");
     await page.keyboard.press("/");
-    await expect(page.locator("#global-search")).toBeFocused();
+    const command = page.getByRole("dialog", { name: "Search or jump to anything" });
+    await expect(command).toBeVisible();
+    await expect(command.getByRole("combobox", { name: "Search the desk" })).toBeFocused();
     await page.keyboard.type("gmt");
     await page.keyboard.press("g");
     await page.keyboard.press("m");
     await expect(page).toHaveURL(/\/desk\/today/);
-    await page.locator("#global-search").evaluate((element) => (element as HTMLElement).blur());
+    await page.keyboard.press("Escape");
+    await expect(command).not.toBeVisible();
     await page.keyboard.press("g");
     await page.keyboard.press("c");
     await expect(page).toHaveURL(/\/desk\/customers/);

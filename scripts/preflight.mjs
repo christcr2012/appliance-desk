@@ -29,7 +29,7 @@ export function adjacentRegressions(changed) {
   const paths = [
     [/^src\/(?:domains\/system-issues\/|app\/desk\/(?:today|automations)\/)/,
       ['tests/today-role-access.test.ts', 'tests/desk-navigation.test.ts']],
-    [/^src\/(?:lib\/desk-navigation|components\/desk\/.*navigation)/,
+    [/^src\/(?:lib\/(?:desk-navigation|desk-areas)|components\/desk\/.*navigation)/,
       ['tests/desk-navigation.test.ts', 'tests/acc5-job-role-rules.test.ts']],
     [/^src\/domains\/team\/job-role-rules\./, ['tests/acc5-job-role-rules.test.ts']],
     [/^src\/domains\/backup\//, ['tests/backup-restore-integration.test.ts', 'tests/backup.test.ts']],

@@ -32,6 +32,20 @@ The real Next 16 production build records the gzip JavaScript actually requested
 ## October 27 — AR-12 Settings → Features, Practice and Help (source merged)
 
 PRs #693/#695/#702/#716 all merged with exact-head CI and review gates. The Features screen's seven owner-controlled visibility choices, automatic rules and private Practice link are shipped in source; hiding navigation never revokes direct page access. Practice requires the owner's separate HTTPS testing-app setting and remains unchecked in OWNER-CHECKLIST. The 15 role-aware Help guides are also merged.
+## October 28 — AR-1: Navigation — five areas, area tabs, profile menu, command bar (in progress)
+
+Picked up by Lane 4 under Chris's direction (Lane 1's queue reassigned). The existing
+implementation from `ai/chatgpt/ar1-five-area-navigation-20261027` (7 commits) is merged
+onto current main on branch `ai/vivienne/ar-1`: mobile five-area bar, responsive desktop
+sidebar, role- and job-role-filtered tabs, profile menu, Ctrl/⌘ K command search through
+the existing permission-aware record search, Help, remembered navigation, Today count
+without a cross-page query, and /desk/more and /desk/control-center redirects. Existing
+deep page URLs and money rules remain intact. Verification (packet suites, typecheck,
+production build, browser spec, preflight) is running here before the PR opens; the AR-0
+owner phone look-over remains an owner item.
+
+## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
+The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
 
 ## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 
