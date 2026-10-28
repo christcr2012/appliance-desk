@@ -34,6 +34,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/used-appliance-sale-integration.test.ts", // M-2C sets and restores the shared books start date.
   "tests/shop-sale-delivery-fee-integration.test.ts", // M-1C sets and restores the shared delivery-fee settings and creates a Colorado filing account.
   "tests/capabilities-integration.test.ts", // O-2A limits an admin and restores it; reads/writes the shared override table and settings row.
+  "tests/features-integration.test.ts", // AR-12 owner-only visibility saves mutate and restore the shared BusinessSettings singleton.
   "tests/stored-file-cleanup-integration.test.ts", // Older findings: changes and restores the shared file-keeping days settings.
   "tests/scheduled-prices-integration.test.ts", // O-4 the nightly job applies every due change in the database; it must not overlap the set-price suite.
   "tests/scheduled-package-prices-integration.test.ts", // O-4 same nightly job as above, for rental sets.
@@ -146,6 +147,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-filing-integration.test.ts",
   "tests/tax-filing-reminders-integration.test.ts",
   "tests/tax-invoice-lines-integration.test.ts",
+  "tests/order-service-choice-integration.test.ts", // FEETAX-1: seedTaxReadyContext flips the shared lease-election setting while it runs.
   "tests/tax-official-rate-auto-apply-integration.test.ts",
   "tests/tax-official-source-watch-integration.test.ts", // TFA-3 toggles the shared watch switch and the seeded watches' active flags while it runs.
   "tests/tax-official-rate-metadata-integration.test.ts", // Asserts on the seeded watches' active flags and the settings singleton the watch suites toggle.

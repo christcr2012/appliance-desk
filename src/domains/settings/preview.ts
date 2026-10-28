@@ -22,7 +22,7 @@ export const SECTION_STORED_KEYS: Record<EditableSettingsSection, readonly strin
   ],
   "service-area": ["serviceAreaCities", "serviceAreaZips"],
   policies: [
-    "oneTimeDeliveryFeeCents", "oneTimeInstallationFeeCents", "oneTimeRemovalFeeCents",
+    "oneTimeDeliveryFeeCents", "oneTimeInstallationFeeCents", "oneTimeRemovalFeeCents", "oneTimeHaulAwayFeeCents",
     "damageWaiverEnabled", "depositEnabled", "lateFeeGraceDays", "lateFeeFlatCents", "lateFeePercent",
     "sixMonthPrepayDiscountSetCents", "sixMonthPrepayDiscountSingleCents",
     "twelveMonthPrepayDiscountSetCents", "twelveMonthPrepayDiscountSingleCents",

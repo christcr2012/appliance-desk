@@ -116,6 +116,8 @@ export async function saveTaxCellAction(_state: TaxActionState, form: FormData):
         ? null : v(form, "jurisdictionId"),
       category: v(form, "category") as TaxChargeCategory,
       taxability: v(form, "taxability") as Taxability,
+      optionalSeparatedTreatment: v(form, "optionalSeparatedTreatment")
+        ? (v(form, "optionalSeparatedTreatment") as Taxability) : undefined,
       cpaConfirmedOn: dt(v(form, "cpaConfirmedOn")) ?? new Date("invalid"),
       reason: v(form, "reason"),
     });

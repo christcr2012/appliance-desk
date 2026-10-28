@@ -28,6 +28,7 @@ const CATEGORY_BY_KIND: Record<InvoiceLineItemKind, LedgerCategory> = {
   DELIVERY_FEE: "FEES",
   INSTALLATION_FEE: "FEES",
   REMOVAL_FEE: "FEES",
+  HAUL_AWAY_FEE: "FEES",
   DAMAGE_WAIVER: "FEES",
   DEPOSIT: "DEPOSIT",
   TAX: "TAX",

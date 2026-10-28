@@ -16,8 +16,15 @@ for(const width of [360,768,1440]){
  });
 }
 test("K-CASH-4B bank screen links owner budget backing",async({page})=>{
+ await page.goto("/desk/settings/features");
+ const switchedOn=(await page.getByRole("switch",{name:"Budget envelopes"}).getAttribute("aria-checked"))==="true";
  await page.goto("/desk/books/cash");
- await expect(page.getByRole("link",{name:"Budget backing"})).toHaveAttribute("href","/desk/books/budget");
+ const link=page.getByRole("link",{name:"Budget backing"});
+ await expect(link).toHaveCount(switchedOn?1:0);
+ if(switchedOn) await expect(link).toHaveAttribute("href","/desk/books/budget");
+ // Only the menu choice changes; the owner's budget route remains usable.
+ await page.goto("/desk/books/budget");
+ await expect(page.getByRole("heading",{name:"Budget backing",exact:true})).toBeVisible();
 });
 test("K-CASH-4B staff route cannot expose private protected debt or cash",async({browser})=>{
  const c=await browser.newContext({storageState:"e2e/.auth/staff.json"});

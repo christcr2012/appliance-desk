@@ -21,6 +21,8 @@ it("forwards the exact viewed fingerprint to locked domain verification",async()
   })).toMatchObject({status:"error",message:"The reviewed offer changed."});
   expect(calls.approve).toHaveBeenCalledWith("estimate",{
     approverName:"Quote viewer",approverEmail:"viewer@example.test",expectedQuoteFingerprint,ipAddress:null,
+    // FEETAX-1: the action also forwards the service-choice fields (empty when the customer picked none).
+    deliverySelection:undefined,serviceChoices:undefined,serviceDryerOutlet:null,
   });
   expect(calls.checkout).not.toHaveBeenCalled();
 });

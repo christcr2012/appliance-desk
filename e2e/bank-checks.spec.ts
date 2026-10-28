@@ -14,9 +14,15 @@ for(const width of [360,768,1440]){
  });
 }
 test("K-CASH-3 links from existing Bank evidence workspace",async({page})=>{
+ await page.goto("/desk/settings/features");
+ const switchedOn=(await page.getByRole("switch",{name:"Bank statements"}).getAttribute("aria-checked"))==="true";
  await page.goto("/desk/books/cash");
- await expect(page.getByRole("link",{name:"Bank checks and statement reconciliation"}))
-  .toHaveAttribute("href","/desk/books/cash/checks");
+ const link=page.getByRole("link",{name:"Bank checks and statement reconciliation"});
+ await expect(link).toHaveCount(switchedOn?1:0);
+ if(switchedOn) await expect(link).toHaveAttribute("href","/desk/books/cash/checks");
+ // The bank checks page still works directly for an authorized owner.
+ await page.goto("/desk/books/cash/checks");
+ await expect(page.getByRole("heading",{name:"Bank checks",exact:true})).toBeVisible();
 });
 test("K-CASH-3 staff cannot see reconciliation, bank rows or cash totals",async({browser})=>{
  const context=await browser.newContext({storageState:"e2e/.auth/staff.json"});

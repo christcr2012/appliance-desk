@@ -5,7 +5,8 @@ import { businessDateKey } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { computeTax } from "./engine";
 import { getAgreementTaxContext, getSaleTaxContext, loadRentalAcquisitionBasis } from "./locations";
-import type { InvoiceLineItemKind } from "./categories";
+import { categoryForLineKind, type InvoiceLineItemKind } from "./categories";
+import { readServiceChoicesForOrder, SERVICE_CHOICE_SERVICES } from "@/domains/orders/service-choices";
 
 export type LocalInvoiceTaxResult =
   | { ok: true; totalTaxCents: number }
@@ -47,7 +48,7 @@ export async function applyLocalInvoiceTaxInTx(
 
   const agreement = await tx.rentalAgreement.findUniqueOrThrow({
     where: { id: input.agreementId },
-    select: { serviceAddressId: true },
+    select: { serviceAddressId: true, sourceEstimateId: true },
   });
   const location = await tx.addressTaxLocation.findFirst({
     where: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
@@ -73,14 +74,29 @@ export async function applyLocalInvoiceTaxInTx(
 
   const context = await getAgreementTaxContext(tx, input.agreementId, input.taxDate);
   const acquisitionBasis = await loadRentalAcquisitionBasis(tx, input.agreementId, invoice.billingPeriodStart, invoice.lineItems.map(line => ({ key: line.id, kind: line.kind, rentalLineId: line.rentalLineId })));
+  // FEETAX-1 (S5): the order's recorded service choices ride their
+  // service lines into the engine, which applies a place's
+  // optional-and-separate answer only on that proof. Orders with no
+  // choice records (everything before this card) pass nothing, exactly
+  // as before.
+  const serviceChoices = agreement.sourceEstimateId
+    ? await readServiceChoicesForOrder(tx, agreement.sourceEstimateId)
+    : null;
   const engineResult = computeTax({
     ...context,
-    lines: invoice.lineItems.map((line) => ({
-      key: line.id,
-      kind: line.kind as InvoiceLineItemKind,
-      amountCents: line.amountCents,
-      acquisitionBasis: acquisitionBasis.get(line.id),
-    })),
+    lines: invoice.lineItems.map((line) => {
+      const category = categoryForLineKind(line.kind as InvoiceLineItemKind, line.amountCents);
+      const serviceChoice = serviceChoices && (SERVICE_CHOICE_SERVICES as readonly string[]).includes(category)
+        ? serviceChoices.get(category as (typeof SERVICE_CHOICE_SERVICES)[number]) ?? null
+        : null;
+      return {
+        key: line.id,
+        kind: line.kind as InvoiceLineItemKind,
+        amountCents: line.amountCents,
+        acquisitionBasis: acquisitionBasis.get(line.id),
+        ...(serviceChoice ? { serviceChoice } : {}),
+      };
+    }),
   });
   const result =
     readinessProblems.length > 0

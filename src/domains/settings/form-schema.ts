@@ -9,6 +9,7 @@ export const businessSettingsSchema = z.object({
   deliveryFeeDollars: z.coerce.number().min(0).max(100000),
   installationFeeDollars: z.coerce.number().min(0).max(100000),
   removalFeeDollars: z.coerce.number().min(0).max(100000),
+  haulAwayFeeDollars: z.coerce.number().min(0).max(100000),
   damageWaiverEnabled: z.boolean(),
   depositEnabled: z.boolean(),
   lateFeeGraceDays: z.coerce.number().int().min(10, "Colorado's rule: at least 10 days.").max(90),

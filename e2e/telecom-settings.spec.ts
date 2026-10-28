@@ -10,8 +10,13 @@ test.beforeEach(() => {
 });
 test("owner navigates to private telecom setup with controls inactive", async ({page}) => {
   await page.setViewportSize({width:390,height:844});
+  await page.goto("/desk/settings/features");
+  const phoneShown=(await page.getByRole("switch",{name:"Phone and texting costs"}).getAttribute("aria-checked"))==="true";
   await page.goto("/desk/settings?section=notifications");
-  await page.getByRole("link",{name:"Phone, SMS and provider costs"}).click();
+  const link=page.getByRole("link",{name:"Phone, SMS and provider costs"});
+  await expect(link).toHaveCount(phoneShown?1:0);
+  if(phoneShown) await link.click();
+  else await page.goto("/desk/settings/telecom");
   await expect(page).toHaveURL(/\/desk\/settings\/telecom/);
   await expect(page.getByRole("heading",{name:"Phone, texts and provider costs"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Provider accounts and owned numbers"})).toBeVisible();

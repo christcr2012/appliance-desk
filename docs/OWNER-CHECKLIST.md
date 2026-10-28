@@ -273,6 +273,9 @@ Agents will do the parts they safely can and record what they saw; the rest need
 - [x] **Answered by Chris 2026-10-25 (in conversation): yes — rebuild the desk as an application (AR-0…AR-10).** Building may start as soon as each
   build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
+- [ ] **Choose which extra desk features to show (AR-12).** Once the Features screen is merged and the testing release is ready, sign in as owner, open Settings → Features, and switch on the extra areas you use. Worked if: the menu shows your choices; automatically in-use features stay shown. Hidden pages still work by their address. This does not block development.
+- [ ] **Set the Practice safely link (AR-12).** After verifying the separate testing app is safe, add `PRACTICE_APP_URL` as the testing app's HTTPS origin under the production Vercel project's Environment Variables (Production only), then use the usual daily release. Worked if: Settings → Features shows Practice safely only in the real desk, opening the separate testing app in a new tab. Do not put the address in the repo or enable real customer sends/payments.
+
 - [ ] **Look at the new Today, Bills and Customer screens on the testing app (10 minutes).** Steps: sign in to the
   testing app on your phone (owner@example.test), open Today, then Money › Bills, then any customer. Ready when: AR-0b
   is merged and the 10 pm testing release has run. Worked if: the screens look like the samples you approved; tell the
