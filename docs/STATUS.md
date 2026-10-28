@@ -1,4 +1,4 @@
-## October 28 — AR-3 Money area: built, opening as a PR (Lane 4, branch ai/vivienne/ar-3)
+## October 28 — AR-3 Money area: built and in review (PR #725, Lane 4)
 
 The Money area is built on the kit: a Money overview (money in, still owed, past due, coming in
 30 days, money-group decisions, recent payments), a Payments list (Received / Failed / Needs a
@@ -8,7 +8,7 @@ card payment) on the Bills list, the bill panel, the statement and the customer 
 bill record rebuilt as a kit record page with an Activity tab. No money rules changed — every
 button is the existing server action. Unit, database, typecheck and lint checks pass locally;
 the browser suite's re-run on this head is gated on CI (the shared box kept killing the local
-production build); the PR will be named here in the close-out. Next: CI, review, merge.
+production build). Next: CI and review on PR #725, merge, close-out.
 
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 

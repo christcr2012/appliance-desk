@@ -4436,7 +4436,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "IN PROGRESS — Lane 4 on branch ai/vivienne/ar-3 (2026-10-28)",
+      "status": "IN REVIEW — PR #725 (Lane 4, 2026-10-28)",
       "migration": "none",
       "budget": 500,
       "units": [
