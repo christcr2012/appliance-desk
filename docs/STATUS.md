@@ -1,9 +1,10 @@
-## October 27 — Lane 1 AR-12 Features + Practice (branch ai/chatgpt/ar12-feature-visibility-20261027, in implementation)
+## October 27 — AR-11 measured desk JavaScript guard (PR #691, review/checks pending)
 
-Owner choices for seven extra navigation features are being built with an additive settings list and automatic detection for in-use team/property-manager/budget areas. OWNER-only saves re-check permissions and serialize writes; hidden links never revoke page access. Settings → Features includes a guarded Practice link only after the owner configures a separate HTTPS testing address. Tests and exact-head CI/review remain pending. Do not mark any owner checklist proof as passed. AR-1's main work-index merge claim via #714 was false; #714 is TAXBEN-2, corrected on pending Lane 1 PR #691.
+The real Next 16 production build records the gzip JavaScript actually requested by each private desk page and rejects missing route baselines or growth over 10%. PR #691 passed its previous exact-head CI and had a pending review gate; merging AR-12 and Help changed main, so the actual branch conflict is being reconciled without reverting those releases. Fresh exact-head CI and review are required. AR-1 was incorrectly marked merged via #714, which actually shipped tax benefits; work-index correction is included. Real-phone installation remains an owner verification item.
 
-## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
-The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
+## October 27 — AR-12 Settings → Features, Practice and Help (source merged)
+
+PRs #693/#695/#702/#716 all merged with exact-head CI and review gates. The Features screen's seven owner-controlled visibility choices, automatic rules and private Practice link are shipped in source; hiding navigation never revokes direct page access. Practice requires the owner's separate HTTPS testing-app setting and remains unchecked in OWNER-CHECKLIST. The 15 role-aware Help guides are also merged.
 
 ## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 
