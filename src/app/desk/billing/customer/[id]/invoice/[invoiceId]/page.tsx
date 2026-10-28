@@ -24,7 +24,7 @@ import { WriteOffButton } from "../../write-off-button";
 import { BillRecordActionsBar } from "./bill-record-actions";
 import type { InvoiceStatus } from "@prisma/client";
 
-export const metadata = { title: "Invoice" };
+export const metadata = { title: "Bill" };
 
 /** One invoice, on its own (AR-3 redesign on the kit: header, stats, the action table in bill-actions,
  * next-step cards, Bill / Activity tabs). OWNER/ADMIN can view any customer's invoice, same as the
@@ -150,8 +150,8 @@ export default async function DeskInvoicePage({
   const creditForm =
     credits.length > 0 ? (
       <MoneyDecisionForm
-        title="Pay this invoice with the customer's credit"
-        help={`The invoice still owes ${formatCents(outstanding)}. Using credit lowers what the customer owes; no money moves.`}
+        title="Pay this bill with the customer's credit"
+        help={`This bill still owes ${formatCents(outstanding)}. Using credit lowers what the customer owes; no money moves.`}
         verb="apply"
         maxCents={outstanding}
         selectLabel="Which credit?"
