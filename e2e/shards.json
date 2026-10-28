@@ -104,6 +104,7 @@
       "revenue-records.spec.ts",
       "website-editor.spec.ts",
       "books-workspace.spec.ts",
+      "ar7-books-taxes.spec.ts",
       "my-account.spec.ts",
       "feedback.spec.ts",
       "fleet-report.spec.ts",
