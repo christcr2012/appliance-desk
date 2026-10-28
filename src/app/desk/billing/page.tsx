@@ -11,6 +11,7 @@ import { saveBillViewAction } from "@/app/desk/views/actions";
 import { builtInViewsFor } from "@/components/kit/built-in-views";
 import { businessDayBounds, formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
+import { billNext } from "@/lib/status-next";
 import { formatCents } from "@/domains/pricing";
 import { DataList, EmptyState as LegacyEmptyState, StatusPill as LegacyStatusPill, type DataListColumn } from "@/components/ui";
 import {
@@ -118,7 +119,7 @@ function hrefWith(params: URLSearchParams, changes: Record<string, string | null
   return query ? `/desk/billing?${query}` : "/desk/billing";
 }
 
-function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row: BillRow | undefined; closeHref: string; now: Date }) {
+function BillPanel({ detail, row, closeHref, now, readOnly }: { detail: InvoiceDetail; row: BillRow | undefined; closeHref: string; now: Date; readOnly?: boolean }) {
   const beingConfirmed = row?.beingConfirmed ?? detail.beingConfirmedCents > 0;
   const pill = billPill(
     { status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents, beingConfirmed },
@@ -149,7 +150,7 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
           <p className="text-xs font-bold text-ink-soft">Bill #{detail.invoiceNumber}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-lg font-extrabold text-ink">{detail.customer.name}</p>
-            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"], beingConfirmed)} />
+            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"], beingConfirmed)} next={billNext({ status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents, beingConfirmed }, now)} />
           </div>
         </div>
         {/* The StatStrip's two-column look, kept at two columns inside the 420 px panel. */}
@@ -184,16 +185,21 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
           </h3>
           <Timeline items={timeline} emptyLabel="Nothing recorded yet" now={now} />
         </section>
-        <Link href={fullHref} className="inline-flex min-h-10 items-center text-[15px] font-bold text-primary hover:underline">
-          Open full bill →
-        </Link>
+        {!readOnly && (
+          <Link href={fullHref} className="inline-flex min-h-10 items-center text-[15px] font-bold text-primary hover:underline">
+            Open full bill →
+          </Link>
+        )}
       </div>
     </SidePanel>
   );
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<Search> }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  // ACCT-1: the accountant sees the bills and payments lists read-only (the money row of the
+  // accountant spec). Every money action stays OWNER/ADMIN in its own action gate.
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
+  const accountant = session.user.role === "ACCOUNTANT";
   const workspace = await getWorkspace(session.user.id);
   const savedViews = workspace.prefs.savedViews.filter(v => v.routeKey === "billing").map(v => ({ id: v.id, label: v.label, href: savedViewHref(v), builtIn: false }));
   const search = await searchParams;
@@ -205,7 +211,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     Object.entries(search).flatMap(([key, value]) => (typeof value === "string" ? [[key, value]] : Array.isArray(value) && value[0] ? [[key, value[0]]] : [])),
   );
 
-  const header = (
+  const header = accountant ? (
+    <ScreenHeader title="Money" list />
+  ) : (
     <ScreenHeader
       title="Money"
       list
@@ -308,7 +316,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             mobileCardLink={false}
             rowHref={(row) => billHref(row)}
             selectedKey={params.open}
-            rowActions={billRowActions}
+            rowActions={accountant ? () => [] : billRowActions}
             currentSort={params.sort}
             empty={
               filtered ? (
@@ -322,7 +330,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           />
           <div className="hidden lg:block">{list.rows.length > 0 ? summaryLine : null}</div>
         </section>
-        {openDetail ? <BillPanel detail={openDetail} row={openRow} closeHref={closeHref} now={now} /> : null}
+        {openDetail ? <BillPanel detail={openDetail} row={openRow} closeHref={closeHref} now={now} readOnly={accountant} /> : null}
       </div>
     </div></PullToRefresh>
   );

@@ -49,6 +49,7 @@ export type ExceptionCategory =
   | "CONTINUITY"
   | "SETUP_GUIDE"
   | "VAULT"
+  | "ACCOUNTANT"
   | "PRIVACY_DUTY"
   | "LATE_FEE_REVIEW"
   | "DECISIONS_STARTING_VALUES"
@@ -95,7 +96,10 @@ export type ExceptionCategory =
   | "CUSTODY_UNKNOWN"
   | "OLD_SET_APPLIANCE"
   | "OUT_OF_SERVICE"
-  | "FEEDBACK_WAITING";
+  | "FEEDBACK_WAITING"
+  | "DELIVERY_ZONE_UNKNOWN"
+  | "PICKUP_TO_ARRANGE"
+  | "PICKUP_REQUOTE";
 
 export type ExceptionSeverity = "high" | "medium" | "low";
 
@@ -511,6 +515,129 @@ export function deliveryReadinessException(input: {
       ? { sourceHref: input.sourceUrl, sourceLabel: "City page" }
       : {}),
     todoKey: `delivery-readiness:${input.jurisdictionId}`,
+    since: input.since,
+  };
+}
+
+/** TAXBEN-1: the written capitalization policy needs the owner's signature. */
+export function capitalizationPolicyException(input: {
+  year: number;
+  renewal: boolean;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Sign the ${input.year} capitalization policy`,
+    detail: input.renewal
+      ? `The de minimis safe harbor needs a written capitalization policy in place from the start of ${input.year}. The ${input.year} policy is ready to read and sign on Taxes > Tax benefits — signing takes a moment and stores it in Business records.`
+      : `The de minimis safe harbor needs a written capitalization policy in place for ${input.year}, and it is not signed yet. It is ready to read and sign on Taxes > Tax benefits — signing stores it in Business records.`,
+    href: `/desk/sales-tax/benefits?year=${input.year}`,
+    todoKey: `taxben-policy:${input.year}`,
+    since: input.since,
+  };
+}
+
+/** TAXBEN-1: last-quarter buying is pushing the year over the mid-quarter line. */
+export function midQuarterWarningException(input: {
+  year: number;
+  sharePercent: number;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Equipment buying is bunching into the end of ${input.year}`,
+    detail: `${input.sharePercent}% of this year's depreciable equipment has been placed in service in the last three months. Past the mid-quarter line, first-year depreciation shrinks. Before buying more this year, see Taxes > Tax benefits and talk to your CPA.`,
+    href: "/desk/sales-tax/benefits",
+    todoKey: `taxben-mid-quarter:${input.year}`,
+    since: input.since,
+  };
+}
+
+/** TAXBEN-1: the January–March window to compare retirement plans for last year. */
+export function retirementComparisonException(input: {
+  year: number;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Compare retirement plans for ${input.year - 1} before the deadlines`,
+    detail: `January to March is the window: a SEP-IRA for ${input.year - 1} can still be set up and funded up to the filing deadline, while a first-year solo 401(k) has an earlier setup deadline. Taxes > Tax benefits shows both estimates side by side — your CPA confirms which fits.`,
+    href: `/desk/sales-tax/benefits?year=${input.year - 1}`,
+    todoKey: `taxben-retirement:${input.year}`,
+    since: input.since,
+  };
+}
+
+/** TAXBEN-1: enterprise-zone purchases must be pre-certified before buying. */
+export function enterpriseZonePrecertifyException(input: {
+  year: number;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Pre-certify enterprise-zone equipment buys for ${input.year}`,
+    detail: `The business is inside a Colorado enterprise zone. Equipment bought for use in the zone can earn a state credit — but only when the purchase is pre-certified before you buy. Do this before this year's first equipment purchase.`,
+    href: "/desk/sales-tax/benefits",
+    todoKey: `taxben-enterprise-zone:${input.year}`,
+    since: input.since,
+  };
+}
+
+/** TAXBEN-2: the November 15 year-end planning To do — the year's facts and
+ * the questions for the CPA. Information only; it never advises a purchase. */
+export function yearEndPlanningException(input: {
+  year: number;
+  profitCents: number;
+  sepCents: number | null;
+  soloCents: number | null;
+  midQuarterNote: string | null;
+  deMinimisExpensedCents: number | null;
+  since: Date;
+}): ExceptionItem {
+  const facts: string[] = [
+    `Tentative profit for ${input.year} so far is ${formatMoney(input.profitCents)}.`,
+  ];
+  if (input.sepCents !== null || input.soloCents !== null) {
+    facts.push(
+      `Retirement room on that profit: a SEP-IRA could take about ${formatMoney(input.sepCents ?? 0)}; a solo 401(k) about ${formatMoney(input.soloCents ?? 0)}.`,
+    );
+  }
+  if (input.deMinimisExpensedCents !== null) {
+    facts.push(
+      `Equipment expensed under the de minimis safe harbor so far: ${formatMoney(input.deMinimisExpensedCents)}. Whether buying equipment you need before December 31 changes the tax depends on the whole picture — Taxes > Tax benefits shows the figures, and your CPA can run it both ways.`,
+    );
+  }
+  if (input.midQuarterNote) facts.push(input.midQuarterNote);
+  facts.push(
+    "Questions for your CPA: whether the de minimis election stays on, bonus depreciation or Section 179, the rental-appliance class life, the business-began date, the solo 401(k) first-year deadline, and the enterprise-zone fleet question.",
+  );
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Year-end tax planning for ${input.year}`,
+    detail: facts.join(" "),
+    href: `/desk/sales-tax/benefits?year=${input.year}`,
+    todoKey: `taxben-year-end:${input.year}`,
+    since: input.since,
+  };
+}
+
+/** TAXBEN-1: a shared bill deducts 0% until the owner answers its business-use share. */
+export function businessUsePercentException(input: {
+  year: number;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: "Answer the business-use share of your shared bills",
+    detail: "Accounts you share between business and personal use — phone and internet — deduct 0% until you answer what share is business. Answer once in Write-off settings on Taxes > Tax benefits; the app remembers it.",
+    href: "/desk/sales-tax/benefits",
+    todoKey: `taxben-business-use:${input.year}`,
     since: input.since,
   };
 }

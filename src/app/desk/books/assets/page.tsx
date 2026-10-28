@@ -12,8 +12,8 @@ export const metadata={title:"Fixed assets — Books"};
 const field="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
 const button="rounded border border-border bg-card px-3 py-2 font-medium text-foreground hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2";
 export default async function FixedAssets({searchParams}:{searchParams:Promise<{notice?:string}>}){
- const session=await requireRole("OWNER","ADMIN");
- const data=await getBookAssets(session.user.id),owner=session.user.role==="OWNER";
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
+ const data=await getBookAssets(session.user.id),owner=session.user.role==="OWNER",accountant=session.user.role==="ACCOUNTANT";
  const notice=(await searchParams).notice?.slice(0,350);
  const now=businessDateKey(new Date());
  return <div className="space-y-6">
@@ -54,13 +54,13 @@ export default async function FixedAssets({searchParams}:{searchParams:Promise<{
       <div className="text-right tabular-nums"><p>Original book cost: {formatMoney(a.costCents)}</p><p>Recorded depreciation: {formatMoney(a.postedDepreciationCents)}</p><p className="font-semibold">Carrying value: {formatMoney(a.bookCarryingCents)}</p></div>
      </div>
      <p>Life: {a.lifeMonths} months; salvage: {a.salvagePercent}%; last accounted month: {a.lastDepreciationMonth??"None"}. {a.disposedOn? `Sold on ${formatBusinessDate(a.disposedOn)}; its remaining book value (${formatMoney(a.retiredValueCents??0)}) was removed from the books by that sale.`:a.retiredOn? `Held for ${a.retirementIntent} since ${formatBusinessDate(a.retiredOn)}; retained value ${formatMoney(a.retiredValueCents??0)}. Not a disposal loss.`:"Still in management depreciation."}</p>
-     {owner&&!a.retiredOn&&<div className="grid gap-3 lg:grid-cols-2">
-      <form action={postBookDepreciationAction} className="rounded border border-border p-3 space-y-2">
+     {(owner||accountant)&&!a.retiredOn&&<div className="grid gap-3 lg:grid-cols-2">
+      {owner&&<form action={postBookDepreciationAction} className="rounded border border-border p-3 space-y-2">
        <h4 className="font-semibold">Post completed month(s)</h4>
        <input type="hidden" name="applianceId" value={a.applianceId}/>
        <label>Through Colorado month<input className={field} name="throughMonth" type="month" defaultValue={lastCompletedMonth()} required/></label>
        <button className={button}>Post depreciation</button>
-      </form>
+      </form>}
       <form action={bookAssetPolicyAction} className="rounded border border-border p-3 space-y-2">
        <h4 className="font-semibold">Future book life and salvage</h4>
        <input type="hidden" name="applianceId" value={a.applianceId}/>
@@ -69,7 +69,7 @@ export default async function FixedAssets({searchParams}:{searchParams:Promise<{
        <label>Salvage percent<input name="salvagePercent" className={field} type="number" min={0} max={95} defaultValue={a.salvagePercent} required/></label>
        <button className={button}>Save future-only policy</button>
       </form>
-      {a.appliance.status==="RETIRED"?
+      {owner&&a.appliance.status==="RETIRED"?
       <form action={retireBookAssetAction} className="rounded border border-border p-3 space-y-2 lg:col-span-2">
        <h4 className="font-semibold">Hold retired value pending final disposition</h4>
        <p>Post all completed depreciation first. This does not record a sale, tax gain, write-off or disposal loss.</p>
@@ -82,7 +82,7 @@ export default async function FixedAssets({searchParams}:{searchParams:Promise<{
        </select></label>
        <label>Removed from rental service<input type="date" name="retiredDate" className={field} defaultValue={now} required/></label>
        <button className={button}>Record pending-retirement asset</button>
-      </form>:<p className="text-sm text-muted-foreground">To retire this book asset, first change the machine to RETIRED in Fleet so it is no longer rentable.</p>}
+      </form>:owner?<p className="text-sm text-muted-foreground">To retire this book asset, first change the machine to RETIRED in Fleet so it is no longer rentable.</p>:null}
      </div>}
      <section className="border-t border-border pt-3 space-y-2">
       <h4 className="font-semibold">Separate CPA / income-tax evidence</h4>
@@ -92,7 +92,7 @@ export default async function FixedAssets({searchParams}:{searchParams:Promise<{
        {e.originalBasisCents!==null&&<> · Tax basis evidence {formatMoney(e.originalBasisCents)}</>}
        {e.cpaName&&<> · CPA {e.cpaName}</>}
       </p>):<p>Not recorded — tax basis unknown, CPA review required.</p>}
-      {owner&&<details className="border border-border rounded p-3">
+      {(owner||accountant)&&<details className="border border-border rounded p-3">
        <summary className="cursor-pointer font-medium">Record new CPA / tax-basis evidence (append-only)</summary>
        <form action={bookTaxEvidenceAction} className="grid gap-3 sm:grid-cols-2 mt-3">
         <input type="hidden" name="applianceId" value={a.applianceId}/>

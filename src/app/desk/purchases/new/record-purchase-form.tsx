@@ -32,6 +32,7 @@ export function RecordPurchaseForm({
   const [purchasedOn, setPurchasedOn] = useState(todayKey);
   const [reference, setReference] = useState("");
   const [taxAnswer, setTaxAnswer] = useState<string>(isOwner ? "" : "LATER");
+  const [relatedParty, setRelatedParty] = useState("");
   const [sellerTax, setSellerTax] = useState("");
   const [otherState, setOtherState] = useState("");
   const [otherCharges, setOtherCharges] = useState("");
@@ -76,7 +77,7 @@ export function RecordPurchaseForm({
         operationKey,
         supplierId: sellerKind === "supplier" ? supplierId : "",
         sellerName: sellerKind === "private" ? sellerName : "",
-        purchasedOn, reference, taxAnswer, sellerTax: taxed ? sellerTax : "",
+        purchasedOn, reference, taxAnswer, relatedParty, sellerTax: taxed ? sellerTax : "",
         otherState: taxAnswer === "YES_OTHER_STATE" ? otherState : "",
         otherCharges, receiptSubtotal, receiptTotal, notes,
         documents: documents.map((doc) => ({ url: doc.url, altText: doc.name })),
@@ -214,6 +215,16 @@ export function RecordPurchaseForm({
           <Field id="receiptSubtotal" label="Receipt subtotal ($, to double-check)" inputMode="decimal" value={receiptSubtotal} onChange={(e) => setReceiptSubtotal(e.target.value)} />
           <Field id="receiptTotal" label="Receipt total ($, to double-check)" inputMode="decimal" value={receiptTotal} onChange={(e) => setReceiptTotal(e.target.value)} />
         </div>
+      </fieldset>
+
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold">Bought from a relative or your own other business?</legend>
+        <Select id="relatedParty" label="Related-party purchase" value={relatedParty} onChange={(e) => setRelatedParty(e.target.value)}
+          help="Bonus depreciation is not allowed on those purchases, so the app asks once here and records the answer with the write-off decision.">
+          <option value="">Not answered</option>
+          <option value="no">No</option>
+          <option value="yes">Yes — a relative or my other business</option>
+        </Select>
       </fieldset>
 
       <Textarea id="notes" label="Notes (optional)" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />

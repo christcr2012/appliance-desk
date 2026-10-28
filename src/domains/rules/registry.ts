@@ -8,7 +8,7 @@ import { formatMoney } from "@/lib/money-ui";
  * it (money fields in dollars on the screen, cents in storage).
  */
 
-export type RuleArea = "SALES_TAX" | "USE_TAX" | "RDF" | "FEDERAL" | "RECORDS" | "LEASES" | "PROPERTY_TAX";
+export type RuleArea = "SALES_TAX" | "USE_TAX" | "RDF" | "FEDERAL" | "RECORDS" | "LEASES" | "PROPERTY_TAX" | "STATE_INCOME";
 export type RuleChangeKind = "FIXED_JUL_1" | "FIXED_JAN_1" | "ANY_DATE";
 
 export type RuleFieldKind = "money" | "integer" | "percent" | "month-day" | "text";
@@ -254,6 +254,220 @@ export const RULES = {
       percentField("percent", "Bonus depreciation (%)"),
       { name: "acquiredAfter", label: "Applies to property acquired after (YYYY-MM-DD)", kind: "text" },
     ],
+  }),
+  "us.de_minimis_per_item": defineRule({
+    key: "us.de_minimis_per_item",
+    title: "De minimis safe harbor limit",
+    explain: "A bought item at or under this amount per item or invoice line can be expensed instead of capitalized, when the year's de minimis election is on and the written policy is in place.",
+    area: "FEDERAL",
+    schema: z.number().int().min(0),
+    describe: (v: number) => `${formatMoney(v)} per item or invoice line`,
+    change: "FIXED_JAN_1",
+    fields: [moneyField("value", "De minimis limit ($)", 10000000)],
+    watch: "https://www.irs.gov/businesses/small-businesses-self-employed/tangible-property-final-regulations",
+  }),
+  "us.startup_costs": defineRule({
+    key: "us.startup_costs",
+    title: "Start-up costs (Section 195)",
+    explain: "Costs from before the business began: a first-year deduction that shrinks once start-up costs pass the phase-out start, with the rest spread over the amortization months from the month the business begins.",
+    area: "FEDERAL",
+    schema: z.object({
+      deductionCents: z.number().int().min(0),
+      phaseoutStartCents: z.number().int().min(0),
+      amortizationMonths: z.number().int().min(1),
+    }),
+    describe: (v: { deductionCents: number; phaseoutStartCents: number; amortizationMonths: number }) =>
+      `${formatMoney(v.deductionCents)} first-year, shrinking past ${formatMoney(v.phaseoutStartCents)}; the rest over ${v.amortizationMonths} months`,
+    change: "FIXED_JAN_1",
+    fields: [
+      moneyField("deductionCents", "First-year deduction ($)", 100000000),
+      moneyField("phaseoutStartCents", "Phase-out starts at ($)", 10000000000),
+      integerField("amortizationMonths", "Amortization (months)", 1, 600),
+    ],
+    watch: "https://www.irs.gov/publications/p583",
+  }),
+  "us.qbi": defineRule({
+    key: "us.qbi",
+    title: "Qualified business income (Section 199A)",
+    explain: "The share of qualified business income the owner may deduct, with a minimum deduction once QBI reaches the minimum amount.",
+    area: "FEDERAL",
+    schema: z.object({
+      percent: z.number().min(0).max(100),
+      minimumCents: z.number().int().min(0),
+      minimumQbiCents: z.number().int().min(0),
+    }),
+    describe: (v: { percent: number; minimumCents: number; minimumQbiCents: number }) =>
+      `${v.percent}% of QBI; at least ${formatMoney(v.minimumCents)} when QBI is ${formatMoney(v.minimumQbiCents)} or more`,
+    change: "FIXED_JAN_1",
+    fields: [
+      percentField("percent", "QBI deduction (%)"),
+      moneyField("minimumCents", "Minimum deduction ($)", 10000000),
+      moneyField("minimumQbiCents", "Minimum applies from QBI of ($)", 100000000),
+    ],
+    watch: "https://www.irs.gov/businesses/small-businesses-self-employed/qualified-business-income-deduction",
+  }),
+  "us.se_tax": defineRule({
+    key: "us.se_tax",
+    title: "Self-employment tax deduction",
+    explain: "The share of self-employment tax the owner deducts, and the Social Security wage base the tax stops at.",
+    area: "FEDERAL",
+    schema: z.object({
+      deductiblePercent: z.number().min(0).max(100),
+      ssWageBaseCents: z.number().int().min(0),
+    }),
+    describe: (v: { deductiblePercent: number; ssWageBaseCents: number }) =>
+      `${v.deductiblePercent}% deductible; Social Security wage base ${formatMoney(v.ssWageBaseCents)}`,
+    change: "FIXED_JAN_1",
+    fields: [
+      percentField("deductiblePercent", "Deductible share (%)"),
+      moneyField("ssWageBaseCents", "Social Security wage base ($)", 100000000),
+    ],
+    watch: "https://www.irs.gov/taxtopics/tc554",
+  }),
+  "us.se_tax_rates": defineRule({
+    key: "us.se_tax_rates",
+    title: "Self-employment tax rates",
+    explain: "The rates the self-employment tax itself is worked out at: Social Security on earnings up to the wage base in us.se_tax, plus Medicare, charged on this share of net earnings once they reach the minimum.",
+    area: "FEDERAL",
+    schema: z.object({
+      netEarningsPercent: z.number().gt(0).max(100),
+      socialSecurityPercent: z.number().min(0).max(100),
+      medicarePercent: z.number().min(0).max(100),
+      minimumNetEarningsCents: z.number().int().min(0),
+    }),
+    describe: (v: { netEarningsPercent: number; socialSecurityPercent: number; medicarePercent: number; minimumNetEarningsCents: number }) =>
+      `${v.socialSecurityPercent}% Social Security + ${v.medicarePercent}% Medicare on ${v.netEarningsPercent}% of net earnings, from ${formatMoney(v.minimumNetEarningsCents)}`,
+    change: "FIXED_JAN_1",
+    fields: [
+      percentField("socialSecurityPercent", "Social Security rate (%)"),
+      percentField("medicarePercent", "Medicare rate (%)"),
+      percentField("netEarningsPercent", "Share of net earnings taxed (%)"),
+      moneyField("minimumNetEarningsCents", "Applies from net earnings of ($)", 10000000),
+    ],
+    watch: "https://www.irs.gov/taxtopics/tc554",
+  }),
+  "us.mid_quarter": defineRule({
+    key: "us.mid_quarter",
+    title: "Mid-quarter convention threshold",
+    explain: "If more than this share of the year's depreciable equipment is placed in service in the last three months, the mid-quarter convention applies and first-year depreciation shrinks. The Tax benefits page watches for it in October and November.",
+    area: "FEDERAL",
+    schema: z.object({ percent: z.number().gt(0).max(100) }),
+    describe: (v: { percent: number }) => `More than ${v.percent}% of the year's basis in the last three months`,
+    change: "FIXED_JAN_1",
+    fields: [percentField("percent", "Threshold (%)")],
+    watch: "https://www.irs.gov/publications/p946",
+  }),
+  "us.sep_ira": defineRule({
+    key: "us.sep_ira",
+    title: "SEP-IRA for the owner",
+    explain: "What the owner can put into a SEP-IRA: roughly this share of net profit, up to the yearly maximum. The plan can be set up and funded as late as the return due date, extensions included.",
+    area: "FEDERAL",
+    schema: z.object({
+      percentOfNetProfit: z.number().min(0).max(100),
+      maxCents: z.number().int().min(0),
+    }),
+    describe: (v: { percentOfNetProfit: number; maxCents: number }) =>
+      `About ${v.percentOfNetProfit}% of net profit, up to ${formatMoney(v.maxCents)}`,
+    change: "FIXED_JAN_1",
+    fields: [
+      percentField("percentOfNetProfit", "Share of net profit (%)"),
+      moneyField("maxCents", "Yearly maximum ($)", 100000000),
+    ],
+    watch: "https://www.irs.gov/retirement-plans/retirement-plans-for-self-employed-people",
+  }),
+  "us.solo_401k": defineRule({
+    key: "us.solo_401k",
+    title: "Solo 401(k) for the owner",
+    explain: "The owner's own deferral into a solo 401(k), plus the employer share, up to the combined yearly maximum.",
+    area: "FEDERAL",
+    schema: z.object({
+      deferralCents: z.number().int().min(0),
+      maxTotalCents: z.number().int().min(0),
+    }),
+    describe: (v: { deferralCents: number; maxTotalCents: number }) =>
+      `${formatMoney(v.deferralCents)} deferral; ${formatMoney(v.maxTotalCents)} combined maximum`,
+    change: "FIXED_JAN_1",
+    fields: [
+      moneyField("deferralCents", "Employee deferral ($)", 100000000),
+      moneyField("maxTotalCents", "Combined maximum ($)", 100000000),
+    ],
+    watch: "https://www.irs.gov/retirement-plans/retirement-plans-for-self-employed-people",
+  }),
+  "us.home_office_simplified": defineRule({
+    key: "us.home_office_simplified",
+    title: "Home office, simplified method",
+    explain: "The simplified home-office deduction: this amount per square foot of the office, up to the most square feet counted.",
+    area: "FEDERAL",
+    schema: z.object({
+      rateCentsPerSqFt: z.number().int().min(0),
+      maxSqFt: z.number().int().min(0),
+    }),
+    describe: (v: { rateCentsPerSqFt: number; maxSqFt: number }) =>
+      `${formatMoney(v.rateCentsPerSqFt)} per square foot, up to ${v.maxSqFt} square feet`,
+    change: "FIXED_JAN_1",
+    fields: [
+      moneyField("rateCentsPerSqFt", "Per square foot ($)", 100000),
+      integerField("maxSqFt", "Most square feet counted", 0, 10000),
+    ],
+    watch: "https://www.irs.gov/businesses/small-businesses-self-employed/simplified-option-for-home-office-deduction",
+  }),
+  "us.class_life_months": defineRule({
+    key: "us.class_life_months",
+    title: "Equipment class lives",
+    explain: "How many months each kind of equipment is written off over. The rental-appliance life is the expected 5-year class (asset class 57.0) — the CPA confirms it (DQ-TAXBEN-CLASS).",
+    area: "FEDERAL",
+    schema: z.object({
+      rentalAppliances: z.number().int().min(1),
+      tools: z.number().int().min(1),
+    }),
+    describe: (v: { rentalAppliances: number; tools: number }) =>
+      `Rental appliances ${v.rentalAppliances} months; tools ${v.tools} months`,
+    change: "ANY_DATE",
+    fields: [
+      integerField("rentalAppliances", "Rental appliances (months)", 1, 600),
+      integerField("tools", "Tools (months)", 1, 600),
+    ],
+    watch: "https://www.irs.gov/publications/p946",
+  }),
+  "us.passenger_auto_caps": defineRule({
+    key: "us.passenger_auto_caps",
+    title: "Passenger car first-year caps",
+    explain: "The most first-year depreciation a passenger car (or a truck at or under 6,000 lb GVWR) can take, with and without bonus depreciation. Heavier trucks are not capped.",
+    area: "FEDERAL",
+    schema: z.object({
+      year1WithBonusCents: z.number().int().min(0),
+      year1WithoutBonusCents: z.number().int().min(0),
+    }),
+    describe: (v: { year1WithBonusCents: number; year1WithoutBonusCents: number }) =>
+      `First year up to ${formatMoney(v.year1WithBonusCents)} with bonus, ${formatMoney(v.year1WithoutBonusCents)} without`,
+    change: "FIXED_JAN_1",
+    fields: [
+      moneyField("year1WithBonusCents", "First-year cap with bonus ($)", 100000000),
+      moneyField("year1WithoutBonusCents", "First-year cap without bonus ($)", 100000000),
+    ],
+    watch: "https://www.irs.gov/publications/p946",
+  }),
+  "co.enterprise_zone_credit": defineRule({
+    key: "co.enterprise_zone_credit",
+    title: "Colorado enterprise zone investment credit",
+    explain: "Colorado's credit on equipment bought for use in an enterprise zone. The business must pre-certify BEFORE buying — property bought first does not qualify.",
+    area: "STATE_INCOME",
+    schema: z.object({ percent: z.number().min(0).max(100) }),
+    describe: (v: { percent: number }) => `${v.percent}% of qualified investment, pre-certified before purchase`,
+    change: "FIXED_JAN_1",
+    fields: [percentField("percent", "Credit (%)")],
+    watch: "https://oedit.colorado.gov/enterprise-zone",
+  }),
+  "co.bpp_exemption": defineRule({
+    key: "co.bpp_exemption",
+    title: "Colorado business personal property exemption",
+    explain: "If the actual value of the business's personal property in a county is at or under this amount, it is exempt from Colorado property tax for the year.",
+    area: "PROPERTY_TAX",
+    schema: z.number().int().min(0),
+    describe: (v: number) => `${formatMoney(v)} of actual value per county`,
+    change: "FIXED_JAN_1",
+    fields: [moneyField("value", "Exemption ($)", 100000000)],
+    watch: "https://dpt.colorado.gov/personal-property",
   }),
   "records.keep_years": defineRule({
     key: "records.keep_years",

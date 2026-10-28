@@ -168,6 +168,23 @@ export function ScheduleCPacketSection({
       <Worksheet4562Section worksheet={packet.worksheet4562} />
       <Worksheet4797Section worksheet={packet.worksheet4797} />
 
+      {packet.elections ? (
+        <section className="max-w-3xl space-y-2">
+          <h3 className="font-semibold text-ink">Elections and statements for {packet.year}</h3>
+          <p className="text-sm text-ink-soft">
+            Return due {packet.elections.dueOnKey}; with an extension, {packet.elections.extensionKey}. These
+            statements ride on the accountant packet files below for your CPA to attach to the return.
+          </p>
+          <p className="whitespace-pre-line text-sm text-ink-soft">{packet.elections.deMinimisText}</p>
+          {packet.elections.electOutText ? (
+            <p className="whitespace-pre-line text-sm text-ink-soft">{packet.elections.electOutText}</p>
+          ) : null}
+          {packet.elections.startupNoteText ? (
+            <p className="whitespace-pre-line text-sm text-ink-soft">{packet.elections.startupNoteText}</p>
+          ) : null}
+        </section>
+      ) : null}
+
       {outputsReady ? (
         <section className="max-w-3xl space-y-2">
           <h3 className="font-semibold text-ink">Accountant packet files</h3>

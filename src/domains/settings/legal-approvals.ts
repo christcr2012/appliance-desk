@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 
 export const LEGAL_PAGE_VERSIONS = {
-  privacy: "2026-10-09-metricool-1",
+  // ZONE-1 (2026-10-26) added the address-check line, so the owner approves the new wording before it is linked.
+  privacy: "2026-10-26-census-1",
   terms: "2026-10-05-1",
 } as const;
 

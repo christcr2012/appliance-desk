@@ -29,7 +29,47 @@ export type ScreenKey = keyof typeof SCREENS;
 export const SCREEN_KEYS = Object.keys(SCREENS) as ScreenKey[];
 
 /** Screens everyone on the team always has, whatever their job role (so nobody is locked out of their own account). */
-export const ALWAYS_ALLOWED = ["today", "account", "security", "notices", "search", "more"] as const;
+export const ALWAYS_ALLOWED = ["today", "account", "security", "notices", "search", "more", "help"] as const;
+
+/**
+ * ACCT-1: the accountant's screens. An accountant is NOT a job role — the level itself is the limit, and it is
+ * deny-by-default: only these screens, the always-allowed ones except "more" (the More page leads to settings,
+ * the vault and other owner surfaces), and two exact path exceptions — the Decisions & reviews screen (which
+ * lives under Settings but is the CPA answering surface) and Business records (where the domain shows an
+ * accountant only the records the owner shared). Every allowed page and domain function also lists the
+ * ACCOUNTANT level explicitly; this gate is the outer wall, not the only one.
+ */
+export const ACCOUNTANT_SCREENS = ["books", "sales-tax", "billing"] as const;
+// "today" is deliberately absent: the Today inbox is operations scope
+// (jobs, tasks, customer work). The accountant's home is Books, and the
+// shell refuses Today for them like any other unlisted screen.
+const ACCOUNTANT_ALWAYS = ["account", "security", "notices", "search"] as const;
+const ACCOUNTANT_PATH_EXCEPTIONS = ["/desk/paperwork"] as const;
+
+/**
+ * The accountant's segments are named explicitly, NOT resolved through the job-role screen map:
+ * that map aliases sales/revenue/fleet/dashboard onto the billing screen for staff job roles, and
+ * an alias must never widen the accountant. Page gates remain the second wall on every path here.
+ */
+const ACCOUNTANT_SEGMENTS = new Set([
+  ...ACCOUNTANT_SCREENS,
+  "compliance",
+  "reports",
+  ...ACCOUNTANT_ALWAYS,
+]);
+
+export function accountantAllowsPath(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  const clean = pathname.split("?")[0]!.split("#")[0]!;
+  if (clean === "/desk" || clean === "/desk/") return true;
+  if (!clean.startsWith("/desk/")) return false;
+  // The Decisions & reviews screen is the CPA answering surface: that one page only, never its
+  // form/import subpages (their own page gates refuse the role as well).
+  if (clean === "/desk/settings/decisions") return true;
+  if (ACCOUNTANT_PATH_EXCEPTIONS.some((p) => clean === p || clean.startsWith(`${p}/`))) return true;
+  const first = clean.slice("/desk/".length).split("/")[0]!;
+  return ACCOUNTANT_SEGMENTS.has(first);
+}
 
 /** First address segment under /desk -> the screen it belongs to. */
 const PATH_TO_SCREEN: Record<string, ScreenKey> = {

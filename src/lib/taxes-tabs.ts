@@ -20,9 +20,10 @@ export const TAXES_SETUP_LINKS = [
   { href: `${TAXES_BASE}/record-retention`, label: "How long to keep records", detail: "Starts at 7 years; owner-editable." },
   { href: `${TAXES_BASE}/rules`, label: "Tax and fee rules", detail: "Every tax and fee number, when it starts, where it came from, and its history." },
   { href: `${TAXES_BASE}/area`, label: "Delivery area", detail: "Every place you deliver to: whether its tax rules are decided and its city license is on file — an address cannot be quoted or scheduled until its places are ready." },
+  { href: `${TAXES_BASE}/benefits`, label: "Tax benefits", detail: "Every write-off and benefit found in the books for the year — depreciation, start-up costs, mileage, home office, retirement, QBI — plus the capitalization policy to sign. Estimates: your CPA confirms." },
 ] as const;
 
-const SETUP_PREFIXES = ["setup", "exemptions", "taxability", "audit-pack", "record-retention", "rules"];
+const SETUP_PREFIXES = ["setup", "exemptions", "taxability", "audit-pack", "record-retention", "rules", "benefits"];
 const RATES_PREFIXES = ["areas", "area", "delivery-fees"];
 
 /** Which tab a Taxes address belongs to; null when the address is outside Taxes. */

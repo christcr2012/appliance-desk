@@ -17,7 +17,7 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ periodId: string }> },
 ) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const { periodId } = await params;
   const { period, result } = await getPrivateReturn(periodId);
   if (result.status !== "READY") {

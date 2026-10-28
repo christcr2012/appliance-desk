@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { TwoFactorLoginForm } from "./two-factor-login-form";
+import { auth } from "@/lib/auth";
 import { getTrustedDeviceSettings } from "@/domains/security/trusted-devices";
 
 // The remember-days setting is an owner setting that can change between deploys, so this page must read it
@@ -12,7 +14,11 @@ export const metadata = {
 };
 
 export default async function TwoFactorLoginPage() {
-  const { days: rememberDays } = await getTrustedDeviceSettings();
+  const { days } = await getTrustedDeviceSettings();
+  // ACCT-1: an accountant is never offered "remember this device" (the verify
+  // hook strips the request for the role as well — this only hides the box).
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
+  const rememberDays = session?.user?.role === "ACCOUNTANT" ? 0 : days;
   return (
     <main
       id="main-content"

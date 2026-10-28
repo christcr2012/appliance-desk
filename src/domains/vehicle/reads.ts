@@ -3,6 +3,7 @@ import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { mileageDeductionCents, vehicleDueItems, vehicleRulesFor } from "./rules";
 import { latestOdometer } from "./actions";
+import { computeScheduleCYear } from "@/domains/compliance/schedule-c";
 
 async function rateForYear(year: number): Promise<number | null> {
   try { return (await ruleAsOf<number>("us.mileage_rate", new Date(`${year}-12-31T12:00:00Z`))).value; } catch { return null; }
@@ -32,10 +33,16 @@ export async function loadVehicleOverview(now: Date) {
     const year = Number(businessDateKey(trip.tripDate).slice(0, 4));
     byYear.set(year, (byYear.get(year) ?? 0) + (trip.miles ?? 0));
   }
+  // The current year always shows, so the comparison with the books is visible before the first trip is logged.
+  const thisYear = Number(businessDateKey(now).slice(0, 4));
+  if (!byYear.has(thisYear)) byYear.set(thisYear, 0);
   const years = [];
-  for (const [year, miles] of [...byYear.entries()].sort((a, b) => b[0] - a[0])) {
+  for (const [year, miles] of [...byYear.entries()].sort((a, b) => b[0] - a[0]).slice(0, 6)) {
     const rate = await rateForYear(year);
-    years.push({ year, miles, rateTenths: rate, deductionCents: rate != null ? mileageDeductionCents(miles, rate) : null });
+    // What the books posted for vehicle costs (fuel, repairs, insurance), for the side-by-side comparison. Null if unreadable.
+    let actualCents: number | null = null;
+    try { actualCents = (await computeScheduleCYear(year)).vehicle.actualCents; } catch { actualCents = null; }
+    years.push({ year, miles, rateTenths: rate, deductionCents: rate != null ? mileageDeductionCents(miles, rate) : null, actualCents });
   }
   return { settings, vehicles: out, trips, years, policies };
 }
@@ -53,4 +60,19 @@ export async function loadDriverMileage(now: Date) {
     result.push({ ...v, lastOdometer: await latestOdometer(prisma, v.id), trip });
   }
   return result;
+}
+
+/**
+ * The driver's route progress for today: how many stops there are and how many are finished. The route list itself only
+ * shows unfinished stops, so this counts separately. Cancelled visits are not stops; customer pick-up hand-overs at our
+ * place are never on the route. Counts only, no customer data.
+ */
+export async function loadDriverStopCounts(now: Date): Promise<{ total: number; finished: number }> {
+  const { start, end } = businessDayBounds(now);
+  const base = { scheduledAt: { gte: start, lt: end }, customerPickupHandoff: false };
+  const [active, finished] = await Promise.all([
+    prisma.job.count({ where: { ...base, status: { in: ["SCHEDULED", "IN_PROGRESS"] } } }),
+    prisma.job.count({ where: { ...base, status: "COMPLETED" } }),
+  ]);
+  return { total: active + finished, finished };
 }

@@ -47,6 +47,15 @@ export default async function BusinessFactsPage({
         employees={profile.employees}
         firstHireDate={profile.firstHireDate ? businessDateKey(profile.firstHireDate) : ""}
         hasHomeOffice={profile.hasHomeOffice}
+        taxben={{
+          businessBeganOn: profile.businessBeganOn ? businessDateKey(profile.businessBeganOn) : "",
+          homeOfficeSqFt: profile.homeOfficeSqFt?.toString() ?? "",
+          homeSqFt: profile.homeSqFt?.toString() ?? "",
+          homeHousingCosts: dollars(profile.homeHousingCostsCents),
+          homeUtilities: dollars(profile.homeUtilitiesCents),
+          homeInsurance: dollars(profile.homeInsuranceCents),
+          homeOfficeAttestedYear: profile.homeOfficeAttestedYear?.toString() ?? "",
+        }}
         payer={{
           businessLegalName: profile.businessLegalName ?? "",
           businessAddress: profile.businessAddress ?? "",
@@ -76,6 +85,10 @@ export default async function BusinessFactsPage({
           federalAgi: dollars(facts?.federalAgiCents),
           coloradoTax: dollars(facts?.coloradoTaxCents),
           form1099KGross: dollars(facts?.form1099KGrossCents),
+          seHealthPremiums: dollars(facts?.seHealthPremiumCents),
+          employerPlanMonths: Array.isArray(facts?.seHealthEmployerPlanMonths)
+            ? facts.seHealthEmployerPlanMonths.filter((m): m is number => typeof m === "number")
+            : [],
         }}
       />
     </div>

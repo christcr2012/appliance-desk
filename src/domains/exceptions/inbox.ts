@@ -8,6 +8,7 @@ export type InboxGroup = "money" | "sales" | "rentals" | "equipment" | "taxes" |
 
 /** Every category in exactly one group. A category added later fails the build here until it is placed. */
 export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
+  ACCOUNTANT: "taxes",
   BOOKS_NOT_UP_TO_DATE: "taxes",
   BOOKS_NEEDS_FIX: "taxes",
   BOOKS_SETUP: "taxes",
@@ -80,6 +81,10 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   SYSTEM_ISSUE: "system",
   // Not in the TODAY.md list (added by MCP-10a after the spec): app feedback to read sits with system notices.
   FEEDBACK_WAITING: "system",
+  // ZONE-1 (added after the spec): delivery-zone and customer-pickup work sits with rentals and visits.
+  DELIVERY_ZONE_UNKNOWN: "rentals",
+  PICKUP_TO_ARRANGE: "rentals",
+  PICKUP_REQUOTE: "sales",
 };
 
 export const INBOX_GROUP_ORDER: readonly InboxGroup[] = ["money", "sales", "rentals", "equipment", "taxes", "tasks", "system"];

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
+import { startupForTaxYear } from "@/domains/taxben/startup";
 import { RESALE_STATUS_LABEL, type ResaleTaxStatus } from "@/domains/sales/retired-sale-tax";
 
 /**
@@ -34,6 +35,17 @@ export interface Worksheet4562Row {
   needsReview: boolean;
 }
 
+/** TAXBEN-1: the Section 195 start-up block for Form 4562 Part VI (amortization). */
+export interface Worksheet4562Startup {
+  beganOn: string;
+  /** False when the began date is the derived starting value, not yet confirmed. */
+  beganStored: boolean;
+  totalCents: number;
+  firstYearCents: number;
+  amortizationCents: number;
+  remainingCents: number;
+}
+
 export interface Worksheet4562 {
   year: number;
   rows: Worksheet4562Row[];
@@ -48,6 +60,8 @@ export interface Worksheet4562 {
   section179PhaseoutCents: number | null;
   bonusPercent: number | null;
   bonusAcquiredAfter: string | null;
+  /** Start-up costs (Section 195) for Part VI; null when none apply to the year. */
+  startup: Worksheet4562Startup | null;
 }
 
 export async function build4562Worksheet(year: number): Promise<Worksheet4562> {
@@ -93,6 +107,7 @@ export async function build4562Worksheet(year: number): Promise<Worksheet4562> {
   } catch {
     bonus = null;
   }
+  const startup = await startupForTaxYear(year);
   return {
     year,
     rows,
@@ -106,6 +121,16 @@ export async function build4562Worksheet(year: number): Promise<Worksheet4562> {
     section179PhaseoutCents: section179?.phaseoutCents ?? null,
     bonusPercent: bonus?.percent ?? null,
     bonusAcquiredAfter: bonus?.acquiredAfter ?? null,
+    startup: startup
+      ? {
+          beganOn: startup.beganOn,
+          beganStored: startup.beganStored,
+          totalCents: startup.totalCents,
+          firstYearCents: startup.firstYearCents,
+          amortizationCents: startup.amortizationCents,
+          remainingCents: startup.remainingCents,
+        }
+      : null,
   };
 }
 

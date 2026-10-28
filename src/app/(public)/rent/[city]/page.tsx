@@ -2,13 +2,15 @@ import { SelectBridge } from "@/components/site/select-bridge";
 import { redirect } from "next/navigation";
 import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Container } from "@/components/site/container";
 import { PageHero } from "@/components/site/page-hero";
 import { Card } from "@/components/ui";
 import { SiteCta } from "@/components/site/site-cta";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { TOWNS, townBySlug, townSlug } from "@/domains/delivery/towns";
+import { readZoneSettings, zoneForPoint } from "@/domains/delivery/zone";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
 import { getSiteForRequest } from "@/domains/site-content/request";
@@ -16,29 +18,25 @@ import { siteCopy, siteFacts, siteLinkValue, stripInlineLinks } from "@/domains/
 
 // ---------------------------------------------------------------------------
 // Simple local-search landing pages (2026-09-28, Task #46 — see
-// docs/reviews/2026-09-27-business-growth-ideas.md idea #11). One page per
-// city Chris has actually listed in Settings' service area
-// (BusinessSettings.serviceAreaCities) — never a made-up city, and never
-// fabricated local claims (no invented review counts or "we've served
-// hundreds of families in X" language). It's the same real pricing/appliance
-// content as /pricing, just addressed to one city at a time so a search for
-// "appliance rental in <city>" has a page that actually answers it.
+// docs/reviews/2026-09-27-business-growth-ideas.md idea #11). ZONE-1: one page
+// per town on the delivery-zone town list (src/domains/delivery/towns.ts, from
+// the 2026-10-25 research) with the zone its center is in — never a made-up
+// town, and never fabricated local claims. Same slugs as the old owner city
+// list, so old links keep working; an old listed city that isn't on the town
+// list goes to the service area page instead of a dead end.
 // ---------------------------------------------------------------------------
 
-function slugifyCity(city: string): string {
-  return city.trim().toLowerCase().replace(/\s+/g, "-");
+async function findCity(citySlug: string): Promise<string | null> {
+  return townBySlug(citySlug)?.name ?? null;
 }
 
-async function findCity(citySlug: string): Promise<string | null> {
-  const settings = await getBusinessSettings();
-  const { cities } = parseServiceArea(settings);
-  return cities.find((city) => slugifyCity(city) === citySlug) ?? null;
+async function legacyCitySlug(citySlug: string): Promise<boolean> {
+  const { cities } = parseServiceArea(await getBusinessSettings());
+  return cities.some((city) => townSlug(city) === citySlug);
 }
 
 export async function generateStaticParams() {
-  const settings = await getBusinessSettings();
-  const { cities } = parseServiceArea(settings);
-  return cities.map((city) => ({ city: slugifyCity(city) }));
+  return TOWNS.map((town) => ({ city: town.slug }));
 }
 
 export async function generateMetadata({
@@ -71,8 +69,10 @@ export default async function CityLandingPage({
   const { city: citySlug } = await params;
   const city = await findCity(citySlug);
   if (!city) {
+    if (await legacyCitySlug(citySlug)) permanentRedirect("/service-area");
     notFound();
   }
+  const town = townBySlug(citySlug)!;
 
   const [settings, applianceTypes, site] = await Promise.all([
     getBusinessSettings(),
@@ -82,6 +82,8 @@ export default async function CityLandingPage({
   const facts = siteFacts(settings, { city });
   const c = siteCopy(site.text, facts);
   const profile = { phone: settings.publicPhone, email: settings.publicEmail };
+  const zoneSettings = readZoneSettings(settings);
+  const zone = zoneForPoint({ lat: town.lat, lon: town.lon }, zoneSettings);
 
   return (
     <>
@@ -131,9 +133,16 @@ export default async function CityLandingPage({
           <h2 className="font-display text-xl font-semibold text-ink">
             {c("rent.serving.heading")}
           </h2>
+          <p className="mx-auto mt-3 max-w-xl font-semibold text-ink">
+            {zoneSettings.method === "DRIVING" ? c("area.zone.driving")
+              : zone.kind === "ZONE" ? c("rent.zone", { zone: zone.name }) : c("rent.zone.outside")}
+          </p>
           <p className="mx-auto mt-2 max-w-xl text-ink-soft">
             {c("rent.serving.body")}
           </p>
+          <div className="mt-3">
+            <SiteCta value={siteLinkValue(site.values, "rent.zone.cta")} profile={profile} facts={facts} textStyle />
+          </div>
           {settings.publicPhone && !settings.publicPhone.startsWith("[") && (
             <p className="mt-4 text-ink-soft">{c("rent.call")}</p>
           )}

@@ -123,7 +123,15 @@ export async function provisionalRdfOrderDecisionInTx(
 export function allocateReviewedRdfForLocation(
   rdf:ProvisionalRdfOrderDecision,policy:"UNDECIDED"|"REQUIRED"|"EXEMPT",
   selected:boolean,
+  /** ZONE-1: the customer picks this address's items up at our place — no delivery, so no retail delivery fee. */
+  customerPickup=false,
 ):ReviewedMandatoryChargeRevision["retailDelivery"]{
+  if(customerPickup&&selected)
+    throw new Error("A customer pickup has no delivery, so it can't carry the retail delivery fee.");
+  // CDOR "Retail Delivery Fees" (Oct 2026): "If a purchaser picks up items ... at a retailer's business location,
+  // the retail delivery fees do not apply because there was no delivery." The owner's policy must still be decided.
+  if(customerPickup&&policy!=="UNDECIDED")return {event:false,status:"EXEMPT",amountCents:0,rateId:null,
+    ruleVersionId:null,handling:rdf.handling,reason:"Customer pickup: no delivery, so no retail delivery fee."};
   if(policy==="UNDECIDED")return {event:selected,status:"UNDECIDED",
     amountCents:null,rateId:null,ruleVersionId:null,handling:rdf.handling,
     reason:"Owner effective-date RDF policy must be reviewed."};

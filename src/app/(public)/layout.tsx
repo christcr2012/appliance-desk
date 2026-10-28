@@ -1,4 +1,6 @@
-import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { getBusinessSettings } from "@/domains/settings";
+import { townsWithZones } from "@/domains/delivery/towns";
+import { readZoneSettings } from "@/domains/delivery/zone";
 import {
   isLegalPageApproved,
   LEGAL_PAGE_VERSIONS,
@@ -24,7 +26,8 @@ export default async function PublicLayout({
     getLaunchSettings(),
     getSiteForRequest(),
   ]);
-  const serviceArea = parseServiceArea(settings);
+  // ZONE-1: the towns whose centers are inside a delivery zone.
+  const areaServed = townsWithZones(readZoneSettings(settings)).filter((town) => town.zone.kind === "ZONE").map((town) => town.name);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const tracking = metricoolConfig(process.env.VERCEL_ENV, process.env.METRICOOL_TRACKING_HASH, baseUrl);
   const legalApprovals = (settings as { legalApprovals?: unknown }).legalApprovals;
@@ -55,7 +58,7 @@ export default async function PublicLayout({
       addressRegion: "CO",
       addressCountry: "US",
     },
-    areaServed: serviceArea.cities,
+    areaServed,
     url: baseUrl,
     ...(!launch.prelaunchMode ? { priceRange: "$$" } : {}),
   };

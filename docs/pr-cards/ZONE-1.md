@@ -16,4 +16,9 @@ until Chris switches them on.
 - [ ] Coordinates never shown to customers or logged; customer A can't reach B's address data; `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+2026-10-26, branch `ai/claude/zone-1-service-area-map`: all seven lines coded with tests. Deviations: map positions
+live in their own table `ServiceAddressGeocode` (not columns on ServiceAddress) so no address read can leak them; the
+estimate snapshot is a list (one entry per delivery address); the delivery price is shown on estimates and frozen in
+the snapshot but becomes a billed line in FEETAX-1 (service lines); portal checkout arrives with PORTAL-1 (desk and
+phone orders use the estimate page); staff settle an unknown zone by typing the miles (no clickable pin yet).
+Live Census lookup not observed from the sandbox (network blocked) — checklist row.

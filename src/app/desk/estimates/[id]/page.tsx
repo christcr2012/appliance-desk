@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
 import { readOfferedSlots } from "@/domains/orders/delivery";
 import { DeliveryOfferPanel } from "./delivery-offer-panel";
+import { DeliveryZonePanel } from "./delivery-zone-panel";
+import { customerDeliveryChargesForEstimate } from "@/domains/orders/route-evidence";
+import { currentLocations } from "@/domains/delivery/snapshot";
 import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
 import { getPhoneOrder } from "@/domains/orders/phone-orders";
 import { PhoneOrderPanel } from "./phone-order-panel";
@@ -32,11 +35,14 @@ const EDITABLE = new Set(["DRAFT", "CHANGES_REQUESTED"]);
 
 export default async function EstimateDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ zoneNote?: string | string[]; zoneError?: string | string[] }>;
 }) {
   const session = await requireRole("OWNER", "ADMIN");
   const { id } = await params;
+  const query = (await searchParams) ?? {};
   const [estimate, packages, allInReview, preparedQuote, reserve, mandatory] = await Promise.all([
     getEstimateDetail(id), listPackagesForLines(), getPrivateEstimateAllInReview(id),
     getPreparedEstimateQuote(id), getPreparedReserveOverview(id),
@@ -51,6 +57,10 @@ export default async function EstimateDetailPage({
   const oneTime = totalOneTimeCents(estimate.lineItems);
   const editable = EDITABLE.has(estimate.status);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+
+  // ZONE-1: the per-address delivery price approval and signing require (owner route exceptions included).
+  const deliveryCharges = await customerDeliveryChargesForEstimate(estimate.id,
+    currentLocations(estimate.deliveryZoneSnapshot, estimate.lineItems.map((line) => line.serviceAddress?.id)));
 
   const phoneOrder = estimate.phoneEnteredAt
     ? await getPhoneOrder(session.user.id,estimate.id) : null;
@@ -122,6 +132,13 @@ export default async function EstimateDetailPage({
         version={estimate.deliveryOfferVersion}
         autoFinishEnabled={estimate.customerAutoFinishEnabled}
         editable={["DRAFT","CHANGES_REQUESTED","SENT","VIEWED"].includes(estimate.status)} />
+      <DeliveryZonePanel estimate={estimate}
+        addresses={[...new Map(estimate.lineItems.filter((line) => line.serviceAddress)
+          .map((line) => [line.serviceAddress!.id, { id: line.serviceAddress!.id,
+            label: `${line.serviceAddress!.line1}, ${line.serviceAddress!.city}` }])).values()]}
+        note={typeof query.zoneNote === "string" ? query.zoneNote.slice(0, 120) : undefined}
+        error={typeof query.zoneError === "string" ? query.zoneError.slice(0, 200) : undefined}
+        charges={deliveryCharges} />
 
       {estimate.status === "DECLINED" && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">

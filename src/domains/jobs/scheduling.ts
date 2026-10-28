@@ -206,7 +206,7 @@ export async function scheduleJob(
     const before = await tx.job.findUniqueOrThrow({
       where: { id: input.jobId },
       select: { status: true, version: true, scheduledAt: true,
-        durationMinutes: true, assignedToUserId: true, agreementId: true, sealedSystem: true,
+        durationMinutes: true, assignedToUserId: true, agreementId: true, sealedSystem: true, customerPickupHandoff: true,
         serviceAddressId: true,
         type: true, requestedDelivery: true, requestedDeliveryAt: true,
         confirmedDeliveryAt: true, originalConfirmedDeliveryFor: true },
@@ -242,6 +242,8 @@ export async function scheduleJob(
           {
             serviceAddressId: readinessAddressId,
             agreementId: before.agreementId,
+            // ZONE-1: a customer pickup hand-over sends no truck, so no delivery-license rule.
+            ...(before.customerPickupHandoff ? { customerPickup: true } : {}),
           },
           input.scheduledAt,
         );
