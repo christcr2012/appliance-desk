@@ -1,4 +1,5 @@
 import { jobRoleAllowsPath } from "@/domains/team/job-role-rules";
+import { isHrefHidden, type FeatureKey } from "@/domains/features/registry";
 
 export type DeskNavGroup = {
   label: string;
@@ -86,17 +87,18 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["account", "My account", "Your name, phone, password, sign-in email, devices and two-step sign-in.", undefined],
 ];
 /** The rarely used screens, filtered for the role on the server like the menu itself. */
-export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] | null = null): DeskMoreLink[] {
+export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] | null = null, shown?: ReadonlySet<FeatureKey>): DeskMoreLink[] {
   if (!["OWNER", "ADMIN", "STAFF"].includes(role ?? "")) return [];
   const finance = role === "OWNER" || role === "ADMIN";
   return MORE_LINKS
     .filter(([, , , restriction]) => !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER"))
     .map(([path, label, detail]) => ({ href: `/desk/${path}`, label, detail }))
-    .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href));
+    .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href))
+    .filter((link) => !shown || !isHrefHidden(link.href, shown));
 }
 
 /** Called on the server: restricted destinations are never serialized to staff. */
-export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null): DeskNavGroup[] {
+export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null, shown?: ReadonlySet<FeatureKey>): DeskNavGroup[] {
   // ACCT-1: the accountant's menu is exactly their allowed areas — nothing else is ever serialized to them.
   if (role === "ACCOUNTANT") {
     return [
@@ -125,7 +127,8 @@ export function deskNavigation(role?: string, jobRoleScreens: readonly string[] 
           return !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER");
         })
         .map(([path, label]) => ({ href: `/desk/${path}`, label }))
-        .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href)),
+        .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href))
+        .filter((link) => !shown || !isHrefHidden(link.href, shown)),
     }))
     .filter((group) => group.links.length > 0);
 }

@@ -4742,7 +4742,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — first AR-12 selection controls and Bills/Customers saved views PR in CI; remaining outcomes pending",
+      "status": "IN PROGRESS — merged #693/#695; Help guides PR #702 and Features/Practice branch ai/chatgpt/ar12-feature-visibility-20261027 awaiting CI/review",
       "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [

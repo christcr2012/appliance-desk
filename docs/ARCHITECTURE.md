@@ -22,6 +22,10 @@ One Next.js 16 (App Router) application. No monorepo, no microservices.
 | Hosting | Vercel — team **Robinson AI Systems**, project **appliance-desk** | `live` → production; automatic previews disabled. Domain **robinsonappliancerentals.com**; daily release/cost policy governs. |
 | Database | Neon — project **Appliance Desk** (identifier kept out of this public repo), database `appliance_desk`, branch `main` | Region: **AWS US East 1 (N. Virginia)** — see `docs/DECISIONS.md` for why. |
 
+## Practice copy (AR-12, owner setup required)
+
+`PRACTICE_APP_URL` is an optional server-side HTTPS address of the separate practice/testing app. The link appears only in Settings → Features and only outside `APP_ENV=testing`. When unset or invalid, the link is absent. Do not invent or record its actual value; the owner configures the Production environment variable after verifying the test app. No real payments or messages are enabled by this setting.
+
 ## Environment variables
 
 See `.env.example` for the full list with comments. The short version:

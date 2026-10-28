@@ -1,3 +1,7 @@
+## October 27 — Lane 1 AR-12 Features + Practice (branch ai/chatgpt/ar12-feature-visibility-20261027, in implementation)
+
+Owner choices for seven extra navigation features are being built with an additive settings list and automatic detection for in-use team/property-manager/budget areas. OWNER-only saves re-check permissions and serialize writes; hidden links never revoke page access. Settings → Features includes a guarded Practice link only after the owner configures a separate HTTPS testing address. Tests and exact-head CI/review remain pending. Do not mark any owner checklist proof as passed. AR-1's main work-index merge claim via #714 was false; #714 is TAXBEN-2, corrected on pending Lane 1 PR #691.
+
 ## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 
 Merged via PR #714 (squash `f9adbb2a`); publishing chain #711 → #713 → #714 as main kept moving. Final branch `ai/vivienne/taxben-2c`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` section

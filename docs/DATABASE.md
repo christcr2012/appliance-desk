@@ -1,3 +1,7 @@
+## October 27 — AR-12 feature visibility (additive, in CI review)
+
+Migration `20261026000000_shown_features` adds `BusinessSettings.shownFeatures` (text list, default empty). The owner's choices change only which menu entries appear; existing pages and authorization do not change. Team (2+ active members), property-manager records and active cash budgeting also enable their corresponding feature indicators automatically. Owner-only changes lock the singleton row and record `settings.features` audit entries, once per actual change. No new model, no backup inventory change, and no production settings changed by this work.
+
 ## October 27 — MCP-3 safe reconnect generation (additive)
 
 Migration `20261129000000_mcp_reconnect_generation` adds `McpConnection.grantVersion`. Each new owner approval rotates this opaque value; signed MCP access tokens carry its current version, so a disconnected token cannot be resurrected by approving the same client again. Existing connections receive a distinct version during migration; old JWTs cannot regain access. Consent activation and disconnect serialize on user and connection rows. The private backup snapshot continues to omit OAuth grants.
