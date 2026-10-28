@@ -127,7 +127,7 @@ describe.skipIf(!enabled)("AR-8 row save on real Postgres", () => {
   });
 
   it("saves a domain-writer row through its writer, with the writer's own audit action", async () => {
-    const result = await saveSettingRowAction("retiredFollowUpDays", 45, "unused-for-domain-writers");
+    const result = await saveSettingRowAction("retiredFollowUpDays", 45, await revFor("retiredFollowUpDays"));
     expect(result.status).toBe("success");
     expect((await row()).retiredFollowUpDays).toBe(45);
     const audit = await prisma.auditLog.findFirst({
@@ -136,5 +136,20 @@ describe.skipIf(!enabled)("AR-8 row save on real Postgres", () => {
     });
     expect(audit).not.toBeNull();
     void tag;
+  });
+
+  it("refuses a domain-writer row save made from a stale page (AR-8 review P2)", async () => {
+    const before = (await row()).trustedDeviceDays;
+    const fresh = await revFor("trustedDeviceDays");
+    const ok = await saveSettingRowAction("trustedDeviceDays", 15, fresh);
+    expect(ok.status).toBe("success");
+    expect((await row()).trustedDeviceDays).toBe(15);
+    // The same revision again is now stale: the value moved after the page was drawn.
+    const stale = await saveSettingRowAction("trustedDeviceDays", 20, fresh);
+    expect(stale.status).toBe("error");
+    if (stale.status === "error") expect(stale.message).toMatch(/Someone else changed/);
+    expect((await row()).trustedDeviceDays).toBe(15);
+    const restored = await saveSettingRowAction("trustedDeviceDays", before, await revFor("trustedDeviceDays"));
+    expect(restored.status).toBe("success");
   });
 });

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { assertCapability } from "@/domains/capabilities";
 import type { Prisma } from "@prisma/client";
 import { SettingsConflictError, settingEffect } from "./effects";
+import { settingRowByKey } from "./catalog";
+import { SettingsValidationError, validateSettingsCrossFields } from "./cross-fields";
 import { requireRole } from "@/lib/session";
 
 /**
@@ -174,6 +176,7 @@ export class SettingsUndoError extends Error {}
 /** The reasons an undo can be refused or conflict, in the words shown to the owner. */
 const MSG = {
   notUndoable: "That setting cannot be undone from here.",
+  ownerOnly: "Only the owner can undo this change.",
   gone: "That change is no longer in the history.",
   untouched: "That change did not touch this setting.",
   noSettings: "Settings were not found.",
@@ -261,9 +264,25 @@ export async function undoSettingsChange(userId: string, auditId: string, key: s
       const held = (now as unknown as Record<string, unknown> | null)?.[key];
       if (expectedCurrent !== JSON.stringify(held ?? null)) throw new SettingsConflictError();
     }
+    // AR-8 review (P1): the catalog's owner-only settings stay owner-only on
+    // the undo path too — an admin who may edit settings cannot undo the
+    // owner's change to one of them, from either undo entry point.
+    if (settingRowByKey(key)?.who === "owner") {
+      const actor = await tx.user.findUnique({ where: { id: userId }, select: { role: true } });
+      if (actor?.role !== "OWNER") throw new SettingsUndoError(MSG.ownerOnly);
+    }
     const checked = await checkUndo(tx, auditId, key);
     if (!checked.ok) throw new SettingsUndoError(checked.reason);
     const restored = (checked.before[key] ?? null) as Prisma.InputJsonValue | null;
+    // AR-8 review (P2): the restored combination must be one the save path
+    // would accept — undoing one delivery-window field must not recreate a
+    // window whose start is not before its end.
+    try {
+      validateSettingsCrossFields(checked.now, { [key]: restored });
+    } catch (error) {
+      if (error instanceof SettingsValidationError) throw new SettingsUndoError(error.message);
+      throw error;
+    }
     const data = { [key]: restored } as Prisma.BusinessSettingsUpdateInput;
     const updated = await tx.businessSettings.update({ where: { id: "singleton" }, data });
     await tx.auditLog.create({

@@ -101,15 +101,15 @@ export async function saveSettingRowAction(
         const parsed = z.number().int().min(def.min ?? 1).max(def.max ?? 365).safeParse(value);
         if (!parsed.success) return { status: "error", message: "Enter a whole number of days." };
         const { setRetiredFollowUpDays } = await import("@/domains/inventory/retired-plans");
-        await setRetiredFollowUpDays(session.user.id, parsed.data);
+        await setRetiredFollowUpDays(session.user.id, parsed.data, revision);
       } else if (def.editor.domainWriter === "setApprovalExpiryDays") {
         const parsed = z.number().int().min(1).max(30).safeParse(value);
         if (!parsed.success) return { status: "error", message: "Requests can wait between 1 and 30 days." };
         const { setApprovalExpiryDays } = await import("@/domains/approvals");
-        await setApprovalExpiryDays(session.user.id, parsed.data);
+        await setApprovalExpiryDays(session.user.id, parsed.data, revision);
       } else if (def.editor.domainWriter === "updateTrustedDeviceSettings") {
         const { updateTrustedDeviceSettings } = await import("@/domains/security/trusted-devices");
-        await updateTrustedDeviceSettings(session.user.id, { days: value });
+        await updateTrustedDeviceSettings(session.user.id, { days: value }, revision);
       } else {
         return GENERIC;
       }

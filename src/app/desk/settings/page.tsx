@@ -59,6 +59,7 @@ import { getPauseSettings } from "@/domains/security/sign-in-guard";
 import { getMethodSettings, twilioKeysPresent } from "@/domains/security/second-step";
 import { EMAIL_WEAKER_WARNING, METHOD_LABEL } from "@/domains/security/second-step-rules";
 import { DeliveryZonesForm } from "./delivery-zones-form";
+import { DrivingOriginForm } from "./driving-origin-form";
 import { ServiceAreaMap } from "@/components/site/service-area-map";
 import { readZoneSettings } from "@/domains/delivery/zone";
 import { townsWithZones } from "@/domains/delivery/towns";
@@ -200,6 +201,19 @@ export default async function DeskSettingsPage({
         </div>
       </div>
     );
+    // The settings view type does not carry the origin's verification
+    // bookkeeping; read those two fields straight from the row.
+    const originRow = await prisma.businessSettings.findUnique({
+      where: { id: "singleton" },
+      select: { drivingOriginVerifiedAt: true, drivingOriginSourceReference: true },
+    });
+    panels["drivingOriginPanel"] = (
+      <DrivingOriginForm
+        address={settings.drivingOriginAddress}
+        verifiedAt={originRow?.drivingOriginVerifiedAt ? originRow.drivingOriginVerifiedAt.toISOString() : null}
+        sourceReference={originRow?.drivingOriginSourceReference ?? null}
+      />
+    );
   }
 
   if (section === "prices") {
@@ -213,7 +227,7 @@ export default async function DeskSettingsPage({
         select: { id: true, effectiveFromKey: true, treatment: true },
       }),
     ]);
-    panels["appliancePricesPanel"] = (
+panels["appliancePricesPanel"] = (
       <AppliancePricingTable
         rows={applianceTypes.map((t) => ({
           id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents,
@@ -513,12 +527,9 @@ export default async function DeskSettingsPage({
     else groups.push({ name, rows: [r] });
   }
 
-  const sectionLabel = SETTINGS_SECTIONS_V2.find((s) => s.id === section)!.label;
-
   return (
     <SettingsLayout attention={[...attention]}>
     <div>
-      <h1 className="sr-only">Settings — {sectionLabel}</h1>
       {topExtra}
       {groups.map((g) => (
         <section key={g.name ?? "top"} className="mb-6">
