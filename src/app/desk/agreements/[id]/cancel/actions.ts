@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { approvePreDeliveryCancellation, type CancellationPolicy } from "@/domains/agreements/pre-delivery-cancellation";
+import { getRentalEndReasons, parseEndReasonInput, recordAgreementEndReason } from "@/domains/agreements/end-reasons";
 
 export type CancellationActionState = { error: string };
 export async function approveCancellationAction(
@@ -20,6 +21,14 @@ export async function approveCancellationAction(
       reason: String(form.get("reason") ?? ""),
       reviewedTerms: form.get("reviewedTerms") === "on",
     });
+    // AR-4a: the optional "Why is it ending?" answer rides along at approval.
+    const rawReason = form.get("endReason");
+    if (typeof rawReason === "string" && rawReason.trim()) {
+      const allowed = await getRentalEndReasons();
+      const rawNote = form.get("endReasonNote");
+      const input = parseEndReasonInput(rawReason, typeof rawNote === "string" ? rawNote : null, allowed);
+      await recordAgreementEndReason(session.user.id, agreementId, input);
+    }
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to cancel. Refresh the review." };
   }
