@@ -3575,6 +3575,8 @@ model BusinessSettings {
   // K-CASH-4A: cash budgeting is OFF until source-reviewed owner setup.
   cashBudgetStartOn DateTime?
   cashBudgetEnabled Boolean @default(false)
+  // AR-12: only navigation visibility; hidden pages and existing permissions still work.
+  shownFeatures String[] @default([])
   bankEvidenceMaxAgeDays Int @default(7)
   budgetPlanningHorizonDays Int @default(90)
   budgetUpcomingWindowDays Int @default(30)

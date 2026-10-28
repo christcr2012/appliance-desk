@@ -15,8 +15,15 @@ for(const width of [360,1280]){
  });
 }
 test("K-CASH owner can navigate from Books; staff never sees private bank evidence",async({page,browser})=>{
+ await page.goto("/desk/settings/features");
+ const switchedOn=(await page.getByRole("switch",{name:"Bank statements"}).getAttribute("aria-checked"))==="true";
  await page.goto("/desk/books");
- await expect(page.getByRole("link",{name:"Bank statements and cash records"})).toHaveAttribute("href","/desk/books/cash");
+ const link=page.getByRole("link",{name:"Bank statements and cash records"});
+ await expect(link).toHaveCount(switchedOn?1:0);
+ if(switchedOn) await expect(link).toHaveAttribute("href","/desk/books/cash");
+ // Hidden navigation never revokes the underlying owner's authorized direct URL.
+ await page.goto("/desk/books/cash");
+ await expect(page.getByRole("heading",{name:"Bank statements and cash records"})).toBeVisible();
  const context=await browser.newContext({storageState:"e2e/.auth/staff.json",viewport:{width:390,height:844}});
  try{
   const staff=await context.newPage();await staff.goto("/desk/books/cash");

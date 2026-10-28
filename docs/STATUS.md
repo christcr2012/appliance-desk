@@ -52,6 +52,10 @@ Previous exact-head GitHub `ci` and `review-gate` were green. GitHub later repor
 `docs/STATUS.md` conflict with newer main; this integration reconciles both status notes.
 Re-run exact-head checks and review before squash merging; MCP-5 execution is still unfinished.
 
+## October 27 — Lane 1 AR-12 Features + Practice (branch ai/chatgpt/ar12-feature-visibility-20261027, in implementation)
+
+Owner choices for seven extra navigation features are being built with an additive settings list and automatic detection for in-use team/property-manager/budget areas. OWNER-only saves re-check permissions and serialize writes; hidden links never revoke page access. Settings → Features includes a guarded Practice link only after the owner configures a separate HTTPS testing address. Tests and exact-head CI/review remain pending. Do not mark any owner checklist proof as passed. AR-1's main work-index merge claim via #714 was false; #714 is TAXBEN-2, corrected on pending Lane 1 PR #691.
+
 ## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
 The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
 
