@@ -23,6 +23,20 @@ describe("kit StatusPill (KIT 4.17)", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("shows next step alongside existing glossary content and stays keyboard dismissible", async () => {
+    render(<StatusPill label="Paid" tone="good" next="Paid in full. Nothing to do." info="set-price" />);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name:"Paid: what this means" })));
+    const note = screen.getByRole("note");
+    expect(note).toHaveTextContent(GLOSSARY["set-price"].title);
+    expect(note).toHaveTextContent("Paid in full. Nothing to do.");
+    await act(async () => fireEvent.keyDown(note, { key:"Escape" }));
+    expect(screen.queryByRole("note")).toBeNull();
+  });
+  it("opens a next-step note even without a glossary entry", async () => {
+    render(<StatusPill label="Scheduled" tone="info" next="Booked." />);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name:"Scheduled: what happens next" })));
+    expect(screen.getByRole("note")).toHaveTextContent("Booked.");
+  });
   it("with info, is a button that opens the glossary entry and closes on Escape", async () => {
     render(<StatusPill label="5 days late" tone="attention" info="set-price" />);
     const button = screen.getByRole("button", { name: "5 days late: what this means" });

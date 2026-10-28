@@ -12,7 +12,7 @@ export type RecordHeaderProps = {
   title: string;
   /** Matches the list row id for native page-to-page title motion; no animation without a matching row. */
   transitionId?: string;
-  pills?: { label: string; tone: Tone; info?: GlossaryKey }[];
+  pills?: { label: string; tone: Tone; info?: GlossaryKey; next?: string }[];
   subtitle?: string;
   contact?: { phone?: string; email?: string; address?: string };
   primary?: ActionSpec;
@@ -79,7 +79,7 @@ export function RecordHeader({ title, transitionId, pills = [], subtitle, contac
               </h1>
             )}
             {pills.map((pill) => (
-              <StatusPill key={pill.label} label={pill.label} tone={pill.tone} info={pill.info} />
+              <StatusPill key={pill.label} label={pill.label} tone={pill.tone} info={pill.info} next={pill.next} />
             ))}
           </div>
           {subtitle ? <p className="mt-1 text-sm text-ink-soft">{subtitle}</p> : null}

@@ -1,3 +1,6 @@
+## October 27 — Lane 1 AR-12 next-step status explanations (PR #695)
+Connected exhaustive bill, rental and visit next steps, automatic-work labels and plain-words checks to current main without dropping the previously merged saved views. Original Reviewgate passed; recheck exact-head CI after resolving a real conflict. Feature controls and Help are separate AR-12 outcomes.
+
 ## October 27 — ACCT-1: Accountant sign-in (MERGED — PR #709, squash dc839ad6)
 
 ## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (MERGED — PR #705, squash bbc3f78f)
