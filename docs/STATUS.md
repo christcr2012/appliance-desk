@@ -1,3 +1,15 @@
+## October 28 — AR-3 Money area: built, opening as a PR (Lane 4, branch ai/vivienne/ar-3)
+
+The Money area is built on the kit: a Money overview (money in, still owed, past due, coming in
+30 days, money-group decisions, recent payments), a Payments list (Received / Failed / Needs a
+decision / Deposits / Waiting for Stripe; the old billing `?view=deposits` and `?view=waiting`
+links redirect here), payment sheets that open in place (Take payment, Record cash or check,
+card payment) on the Bills list, the bill panel, the statement and the customer record, and the
+bill record rebuilt as a kit record page with an Activity tab. No money rules changed — every
+button is the existing server action. Unit, database, typecheck and lint checks pass locally;
+the browser suite's re-run on this head is gated on CI (the shared box kept killing the local
+production build); the PR will be named here in the close-out. Next: CI, review, merge.
+
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
 AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list

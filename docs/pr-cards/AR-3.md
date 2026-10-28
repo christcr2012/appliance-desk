@@ -41,4 +41,7 @@ The "Being confirmed" tabs on Bills and Payments (BILL-1 adds them); Expenses, B
 Taxes screens (AR-7); statement page redesign (stays as is, linked from ⋯); bulk actions.
 
 ## Progress
-Not started.
+Started 2026-10-28 by Lane 4 on branch `ai/vivienne/ar-3` (baseline main `bda3cf41`, AR-1 merged via
+PR #720). Step 0a done: execution packet `docs/pr-cards/execution/AR-3.json` created and registered in
+the work index; drift check found everything the build spec names present on current main — no card
+corrections needed. Building Step 0 (job-role routes) next.
