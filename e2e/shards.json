@@ -22,6 +22,7 @@
       "desk-workspace.spec.ts",
       "books-reports.spec.ts",
       "money-bills.spec.ts",
+      "money-area.spec.ts",
       "staff-security.spec.ts",
       "features.spec.ts"
     ],

@@ -12,6 +12,20 @@ uses. The Sheet renders only for the owner, and the deciding action refuses
 anyone else itself. New browser spec e2e/today-inline.spec.ts covers approve
 and decline through the confirmation, the staff view, and axe at five sizes.
 
+## October 28 — AR-3 Money area: built and in review (PR #725, Lane 4)
+
+The Money area is built on the kit: a Money overview (money in, still owed, past due, coming in
+30 days, money-group decisions, recent payments), a Payments list (Received / Failed / Needs a
+decision / Deposits / Waiting for Stripe; the old billing `?view=deposits` and `?view=waiting`
+links redirect here), payment sheets that open in place (Take payment, Record cash or check,
+card payment) on the Bills list, the bill panel, the statement and the customer record, and the
+bill record rebuilt as a kit record page with an Activity tab. No money rules changed — every
+button is the existing server action. CI is green on the PR head (the full browser suite included —
+it caught and I fixed a kit-guard menu move, plain-words titles, bundle budgets for the two new
+pages, a missing Toaster on the statement page, and three test files that followed the old
+deposits/waiting URLs). Next: review gate, merge, close-out.
+
+
 ## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
 
 AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is
