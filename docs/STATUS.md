@@ -1,4 +1,4 @@
-## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page
+## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
 
 AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is
 the refactor only: the approval server actions now live in
