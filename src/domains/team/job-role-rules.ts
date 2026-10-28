@@ -103,16 +103,34 @@ export function isScreenKey(value: string): value is ScreenKey {
   return Object.hasOwn(SCREENS, value);
 }
 
+/**
+ * AR-9: two-segment exceptions, checked BEFORE the first-segment map
+ * (longest match wins). The Insights screens moved under customers and
+ * inventory, whose first segments belong to other screens — without this
+ * map an admin whose job role has Customers but not Management would newly
+ * see the old Growth figures. The mapping keeps today's access exactly:
+ * customers/insights was Growth (management), inventory/insights was Fleet
+ * (billing), money/income was Revenue (billing).
+ */
+const PATH_PREFIX_TO_SCREEN: Record<string, ScreenKey> = {
+  "customers/insights": "management",
+  "inventory/insights": "billing",
+  "money/income": "billing",
+};
+
 /** What the screen is, from a /desk address. "always" = open to every team member; null = not a known desk screen. */
 export function screenForPath(pathname: string | null | undefined): ScreenKey | "always" | null {
   if (!pathname) return null;
   const clean = pathname.split("?")[0].split("#")[0];
   if (clean === "/desk" || clean === "/desk/") return "always";
   if (!clean.startsWith("/desk/")) return null;
-  const first = clean.slice("/desk/".length).split("/")[0];
+  const segments = clean.slice("/desk/".length).split("/");
+  const first = segments[0];
+  const twoSegment = segments.length > 1 ? `${segments[0]}/${segments[1]}` : null;
+  if (twoSegment && Object.hasOwn(PATH_PREFIX_TO_SCREEN, twoSegment)) return PATH_PREFIX_TO_SCREEN[twoSegment];
   if ((ALWAYS_ALLOWED as readonly string[]).includes(first)) return "always";
   // MCP-10a: everyone on the team can send app feedback and follow their own reports, whatever their job role.
-  const second = clean.slice("/desk/".length).split("/")[1];
+  const second = segments[1];
   if (first === "feedback" && (second === "new" || second === "mine")) return "always";
   return Object.hasOwn(PATH_TO_SCREEN, first) ? PATH_TO_SCREEN[first] : null;
 }

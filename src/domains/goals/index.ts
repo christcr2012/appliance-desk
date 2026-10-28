@@ -4,7 +4,7 @@ import { assertCapability } from "@/domains/capabilities";
 import { businessDateKey, businessMonthBounds } from "@/lib/business-date";
 import { computeCustodyUtilization, MIN_UTILIZATION_EVIDENCE_DAYS_PER_UNIT } from "@/domains/growth/utilization";
 import {
-  computePace, GOAL_METRICS, isGoalMetric, validateIdleDays, validateTarget, validateUtilizationPercent,
+  computePace, GOAL_METRICS, isGoalMetric, validateGoalBehindPercent, validateGoalQuietDays, validateIdleDays, validateTarget, validateUtilizationPercent,
   type GoalMetric, type Pace,
 } from "./pace";
 
@@ -49,6 +49,7 @@ export type GoalProgress = {
 export async function getGoalProgress(now = new Date()): Promise<GoalProgress[]> {
   const { start } = businessMonthBounds(now);
   const goals = await prisma.businessGoal.findMany({ where: { month: start }, take: 20, orderBy: { id: "asc" } });
+  const paceSettings = await getPaceSettings();
   const dayOfMonth = Number(businessDateKey(now).slice(8, 10));
   const daysInMonth = daysInColoradoMonth(now);
   const out: GoalProgress[] = [];
@@ -57,10 +58,37 @@ export async function getGoalProgress(now = new Date()): Promise<GoalProgress[]>
     const actual = await actualSoFar(metric, now);
     out.push({
       metric, label: GOAL_METRICS[metric].label, actual, target: goal?.targetValue ?? null,
-      pace: goal ? computePace({ target: goal.targetValue, actual, dayOfMonth, daysInMonth }) : null,
+      pace: goal ? computePace({ target: goal.targetValue, actual, dayOfMonth, daysInMonth, quietDays: paceSettings.quietDays, behindPercent: paceSettings.behindPercent }) : null,
     });
   }
   return out;
+}
+
+export type PaceSettings = { quietDays: number; behindPercent: number };
+
+export const DEFAULT_GOAL_QUIET_DAYS = 7;
+export const DEFAULT_GOAL_BEHIND_PERCENT = 75;
+
+export async function getPaceSettings(): Promise<PaceSettings> {
+  const row = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { goalQuietDays: true, goalBehindPercent: true } });
+  return { quietDays: row?.goalQuietDays ?? DEFAULT_GOAL_QUIET_DAYS, behindPercent: row?.goalBehindPercent ?? DEFAULT_GOAL_BEHIND_PERCENT };
+}
+
+export async function setPaceSettings(actorUserId: string, next: PaceSettings): Promise<void> {
+  const problem = validateGoalQuietDays(next.quietDays) ?? validateGoalBehindPercent(next.behindPercent);
+  if (problem) throw new GoalError(problem);
+  await prisma.$transaction(async (tx: Tx) => {
+    await assertCapability(tx, actorUserId, "EDIT_SETTINGS");
+    const before = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { goalQuietDays: true, goalBehindPercent: true } });
+    await tx.businessSettings.update({ where: { id: "singleton" }, data: { goalQuietDays: next.quietDays, goalBehindPercent: next.behindPercent } });
+    await tx.auditLog.create({
+      data: {
+        userId: actorUserId, action: "settings.goal-pace", entityType: "BusinessSettings", entityId: "singleton",
+        oldValue: { quietDays: before?.goalQuietDays ?? null, behindPercent: before?.goalBehindPercent ?? null },
+        newValue: { quietDays: next.quietDays, behindPercent: next.behindPercent },
+      },
+    });
+  });
 }
 
 /** Set (or change) this month's target. `target` is cents for cash, a whole number for rentals. */
