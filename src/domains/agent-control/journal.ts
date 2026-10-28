@@ -103,7 +103,7 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
         throw new Error("CONFLICT");
       return old;
     }
-    return tx.agentOperation.create({ data: {
+    const created = await tx.agentOperation.create({ data: {
       connectionId: ctx.connectionId, actorUserId: ctx.userId,
       tool: input.tool, action: input.action, targetRef: input.targetRef,
       requestKeyDigest, argsHash: args.digest, args: JSON.parse(args.serialized) as Prisma.InputJsonValue,
@@ -112,6 +112,11 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
         AgentOperationState.PREVIEWED : AgentOperationState.AWAITING_APPROVAL,
       expiresAt: new Date(Date.now() + WINDOW_MS),
     } });
+    await tx.auditLog.create({ data: {
+      userId: ctx.userId, action: "mcp.operation.previewed", entityType: "AgentOperation",
+      entityId: created.id, newValue: { action: input.action, targetRef: input.targetRef ?? null },
+    } });
+    return created;
   });
 }
 
@@ -137,6 +142,9 @@ export async function decideJournalApproval(actorId: string, operationId: string
       tx.mcpConnection.findUniqueOrThrow({ where: { id: locator.connectionId } }),
     ]);
     if (connection.revokedAt || operation.connectionId !== connection.id) throw new Error("CONNECTION_REVOKED");
+    await assertActiveTeamActor(tx, connection.userId, ["OWNER", "ADMIN"]);
+    const policy = ACTION_PERMISSIONS[operation.action as JournalAction];
+    if (!policy || !connection.scopes.includes(policy.scope)) throw new Error("FORBIDDEN_SCOPE");
     if (operation.state !== AgentOperationState.AWAITING_APPROVAL) throw new Error("INVALID_APPROVAL_STATE");
     if (operation.expiresAt.getTime() <= Date.now()) {
       await tx.agentOperation.update({ where: { id: operationId },
@@ -144,7 +152,7 @@ export async function decideJournalApproval(actorId: string, operationId: string
       // A transaction that throws would roll back expiry; return a safe terminal record instead.
       return { id: operation.id, state: AgentOperationState.EXPIRED };
     }
-    return tx.agentOperation.update({
+    const result = await tx.agentOperation.update({
       where: { id: operationId },
       data: {
         state: approved ? AgentOperationState.AUTHORIZED : AgentOperationState.DENIED,
@@ -152,5 +160,11 @@ export async function decideJournalApproval(actorId: string, operationId: string
       },
       select: { id: true, state: true },
     });
+    await tx.auditLog.create({ data: {
+      userId: actorId, action: approved ? "mcp.operation.authorized" : "mcp.operation.denied",
+      entityType: "AgentOperation", entityId: operationId,
+      newValue: { action: operation.action, targetRef: operation.targetRef },
+    } });
+    return result;
   });
 }

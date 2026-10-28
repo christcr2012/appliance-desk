@@ -42,6 +42,9 @@ describe.skipIf(!enabled)("MCP action journal on disposable PostgreSQL", () => {
     } });
   });
   afterAll(async () => {
+    await prisma.auditLog.deleteMany({
+      where: { userId: { in: [adminId, ownerId] }, entityType: "AgentOperation" },
+    });
     await prisma.agentOperation.deleteMany({ where: { connectionId } });
     await prisma.mcpConnection.deleteMany({ where: { id: connectionId } });
     await prisma.user.deleteMany({ where: { id: { in: [adminId, ownerId] } } });
@@ -91,6 +94,12 @@ describe.skipIf(!enabled)("MCP action journal on disposable PostgreSQL", () => {
     await expect(createJournalPreview(ctx, { ...initial, requestKey: "journal-request-safe-004" }))
       .rejects.toThrow("FORBIDDEN_SCOPE");
     await prisma.mcpConnection.update({ where: { id: connectionId }, data: { scopes: ctx.scopes } });
+    const pending = await createJournalPreview(ctx, {
+      ...initial, requestKey: "journal-request-safe-006",
+    });
+    await prisma.user.update({ where: { id: adminId }, data: { role: "STAFF" } });
+    await expect(decideJournalApproval(ownerId, pending.id, true)).rejects.toThrow();
+    await prisma.user.update({ where: { id: adminId }, data: { role: "ADMIN" } });
     await prisma.user.update({ where: { id: adminId }, data: { archivedAt: new Date() } });
     await expect(createJournalPreview(ctx, { ...initial, requestKey: "journal-request-safe-005" }))
       .rejects.toThrow();

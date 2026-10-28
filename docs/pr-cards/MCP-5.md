@@ -61,3 +61,5 @@ a SUCCEEDED operation preserved, and the connection revoked (1 integration
 test). Backup policy tests 15/15, migration check and changed-file ESLint passed.
 The main execute/verify/UNKNOWN reconciliation and owner activity UI still
 remain, so MCP-5 is deliberately not called complete or published.
+
+**Further checked (2026-10-27):** Preview and owner decisions now also write limited audit entries (operation action/reference only, never the arguments or answers); owner approval rechecks the connecting actor's live role and grant. The disposable-Postgres suite still passes all four cases including post-preview role downgrade. The operation dispatcher, reconciliation, domain actions and owner activity UI remain unbuilt.
