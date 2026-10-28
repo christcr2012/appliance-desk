@@ -7,6 +7,7 @@ import {
 
 const actorId = "mcp-repair-user-" + randomUUID();
 const issueId = "mcp-repair-issue-" + randomUUID();
+const transitionId = "mcp-repair-evidence-" + randomUUID();
 const revision = "a".repeat(40);
 const originalRevision = process.env.VERCEL_GIT_COMMIT_SHA;
 
@@ -19,11 +20,16 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
       id: issueId, fingerprint: "repair-fixture:" + issueId, kind: "AUTOMATION_FAILED",
       severity: "MEDIUM", summary: "Scheduled inspection failed", detail: "Safe diagnostic test issue",
     } });
+    await prisma.systemIssue.create({ data: {
+      id: transitionId, fingerprint: "repair-fixture:" + transitionId, kind: "AUTOMATION_FAILED",
+      severity: "MEDIUM", summary: "Another scheduled inspection failed", detail: "Synthetic check case",
+    } });
   });
 
   afterAll(async () => {
-    await prisma.repairCase.deleteMany({ where: { sourceId: issueId } });
-    await prisma.systemIssue.deleteMany({ where: { id: issueId } });
+    await prisma.repairCase.deleteMany({ where: { sourceId: { in: [issueId, transitionId] } } });
+    await prisma.systemIssue.deleteMany({ where: { id: { in: [issueId, transitionId] } } });
+    await prisma.automationRun.deleteMany({ where: { runKey: transitionId } });
     await prisma.user.deleteMany({ where: { id: actorId } });
     if (originalRevision === undefined) delete process.env.VERCEL_GIT_COMMIT_SHA;
     else process.env.VERCEL_GIT_COMMIT_SHA = originalRevision;
@@ -75,6 +81,59 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
     expect(check?.stage).toBe("BLOCKED");
     expect(check?.verifiedAt).toBeNull();
     expect((await prisma.systemIssue.findUniqueOrThrow({ where: { id: issueId } })).status).toBe("OPEN");
+  });
+
+  it("separates open, merged, deployed and independently checked evidence", async () => {
+    const record = await createRepairCase({ ...input(), sourceId: transitionId });
+    const prNumber = 61;
+    const mergeSha = "b".repeat(40);
+    const liveSha = "c".repeat(40);
+    await linkRepairPullRequest({ actorId, caseId: record.id, prNumber });
+    let merged = false;
+    let ciPassed = false;
+    let ancestry = false;
+    const fetcher = async (request: RequestInfo | URL) => {
+      const path = new URL(String(request)).pathname;
+      let result: object;
+      if (path.endsWith(`/pulls/${prNumber}`)) {
+        result = { number: prNumber, state: merged ? "closed" : "open", base: { ref: "main" },
+          head: { repo: { full_name: "christcr2012/appliance-desk" } },
+          merged_at: merged ? "2026-10-28T00:00:00Z" : null,
+          merge_commit_sha: merged ? mergeSha : null };
+      } else if (path.endsWith(`/commits/${mergeSha}/check-runs`)) {
+        result = { check_runs: ciPassed ? [{ name: "ci", status: "completed",
+          conclusion: "success", head_sha: mergeSha }] : [] };
+      } else if (path.endsWith(`/compare/${mergeSha}...${liveSha}`)) {
+        result = { status: ancestry ? "ahead" : "behind" };
+      } else {
+        return new Response(null, { status: 404 });
+      }
+      return new Response(JSON.stringify(result), { status: 200,
+        headers: { "content-type": "application/json" } });
+    };
+    expect((await checkRepairCase(actorId, record.id, { fetcher }))?.stage).toBe("PR_OPEN");
+    merged = true;
+    expect((await checkRepairCase(actorId, record.id, { fetcher }))?.stage).toBe("PR_OPEN");
+    ciPassed = true;
+    expect((await checkRepairCase(actorId, record.id, {
+      fetcher, deployedRevision: "unverified" }))?.stage).toBe("MERGED");
+    expect((await checkRepairCase(actorId, record.id, {
+      fetcher, deployedRevision: liveSha }))?.stage).toBe("MERGED");
+    ancestry = true;
+    const deployed = await checkRepairCase(actorId, record.id, { fetcher, deployedRevision: liveSha });
+    expect(deployed?.stage).toBe("DEPLOYED");
+    expect(deployed?.verifiedAt).toBeNull();
+    const deployment = await prisma.repairEvidence.findFirstOrThrow({
+      where: { caseId: record.id, kind: "DEPLOYMENT", status: "VERIFIED" },
+      orderBy: { checkedAt: "desc" },
+    });
+    await prisma.systemIssue.update({ where: { id: transitionId }, data: { status: "RESOLVED" } });
+    await prisma.automationRun.create({ data: { ruleKey: "backup", runKey: transitionId,
+      environment: "test", state: "SUCCEEDED",
+      startedAt: new Date(deployment.checkedAt!.getTime() + 1000) } });
+    const checked = await checkRepairCase(actorId, record.id, { fetcher, deployedRevision: liveSha });
+    expect(checked?.stage).toBe("VERIFIED");
+    expect(checked?.verifiedAt).toBeTruthy();
   });
 
   it("lets the owner decline an unverified repair, preserving issue history", async () => {

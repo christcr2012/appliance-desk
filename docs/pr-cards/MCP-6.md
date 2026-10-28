@@ -44,9 +44,11 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
   durable stages, owner rejection, and System health > Repairs presentation.
 - Unit/security proof: `tests/mcp-repair-evidence.test.ts`, 4/4 passed.
   Disposable PostgreSQL proof: `tests/mcp-repair-cases-integration.test.ts`,
-  5/5 passed; no skips. The fifth real-database test sends twelve parallel
+  6/6 passed; no skips. The fifth real-database test sends twelve parallel
   differently worded requests and proves one active case; a source-row lock
-  and partial unique index enforce that invariant. Prisma validation and
+  and partial unique index enforce that invariant. The sixth drives fake GitHub
+  evidence through PR open, merge with exact check, deployed ancestry, and a
+  later independent successful health run before marking verified. Prisma validation and
   changed-file lint passed.
 - Browser proof is **not** complete: `e2e/mcp-repair-cases.spec.ts` is registered
   but the local 4 GB sandbox's Next.js build was killed (exit 137). GitHub CI
