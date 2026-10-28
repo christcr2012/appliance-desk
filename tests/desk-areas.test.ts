@@ -24,7 +24,9 @@ describe("AR-1 five desk areas", () => {
   });
 
   it("does not serialize finance/owner-only destinations to staff or other user types", () => {
-    for (const path of ["/desk/billing", "/desk/revenue", "/desk/sales-tax", "/desk/leads",
+    // AR-3: the Money overview tab now lives at /desk/money; /desk/revenue remains a finance-only
+    // destination under it (a matches entry and a header-menu link), not a tab href of its own.
+    for (const path of ["/desk/billing", "/desk/money", "/desk/sales-tax", "/desk/leads",
       "/desk/estimates", "/desk/purchases", "/desk/suppliers", "/desk/inventory/retired"]) {
       expect(hrefs("STAFF")).not.toContain(path);
       expect(hrefs("OWNER")).toContain(path);
@@ -48,8 +50,10 @@ describe("AR-1 five desk areas", () => {
 
   it("matches the longest route and query so only the right tab is active", () => {
     expect(match("/desk/billing")).toEqual({ area: "money", tab: "bills" });
-    expect(match("/desk/billing", "view=deposits")).toEqual({ area: "money", tab: "payments" });
-    expect(match("/desk/billing", "view=waiting")).toEqual({ area: "money", tab: "payments" });
+    // AR-3: ?view=deposits and ?view=waiting no longer render — they redirect to /desk/payments,
+    // where Payments is current by href. The pre-redirect URL resolves to the Bills tab's page.
+    expect(match("/desk/billing", "view=deposits")).toEqual({ area: "money", tab: "bills" });
+    expect(match("/desk/billing", "view=waiting")).toEqual({ area: "money", tab: "bills" });
     expect(match("/desk/billing/held-payments")).toEqual({ area: "money", tab: "payments" });
     expect(match("/desk/billing/customer/abc")).toEqual({ area: "money", tab: "bills" });
     expect(match("/desk/inventory/retired")).toEqual({ area: "equipment", tab: "retired" });

@@ -77,7 +77,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
 
   if (params.status === "deposits" || params.status === "waiting") {
     return (
-      <div className="flex flex-col gap-4">
+      // Same 20 px kit gutter compensation as the list view below.
+      <div className="flex flex-col gap-4 px-1 sm:px-0">
         <ScreenHeader title="Payments" />
         {tabs}
         {params.status === "deposits" ? <DepositsTab /> : <WaitingTab />}

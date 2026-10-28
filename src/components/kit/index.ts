@@ -37,6 +37,7 @@ export { InboxCard, type InboxCardProps } from "./inbox-card";
 export { Timeline, type TimelineItem } from "./timeline";
 export { Fab } from "./fab";
 export { OverflowMenu } from "./overflow-menu";
+export { ActionMenu, type ActionMenuItem } from "./action-menu";
 export { DecisionCard, type DecisionCardProps } from "./decision-card";
 export { InfoTip } from "./info-tip";
 export { useMediaQuery, DESKTOP_QUERY } from "./use-media-query";

@@ -77,7 +77,7 @@ test.describe("Money area", () => {
       await expect(page.getByText("Recorded $70.00")).toBeVisible();
       await expect(page.getByText("Still owed")).toBeVisible();
       await expect(page.locator("dd", { hasText: "$0.00" }).first()).toBeVisible();
-      await expect(page.getByRole("button", { name: "Print", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Print / save as PDF" })).toBeVisible();
     } finally {
       // The shared fixture cleanup does not know about payments/receipts; remove them first.
       const { prisma } = await import("../src/lib/prisma");
