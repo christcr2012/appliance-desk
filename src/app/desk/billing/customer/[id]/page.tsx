@@ -8,7 +8,7 @@ import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status-labels";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { StatusBadge } from "@/components/status-badge";
 import { StatementReconciliationCard } from "@/components/billing/statement-reconciliation";
-import { RecordPaymentForm } from "./record-payment-form";
+import { RecordPaymentSheet } from "../../record-payment-sheet";
 import { WriteOffButton } from "./write-off-button";
 
 export const metadata = { title: "Customer statement" };
@@ -91,10 +91,11 @@ export default async function CustomerStatementPage({
 
       <StatementReconciliationCard reconciliation={statement.reconciliation} />
 
-      <div className="mt-6 scroll-mt-20" id="record-payment">
-        <RecordPaymentForm
+      <div className="mt-6 scroll-mt-20">
+        <RecordPaymentSheet
           customerId={statement.customerId}
           openInvoices={openInvoices}
+          anchorId="record-payment"
         />
       </div>
 
