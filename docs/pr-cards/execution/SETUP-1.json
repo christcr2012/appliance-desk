@@ -1,1 +1,116 @@
-{"acceptance":["All 15 spec walkthroughs exist, each with why, what to have ready, plain steps with exact menu names and https links, the record each step fills, and automatic checks where the app has a real signal.","Progress shows per walkthrough (x of y steps); the suggested next walkthrough is the one whose needed-by date comes soonest (IRIS TCC before January 31), then data order; a Today To do names it until every walkthrough is done or marked Not for me.","Marking a step done can save the number or file it produces into the matching business record in the same flow, through the VAULT-1 rules (encrypted, masked, sniffed, audited).","The owner checklist rows for the compliance encryption key, the vault encryption key and backups link to their walkthrough instead of repeating the steps.","Checks never reveal secret values (presence only, allowlisted env names); ci green at the exact head; every review comment read and dispositioned."],"baseline":"9f7671dd6ea42d93a2170ff4b7930c9212516334","card":"docs/pr-cards/SETUP-1.md","checks":{"browser":["e2e/setup-guide.spec.ts"],"db":["tests/setup-guide-integration.test.ts","tests/business-records-integration.test.ts"],"node":[],"unit":["tests/setup-walkthroughs.test.ts"]},"gates":[],"id":"SETUP-1","invariants":["Owner only everywhere: pages require OWNER, the domain re-checks the actor on every write, and ADMIN/STAFF/CUSTOMER get not-found, never a hint the guide exists.","Checks report presence only. ENV_PRESENT takes names from a fixed allowlist; no secret value is ever read into a DTO, rendered, logged or audited.","A step is done when its check passes or the owner marked it done; a passing check always wins, so progress can never claim a number or key exists when it does not.","Numbers and files from a step are saved only through the VAULT-1 domain functions (encryption, last-4, magic bytes, private storage, audit) — the setup domain writes no record rows itself.","No schema change (the card's planned migration is none): progress and Not for me dismissals are audit rows folded on read, so the history of who did what is the progress record.","Every walkthrough link is https, every record reference is an existing PAPERWORK_TEMPLATES key, and every referenced check is implemented — all three proven by the data test."],"next":"Full tests, CI, review, merge; then VAULT-2 (logins vault + emergency access, designed off) on VAULT-1 + ACC-6.","outcome":"The owner gets a Set up your business screen (More, owner only) with 15 guided walkthroughs for the real-world accounts the business needs — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley license, Weld assessor, IRS accounts, IRIS TCC, insurance, vehicle, email domain, texting, encryption keys, CPA, backups. Each walkthrough has plain steps with official https links, says what to have ready, and saves what the step produces (an account number or a file) straight into the matching VAULT-1 business record. Steps the app can verify check themselves (key present, number saved, file attached, filing account set up — presence only, never a secret value). Progress is kept per walkthrough, the next one is suggested by what it unlocks soonest, a Today To do points at it until everything is done or marked Not for me, and the owner checklist rows for these jobs link here instead of repeating steps.","parent":"SETUP-1","proposedFiles":["src/domains/setup/walkthroughs.ts","src/domains/setup/guide.ts","src/domains/paperwork/index.ts","src/domains/exceptions/setup-attention.ts","src/domains/exceptions/rules.ts","src/domains/exceptions/index.ts","src/domains/exceptions/todo.ts","src/lib/desk-navigation.ts","src/app/desk/setup-guide/page.tsx","src/app/desk/setup-guide/[key]/page.tsx","src/app/desk/setup-guide/actions.ts","src/app/desk/setup-guide/step-form.tsx","tests/setup-walkthroughs.test.ts","tests/setup-guide-integration.test.ts","tests/w8-menu-sections.test.ts","e2e/setup-guide.spec.ts","e2e/shards.json","docs/pr-cards/SETUP-1.md","docs/pr-cards/VAULT-1.md","docs/pr-cards/work-index.json","docs/pr-cards/execution/SETUP-1.json","docs/STATUS.md","docs/OWNER-GUIDE.md","docs/OWNER-CHECKLIST.md"],"references":[{"anchor":"## SETUP-1","path":"docs/build-specs/engines/RECORDS-VAULT.md","purpose":"The build spec sections 8-10: the Walkthrough shape, the check kinds, the 15 initial walkthroughs, the screen, and the required tests."},{"anchor":"First-time setup checklist (W-7","path":"src/domains/setup/checklist.ts","purpose":"The existing app-configuration checklist (business, service area, prices, tax, payments, email) with its own Today card. SETUP-1 is the real-world accounts companion, not a replacement — see the drift table in the card."},{"anchor":"PAPERWORK_TEMPLATES","path":"src/domains/paperwork/templates.ts","purpose":"The 32 VAULT-1 starter records. Every walkthrough record reference must be one of these templateKeys; the data test proves it."},{"anchor":"export async function addStarterChecklist","path":"src/domains/paperwork/index.ts","purpose":"The starter-row mapping the setup domain reuses to create a single record on demand when a step first saves a number or file."},{"anchor":"export async function attachRecordFile","path":"src/domains/paperwork/records.ts","purpose":"VAULT-1 file/number saving with its encryption, sniffing and audit rules; the step flow calls these, never writes record rows itself."},{"anchor":"listContinuityAttention","path":"src/domains/exceptions/index.ts","purpose":"How an owner-only attention source is gated at the call site (role === OWNER) and merged into the To do list; the setup attention follows the same pattern."},{"anchor":"hasFieldCryptoKey","path":"src/lib/field-crypto.ts","purpose":"The presence-only key check pattern the ENV_PRESENT check generalises (allowlisted names, values never returned)."},{"anchor":"MORE_LINKS","path":"src/lib/desk-navigation.ts","purpose":"The More menu entries with role gates; Set up your business is added as an owner entry."}],"risk":"Owner-only guidance surface. The checks read secret ENV values for PRESENCE only (an allowlist of names; values never enter a DTO, page, log or audit). Numbers and files produced by steps are saved through the VAULT-1 domain, so they get its encryption, masking, magic-byte and audit rules unchanged. No schema change.","sequence":["VAULT-1 close-out docs (card acceptance box 5, work-index merged status) ride this branch's first commit with this packet","walkthroughs.ts: the Walkthrough/Step/Check data for all 15 walkthroughs plus the pure suggestion ordering","guide.ts: audit-folded progress, check evaluation (presence-only env, record number/file, filing account), mark done / reopen / dismiss / restore, the single-record ensure for step saves","Screens: /desk/setup-guide (progress rings, suggested next) and /desk/setup-guide/[key] (steps, I did this with the number/file the step produces, automatic Checked), More menu entry","Today attention: one SETUP_GUIDE To do naming the suggested walkthrough until all are done or dismissed","OWNER-CHECKLIST rows for the encryption keys and backups link to their walkthroughs","Tests: walkthrough data + ordering (unit), guide integration on throwaway Postgres (owner-only, check truthfulness, progress folding, step save into the record), browser spec in a shard; docs (STATUS, OWNER-GUIDE, card, work-index)"],"version":1}
+{
+  "acceptance": [
+    "All 15 spec walkthroughs exist, each with why, what to have ready, plain steps with exact menu names and https links, the record each step fills, and automatic checks where the app has a real signal.",
+    "Progress shows per walkthrough (x of y steps); the suggested next walkthrough is the one whose needed-by date comes soonest (IRIS TCC before January 31), then data order; a Today To do names it until every walkthrough is done or marked Not for me.",
+    "Marking a step done can save the number or file it produces into the matching business record in the same flow, through the VAULT-1 rules (encrypted, masked, sniffed, audited).",
+    "The owner checklist rows for the compliance encryption key, the vault encryption key and backups link to their walkthrough instead of repeating the steps.",
+    "Checks never reveal secret values (presence only, allowlisted env names); ci green at the exact head; every review comment read and dispositioned."
+  ],
+  "baseline": "9f7671dd6ea42d93a2170ff4b7930c9212516334",
+  "card": "docs/pr-cards/SETUP-1.md",
+  "checks": {
+    "browser": [
+      "e2e/setup-guide.spec.ts"
+    ],
+    "db": [
+      "tests/setup-guide-integration.test.ts",
+      "tests/business-records-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/setup-walkthroughs.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "SETUP-1",
+  "invariants": [
+    "Owner only everywhere: pages require OWNER, the domain re-checks the actor on every write, and ADMIN/STAFF/CUSTOMER get not-found, never a hint the guide exists.",
+    "Checks report presence only. ENV_PRESENT takes names from a fixed allowlist; no secret value is ever read into a DTO, rendered, logged or audited.",
+    "A step is done when its check passes or the owner marked it done; a passing check always wins, so progress can never claim a number or key exists when it does not.",
+    "Numbers and files from a step are saved only through the VAULT-1 domain functions (encryption, last-4, magic bytes, private storage, audit) — the setup domain writes no record rows itself.",
+    "No schema change (the card's planned migration is none): progress and Not for me dismissals are audit rows folded on read, so the history of who did what is the progress record.",
+    "Every walkthrough link is https, every record reference is an existing PAPERWORK_TEMPLATES key, and every referenced check is implemented — all three proven by the data test."
+  ],
+  "next": "Full tests, CI, review, merge; then VAULT-2 (logins vault + emergency access, designed off) on VAULT-1 + ACC-6.",
+  "outcome": "The owner gets a Set up your business screen (More, owner only) with 15 guided walkthroughs for the real-world accounts the business needs — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley license, Weld assessor, IRS accounts, IRIS TCC, insurance, vehicle, email domain, texting, encryption keys, CPA, backups. Each walkthrough has plain steps with official https links, says what to have ready, and saves what the step produces (an account number or a file) straight into the matching VAULT-1 business record. Steps the app can verify check themselves (key present, number saved, file attached, filing account set up — presence only, never a secret value). Progress is kept per walkthrough, the next one is suggested by what it unlocks soonest, a Today To do points at it until everything is done or marked Not for me, and the owner checklist rows for these jobs link here instead of repeating steps.",
+  "parent": "SETUP-1",
+  "proposedFiles": [
+    "src/domains/setup/walkthroughs.ts",
+    "src/domains/setup/guide.ts",
+    "src/domains/paperwork/index.ts",
+    "src/domains/exceptions/setup-attention.ts",
+    "src/domains/exceptions/rules.ts",
+    "src/domains/exceptions/index.ts",
+    "src/domains/exceptions/todo.ts",
+    "src/lib/desk-navigation.ts",
+    "src/app/desk/setup-guide/page.tsx",
+    "src/app/desk/setup-guide/[key]/page.tsx",
+    "src/app/desk/setup-guide/actions.ts",
+    "src/app/desk/setup-guide/step-form.tsx",
+    "tests/setup-walkthroughs.test.ts",
+    "tests/setup-guide-integration.test.ts",
+    "tests/w8-menu-sections.test.ts",
+    "e2e/setup-guide.spec.ts",
+    "e2e/shards.json",
+    "docs/pr-cards/SETUP-1.md",
+    "docs/pr-cards/VAULT-1.md",
+    "docs/pr-cards/work-index.json",
+    "docs/pr-cards/execution/SETUP-1.json",
+    "docs/STATUS.md",
+    "docs/OWNER-GUIDE.md",
+    "docs/OWNER-CHECKLIST.md"
+  ],
+  "references": [
+    {
+      "anchor": "## SETUP-1",
+      "path": "docs/build-specs/engines/RECORDS-VAULT.md",
+      "purpose": "The build spec sections 8-10: the Walkthrough shape, the check kinds, the 15 initial walkthroughs, the screen, and the required tests."
+    },
+    {
+      "anchor": "First-time setup checklist (W-7",
+      "path": "src/domains/setup/checklist.ts",
+      "purpose": "The existing app-configuration checklist (business, service area, prices, tax, payments, email) with its own Today card. SETUP-1 is the real-world accounts companion, not a replacement — see the drift table in the card."
+    },
+    {
+      "anchor": "PAPERWORK_TEMPLATES",
+      "path": "src/domains/paperwork/templates.ts",
+      "purpose": "The 32 VAULT-1 starter records. Every walkthrough record reference must be one of these templateKeys; the data test proves it."
+    },
+    {
+      "anchor": "export async function addStarterChecklist",
+      "path": "src/domains/paperwork/index.ts",
+      "purpose": "The starter-row mapping the setup domain reuses to create a single record on demand when a step first saves a number or file."
+    },
+    {
+      "anchor": "export async function attachRecordFile",
+      "path": "src/domains/paperwork/records.ts",
+      "purpose": "VAULT-1 file/number saving with its encryption, sniffing and audit rules; the step flow calls these, never writes record rows itself."
+    },
+    {
+      "anchor": "listContinuityAttention",
+      "path": "src/domains/exceptions/index.ts",
+      "purpose": "How an owner-only attention source is gated at the call site (role === OWNER) and merged into the To do list; the setup attention follows the same pattern."
+    },
+    {
+      "anchor": "hasFieldCryptoKey",
+      "path": "src/lib/field-crypto.ts",
+      "purpose": "The presence-only key check pattern the ENV_PRESENT check generalises (allowlisted names, values never returned)."
+    },
+    {
+      "anchor": "export const PROFILE_LINKS",
+      "path": "src/lib/desk-areas.ts",
+      "purpose": "Owner's Set up your business entry in the filtered profile menu"
+    }
+  ],
+  "risk": "Owner-only guidance surface. The checks read secret ENV values for PRESENCE only (an allowlist of names; values never enter a DTO, page, log or audit). Numbers and files produced by steps are saved through the VAULT-1 domain, so they get its encryption, masking, magic-byte and audit rules unchanged. No schema change.",
+  "sequence": [
+    "VAULT-1 close-out docs (card acceptance box 5, work-index merged status) ride this branch's first commit with this packet",
+    "walkthroughs.ts: the Walkthrough/Step/Check data for all 15 walkthroughs plus the pure suggestion ordering",
+    "guide.ts: audit-folded progress, check evaluation (presence-only env, record number/file, filing account), mark done / reopen / dismiss / restore, the single-record ensure for step saves",
+    "Screens: /desk/setup-guide (progress rings, suggested next) and /desk/setup-guide/[key] (steps, I did this with the number/file the step produces, automatic Checked), More menu entry",
+    "Today attention: one SETUP_GUIDE To do naming the suggested walkthrough until all are done or dismissed",
+    "OWNER-CHECKLIST rows for the encryption keys and backups link to their walkthroughs",
+    "Tests: walkthrough data + ordering (unit), guide integration on throwaway Postgres (owner-only, check truthfulness, progress folding, step save into the record), browser spec in a shard; docs (STATUS, OWNER-GUIDE, card, work-index)"
+  ],
+  "version": 1
+}

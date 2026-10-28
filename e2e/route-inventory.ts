@@ -359,6 +359,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },
   { path: "/desk/security/setup", role: "OWNER", fixture: "/desk/security/setup" },
   { path: "/desk/settings", role: "OWNER", fixture: "/desk/settings" },
+  { path: "/desk/settings/workspace", role: "OWNER", fixture: "/desk/settings/workspace" },
   { path: "/desk/settings/rental-endings", role: "OWNER", fixture: "/desk/settings/rental-endings" },
   { path: "/desk/settings/payment-links", role: "OWNER", fixture: "/desk/settings/payment-links" },
   { path: "/desk/settings/lead-response", role: "OWNER", fixture: "/desk/settings/lead-response" },

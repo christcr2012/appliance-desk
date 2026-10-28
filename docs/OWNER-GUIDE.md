@@ -1,12 +1,20 @@
-## Settings → Features (AR-12, pending normal release)
+## Five areas and quick search (AR-1, awaiting CI and normal release)
 
-Open **Settings → Features** to choose which extra menu items to show. Only the owner can change a choice; administrators can see the choices. Features that are already being used (two or more people on your team, a property manager, or your existing budget) stay on automatically with a reason. A hidden menu entry does not prevent someone with the existing permission from visiting that page directly. These controls never grant anyone new access.
-
-**Practice safely** appears here only after you set a separate HTTPS testing-app address in the server setting `PRACTICE_APP_URL` on your production Vercel project. It never appears inside the testing app. Opening the link uses a separate tab. Do not try real customer cards, customer texts, or emails while learning.
+On a phone the bottom bar has **Today, Customers, Schedule, Equipment and Money** (only areas
+you have access to are shown). On a computer these areas are in the sidebar; use **Collapse
+menu** to make room for your work, and it remembers your choice. Pick an area and use the
+section tabs to change what you are working on. Search at the top, or press **Ctrl K** on
+Windows / **⌘ K** on Mac, to find a customer, an appliance, a screen or a common action.
+Open **Profile** to find Settings, Help, Your account, App feedback, your theme and Sign out. Owners also see Set up your business. Team members
+see only links permitted by their account and job role; an absent link does not change
+access to an existing screen. Use **Today → Manage my workspace** to show hidden optional notes again, unpin a shortcut,
+remove a saved view or start over with your personal shortcuts. This changes only your own
+workspace preferences. Old `/desk/more` and `/desk/control-center` links now open Today; all existing record links still work. These instructions
+apply after AR-1 is merged and the normal tested release reaches the app.
 
 ## How do I…? — the short help guides (AR-12)
 
-Open **More → How do I…?** (or `/desk/help`) on your phone or computer. Search for a task by
+Open **Profile → Help** (or `/desk/help`) on your phone or computer. Search for a task by
 ordinary words such as *refund*, *driver*, *receipt* or *install*. Choose a question to read three simple
 steps, then **Go there** opens the correct screen. Any signed-in team member may read Help; guides to
 money, owner settings or screens their job role cannot use are not offered to them. Nothing is
@@ -103,7 +111,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Activity | `/desk/activity` | A combined "what happened" feed |
 | Search | `/desk/search` | One box for customers, machines, leads, purchases |
 | Settings | `/desk/settings` | Prices, fees, wording, rules, notifications |
-| More | `/desk/more` | The less-used screens (including Website) |
+| Profile menu | Your account, Help and permitted Settings links | Open using your initials on a phone or at the bottom of the sidebar |
 | Customer portal | `/account` | What your customers see after signing in |
 | Sign in | `/login` | Everyone's sign-in page |
 

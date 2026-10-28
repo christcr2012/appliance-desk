@@ -6,9 +6,10 @@ import {
   enforceTwoFactorForDeskPage,
   requireRoleForTwoFactorSetup,
 } from "@/lib/session";
-import { AppShell } from "@/components/ui";
+import { AppFrame } from "@/components/kit/app-frame";
+import { visibleAreas, visibleProfileLinks } from "@/lib/desk-areas";
+import { visibleHelpGuides } from "@/lib/help-guides";
 import { IdleLogout } from "@/components/idle-logout";
-import { deskNavigation } from "@/lib/desk-navigation";
 import { getShownFeatures } from "@/domains/features";
 import { enforceJobRoleScreen, jobRoleScreens } from "@/lib/job-role-guard";
 import { isTwoFactorEnrollmentExemptPath } from "@/domains/security/two-factor";
@@ -39,10 +40,14 @@ export default async function DeskLayout({
   }
   await enforceJobRoleScreen(session.user.id, role);
   const [screens, shown] = await Promise.all([jobRoleScreens(session.user.id, role), getShownFeatures()]);
-  const groups = deskNavigation(role, screens, shown);
+  const areas = visibleAreas(role, screens, shown);
+  const profileLinks = visibleProfileLinks(role, screens);
+  const helpGuides = visibleHelpGuides(role, screens);
+  const name = session.user.name?.trim() || session.user.email || "Team member";
+  const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() ?? "").join("") || "?";
   return (
     <>
-      <AppShell nav={groups} role={role}>{children}</AppShell>
+      <AppFrame areas={areas} profileLinks={profileLinks} user={{ name, email: session.user.email, role, initials }} jobRoleScreens={screens} shown={[...shown]} helpGuides={helpGuides}>{children}</AppFrame>
       <IdleLogout timeoutMinutes={20} />
       <RegisterDeskServiceWorker />
       <DeskShortcuts role={role} />
