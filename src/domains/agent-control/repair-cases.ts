@@ -218,6 +218,11 @@ export async function checkRepairCase(
           prisma.automationRun.findFirst({ where: { ruleKey: rule, state: "SUCCEEDED" },
             orderBy: { startedAt: "desc" } }),
         ]);
+        // A successful run for an unrelated rule is not evidence that this
+        // issue was fixed. Only the issue's own automation fingerprint can
+        // be verified through this rule; other kinds require a specific check.
+        if (issue?.kind !== "AUTOMATION_FAILED" || issue.fingerprint !== `automation:${rule}`)
+          throw new RepairEvidenceError("REPAIR_CHECK_NOT_LINKED_TO_SOURCE");
         // A check must happen AFTER a prior, independently observed deployed state.
         if (!priorDeployment?.checkedAt || !run || run.startedAt <= priorDeployment.checkedAt ||
           issue?.status !== "RESOLVED")

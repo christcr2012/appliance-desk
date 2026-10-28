@@ -21,7 +21,7 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
       severity: "MEDIUM", summary: "Scheduled inspection failed", detail: "Safe diagnostic test issue",
     } });
     await prisma.systemIssue.create({ data: {
-      id: transitionId, fingerprint: "repair-fixture:" + transitionId, kind: "AUTOMATION_FAILED",
+      id: transitionId, fingerprint: "automation:backup", kind: "AUTOMATION_FAILED",
       severity: "MEDIUM", summary: "Another scheduled inspection failed", detail: "Synthetic check case",
     } });
   });
@@ -131,6 +131,14 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
     await prisma.automationRun.create({ data: { ruleKey: "backup", runKey: transitionId,
       environment: "test", state: "SUCCEEDED",
       startedAt: new Date(deployment.checkedAt!.getTime() + 1000) } });
+    // A matching success from an unrelated rule must never claim this repair fixed.
+    await prisma.systemIssue.update({ where: { id: transitionId },
+      data: { fingerprint: "automation:unrelated-inspection" } });
+    const unlinked = await checkRepairCase(actorId, record.id, { fetcher, deployedRevision: liveSha });
+    expect(unlinked?.stage).toBe("DEPLOYED");
+    expect(unlinked?.blocker).toBe("REPAIR_CHECK_NOT_LINKED_TO_SOURCE");
+    await prisma.systemIssue.update({ where: { id: transitionId },
+      data: { fingerprint: "automation:backup" } });
     const checked = await checkRepairCase(actorId, record.id, { fetcher, deployedRevision: liveSha });
     expect(checked?.stage).toBe("VERIFIED");
     expect(checked?.verifiedAt).toBeTruthy();

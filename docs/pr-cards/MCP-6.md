@@ -48,7 +48,9 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
   differently worded requests and proves one active case; a source-row lock
   and partial unique index enforce that invariant. The sixth drives fake GitHub
   evidence through PR open, merge with exact check, deployed ancestry, and a
-  later independent successful health run before marking verified. Prisma validation and
+  later independent successful health run before marking verified. The six-test
+  rerun also rejects a successful job whose automation fingerprint does not
+  belong to the original issue. Prisma validation and
   changed-file lint passed.
 - Browser proof is **not** complete: `e2e/mcp-repair-cases.spec.ts` is registered
   but the local 4 GB sandbox's Next.js build was killed (exit 137). GitHub CI
