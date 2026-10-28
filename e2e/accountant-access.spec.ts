@@ -47,6 +47,8 @@ test.describe("ACCT-1 accountant access", () => {
       const ownerContext = await browser.newContext({ storageState: ownerState });
       const ownerPage = await ownerContext.newPage();
       await ownerPage.goto("/desk/settings?section=staff");
+      // AR-8: the team editor opens from its panel row on the Team & access section.
+      await ownerPage.getByRole("button", { name: /Team members/ }).click();
       await expect(ownerPage.getByRole("heading", { name: "Invite a team member" })).toBeVisible();
       await ownerPage.getByLabel("Name", { exact: true }).fill("Casey CPA");
       await ownerPage.getByLabel("Email", { exact: true }).fill(email);
@@ -139,6 +141,7 @@ test.describe("ACCT-1 accountant access", () => {
 
       // 6. The owner removes the accountant; the next request is refused.
       await ownerPage.goto("/desk/settings?section=staff");
+      await ownerPage.getByRole("button", { name: /Team members/ }).click();
       // Scope by this run's unique email: the name repeats across runs on a
       // reused database, and strict mode counts every matching row.
       const row = ownerPage.locator("tr", { hasText: email });

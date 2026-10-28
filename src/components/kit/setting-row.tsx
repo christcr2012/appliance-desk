@@ -100,7 +100,7 @@ function EditorInput({ row, draft, setDraft }: { row: SettingRowData; draft: unk
     case "percent":
       return (
         <label className="block text-sm text-ink">
-          {row.kind === "percent" ? "Percent" : row.kind === "hours" ? "Hour (0–23)" : "Amount"}
+          {row.kind === "percent" ? "Percent" : row.kind === "hours" ? "Hour (0–23)" : row.kind === "days" ? "Days" : row.kind === "minutes" ? "Minutes" : row.kind === "number" ? "Number" : "Amount"}
           <input type="number" min={row.min} max={row.max} step={row.kind === "percent" ? "0.1" : "1"} className={`mt-1 ${inputCls}`} value={typeof draft === "number" ? draft : ""} onChange={(e) => setDraft(e.target.value === "" ? "" : Number(e.target.value))} />
         </label>
       );

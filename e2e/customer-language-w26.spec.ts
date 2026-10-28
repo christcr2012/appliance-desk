@@ -42,6 +42,8 @@ test.describe("W-26 safely stored customer language and owner draft translations
     const page = await context.newPage();
     try {
       await page.goto("/desk/settings?section=notifications");
+      // AR-8: the Spanish review and drafts open from their panel row.
+      await page.getByRole("button", { name: /Spanish wording/ }).click();
       await expect(page.getByText(/English remains the default/)).toBeVisible();
       await expect(page.getByText("Draft translations")).toBeVisible();
       await expect(page.getByRole("button", { name: "Enable reviewed Spanish" })).toBeDisabled();

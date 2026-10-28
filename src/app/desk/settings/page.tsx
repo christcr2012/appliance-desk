@@ -64,14 +64,16 @@ import { readZoneSettings } from "@/domains/delivery/zone";
 import { townsWithZones } from "@/domains/delivery/towns";
 import { zoneSettingsRevision } from "@/domains/delivery/settings";
 import {
+  ALL_SETTING_ROWS,
   OLD_SECTION_REDIRECTS,
   SETTINGS_SECTIONS_V2,
   type SettingsSectionId,
 } from "@/domains/settings/catalog";
+import { listDecisions } from "@/domains/decisions";
 import { getSettingsPage } from "@/domains/settings/page-data";
 import { settingEffect } from "@/domains/settings/effects";
 import { formatSettingValue } from "@/domains/settings/history";
-import { PanelRow, RowAnchorFlash, SettingRow, SettingsIndex, type SettingRowData } from "@/components/kit";
+import { PanelRow, RowAnchorFlash, SettingRow, SettingsIndex, SettingsLayout, type SettingRowData } from "@/components/kit";
 import { Toaster } from "@/components/kit/toaster";
 
 const FMT_KIND = {
@@ -98,6 +100,23 @@ export default async function DeskSettingsPage({
 }) {
   const session = await requireRole("OWNER", "ADMIN");
   const role = session.user.role === "OWNER" ? "OWNER" : "ADMIN";
+  // The frame lives on this page only (the settings sub-pages keep their own
+  // headers and guards): sections with a decision still at its starting value
+  // get the attention dot.
+  const attention = new Set<SettingsSectionId>();
+  const decisionCards = await listDecisions(session.user.id).catch(() => []);
+  const startingIds = new Set<string>();
+  for (const card of decisionCards) {
+    if (card.state !== "STARTING_VALUE") continue;
+    startingIds.add(card.id);
+    for (const legacy of card.legacyIds ?? []) startingIds.add(legacy);
+  }
+  if (startingIds.size > 0) {
+    attention.add("decisions");
+    for (const row of ALL_SETTING_ROWS) {
+      if (row.decisionId && startingIds.has(row.decisionId)) attention.add(row.section);
+    }
+  }
   const raw = (await searchParams).section;
   const section = resolveSection(raw);
   if (raw && section && raw !== section) {
@@ -105,10 +124,12 @@ export default async function DeskSettingsPage({
   }
   if (!section) {
     return (
-      <div>
-        <SettingsIndex attention={[]} role={role} />
-        <Toaster />
-      </div>
+      <SettingsLayout attention={[...attention]}>
+        <div>
+          <SettingsIndex attention={[]} role={role} />
+          <Toaster />
+        </div>
+      </SettingsLayout>
     );
   }
 
@@ -495,6 +516,7 @@ export default async function DeskSettingsPage({
   const sectionLabel = SETTINGS_SECTIONS_V2.find((s) => s.id === section)!.label;
 
   return (
+    <SettingsLayout attention={[...attention]}>
     <div>
       <h1 className="sr-only">Settings — {sectionLabel}</h1>
       {topExtra}
@@ -541,5 +563,6 @@ export default async function DeskSettingsPage({
       <RowAnchorFlash />
       <Toaster />
     </div>
+    </SettingsLayout>
   );
 }
