@@ -1,3 +1,17 @@
+## October 28 — AR-2 slice 2 in progress: approvals Sheet on Today (PR #728)
+
+Slice 1 merged (PR #727). Slice 2 lets the owner decide approval requests
+without leaving Today: when the "Requests waiting for your approval" item is in
+the inbox, it also loads the waiting list, its primary action becomes "Review
+requests" and opens a "Waiting for your approval" Sheet (the approvals page
+stays in the item's menu). Each request is a card (summary; who asked, when,
+how much; when it expires — expired requests offer only Decline). Approve and
+Decline always go through the plain confirmation, never optimistic, never
+Undo; the outcome arrives as a toast with the same words the approvals page
+uses. The Sheet renders only for the owner, and the deciding action refuses
+anyone else itself. New browser spec e2e/today-inline.spec.ts covers approve
+and decline through the confirmation, the staff view, and axe at five sizes.
+
 ## October 28 — AR-3 Money area: built and in review (PR #725, Lane 4)
 
 The Money area is built on the kit: a Money overview (money in, still owed, past due, coming in
@@ -10,6 +24,7 @@ button is the existing server action. CI is green on the PR head (the full brows
 it caught and I fixed a kit-guard menu move, plain-words titles, bundle budgets for the two new
 pages, a missing Toaster on the statement page, and three test files that followed the old
 deposits/waiting URLs). Next: review gate, merge, close-out.
+
 
 ## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
 

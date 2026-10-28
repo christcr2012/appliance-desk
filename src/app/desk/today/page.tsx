@@ -34,7 +34,10 @@ import { ActionButton, AutoRefresh, PullToRefresh, EmptyState, Icon, InboxCard, 
 import { SetupCard } from "./setup-card";
 import { decisionsTodayCount } from "@/domains/decisions/today";
 import { recordBankPaymentAction } from "../billing/reconciliation/actions";
+import { listWaitingApprovals } from "@/domains/approvals";
+import { decideApprovalAction } from "../approvals/actions";
 import { TodayInbox, type InboxEntry } from "./today-inbox";
+import type { ApprovalCardData } from "./approvals-sheet";
 
 export const metadata = { title: "Today" };
 
@@ -160,7 +163,7 @@ async function completeTaskFromTodayAction(formData: FormData) {
   return result.status === "success" ? { success: "Task done" } : { error: result.message };
 }
 
-type Search = { screen?: string; group?: string; snooze?: string };
+type Search = { screen?: string; group?: string; snooze?: string; approvals?: string };
 type Group = InboxGroup | "all" | "snoozed";
 
 function parseGroup(value: string | undefined): Group {
@@ -255,6 +258,26 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const decisionsWaiting = await decisionsTodayCount({ id: session.user.id, role }, now);
   const hiddenOptional = new Set(workspace?.prefs.hiddenOptionalCardIds ?? []);
   const exceptions = sortInbox(allExceptions.filter((item) => !hiddenOptional.has(item.category)));
+  // AR-2 slice 2: when the approvals item is in the inbox, the owner also gets
+  // the waiting list itself so the item can open the approvals Sheet. Owner
+  // only — the domain action refuses anyone else, and the Sheet never renders
+  // for admins or staff. A read failure simply leaves the item as a link.
+  const approvalsWaiting: ApprovalCardData[] | null =
+    role === "OWNER" && exceptions.some((item) => item.category === "APPROVAL_REQUEST")
+      ? await listWaitingApprovals()
+          .then((rows) =>
+            rows.map((r) => ({
+              id: r.id,
+              summary: r.summary,
+              requestedBy: r.requestedBy,
+              createdAt: r.createdAt.toISOString(),
+              expiresAt: r.expiresAt.toISOString(),
+              amountCents: r.amountCents,
+              expired: r.expired,
+            })),
+          )
+          .catch(() => null)
+      : null;
   const truncated = allTruncated.filter((item) => !hiddenOptional.has(item.category));
   const hiddenNoteCount = allExceptions.filter((item) => hiddenOptional.has(item.category)).length;
   const myPins = workspace ? usablePins(workspace.prefs, visibleOwnerActions(role)) : [];
@@ -270,10 +293,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const snoozeHref = canManage
     ? (key: string) => `/desk/today?${new URLSearchParams({ ...(groupParam ? { group: groupParam } : {}), snooze: key }).toString()}`
     : undefined;
+  const approvalsHref = `/desk/today?${new URLSearchParams({ ...(groupParam ? { group: groupParam } : {}), approvals: "1" }).toString()}`;
 
   const itemCard = (item: ExceptionItem, index: number, bringBack = false): InboxEntry => {
     const key = `${item.todoKey ?? item.category + "-" + index}`;
-    const { actions, overflow } = bringBack
+    const base = bringBack
       ? {
           actions: [
             {
@@ -290,6 +314,21 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
           overflow: [],
         }
       : inboxActions(item, { handlers, snoozeHref });
+    // AR-2 slice 2: the approvals item's primary opens the Sheet instead of
+    // leaving for the approvals page; the page stays one tap away in the ⋯.
+    const { actions, overflow } =
+      !bringBack && item.category === "APPROVAL_REQUEST" && approvalsWaiting !== null
+        ? {
+            actions: [
+              { kind: "link", label: "Review requests", href: approvalsHref, primary: true } satisfies ActionSpec,
+              ...base.actions.slice(1),
+            ],
+            overflow: [
+              { kind: "link", label: "Open approvals page", href: "/desk/approvals" } satisfies ActionSpec,
+              ...base.overflow,
+            ],
+          }
+        : base;
     const until = item.snooze ? `Snoozed until ${formatShortDate(item.snooze.until, now)}` : null;
     return {
       key,
@@ -523,6 +562,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
             resumeAction={canManage ? resumeToDoAction : undefined}
             dates={dates}
             initialSnoozeKey={query.snooze}
+            approvals={
+              approvalsWaiting !== null
+                ? { requests: approvalsWaiting, decideAction: decideApprovalAction, initialOpen: query.approvals === "1" }
+                : undefined
+            }
           >
             {truncationLines.map((line) => (
               <p key={line.g} className="pt-2 text-sm text-ink-soft">
