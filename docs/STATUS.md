@@ -1,8 +1,10 @@
-## October 27 — AR-11 page-budget update after concurrent tax delivery
-Five CI browser builds on PR #691 independently measured new `/desk/sales-tax/benefits` at 303.09 KB gzip. Added 310 KB to the committed route inventory without changing the growth threshold or disabling checks. New reconciled head must pass exact-head CI and Reviewgate before merge.
+## October 27 — AR-11 measured desk JavaScript guard (PR #691, review/checks pending)
 
-## October 27 — Lane 1 measured JavaScript size guard (PR #691)
-Production builds verified 150 desk page budgets including new tax and vault routes; the checker and exact-head CI passed at `5b0faf88`. Reconciled the branch with current main after a real merge conflict while preserving concurrent work. Recheck new-head CI and Reviewgate before merge. AR-11 real-phone proof remains on the owner checklist.
+The real Next 16 production build records the gzip JavaScript actually requested by each private desk page and rejects missing route baselines or growth over 10%. PR #691 passed its previous exact-head CI and had a pending review gate; merging AR-12 and Help changed main, so the actual branch conflict is being reconciled without reverting those releases. Fresh exact-head CI and review are required. AR-1 was incorrectly marked merged via #714, which actually shipped tax benefits; work-index correction is included. Real-phone installation remains an owner verification item.
+
+## October 27 — AR-12 Settings → Features, Practice and Help (source merged)
+
+PRs #693/#695/#702/#716 all merged with exact-head CI and review gates. The Features screen's seven owner-controlled visibility choices, automatic rules and private Practice link are shipped in source; hiding navigation never revokes direct page access. Practice requires the owner's separate HTTPS testing-app setting and remains unchecked in OWNER-CHECKLIST. The 15 role-aware Help guides are also merged.
 
 ## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 

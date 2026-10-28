@@ -1,3 +1,18 @@
+## Settings → Features (AR-12, pending normal release)
+
+Open **Settings → Features** to choose which extra menu items to show. Only the owner can change a choice; administrators can see the choices. Features that are already being used (two or more people on your team, a property manager, or your existing budget) stay on automatically with a reason. A hidden menu entry does not prevent someone with the existing permission from visiting that page directly. These controls never grant anyone new access.
+
+**Practice safely** appears here only after you set a separate HTTPS testing-app address in the server setting `PRACTICE_APP_URL` on your production Vercel project. It never appears inside the testing app. Opening the link uses a separate tab. Do not try real customer cards, customer texts, or emails while learning.
+
+## How do I…? — the short help guides (AR-12)
+
+Open **More → How do I…?** (or `/desk/help`) on your phone or computer. Search for a task by
+ordinary words such as *refund*, *driver*, *receipt* or *install*. Choose a question to read three simple
+steps, then **Go there** opens the correct screen. Any signed-in team member may read Help; guides to
+money, owner settings or screens their job role cannot use are not offered to them. Nothing is
+changed merely by reading a guide. The **Practice safely** answer explains that the practice link
+only exists after the owner configures the separate testing app — never try real payments to learn.
+
 ## Monthly budget publishing, reports and month-end review — K-CASH-7 (pending normal release)
 
 Use **Books → Budget → Monthly review** (`/desk/books/budget?tab=review`) to choose the Colorado month. The **owner** reviews and can edit each plan's spending and funding separately; the draft comes from existing dated bills and savings targets, not estimated cash. Any manual cost/funding adjustment must explicitly be tagged **Owner reviewed** with a reason. Publishing records immutable version 1, then reasoned version 2+, including original envelope names/source IDs, SHA-256 proof and Books/Budget revision watermarks. It does **not** pay a bill, allocate cash or close the ledger. Previous versions remain available. ADMIN can read; STAFF and CUSTOMER cannot see financial totals. An unpublished month says **Unplanned**, not $0.

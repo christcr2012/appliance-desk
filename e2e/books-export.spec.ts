@@ -22,8 +22,12 @@ for(const width of [360,1280]) {
  });
 }
 test("Books links to its provider-mapped CSV export",async({page})=>{
+ await page.goto("/desk/settings/features");
+ const switchedOn=(await page.getByRole("switch",{name:"Files for your accountant"}).getAttribute("aria-checked"))==="true";
  await page.goto("/desk/books");
- await expect(page.getByRole("link",{name:/Export to QuickBooks/})).toHaveAttribute("href","/desk/books/exports");
+ const link=page.getByRole("link",{name:/Export to QuickBooks/});
+ await expect(link).toHaveCount(switchedOn?1:0);
+ if(switchedOn) await expect(link).toHaveAttribute("href","/desk/books/exports");
  await expect(page.locator('select[name="target"] option[value="CASH_MOVEMENTS_CSV"]').first()).toHaveCount(1);
 });
 test("STAFF cannot see owner accounting exports",async({browser})=>{

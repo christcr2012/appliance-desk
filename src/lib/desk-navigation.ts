@@ -1,4 +1,5 @@
 import { jobRoleAllowsPath } from "@/domains/team/job-role-rules";
+import { isHrefHidden, type FeatureKey } from "@/domains/features/registry";
 
 export type DeskNavGroup = {
   label: string;
@@ -60,7 +61,7 @@ export const DESK_NAV_ALIASES: Record<string, string[]> = {
   // CMP-1: Compliance belongs to the Taxes area (next to sales tax).
   "/desk/sales-tax": ["/desk/compliance"],
   "/desk/more": [
-    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/setup-guide", "/desk/vault", "/desk/vehicle", "/desk/continuity", "/desk/insurance", "/desk/account", "/desk/feedback",
+    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/setup-guide", "/desk/vault", "/desk/vehicle", "/desk/continuity", "/desk/insurance", "/desk/account", "/desk/feedback", "/desk/help",
   ],
 };
 
@@ -84,19 +85,21 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["feedback", "App feedback", "Problems with the app and ideas sent by customers and your team.", "finance"],
   ["activity", "Activity", "Who changed what, and when.", undefined],
   ["account", "My account", "Your name, phone, password, sign-in email, devices and two-step sign-in.", undefined],
+  ["help", "How do I…?", "Short three-step answers for common desk tasks.", undefined],
 ];
 /** The rarely used screens, filtered for the role on the server like the menu itself. */
-export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] | null = null): DeskMoreLink[] {
+export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] | null = null, shown?: ReadonlySet<FeatureKey>): DeskMoreLink[] {
   if (!["OWNER", "ADMIN", "STAFF"].includes(role ?? "")) return [];
   const finance = role === "OWNER" || role === "ADMIN";
   return MORE_LINKS
     .filter(([, , , restriction]) => !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER"))
     .map(([path, label, detail]) => ({ href: `/desk/${path}`, label, detail }))
-    .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href));
+    .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href))
+    .filter((link) => !shown || !isHrefHidden(link.href, shown));
 }
 
 /** Called on the server: restricted destinations are never serialized to staff. */
-export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null): DeskNavGroup[] {
+export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null, shown?: ReadonlySet<FeatureKey>): DeskNavGroup[] {
   // ACCT-1: the accountant's menu is exactly their allowed areas — nothing else is ever serialized to them.
   if (role === "ACCOUNTANT") {
     return [
@@ -125,7 +128,8 @@ export function deskNavigation(role?: string, jobRoleScreens: readonly string[] 
           return !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER");
         })
         .map(([path, label]) => ({ href: `/desk/${path}`, label }))
-        .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href)),
+        .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href))
+        .filter((link) => !shown || !isHrefHidden(link.href, shown)),
     }))
     .filter((group) => group.links.length > 0);
 }
