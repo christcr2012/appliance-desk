@@ -4378,7 +4378,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "APPROVED — not merged; #714 is TAXBEN-2 (not AR-1). Navigation implementation branch ai/chatgpt/ar1-five-area-navigation-20261027",
+      "status": "SOURCE PR #720 OPEN — five-area navigation and command search implemented; exact-head CI and review required before merge, owner phone look-over pending",
       "migration": "none",
       "budget": 420,
       "units": [

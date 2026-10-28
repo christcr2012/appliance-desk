@@ -39,9 +39,9 @@
       "purpose": "Crop preview for pictures"
     },
     {
-      "path": "src/lib/desk-navigation.ts",
-      "anchor": "const MORE_LINKS",
-      "purpose": "More list entry"
+      "path": "src/lib/desk-areas.ts",
+      "anchor": "export const PROFILE_LINKS",
+      "purpose": "Website destination in the role-filtered profile menu"
     }
   ],
   "proposedFiles": [

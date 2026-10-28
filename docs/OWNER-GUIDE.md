@@ -9,7 +9,7 @@ Open **Profile** to find Settings, Help, Your account, your theme and Sign out. 
 see only links permitted by their account and job role; an absent link does not change
 access to an existing screen. Use **Today → Manage my workspace** to show hidden optional notes again, unpin a shortcut,
 remove a saved view or start over with your personal shortcuts. This changes only your own
-workspace preferences. Your old saved desk links still work. These instructions
+workspace preferences. Old `/desk/more` and `/desk/control-center` links now open Today; all existing record links still work. These instructions
 apply after AR-1 is merged and the normal tested release reaches the app.
 
 ## How do I…? — the short help guides (AR-12)

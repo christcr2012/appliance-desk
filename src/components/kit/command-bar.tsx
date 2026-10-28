@@ -53,22 +53,30 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
     };
   }, []);
   useEffect(() => {
-    if (!open) { setQuery(""); setResults([]); return; }
-    try {
+    const timer = window.setTimeout(() => {
+      if (!open) { setQuery(""); setResults([]); setRecent([]); return; }
+      try {
       const validPrefixes = new Set(
         SAFE_RECENT.filter(s => areas.some(a => a.tabs.some(t => t.href.startsWith("/desk/" + s))))
       );
       const stored = JSON.parse(localStorage.getItem("desk.recent") ?? "[]") as unknown;
       const allow = new Set([...validPrefixes].map(s => "/desk/" + s));
       setRecent(recentCommandChoices(stored, allow));
-    } catch { setRecent([]); }
+      } catch { setRecent([]); }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [open, areas]);
   useEffect(() => {
     const q = query.trim();
     const seq = ++request.current;
-    if (!open || q.length < 2) { setResults([]); setBusy(false); return; }
-    setBusy(true);
-    const timer = setTimeout(() => {
+    if (!open || q.length < 2) {
+      const timer = window.setTimeout(() => {
+        if (seq === request.current) { setResults([]); setBusy(false); }
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+    const timer = window.setTimeout(() => {
+      setBusy(true);
       commandSearchAction(q).then(items => {
         if (seq === request.current) setResults(items);
       }).catch(() => {
@@ -79,11 +87,11 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
   }, [query, open]);
 
   const local = commandLocalChoices(query, role, screens, areas, profile, shownSet);
-  const guidesShown = query.trim().length >= 2 ?
+  const guidesShown: CommandChoice[] = query.trim().length >= 2 ?
     searchHelpGuides(guides, query).slice(0, 3).map(g => ({
       group: "Help" as const, label: g.question, href: g.href, id: g.id,
     })) : [];
-  const entries = [
+  const entries: CommandChoice[] = [
     ...local,
     ...results,
     ...guidesShown,
