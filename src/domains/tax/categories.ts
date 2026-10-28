@@ -11,9 +11,13 @@ export const TAX_CHARGE_CATEGORIES = [
   "OTHER_CHARGE",
   "MERCHANDISE",
   "USED_APPLIANCE_SALE",
+  "HAUL_AWAY",
 ] as const;
 
 export type TaxChargeCategory = (typeof TAX_CHARGE_CATEGORIES)[number];
+
+/** FEETAX-1: the services a customer can decline and do themselves — the lines the optional-and-separate rule applies to. */
+export const SERVICE_LINE_CATEGORIES = ["DELIVERY", "INSTALLATION", "REMOVAL", "HAUL_AWAY"] as const;
 
 /** The categories every rental business must decide before billing. Selling items adds its own two (below). */
 export const RENTAL_TAX_CATEGORIES = TAX_CHARGE_CATEGORIES.filter(
@@ -29,6 +33,7 @@ export type InvoiceLineItemKind =
   | "DELIVERY_FEE"
   | "INSTALLATION_FEE"
   | "REMOVAL_FEE"
+  | "HAUL_AWAY_FEE"
   | "DAMAGE_WAIVER"
   | "DEPOSIT"
   | "TAX"
@@ -70,6 +75,8 @@ export function categoryForLineKind(
       return "INSTALLATION";
     case "REMOVAL_FEE":
       return "REMOVAL";
+    case "HAUL_AWAY_FEE":
+      return "HAUL_AWAY";
     case "DAMAGE_WAIVER":
       return "DAMAGE_WAIVER";
     case "EARLY_TERMINATION_FEE":

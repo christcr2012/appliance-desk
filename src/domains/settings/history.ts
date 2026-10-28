@@ -28,6 +28,7 @@ export const UNDOABLE_SETTINGS: Record<string, Spec> = {
   oneTimeDeliveryFeeCents: { label: "Delivery fee", kind: "money" },
   oneTimeInstallationFeeCents: { label: "Installation fee", kind: "money" },
   oneTimeRemovalFeeCents: { label: "Removal fee", kind: "money" },
+  oneTimeHaulAwayFeeCents: { label: "Haul-away fee", kind: "money" },
   damageWaiverEnabled: { label: "Damage waiver", kind: "yesno" },
   depositEnabled: { label: "Deposits", kind: "yesno" },
   lateFeeGraceDays: { label: "Late fee grace days", kind: "days" },

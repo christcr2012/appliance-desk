@@ -33,6 +33,7 @@ const DEFAULT_SETTINGS = {
   oneTimeDeliveryFeeCents: 0,
   oneTimeInstallationFeeCents: 0,
   oneTimeRemovalFeeCents: 0,
+  oneTimeHaulAwayFeeCents: 0,
   administrativeSetupFeeCents: 4500,
   largeOrderMachineThreshold: 5,
   largeOrderCancellationFullRefundHours: 72,
@@ -151,6 +152,7 @@ export type BusinessSettingsUpdate = Partial<{
   oneTimeDeliveryFeeCents: number;
   oneTimeInstallationFeeCents: number;
   oneTimeRemovalFeeCents: number;
+  oneTimeHaulAwayFeeCents: number;
   damageWaiverEnabled: boolean;
   depositEnabled: boolean;
   lateFeeGraceDays: number;
