@@ -1,4 +1,4 @@
-## October 28 — AR-2 slice 3 in progress: task Done in place with Undo (PR #729)
+## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
 
 Slices 1 and 2 merged (PRs #727, #728). Slice 3 finishes AR-2: a due task's
 Done on Today now runs optimistically with AR-11's treatment — the card hides
