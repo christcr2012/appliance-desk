@@ -83,7 +83,9 @@ export function BillRecordActionsBar({
           variant="primary"
         />
       ) : null}
-      {actions.primary === "print" ? <PrintDocumentButton /> : null}
+      {/* Print is the primary action for finished bills (per the spec's table) and stays visible
+          for open bills too — the old bill record always showed it next to the header actions. */}
+      <PrintDocumentButton />
       {actions.secondary === "record" ? (
         <RecordPaymentSheet customerId={record.customerId} openInvoices={record.openInvoices} lockedInvoice={record.lockedInvoice} />
       ) : null}
