@@ -5,7 +5,7 @@ you have access to are shown). On a computer these areas are in the sidebar; use
 menu** to make room for your work, and it remembers your choice. Pick an area and use the
 section tabs to change what you are working on. Search at the top, or press **Ctrl K** on
 Windows / **⌘ K** on Mac, to find a customer, an appliance, a screen or a common action.
-Open **Profile** to find Settings, Help, Your account, your theme and Sign out. Team members
+Open **Profile** to find Settings, Help, Your account, App feedback, your theme and Sign out. Owners also see Set up your business. Team members
 see only links permitted by their account and job role; an absent link does not change
 access to an existing screen. Use **Today → Manage my workspace** to show hidden optional notes again, unpin a shortcut,
 remove a saved view or start over with your personal shortcuts. This changes only your own

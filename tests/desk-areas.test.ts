@@ -9,7 +9,7 @@ const match = (path: string, qs = "") =>
   activeArea(path, new URLSearchParams(qs), visibleAreas("OWNER", null, all));
 
 describe("AR-1 five desk areas", () => {
-  it("keeps exactly five areas, their 22 named tabs and eight profile destinations", () => {
+  it("keeps exactly five areas, their 22 named tabs and ten profile destinations", () => {
     expect(DESK_AREAS.map(area => area.key)).toEqual(["today", "customers", "schedule", "equipment", "money"]);
     expect(DESK_AREAS.map(area => area.tabs.map(tab => tab.key))).toEqual([
       ["inbox", "tasks"], ["leads", "customers", "quotes", "rentals", "messages"],
@@ -19,7 +19,7 @@ describe("AR-1 five desk areas", () => {
     ]);
     expect(PROFILE_LINKS.map(link => link.href)).toEqual([
       "/desk/settings", "/desk/account", "/desk/settings/website", "/desk/paperwork",
-      "/desk/privacy", "/desk/automations", "/desk/activity", "/desk/help",
+      "/desk/setup-guide", "/desk/privacy", "/desk/automations", "/desk/activity", "/desk/help", "/desk/feedback/new",
     ]);
   });
 

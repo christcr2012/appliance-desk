@@ -55,10 +55,12 @@ export const PROFILE_LINKS: ProfileLink[] = [
   { href: "/desk/account", label: "Your account" },
   { href: "/desk/settings/website", label: "Website", restriction: "finance" },
   { href: "/desk/paperwork", label: "Business paperwork", restriction: "owner" },
+  { href: "/desk/setup-guide", label: "Set up your business", restriction: "owner" },
   { href: "/desk/privacy", label: "Privacy requests", restriction: "owner" },
   { href: "/desk/automations", label: "System health", restriction: "finance" },
   { href: "/desk/activity", label: "Activity log" },
   { href: "/desk/help", label: "Help" },
+  { href: "/desk/feedback/new", label: "App feedback" },
 ];
 
 function roleAllows(role: string | undefined, restriction?: Restriction): boolean {
