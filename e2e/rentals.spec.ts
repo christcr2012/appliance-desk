@@ -21,7 +21,7 @@ async function makeRental(
   status: "DRAFT" | "SCHEDULED" | "ACTIVE",
   opts: { signed?: boolean } = {},
 ): Promise<RentalFixture> {
-  const { prisma } = await import("../../src/lib/prisma");
+  const { prisma } = await import("../src/lib/prisma");
   const tag = randomUUID().replaceAll("-", "").slice(0, 12);
   const name = `${label} ${tag}`;
   const userId = `ar4a-u-${tag}`;
