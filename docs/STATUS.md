@@ -1,3 +1,16 @@
+## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
+
+Slices 1 and 2 merged (PRs #727, #728). Slice 3 finishes AR-2: a due task's
+Done on Today now runs optimistically with AR-11's treatment — the card hides
+the moment it is tapped, the success toast offers Undo (which reopens the
+task with its post-completion version), and a failure brings the card back
+with the task action's own message. The card eyebrow reads "Task · {due
+label}" (overdue stays attention), the linked record's name stays the detail,
+and the secondary action is "Open" to the tasks page. When more tasks are due
+than Today shows, the "Showing n of total" line gains a "See all tasks" link.
+Notice items are unchanged: their primary still goes to the notice's own
+page, with no inline handling added.
+
 ## October 28 — AR-2 slice 2 in progress: approvals Sheet on Today (PR #728)
 
 Slice 1 merged (PR #727). Slice 2 lets the owner decide approval requests

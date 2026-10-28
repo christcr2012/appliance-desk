@@ -110,3 +110,54 @@ test("owner approves and declines waiting requests from Today's Sheet; staff nev
     await prisma.$disconnect();
   }
 });
+
+test("a due task is marked done in place, Undo brings it back, and Done again completes it", async ({ page }) => {
+  test.skip(!enabled, "Requires disposable PostgreSQL and authenticated CI sessions.");
+  expect(fs.existsSync(ownerState), ownerState + " must exist").toBe(true);
+  const { prisma } = await import("../src/lib/prisma");
+  const tag = "ar2t-" + randomUUID().slice(0, 8);
+  const note = `Call the landlord about the gate code ${tag}`;
+  const owner = await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } });
+  const staff = await prisma.user.findFirstOrThrow({ where: { email: "ci-staff@example.test" } });
+  const task = await prisma.staffTask.create({
+    data: {
+      note,
+      dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      assigneeUserId: staff.id,
+      createdByUserId: owner.id,
+    },
+  });
+  try {
+    await page.goto("/desk/today", { waitUntil: "load" });
+    const list = page.getByRole("list", { name: "To do" });
+    const card = list.locator("li", { hasText: note });
+    await expect(card).toBeVisible();
+    await expect(card.getByText(/^Task · Overdue/)).toBeVisible();
+
+    // Done hides the card at once; the toast offers Undo.
+    await card.getByRole("button", { name: "Done" }).click();
+    await expect(card).toBeHidden();
+    const toast = page.getByText("Task done", { exact: true });
+    await expect(toast).toBeVisible();
+    await expect.poll(async () =>
+      (await prisma.staffTask.findUniqueOrThrow({ where: { id: task.id } })).completedAt,
+    ).not.toBeNull();
+
+    // Undo restores the task and its card.
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect.poll(async () =>
+      (await prisma.staffTask.findUniqueOrThrow({ where: { id: task.id } })).completedAt,
+    ).toBeNull();
+    await expect(card).toBeVisible();
+
+    // Done again completes it for real.
+    await card.getByRole("button", { name: "Done" }).click();
+    await expect.poll(async () =>
+      (await prisma.staffTask.findUniqueOrThrow({ where: { id: task.id } })).completedAt,
+    ).not.toBeNull();
+  } finally {
+    await prisma.staffTask.deleteMany({ where: { id: task.id } });
+    await prisma.auditLog.deleteMany({ where: { entityId: task.id } });
+    await prisma.$disconnect();
+  }
+});
