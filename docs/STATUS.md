@@ -1,3 +1,22 @@
+## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
+
+AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
+gains status tabs with counts (Active, Waiting for signature, Starting,
+Drafts, Ended, Cancelled), search by name/address/appliance number, starts/
+ends filters, four sorts and the kit's growing cursor window; the old
+?status=ACTIVE links land on the right tab, and staff rows carry no money.
+The record is a kit record page: header with the status pill and the one
+primary action for its state, stat strip, a read-only progress stepper,
+the next-step card, and Details / Signing / Visits / Activity tabs. Visits
+now read in plain words (the old panel printed raw job codes). "Mark ended"
+is gone: every ending goes through the "End this rental" sheet, which steps
+Choose · Decide · Done into the existing ending pages, the month-to-month
+form, or "End it today" behind the danger confirmation. Every end path can
+record one optional "Why is it ending?" answer (owner-kept list, starting
+values on Settings › Rental endings; never required, never shown to the
+customer) — AR-9's "why customers left" will read it. Staff keep the
+operational view.
+
 ## October 28 — AR-1 five-area navigation: tested and reviewed (PR #720)
 
 Mobile five-area bar and area tabs, desktop collapsible remembered sidebar, profile/workspace

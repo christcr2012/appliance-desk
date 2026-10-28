@@ -1,0 +1,189 @@
+{
+  "acceptance": [
+    "Old URLs keep working: legacy upper-case ?status= values map to the new ones, ?page= ignored (params tests)",
+    "Rentals list: tabs, presets, sorts and cursor per spec; ending-soon rows equal the To do rule's rows; staff rows carry no money fields in type or runtime",
+    "Rental record: header/stat strip/progress stepper/next-step card per spec; every next-step table row unit-tested",
+    "'Mark ended' one-tap path gone; 'End it today' requires the danger confirmation and calls the existing endAgreementAction; end options shown only when their condition holds (unit-tested, none for ENDED/CANCELLED)",
+    "Visit lists use jobTypeLabel/jobStatusLabel words, never stored codes",
+    "getAgreementsCount refuses unauthenticated callers (test)",
+    "End-reason question optional on every end path, never required, never customer-visible, editable later on Details (OWNER/ADMIN, audited agreement.end_reason_set)",
+    "ci green at the exact head; every review comment read; axe + 5 sizes in the browser spec"
+  ],
+  "baseline": "5725161f5d3143c66bfd1da24daad389cd0a89b8",
+  "card": "docs/pr-cards/AR-4.md",
+  "checks": {
+    "browser": [
+      "e2e/rentals.spec.ts"
+    ],
+    "db": [
+      "tests/rentals-list-integration.test.ts",
+      "tests/rental-end-reason-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/rentals-params.test.ts",
+      "tests/rental-next-step.test.ts",
+      "tests/rental-end-options.test.ts",
+      "tests/agreements-count-role.test.ts",
+      "tests/rental-timeline-words.test.ts",
+      "tests/rental-end-reasons.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "AR-4A",
+  "invariants": [
+    "No rental rule changes: every button calls the server action that exists today; agreementProgress() itself is not modified",
+    "Roles filtered at the query/DTO boundary: STAFF rows have no money fields (monthlyCents?: never), matching getDeskAgreementsPage's staff branch",
+    "Money is integer cents; times stored UTC, shown America/Denver (Denver week/month presets)",
+    "Migrations additive only; endReason capture never blocks or delays an ending",
+    "Choice/ending writes keep the existing actions' own locking and actor checks; this card adds no new write path around them"
+  ],
+  "next": "AR-4b — Leads (queue, record, bulk, board, quote-for-an-existing-lead, lead editing, lead export) on the LD-1 engine.",
+  "outcome": "The Rentals list and rental record are rebuilt to the RENTALS screen spec: a cursor-paged list at /desk/agreements with status tabs, Starts/Ends presets (ending-soon uses the same rule as the To do RENTAL_ENDING_SOON item), search by customer/address/appliance number, and staff rows that carry no money; the record at /desk/agreements/[id] gains a RecordHeader, StatStrip, read-only progress Stepper, a pure rentalNextStep card and tabbed Details/Signing/Visits/Activity (timeline from audit rows). The one-tap 'Mark ended' is removed: ending a rental goes through the 'End this rental' chooser behind confirmations, calling only the server actions that exist today. getAgreementsCount gains the OWNER/ADMIN/STAFF role check. A small 'why is it ending' capture (endReason/endReasonNote on the agreement, owner setting rentalEndReasons) is added for AR-9 to read later.",
+  "parent": "AR-4",
+  "proposedFiles": [
+    "docs/DATABASE.md",
+    "docs/STATUS.md",
+    "docs/pr-cards/AR-4.md",
+    "docs/pr-cards/execution/AR-4A.json",
+    "docs/pr-cards/work-index.json",
+    "e2e/rentals.spec.ts",
+    "e2e/shards.json",
+    "e2e/signing-manual-payment.spec.ts",
+    "e2e/signing-multilocation-order.spec.ts",
+    "e2e/w22-v2-complete-signing.spec.ts",
+    "prisma/migrations/20261210000000_rental_end_reason/migration.sql",
+    "prisma/schema.prisma",
+    "src/app/desk/agreements/[id]/agreement-detail-panel.tsx",
+    "src/app/desk/agreements/[id]/cancel/actions.ts",
+    "src/app/desk/agreements/[id]/cancel/cancellation-approval-form.tsx",
+    "src/app/desk/agreements/[id]/cancel/page.tsx",
+    "src/app/desk/agreements/[id]/early-return/page.tsx",
+    "src/app/desk/agreements/[id]/end-reason-fields.tsx",
+    "src/app/desk/agreements/[id]/ending-decision/page.tsx",
+    "src/app/desk/agreements/[id]/month-to-month-end-form.tsx",
+    "src/app/desk/agreements/[id]/page.tsx",
+    "src/app/desk/agreements/[id]/record-client.tsx",
+    "src/app/desk/agreements/actions.ts",
+    "src/app/desk/agreements/page.tsx",
+    "src/app/desk/agreements/params.ts",
+    "src/app/desk/settings/rental-endings/page.tsx",
+    "src/components/kit/built-in-views.ts",
+    "src/components/kit/index.ts",
+    "src/components/kit/stepper.tsx",
+    "src/domains/agreements/end-options.ts",
+    "src/domains/agreements/end-reasons.ts",
+    "src/domains/agreements/index.ts",
+    "src/domains/agreements/next-step.ts",
+    "src/domains/agreements/rentals-list.ts",
+    "src/domains/agreements/timeline.ts",
+    "src/lib/glossary.ts",
+    "tests/agreements-count-role.test.ts",
+    "tests/rental-end-options.test.ts",
+    "tests/rental-end-reason-integration.test.ts",
+    "tests/rental-end-reasons.test.ts",
+    "tests/rental-next-step.test.ts",
+    "tests/rental-timeline-words.test.ts",
+    "tests/rentals-list-integration.test.ts",
+    "tests/rentals-params.test.ts",
+    "vitest.config.mts"
+  ],
+  "references": [
+    {
+      "anchor": "# Screen spec — Rentals: the list, the rental record, and \"End this rental\"",
+      "path": "docs/build-specs/screens/RENTALS.md",
+      "purpose": "The AR-4a spec: fixes, list params/data/layout, record structure, next-step and end-option tables, exact words, named tests"
+    },
+    {
+      "anchor": "## Split (four PRs, any order after their prerequisites)",
+      "path": "docs/pr-cards/AR-4.md",
+      "purpose": "The parent card's split and hand-offs: AR-4a is Rentals; quote/rental hand-offs land in 4d/4a"
+    },
+    {
+      "anchor": "export async function getAgreementsCount(filter?: {",
+      "path": "src/domains/agreements/index.ts",
+      "purpose": "The count function that gains the requireRole check (spec section 1)"
+    },
+    {
+      "anchor": "export function agreementProgress(a: ProgressInput) {",
+      "path": "src/domains/agreements/progress.ts",
+      "purpose": "agreementProgress: rentalNextStep builds on its conditions without changing it"
+    },
+    {
+      "anchor": "export async function getDeskAgreementsPage(",
+      "path": "src/domains/desk-access/index.ts",
+      "purpose": "The existing role-aware list read whose staff branch (no money) the new rentals-list mirrors"
+    },
+    {
+      "anchor": "export const jobTypeLabel",
+      "path": "src/lib/status-labels.ts",
+      "purpose": "Plain visit words for the record's visit list (spec section 1)"
+    },
+    {
+      "anchor": "export const AGREEMENT_PILL",
+      "path": "src/domains/customers/record.ts",
+      "purpose": "The status pill definition the list and record use"
+    },
+    {
+      "anchor": "export function StatStrip({ items }: { items: StatItem[] }) {",
+      "path": "src/components/kit/record-header.tsx",
+      "purpose": "Kit RecordHeader/StatStrip the record page is rebuilt on"
+    },
+    {
+      "anchor": "function handleEnd() {",
+      "path": "src/app/desk/agreements/[id]/agreement-detail-panel.tsx",
+      "purpose": "The one-tap 'Mark ended' path being removed into the End this rental flow"
+    }
+  ],
+  "risk": "Money-adjacent and irreversible actions (rental endings stop billing and free appliances). The conservative direction is structural: this card changes presentation and capture only — endings still run through the existing actions with their own confirmations, the new confirmation layer only adds friction to a previously one-tap irreversible path, and the end-reason capture is optional and read-only for customers (never shown). The migration is additive (two nullable columns, one settings field).",
+  "sequence": [
+    "S1 fixes + count role check + end-reason schema/settings",
+    "S2 params + rentals-list domain + list page",
+    "S3 next-step + end-options + timeline pure/domain reads",
+    "S4 record page restructure + End this rental sheet + end-reason capture on end paths",
+    "S5 tests (unit/db/browser) + docs + STATUS"
+  ],
+  "slices": [
+    {
+      "acceptance": [
+        "getAgreementsCount requires OWNER/ADMIN/STAFF; unauthenticated refused (test)",
+        "Migration adds endReason/endReasonNote to RentalAgreement and rentalEndReasons to BusinessSettings; DATABASE.md updated"
+      ],
+      "id": "AR-4A-S1",
+      "title": "Fixes: count role check; end-reason fields + rentalEndReasons setting (additive migration)"
+    },
+    {
+      "acceptance": [
+        "Params: defaults, legacy upper-case mapping, presets (unit tests)",
+        "getRentals/getRentalCounts role-aware; ending-soon equals the To do rule; staff rows money-free; cursor once-each (DB tests)"
+      ],
+      "id": "AR-4A-S2",
+      "title": "Rentals list: params module, rentals-list domain reads, list page on the kit"
+    },
+    {
+      "acceptance": [
+        "Every next-step table row and every end-option condition unit-tested",
+        "Timeline words map covers every agreement.* audit key the code writes (grep test)"
+      ],
+      "id": "AR-4A-S3",
+      "title": "Pure reads: rentalNextStep, endOptions, getRentalTimeline + RENTAL_EVENT_WORDS coverage test"
+    },
+    {
+      "acceptance": [
+        "'Mark ended' removed; End it today behind ConfirmDialog calling endAgreementAction",
+        "End-reason question on each end path's confirm step; editable on Details with audit"
+      ],
+      "id": "AR-4A-S4",
+      "title": "Record page: header/stat strip/stepper/tabs; detail panel hideActions; End this rental sheet; end-reason capture"
+    },
+    {
+      "acceptance": [
+        "e2e/rentals.spec.ts registered in e2e/shards.json and green in CI",
+        "STATUS top entry names the PR; AR-4 card progress updated"
+      ],
+      "id": "AR-4A-S5",
+      "title": "Browser spec + docs: rentals.spec (tabs, primaries, confirmation, legacy URL, staff view, axe + 5 sizes); STATUS + card progress"
+    }
+  ],
+  "version": 1
+}

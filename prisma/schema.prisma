@@ -1418,6 +1418,11 @@ model RentalAgreement {
   terminationEffectiveOn   DateTime?
   terminationFeeCents      Int?
   terminationPolicyVersion String?
+  // AR-4a: why the rental ended, captured optionally at the end path's confirm
+  // step (owner's own reasons list; never required, never shown to the
+  // customer). AR-9's "why customers left" reads these.
+  endReason                String?
+  endReasonNote            String?
 
   // Batch B2: immutable continuity metadata lets reminders and month-to-month
   // policy follow the same continuous rental across replacement agreements.
@@ -3646,6 +3651,10 @@ model BusinessSettings {
   // warning. Null = not set yet; the mileage side starts from the rule book rate.
   truckCostPerMileCents Int?
   laborCostPerMinuteCents Int?
+  // AR-4a: the owner's list of reasons a rental ends, offered (never required)
+  // when a rental is ended for good; starting values are the reasons rental
+  // businesses commonly track.
+  rentalEndReasons Json @default("[\"Moving away\",\"Bought their own\",\"Price\",\"Not happy with the service\",\"Didn't need it anymore\",\"Property sold or tenant left\"]")
   lemonRepairPercent Int @default(30)
   vendor1099ThresholdCents Int @default(200000)
   exportPayoutLines Json @default("{\"QBO_JOURNAL_CSV\":true,\"XERO_JOURNAL_CSV\":false,\"GENERIC_JOURNAL_CSV\":true,\"CASH_MOVEMENTS_CSV\":true}")

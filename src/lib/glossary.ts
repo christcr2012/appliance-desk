@@ -41,6 +41,9 @@ export const GLOSSARY = {
   "owes-now": { title: "Owes now", description: "Bills that are sent and not fully paid." },
   "pays-on-time": { title: "Pays on time", description: "Bills paid by the end of their due day, out of the last few bills." },
   "admin-setup-fee": { title: "Administrative setup fee", description: "The recommended $45 charge applies once per new delivery location, not per machine. It does not automatically apply to a repair, swap or renewal. The owner may adjust a quote with a written reason." },
+  "signing-preview": { title: "Signing charges preview", description: "Estimated mandatory signing amounts for this draft order. This is not a bill, a payment request, or a signed contract. First month's rent begins at delivery, except that a large-order down payment will credit that first bill." },
+  "signing-prepare": { title: "Prepare this order for signing", description: "Save a private version of the draft setup fees and first-month down-payment amounts for each rental agreement. You can refresh it after changing an unsent draft. This does not send a contract, book a delivery, collect money, or issue a first-bill credit." },
+  "signing-tax-review": { title: "Setup tax working figures", description: "Tax candidates calculated for owner review only. These are not signed, payable or customer-approved totals, and nothing here authorizes a collection." },
   "large-order-down-payment": { title: "Large-order down payment", description: "For orders of at least five machines, or business and property-manager clients, the proposed signing payment includes the first month of each rental. That amount must later be credited to the first invoice exactly once." },
   "setup-fee-tax": { title: "Setup fee tax treatment", description: "Whether Colorado taxes the separately stated administrative setup fee needs tax-adviser confirmation. Undecided treatment blocks collection in the proposed signing-charge plan." },
 } as const;
