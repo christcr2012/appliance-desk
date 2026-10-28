@@ -148,6 +148,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-filing-reminders-integration.test.ts",
   "tests/tax-invoice-lines-integration.test.ts",
   "tests/order-service-choice-integration.test.ts", // FEETAX-1: seedTaxReadyContext flips the shared lease-election setting while it runs.
+  "tests/rental-end-reason-integration.test.ts", // AR-4a: saves the shared rental-end-reasons list and restores it.
   "tests/tax-official-rate-auto-apply-integration.test.ts",
   "tests/tax-official-source-watch-integration.test.ts", // TFA-3 toggles the shared watch switch and the seeded watches' active flags while it runs.
   "tests/tax-official-rate-metadata-integration.test.ts", // Asserts on the seeded watches' active flags and the settings singleton the watch suites toggle.
