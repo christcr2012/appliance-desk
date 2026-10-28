@@ -16,6 +16,29 @@ import {
 } from "@/domains/agreements";
 import { dollarsToCents } from "@/domains/pricing";
 import { getMonthToMonthEndQuote, requestMonthToMonthEnd } from "@/domains/agreements/month-to-month";
+import {
+  getRentalEndReasons,
+  parseEndReasonInput,
+  recordAgreementEndReason,
+} from "@/domains/agreements/end-reasons";
+
+/** AR-4a: record the optional "Why is it ending?" answer, when one was given. */
+async function recordEndReasonFromForm(
+  userId: string,
+  agreementId: string,
+  formData: FormData,
+): Promise<void> {
+  const rawReason = formData.get("endReason");
+  if (typeof rawReason !== "string" || !rawReason.trim()) return;
+  const allowed = await getRentalEndReasons();
+  const rawNote = formData.get("endReasonNote");
+  const input = parseEndReasonInput(
+    rawReason,
+    typeof rawNote === "string" ? rawNote : null,
+    allowed,
+  );
+  await recordAgreementEndReason(userId, agreementId, input);
+}
 
 export type AgreementActionState =
   | { status: "idle" }
@@ -207,9 +230,15 @@ export async function sendForSignatureAction(
 
 export async function endAgreementAction(
   agreementId: string,
+  endReason?: { reason?: string | null; note?: string | null },
 ): Promise<AgreementActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   try {
+    if (endReason?.reason?.trim()) {
+      const allowed = await getRentalEndReasons();
+      const input = parseEndReasonInput(endReason.reason, endReason.note, allowed);
+      await recordAgreementEndReason(session.user.id, agreementId, input);
+    }
     await endAgreement(session.user.id, agreementId);
   } catch (error) {
     return {
@@ -273,6 +302,34 @@ export async function extendReservationAction(
 }
 
 /** The owner or an admin ends a month-to-month rental for a customer, optionally on an earlier billing date. */
+/** AR-4a: the kit's form-action shape for Send for signature (record header/next-step card). */
+export async function sendForSignatureFormAction(formData: FormData): Promise<void> {
+  const agreementId = String(formData.get("agreementId") ?? "");
+  const result = await sendForSignatureAction(agreementId);
+  if (result.status === "error") throw new Error(result.message);
+}
+
+/** AR-4a: the kit's form-action shape for Extend the hold (record ⋯ menu). */
+export async function extendReservationFormAction(formData: FormData): Promise<void> {
+  const agreementId = String(formData.get("agreementId") ?? "");
+  const result = await extendReservationAction(agreementId);
+  if (result.status === "error") throw new Error(result.message);
+}
+
+/** AR-4a: the Details-tab editor — set or clear why a rental ended (owner/admin, audited). */
+export async function setEndReasonAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const agreementId = String(formData.get("agreementId") ?? "");
+  const allowed = await getRentalEndReasons();
+  const input = parseEndReasonInput(
+    String(formData.get("endReason") ?? ""),
+    String(formData.get("endReasonNote") ?? ""),
+    allowed,
+  );
+  await recordAgreementEndReason(session.user.id, agreementId, input);
+  revalidatePath(`/desk/agreements/${agreementId}`);
+}
+
 export async function endMonthToMonthForCustomerAction(formData: FormData): Promise<void> {
   const session = await requireRole("OWNER", "ADMIN");
   const agreementId = String(formData.get("agreementId") ?? "");
@@ -283,6 +340,7 @@ export async function endMonthToMonthForCustomerAction(formData: FormData): Prom
   await requestMonthToMonthEnd({ userId: session.user.id, kind: "team" }, agreementId, quote, {
     ...(earlier ? { earlierEffectiveOn: new Date(earlier), reason } : {}),
   });
+  await recordEndReasonFromForm(session.user.id, agreementId, formData);
   revalidatePath(`/desk/agreements/${agreementId}`);
   revalidatePath("/desk/dashboard");
 }
@@ -315,6 +373,7 @@ export async function confirmEarlyReturnAction(formData: FormData): Promise<void
       await assertRefundWithinLimit(session.user.id, preview.refundOrCreditCents);
     }
     await applyEarlyReturn(session.user.id, agreementId, choice, preview);
+    await recordEndReasonFromForm(session.user.id, agreementId, formData);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     failure = message && message.length < 300 && !message.includes("prisma") ? message : "That could not be saved. Please try again.";
