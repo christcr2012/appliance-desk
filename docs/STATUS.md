@@ -1,3 +1,23 @@
+## October 27 — Lane 2 MCP-4 / MCP-5 verification checkpoint (local MCP-5 branch)
+
+MCP-4 PR #704 has passed all GitHub CI groups (full browser, unit, static and
+secret scans) and Reviewgate at exact head `8d98fb27`. GitHub still reports
+its merge as blocked by branch requirements; squash auto-merge is enabled.
+Do **not** override rules or claim that MCP-4 has merged.
+
+MCP-5 now has a local implementation for all seven named maintenance/decision
+commands through the durable action journal, original-preview hash checks,
+owner confirmation, row-lock/lease-fenced execution, readback-only UNKNOWN
+reconciliation, and an Assistant activity screen with an accessible change
+confirmation table. The nightly diagnostics path reads uncertain outcomes;
+none are automatically replayed. This remains **unmerged** and requires
+database, browser, type and review evidence before any exposure.
+
+Local full TypeScript checks exhausted the 4 GB sandbox memory; that is not
+passing evidence. The first disposable-PostgreSQL probe passed **11 of 11** focused journal/
+execution integration tests with no skipped tests. Browser, full type/build
+GitHub CI and review are still outstanding. No live action was enabled.
+
 ## October 27 — MCP-5 approved assistant actions (branch ai/chatgpt/mcp-5-action-journal, local only)
 
 The full acceptance plan is committed. The additive journal schema, preview-only

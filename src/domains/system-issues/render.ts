@@ -167,6 +167,14 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       detail = `Rule ${input.ruleKey}; missing variable names: ${[...new Set(input.missingVariableNames)].join(", ")}.`;
       break;
     }
+    case "ASSISTANT_ACTION_UNCERTAIN": {
+      id(input.operationId);
+      fingerprint = "assistant-action:" + input.operationId;
+      severity = "HIGH";
+      summary = "An assistant action needs checking.";
+      detail = "The action may have changed something. Open System health > Assistant activity, check its target and recorded result, and decide what to do next. The assistant will not repeat it automatically.";
+      break;
+    }
     default: { const impossible: never = input; throw new Error("Unknown system issue kind: " + String(impossible)); }
   }
   if (fingerprint.length > 240 || detail.length > 4096) throw new Error("Oversized issue");

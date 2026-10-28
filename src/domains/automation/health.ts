@@ -234,9 +234,14 @@ export async function saveLateGraceMinutes(actorUserId: string, next: number, ex
   });
 }
 
-export async function setAutomationPaused(actorUserId: string, ruleKey: string, shouldPause: boolean): Promise<void> {
+export async function setAutomationPaused(
+  actorUserId: string, ruleKey: string, shouldPause: boolean, expectedPaused?: boolean,
+): Promise<void> {
   if (!AUTOMATION_RULES.some((rule) => rule.ruleKey === ruleKey)) throw new Error("Unknown automation rule.");
   await prisma.$transaction(async (tx) => {
+    // Native OWNER authorization and target check remain in this domain command,
+    // including when called by an assistant after a persisted preview.
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
     const settings = await tx.businessSettings.upsert({
       where: { id: "singleton" },
       create: { id: "singleton" },
@@ -244,6 +249,8 @@ export async function setAutomationPaused(actorUserId: string, ruleKey: string, 
       select: { pausedAutomations: true },
     });
     const before = stringArray(settings.pausedAutomations);
+    if (expectedPaused !== undefined && before.includes(ruleKey) !== expectedPaused)
+      throw new Error("PREVIEW_CHANGED");
     const next = shouldPause
       ? [...new Set([...before, ruleKey])].sort()
       : before.filter((key) => key !== ruleKey);

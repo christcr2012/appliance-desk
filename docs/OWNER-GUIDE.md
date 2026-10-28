@@ -378,6 +378,29 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 **If it fails.** An email marked Needs review may be in progress; check Resend's sending activity before resending anything and do not reset the sequence. "Sent" means the provider accepted it, not that it reached an inbox.
 
+## System health — Assistant activity and approvals (MCP-5, pending checked merge)
+
+Open **Desk → More → System health → Assistant activity** to see the requests
+from assistants you connected. Each action is named and dated, with a status:
+Waiting for you, Approved, Working, Done, Declined, Expired or Not sure. Only
+you, the OWNER, can approve or decline a waiting action. Before approving, read
+the **Current** and **After** columns in the confirmation dialog, including
+any storage-use note. **Approve** authorizes one attempt; it does not itself
+run the request. **Decline** ends it without changing the target.
+
+Your Today list gets a follow-up task when an owner-approved action is waiting.
+Only the original assistant request can execute the approved action, within
+its short expiration window. If the target changed or the assistant lost
+permission, the app refuses to run it and a new preview is required.
+
+**If it fails.** **Not sure** means an action may already have affected the
+target. Check the actual target and any system issue under System health, not
+the assistant's message alone. The nightly check tries to verify the result
+but **never repeats** a possibly completed action. You can disconnect the
+assistant under **Connect an AI assistant** to revoke future access. These
+controls are in development until MCP-5 has passed GitHub CI, review and
+the protected merge; they are not yet available in the released app.
+
 ## System health — backups you can trust (MCP-2; pending checked release)
 
 Open **Desk → System health → Backup and recovery** to see which **private** store receives backups (the

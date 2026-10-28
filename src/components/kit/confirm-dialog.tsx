@@ -1,7 +1,7 @@
 "use client";
 // AR-0 kit 4.12: the plain confirmation for money and actions that cannot be undone. Focus starts on Cancel.
 import * as Dialog from "@radix-ui/react-dialog";
-import { useRef, type RefObject } from "react";
+import { useRef, type RefObject, type ReactNode } from "react";
 import type { ConfirmSpec } from "./types";
 
 export function ConfirmDialog({
@@ -10,6 +10,7 @@ export function ConfirmDialog({
   spec,
   onConfirm,
   returnFocusRef,
+  details,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -17,6 +18,8 @@ export function ConfirmDialog({
   onConfirm: () => void;
   /** Where focus goes when it closes (KIT 6.7). Safari does not focus a button on click, so pass the trigger. */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** Optional change summary, included inside the confirmation modal for review. */
+  details?: ReactNode;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const openedFrom = useRef<HTMLElement | null>(null);
@@ -40,6 +43,7 @@ export function ConfirmDialog({
         >
           <Dialog.Title className="text-lg font-extrabold">{spec.title}</Dialog.Title>
           <Dialog.Description className="mt-2 text-[15px] text-ink-soft">{spec.summary}</Dialog.Description>
+          {details ? <div className="mt-3">{details}</div> : null}
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Dialog.Close asChild>
               <button

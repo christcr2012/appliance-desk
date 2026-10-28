@@ -15,7 +15,7 @@ describe.skipIf(!enabled)("MCP action journal on disposable PostgreSQL", () => {
   const ownerId = "mcp-journal-owner-" + nonce;
   const connectionId = "mcp-journal-connection-" + nonce;
   const ctx: AgentContext = {
-    userId: adminId, name: "Journal admin", role: "ADMIN", connectionId,
+    userId: ownerId, name: "Journal owner", role: "OWNER", connectionId,
     connectionLabel: "Journal test assistant",
     scopes: ["ops:read", "ops:maintain", "decisions:read", "decisions:apply"],
   };
@@ -37,18 +37,35 @@ describe.skipIf(!enabled)("MCP action journal on disposable PostgreSQL", () => {
       { id: ownerId, name: "Journal owner", role: "OWNER", email: ownerId + "@example.test" },
     ] });
     await prisma.mcpConnection.create({ data: {
-      id: connectionId, userId: adminId, oauthClientId: connectionId,
+      id: connectionId, userId: ownerId, oauthClientId: connectionId,
       label: "MCP journal test", scopes: ctx.scopes,
     } });
   });
   afterAll(async () => {
+    await prisma.staffTask.deleteMany({ where: { createdByUserId: ownerId,
+      sourceKey: { startsWith: "assistant-action:" } } });
     await prisma.auditLog.deleteMany({
-      where: { userId: { in: [adminId, ownerId] }, entityType: "AgentOperation" },
+      where: { userId: { in: [adminId, ownerId] }, entityType: { in: ["AgentOperation", "StaffTask"] } },
     });
     await prisma.agentOperation.deleteMany({ where: { connectionId } });
     await prisma.mcpConnection.deleteMany({ where: { id: connectionId } });
     await prisma.user.deleteMany({ where: { id: { in: [adminId, ownerId] } } });
     await prisma.$disconnect();
+  });
+
+  it("does not let an admin bypass owner-only backup authorization", async () => {
+    const adminConnectionId = connectionId + "-admin";
+    await prisma.mcpConnection.create({ data: {
+      id: adminConnectionId, userId: adminId, oauthClientId: adminConnectionId,
+      label: "Admin assistant", scopes: ctx.scopes,
+    } });
+    try {
+      await expect(createJournalPreview({
+        ...ctx, userId: adminId, role: "ADMIN", connectionId: adminConnectionId,
+      }, { ...initial, requestKey: "admin-backup-request-012" })).rejects.toThrow();
+    } finally {
+      await prisma.mcpConnection.delete({ where: { id: adminConnectionId } });
+    }
   });
 
   it("canonicalizes argument order and never changes a request key's meaning", () => {
@@ -97,10 +114,10 @@ describe.skipIf(!enabled)("MCP action journal on disposable PostgreSQL", () => {
     const pending = await createJournalPreview(ctx, {
       ...initial, requestKey: "journal-request-safe-006",
     });
-    await prisma.user.update({ where: { id: adminId }, data: { role: "STAFF" } });
+    await prisma.user.update({ where: { id: ownerId }, data: { role: "STAFF" } });
     await expect(decideJournalApproval(ownerId, pending.id, true)).rejects.toThrow();
-    await prisma.user.update({ where: { id: adminId }, data: { role: "ADMIN" } });
-    await prisma.user.update({ where: { id: adminId }, data: { archivedAt: new Date() } });
+    await prisma.user.update({ where: { id: ownerId }, data: { role: "OWNER" } });
+    await prisma.user.update({ where: { id: ownerId }, data: { archivedAt: new Date() } });
     await expect(createJournalPreview(ctx, { ...initial, requestKey: "journal-request-safe-005" }))
       .rejects.toThrow();
   });

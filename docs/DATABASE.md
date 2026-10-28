@@ -1,3 +1,17 @@
+## MCP-5 execution and recovery notes (pending code review)
+
+The operation ledger keeps an immutable request-key digest and canonical
+arguments. Under connection and operation row locks, execution consumes one
+authorized preview and records a random lease token, its expiry and the
+expected verification target **before** calling a domain command.
+A finished command can set SUCCEEDED only after real target readback.
+An error after dispatch stays UNKNOWN; the nightly system-health pass fences
+stale leases and checks stored target evidence, without repeating commands.
+If a target cannot be confirmed, an ASSISTANT_ACTION_UNCERTAIN issue stays
+open for the owner. Backups preserve completed attempts; isolated restore
+cancels unfinished records and clears leases. No live provider/production
+migration was run by this implementation.
+
 ## MCP-5 agent action journal — additive migration 20261130000000_agent_operations
 
 The new AgentOperation table is append-safe, references an existing McpConnection,

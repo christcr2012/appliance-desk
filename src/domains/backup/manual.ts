@@ -9,7 +9,7 @@ import { runMediaInventoryAndCopy } from "./media";
 /** Owner-only fresh attempt, separate from the next nightly slot.
  * The shared database advisory lock serializes a manual click with backup and media cron claims.
  */
-export async function retryBackupNow(actorUserId: string): Promise<{
+export async function retryBackupNow(actorUserId: string, operationId?: string): Promise<{
   outcome: "RAN" | "ALREADY_RAN" | "FAILED" | "PAUSED";
   runId: string | null;
 }> {
@@ -25,7 +25,8 @@ export async function retryBackupNow(actorUserId: string): Promise<{
   }
   return runAutomation({
     ruleKey: "backup-manual",
-    runKeyOverride: "manual:" + randomUUID(),
+    // Journal-owned retries use a stable run key, so a lost response cannot start a second backup.
+    runKeyOverride: "manual:" + (operationId ?? randomUUID()),
     actorUserId,
     budgetSeconds: 180,
     work: async ({ runId }) => {

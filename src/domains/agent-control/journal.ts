@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { AgentOperationState, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { createTaskInTx } from "@/domains/tasks";
 import type { AgentContext } from "./authorization";
 import type { McpScope } from "@/mcp/scopes";
 
@@ -40,6 +41,13 @@ const ACTION_PERMISSIONS = {
 } as const;
 
 export type JournalAction = keyof typeof ACTION_PERMISSIONS;
+export function journalActionPolicy(action: JournalAction) {
+  return ACTION_PERMISSIONS[action];
+}
+export const OWNER_ONLY_JOURNAL_ACTIONS: ReadonlySet<JournalAction> = new Set([
+  "RETRY_DATABASE_BACKUP", "RETRY_MEDIA_COPY", "PAUSE_AUTOMATION",
+  "RESUME_AUTOMATION", "APPLY_DECISION_ANSWERS",
+]);
 export type JournalPreview = {
   summary: string;
   changes: { label: string; now: string; after: string }[];
@@ -47,7 +55,8 @@ export type JournalPreview = {
 };
 
 function previewSafe(value: JournalPreview): JournalPreview {
-  if (value.summary.length > 250 || !value.summary.trim() || value.changes.length > 25)
+  if (value.summary.length > 250 || !value.summary.trim() || value.changes.length > 200 ||
+      JSON.stringify(value).length > 65_536)
     throw new Error("INVALID_ACTION_PREVIEW");
   for (const c of value.changes) {
     if (c.label.length > 100 || c.now.length > 400 || c.after.length > 400)
@@ -92,7 +101,7 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
       select: { userId: true, scopes: true, revokedAt: true },
     });
     if (!connection || connection.userId !== ctx.userId || connection.revokedAt) throw new Error("CONNECTION_REVOKED");
-    await assertActiveTeamActor(tx, ctx.userId, ["OWNER", "ADMIN"]);
+    await assertActiveTeamActor(tx, ctx.userId, OWNER_ONLY_JOURNAL_ACTIONS.has(input.action) ? ["OWNER"] : ["OWNER", "ADMIN"]);
     mustScope(ctx, connection.scopes, policy.scope);
     const old = await tx.agentOperation.findUnique({
       where: { connectionId_tool_requestKeyDigest: { connectionId: ctx.connectionId,
@@ -116,6 +125,13 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
       userId: ctx.userId, action: "mcp.operation.previewed", entityType: "AgentOperation",
       entityId: created.id, newValue: { action: input.action, targetRef: input.targetRef ?? null },
     } });
+    if (policy.approval === "OWNER_IN_APP") {
+      await createTaskInTx(tx, { userId: ctx.userId, role: "OWNER" }, {
+        note: "Approve or decline assistant action: " + safe.summary +
+          ". Open System health > Assistant activity.",
+        assigneeUserId: ctx.userId, priority: "HIGH", sourceKey: "assistant-action:" + created.id,
+      });
+    }
     return created;
   });
 }
@@ -165,6 +181,10 @@ export async function decideJournalApproval(actorId: string, operationId: string
       entityType: "AgentOperation", entityId: operationId,
       newValue: { action: operation.action, targetRef: operation.targetRef },
     } });
+    await tx.staffTask.updateMany({
+      where: { sourceKey: "assistant-action:" + operationId, completedAt: null },
+      data: { completedAt: new Date(), version: { increment: 1 } },
+    });
     return result;
   });
 }

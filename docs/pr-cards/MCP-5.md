@@ -63,3 +63,15 @@ The main execute/verify/UNKNOWN reconciliation and owner activity UI still
 remain, so MCP-5 is deliberately not called complete or published.
 
 **Further checked (2026-10-27):** Preview and owner decisions now also write limited audit entries (operation action/reference only, never the arguments or answers); owner approval rechecks the connecting actor's live role and grant. The disposable-Postgres suite still passes all four cases including post-preview role downgrade. The operation dispatcher, reconciliation, domain actions and owner activity UI remain unbuilt.
+
+**Implementation checkpoint — October 27 (not mergeable yet).** Added strict
+action argument parsing, original-preview version hashes, locked one-time claim,
+durable attempt and lease token fencing, native command dispatch, post-command
+readback, and midnight reconciliation of UNCERTAIN without blind retries.
+Assistant activity shows bounded previews and owner Approve/Decline with a
+keyboard-focused confirmation table. Existing backup retry accepts a stable
+operation run key; existing automation pause rechecks the OWNER and expected
+state in its native transaction. Added concurrency/crash-recovery fixtures and browser accessibility
+coverage. The focused disposable-Postgres probe passed **11 of 11** journal/
+execution tests; browser and exact-head CI remain outstanding. Local TypeScript preflight hit sandbox OOM; only exact-head
+GitHub CI can finish required type/build verification.

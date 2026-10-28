@@ -146,6 +146,72 @@ test.describe("owner system health", () => {
     }
   });
 
+  test("MCP-5: owner reviews a change table and approves or declines, with accessible dialog", async ({ page }) => {
+    const tag = randomUUID().replaceAll("-", "").slice(0, 14);
+    const account = await prisma.user.findFirstOrThrow({
+      where: { role: "OWNER", archivedAt: null }, select: { id: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    const connection = await prisma.mcpConnection.create({ data: {
+      userId: account.id, oauthClientId: "e2e-assistant-" + tag,
+      label: "Test assistant " + tag, scopes: ["ops:maintain", "ops:read"],
+    } });
+    const createdIds: string[] = [];
+    async function createAction(index: number) {
+      const operation = await prisma.agentOperation.create({ data: {
+        connectionId: connection.id, actorUserId: account.id,
+        tool: "appliance_action_preview", action: "PAUSE_AUTOMATION", targetRef: "system-issues-sweep",
+        requestKeyDigest: String(index).repeat(64), argsHash: "e".repeat(64), args: { ruleKey: "system-issues-sweep" },
+        previewHash: "f".repeat(64), preview: {
+          summary: "Pause test diagnostics " + tag + "-" + index,
+          changes: [{ label: "System diagnostics", now: "Running", after: "Paused" }],
+          costNote: "No messages will be sent.",
+        },
+        state: "AWAITING_APPROVAL", expiresAt: new Date(Date.now() + 15 * 60_000),
+      } });
+      createdIds.push(operation.id);
+      return operation;
+    }
+
+    try {
+      const first = await createAction(1);
+      await page.goto("/desk/automations#assistant-activity", { waitUntil: "load" });
+      const section = page.getByRole("region", { name: "Assistant activity" });
+      await expect(section.getByText("Pause test diagnostics " + tag + "-1")).toBeVisible();
+      const card = section.getByRole("listitem").filter({ hasText: tag + "-1" });
+      await card.getByRole("button", { name: "Approve", exact: true }).click();
+      const dialog = page.getByRole("alertdialog", { name: "Approve assistant action?" });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole("table", { name: "Changes this action will make" })).toBeVisible();
+      await expect(dialog.getByText("System diagnostics")).toBeVisible();
+      // Confirmation must first focus the safe Cancel control; keyboard never skips the dialog.
+      await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+      const AxeBuilder = (await import("@axe-core/playwright")).default;
+      const accessibility = await new AxeBuilder({ page }).analyze();
+      expect(accessibility.violations).toEqual([]);
+      await dialog.getByRole("button", { name: "Approve this action" }).click();
+      await expect.poll(async () => (await prisma.agentOperation.findUniqueOrThrow({
+        where: { id: first.id }, select: { state: true },
+      })).state, { timeout: 15000 }).toBe("AUTHORIZED");
+      // In-app approval never executes the action itself.
+      expect((await prisma.agentOperation.findUniqueOrThrow({ where: { id: first.id } })).startedAt).toBeNull();
+
+      const second = await createAction(2);
+      await page.reload();
+      const secondCard = page.getByRole("region", { name: "Assistant activity" })
+        .getByRole("listitem").filter({ hasText: tag + "-2" });
+      await secondCard.getByRole("button", { name: "Decline" }).click();
+      await expect.poll(async () => (await prisma.agentOperation.findUniqueOrThrow({
+        where: { id: second.id }, select: { state: true },
+      })).state, { timeout: 15000 }).toBe("DENIED");
+    } finally {
+      await prisma.auditLog.deleteMany({ where: { entityType: "AgentOperation", entityId: { in: createdIds } } });
+      await prisma.agentOperation.deleteMany({ where: { id: { in: createdIds } } });
+      await prisma.mcpConnection.delete({ where: { id: connection.id } });
+    }
+  });
+
+
   test("phone and desktop pass light/dark accessibility checks", async ({ page }) => {
     await scanAccessibilityRoute(page, {
       path: "/desk/automations", role: "OWNER", fixture: "/desk/automations",
