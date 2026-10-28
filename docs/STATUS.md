@@ -6,9 +6,23 @@ decision / Deposits / Waiting for Stripe; the old billing `?view=deposits` and `
 links redirect here), payment sheets that open in place (Take payment, Record cash or check,
 card payment) on the Bills list, the bill panel, the statement and the customer record, and the
 bill record rebuilt as a kit record page with an Activity tab. No money rules changed — every
-button is the existing server action. Unit, database, typecheck and lint checks pass locally;
-the browser suite's re-run on this head is gated on CI (the shared box kept killing the local
-production build). Next: CI and review on PR #725, merge, close-out.
+button is the existing server action. CI is green on the PR head (the full browser suite included —
+it caught and I fixed a kit-guard menu move, plain-words titles, bundle budgets for the two new
+pages, a missing Toaster on the statement page, and three test files that followed the old
+deposits/waiting URLs). Next: review gate, merge, close-out.
+
+## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
+
+AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is
+the refactor only: the approval server actions now live in
+src/app/desk/approvals/actions.ts (decideApprovalAction, finishApprovalAction) —
+same domain calls, same OWNER check, same outcome mapping — except with inline=1
+they return { outcome } instead of redirecting, and finish also revalidates
+/desk/today. OUTCOME_WORDS and STATUS_WORDS moved to src/domains/approvals/words.ts;
+the approvals page imports everything back and behaves exactly as before. New
+tests/approval-actions.test.ts pins the contract (domain spies, both revalidations,
+inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
+adds optimistic task completion with Undo.
 
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
