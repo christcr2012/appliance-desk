@@ -1,3 +1,17 @@
+## October 28 — MCP-5 review fixes verified, merge pending (PR #717)
+
+Fixed three reviewed safety issues: previews and owner approvals now belong to
+the exact assistant grant even across disconnect/reconnect; DEC-1 answer readback
+is tied to the specific operation and expected normalized values; nightly
+uncertain-operation checks rotate through old unresolved work without replaying it.
+The additive migration preserves existing records. Disposable PostgreSQL:
+18/18 focused integration tests passed including grant rotation, operation
+evidence and reconciliation fairness. Focused TypeScript, migration-safety,
+owner wording and route-inventory checks passed. Full GitHub CI, browser and
+review on the new published head remain required. MCP-4 PR #704 remains green
+but GitHub's independent required-review protection blocks merging; never bypass.
+No live payments, texts, email or production data changed.
+
 ## October 27 — Lane 2 MCP-4 / MCP-5 verification checkpoint (local MCP-5 branch)
 
 MCP-4 PR #704 has passed all GitHub CI groups (full browser, unit, static and

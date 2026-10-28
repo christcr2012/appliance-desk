@@ -3187,10 +3187,13 @@ model DecisionRecord {
   attachmentUrl          String?
   sources                Json?
   via                    String
+  // Native DEC-1 evidence tied to one assistant operation, never another answer.
+  agentOperationId       String?
   createdAt              DateTime  @default(now())
 
   @@index([subjectId, createdAt])
   @@index([audience, createdAt])
+  @@index([agentOperationId, subjectId])
 }
 
 // DEC-1a: a decision that starts on a later Colorado date. The nightly scheduled-changes run applies it through the
@@ -6988,6 +6991,9 @@ model AgentOperation {
   action String @db.VarChar(60)
   targetRef String? @db.VarChar(120)
   requestKeyDigest String @db.Char(64)
+  // Only the exact grant that created this preview can approve or execute it.
+  connectionGrantVersion String?
+  lastReconciledAt DateTime?
   argsHash String @db.Char(64)
   args Json
   previewHash String? @db.Char(64)

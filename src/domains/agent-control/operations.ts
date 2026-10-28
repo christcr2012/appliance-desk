@@ -60,8 +60,9 @@ export async function previewAgentOperation(ctx: AgentContext, input: {
 export async function getAgentOperation(ctx: AgentContext, operationId: string) {
   const row = await prisma.agentOperation.findFirst({ where: {
     id: operationId, connectionId: ctx.connectionId, actorUserId: ctx.userId,
-  }, include: { connection: { select: { scopes: true, revokedAt: true, userId: true } } } });
-  if (!row || row.connection.revokedAt || row.connection.userId !== ctx.userId)
+  }, include: { connection: { select: { scopes: true, revokedAt: true, userId: true, grantVersion: true } } } });
+  if (!row || row.connection.revokedAt || row.connection.userId !== ctx.userId ||
+      row.connectionGrantVersion !== row.connection.grantVersion)
     throw new Error("OPERATION_NOT_FOUND");
   const policy = policyFor(row.action);
   if (!ctx.scopes.includes(policy.scope) || !row.connection.scopes.includes(policy.scope))
@@ -94,7 +95,8 @@ export async function executeAgentOperation(ctx: AgentContext, input: {
       tx.mcpConnection.findUniqueOrThrow({ where: { id: ctx.connectionId } }),
       tx.agentOperation.findUniqueOrThrow({ where: { id: input.previewId } }),
     ]);
-    if (connection.revokedAt || connection.userId !== ctx.userId || op.actorUserId !== ctx.userId)
+    if (connection.revokedAt || connection.userId !== ctx.userId || op.actorUserId !== ctx.userId ||
+        op.connectionGrantVersion !== connection.grantVersion)
       throw new Error("CONNECTION_REVOKED");
     const policy = policyFor(op.action);
     await assertActiveTeamActor(tx, ctx.userId, OWNER_ONLY_JOURNAL_ACTIONS.has(action) ? ["OWNER"] : ["OWNER", "ADMIN"]);
@@ -146,9 +148,10 @@ export async function executeAgentOperation(ctx: AgentContext, input: {
       await lockConnection(tx, ctx.connectionId);
       const current = await tx.mcpConnection.findUniqueOrThrow({
         where: { id: ctx.connectionId },
-        select: { userId: true, scopes: true, revokedAt: true },
+        select: { userId: true, scopes: true, revokedAt: true, grantVersion: true },
       });
-      if (current.revokedAt || current.userId !== ctx.userId) throw new Error("CONNECTION_REVOKED");
+      if (current.revokedAt || current.userId !== ctx.userId ||
+          current.grantVersion !== op.connectionGrantVersion) throw new Error("CONNECTION_REVOKED");
       const policy = policyFor(action);
       if (!current.scopes.includes(policy.scope) || !ctx.scopes.includes(policy.scope))
         throw new Error("FORBIDDEN_SCOPE");
@@ -219,8 +222,12 @@ export async function reconcileAgentOperations(now = new Date(), limit = 40) {
     }, data: { state: "UNKNOWN", leaseToken: null, leaseExpiresAt: null, failureCode: "LEASE_EXPIRED" } });
   }
   const unknowns = await prisma.agentOperation.findMany({ where: { state: "UNKNOWN" },
-    include: { connection: true }, take: limit, orderBy: { createdAt: "asc" } });
+    include: { connection: true }, take: limit,
+    orderBy: [{ lastReconciledAt: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }] });
   for (const op of unknowns) {
+    // Rotate the bounded batch even if readback fails or evidence is missing.
+    await prisma.agentOperation.updateMany({ where: { id: op.id, state: "UNKNOWN" },
+      data: { lastReconciledAt: now } });
     if (!op.verifyIntent || !op.startedAt || !journalActionPolicy(op.action as JournalAction)) {
       uncertain++;
       await recordSystemIssue({ kind: "ASSISTANT_ACTION_UNCERTAIN", operationId: op.id });

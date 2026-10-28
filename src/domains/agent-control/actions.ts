@@ -9,6 +9,8 @@ import { operationBackupRunKey, retryBackupNow } from "@/domains/backup/manual";
 import { runMediaInventoryAndCopy } from "@/domains/backup/media";
 import { verifyBackupReadback } from "@/domains/backup/artifacts";
 import { applyAnswers, getDecision, previewAnswers, type ParsedAnswer } from "@/domains/decisions";
+import { decisionSubject } from "@/domains/decisions/registry";
+import { matchOption } from "@/domains/decisions/rules";
 import type { AgentContext } from "./authorization";
 import { canonicalAgentArgs, type JournalAction, type JournalPreview } from "./journal";
 
@@ -176,10 +178,15 @@ export async function prepareAgentAction(
         label: row.title.slice(0, 100), now: row.now.slice(0, 400),
         after: (row.status === "OTHER" ? "Record only — no setting change" : row.after).slice(0, 400),
       })) };
-      verifyIntent = { answers: answers.map((answer) => ({
-        code: answer.code.replace(/^DQ-/, ""), other: answer.option === null,
-        effectiveFrom: answer.effectiveFrom || null,
-      })) };
+      verifyIntent = { answers: answers.map((answer) => {
+        const code = answer.code.replace(/^DQ-/, "");
+        const subject = decisionSubject(code);
+        const value = answer.option === null ? null :
+          subject ? matchOption(subject, answer.option)?.value : undefined;
+        if (value === undefined) throw new Error("DECISION_ANSWER_INVALID");
+        return { code, other: answer.option === null, expectedValue: value,
+          effectiveFrom: answer.effectiveFrom || null };
+      }) };
       break;
     }
     default:
@@ -248,7 +255,7 @@ export async function dispatchAgentAction(
         ({ code, now, after, status, effectiveFrom }));
       if (versionHash(action, args, version) !== operation.previewHash)
         throw new Error("PREVIEW_CHANGED");
-      const applied = await applyAnswers(ctx.userId, answers, confirmToken, { via: "MCP" });
+      const applied = await applyAnswers(ctx.userId, answers, confirmToken, { via: "MCP", agentOperationId: operationId });
       return { applied: applied.applied, same: applied.same, other: applied.other, skipped: applied.skipped };
     }
     default:
@@ -309,7 +316,8 @@ export async function verifyAgentAction(
       for (const answer of answers) {
         const code = String(answer.code ?? "");
         const record = await prisma.decisionRecord.findFirst({ where: {
-          subjectId: code, kind: "PROFESSIONAL_ANSWER", via: "MCP", createdAt: { gte: startedAt },
+          subjectId: code, kind: "PROFESSIONAL_ANSWER", via: "MCP",
+          agentOperationId: operationId, createdAt: { gte: startedAt },
         }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
         if (!record) continue;
         if (answer.other === true) {
@@ -317,8 +325,9 @@ export async function verifyAgentAction(
           if (record.value === null) verified++;
           continue;
         }
-        if (record.value === null) continue;
+        if (record.value === null || answer.expectedValue === null || answer.expectedValue === undefined) continue;
         const recordDigest = canonicalAgentArgs({ value: record.value }).digest;
+        if (recordDigest !== canonicalAgentArgs({ value: answer.expectedValue }).digest) continue;
         const effectiveFrom = typeof answer.effectiveFrom === "string" ? answer.effectiveFrom : null;
         const isFuture = !!effectiveFrom && effectiveFrom > businessDateKey(startedAt);
         if (isFuture) {

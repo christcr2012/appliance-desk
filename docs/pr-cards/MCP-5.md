@@ -22,6 +22,21 @@ unsafe, and the journal without actions does nothing.
 - [ ] Assistant activity list with Approve/Decline passes axe, phone/desktop, light/dark.
 - [ ] `ci` green at the exact head; every review comment read.
 
+## Review correction evidence — October 28
+
+The three Codex findings on PR #717 are fixed in one bounded patch: grant
+rotation is checked on owner approval, preview retry, read and both execution
+gates; every native DEC-1 evidence row carries its own operation ID and matches
+the preview's normalized expected answer; nightly readback rotates UNKNOWN
+operations by persistent last-checked time. A dedicated additive migration
+adds the evidence columns without rewriting existing data. All **18 focused
+disposable-PostgreSQL tests pass**, including 20 concurrent executions,
+disconnect/re-authorize safety, unrelated decision evidence, value tampering
+and 10-item starvation regression. Focused TypeScript, migration safety,
+owner wording and route inventory passed; GitHub CI/browser, review replies
+and dependency MCP-4's separate protected merge are still outstanding.
+No production data or provider modes were changed.
+
 ## Progress
 
 **Acceptance plan — 2026-10-27 (before implementation).** Deliver a complete

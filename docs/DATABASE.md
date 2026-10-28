@@ -1,3 +1,16 @@
+## MCP-5 review safety guards — additive migration 20261202000000_mcp5_review_guards
+
+AgentOperation.connectionGrantVersion captures the original MCP connection
+grant. A disconnected/re-authorized grant cannot reuse an older preview or
+approval, even when McpConnection.id is reused. Old operations without a
+stored grant version fail closed. AgentOperation.lastReconciledAt rotates the
+limited nightly UNKNOWN readback batch so older irrecoverable records never
+starve newer effects; it never causes an automatic replay.
+DecisionRecord.agentOperationId ties each MCP-applied native DEC-1 answer
+to exactly one assistant operation, while retaining its append-only audit
+history. Readback also compares the actual normalized choice to the persisted
+expected answer. All three columns are nullable and the migration is additive.
+
 ## MCP-5 typed uncertain-operation issue — additive migration 20261201000000_mcp5_uncertain_issue
 
 The existing `SystemIssue_kind_known` check now also allows

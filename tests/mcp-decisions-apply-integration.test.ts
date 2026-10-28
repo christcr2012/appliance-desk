@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { businessDateKey } from "@/lib/business-date";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import { previewAgentOperation, executeAgentOperation } from "@/domains/agent-control/operations";
+import { prepareAgentAction, verifyAgentAction } from "@/domains/agent-control/actions";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && !process.env.VERCEL &&
@@ -89,6 +90,20 @@ describe.skipIf(!enabled)("MCP-5 executes real DEC-1 answers with readback", () 
     expect((await executeAgentOperation(ctx, {
       previewId: prepared.previewId, requestKey,
     })).state).toBe("SUCCEEDED");
+    expect(answer.agentOperationId).toBe(prepared.previewId);
+    expect(otherRecord.agentOperationId).toBe(prepared.previewId);
+    const expected = await prepareAgentAction(ctx, "APPLY_DECISION_ANSWERS", { answers });
+    const startedAt = new Date(Date.now() - 60_000);
+    const matching = await verifyAgentAction(ctx, "APPLY_DECISION_ANSWERS",
+      expected.verifyIntent, prepared.previewId, startedAt, null);
+    expect(matching.ok).toBe(true);
+    const differentOperation = await verifyAgentAction(ctx, "APPLY_DECISION_ANSWERS",
+      expected.verifyIntent, "unrelated-never-dispatched", startedAt, null);
+    expect(differentOperation.ok).toBe(false);
+    const tampered = structuredClone(expected.verifyIntent);
+    (tampered.answers as { expectedValue: string }[])[0]!.expectedValue = "LIABLE";
+    expect((await verifyAgentAction(ctx, "APPLY_DECISION_ANSWERS",
+      tampered, prepared.previewId, startedAt, null)).ok).toBe(false);
     expect(await prisma.decisionRecord.count({ where: { answeredByUserId: actorId } })).toBe(2);
   });
 

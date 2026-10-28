@@ -156,6 +156,26 @@ describe.skipIf(!enabled)("MCP actions execute once on disposable PostgreSQL", (
     expect(fake.calls).toBe(0);
   });
 
+  it("a disconnected and renewed grant cannot execute or approve an old preview", async () => {
+    const old = await preview(14, "RETRY_DATABASE_BACKUP");
+    const original = await prisma.mcpConnection.findUniqueOrThrow({ where: { id: connectionId } });
+    await prisma.mcpConnection.update({ where: { id: connectionId }, data: {
+      revokedAt: new Date(), grantVersion: randomUUID(),
+    } });
+    await prisma.mcpConnection.update({ where: { id: connectionId }, data: { revokedAt: null } });
+    try {
+      await expect(decideJournalApproval(userId, old.previewId, true))
+        .rejects.toThrow("CONNECTION_REVOKED");
+      await expect(executeAgentOperation(ctx, { previewId: old.previewId, requestKey: key(14) }))
+        .rejects.toThrow("CONNECTION_REVOKED");
+      await expect(preview(14, "RETRY_DATABASE_BACKUP")).rejects.toThrow("CONNECTION_REVOKED");
+      expect(fake.calls).toBe(0);
+    } finally {
+      await prisma.mcpConnection.update({ where: { id: connectionId },
+        data: { grantVersion: original.grantVersion } });
+    }
+  });
+
   it("expires stale previews and refuses denied requests", async () => {
     const expired = await preview(6);
     await prisma.agentOperation.update({ where: { id: expired.previewId },
@@ -198,6 +218,36 @@ describe.skipIf(!enabled)("MCP actions execute once on disposable PostgreSQL", (
     } finally {
       fake.releaseDispatch?.();
     }
+  });
+
+  it("rotates past ten permanently uncertain actions to reconcile a later success", async () => {
+    const now = new Date();
+    for (let n = 30; n < 40; n++) {
+      const item = await preview(n);
+      await prisma.agentOperation.update({ where: { id: item.previewId }, data: {
+        state: "UNKNOWN", startedAt: now, verifyIntent: undefined,
+      } });
+      // JSON null marks absent recovery evidence; these cannot be reconciled.
+      await prisma.agentOperation.update({ where: { id: item.previewId }, data: {
+        verifyIntent: (await import("@prisma/client")).Prisma.DbNull,
+      } });
+    }
+    const next = await preview(40);
+    await prisma.agentOperation.update({ where: { id: next.previewId }, data: {
+      state: "UNKNOWN", startedAt: now, verifyIntent: { marker: "test-target" },
+    } });
+    await prisma.auditLog.create({ data: {
+      userId: null, action: "mcp.test_effect", entityType: "AgentOperation",
+      entityId: next.previewId, newValue: { complete: true },
+    } });
+    const first = await reconcileAgentOperations(now, 10);
+    expect(first.recovered).toBe(0);
+    const second = await reconcileAgentOperations(new Date(now.getTime() + 1000), 10);
+    expect(second.recovered).toBeGreaterThanOrEqual(1);
+    expect((await prisma.agentOperation.findUniqueOrThrow({
+      where: { id: next.previewId },
+    })).state).toBe("SUCCEEDED");
+    expect(fake.calls).toBe(0);
   });
 
   it("reconciles an effect after its response was lost, without replaying", async () => {
