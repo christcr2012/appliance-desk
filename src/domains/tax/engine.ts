@@ -4,6 +4,7 @@ import { taxCentsForLine } from "@/domains/billing/tax";
 import { businessDateKey } from "@/lib/business-date";
 import {
   categoryForLineKind,
+  SERVICE_LINE_CATEGORIES,
   type InvoiceLineItemKind,
   type LineTaxCategory,
   type TaxChargeCategory,
@@ -24,6 +25,8 @@ export type EngineJurisdiction = {
   rules: Partial<Record<TaxChargeCategory, Taxability>>;
   /** DEC-1a: categories whose rule here is a starting value the CPA has not confirmed yet. */
   provisional?: Partial<Record<TaxChargeCategory, boolean>>;
+  /** FEETAX-1: per-category answer for a service line the order proves was optional and separately stated. */
+  optionalSeparatedRules?: Partial<Record<TaxChargeCategory, Taxability>>;
 };
 
 export type EngineInput = {
@@ -33,6 +36,8 @@ export type EngineInput = {
   defaultRules: Partial<Record<TaxChargeCategory, Taxability>>;
   /** DEC-1a: default (all state-collected areas) categories that are unconfirmed starting values. */
   defaultProvisional?: Partial<Record<TaxChargeCategory, boolean>>;
+  /** FEETAX-1: default (state-collected) optional-and-separate answers for service lines. */
+  defaultOptionalSeparatedRules?: Partial<Record<TaxChargeCategory, Taxability>>;
   jurisdictions: EngineJurisdiction[];
   exemptJurisdictionIds: Set<string>;
   lines: {
@@ -41,6 +46,8 @@ export type EngineInput = {
     amountCents: number;
     parentKey?: string;
     acquisitionBasis?: { applianceId: string; status: AcquisitionTaxStatus; verifiedTaxPaid: boolean }[];
+    /** FEETAX-1: the order's saved choice for this service (proof for the optional-and-separate rule). */
+    serviceChoice?: { choice: "BY_BUSINESS" | "CUSTOMER_DOES_IT" | "NOT_NEEDED"; alternativeShown: boolean } | null;
   }[];
 };
 
@@ -68,6 +75,7 @@ const CATEGORY_WORDS: Record<TaxChargeCategory, string> = {
   DELIVERY: "Delivery",
   INSTALLATION: "Installation",
   REMOVAL: "Removal",
+  HAUL_AWAY: "Haul-away",
   DAMAGE_WAIVER: "Damage waiver",
   EARLY_TERMINATION: "Early termination",
   LATE_PAYMENT_FEE: "Late payment fee",
@@ -79,8 +87,31 @@ const CATEGORY_WORDS: Record<TaxChargeCategory, string> = {
 export function resolveTaxability(
   jurisdiction: EngineJurisdiction,
   category: TaxChargeCategory,
-  input: Pick<EngineInput, "election" | "defaultRules" | "leaseTermMonths" | "defaultProvisional">,
+  input: Pick<EngineInput, "election" | "defaultRules" | "leaseTermMonths" | "defaultProvisional" | "defaultOptionalSeparatedRules">,
+  serviceChoice?: EngineInput["lines"][number]["serviceChoice"],
 ): { taxability: Taxability; reason: string; provisional?: true } {
+  // FEETAX-1: a service line the order proves was optional (the customer could decline it,
+  // the free alternative was shown, and the business did it) and separately stated uses the
+  // place's optional-and-separate answer when one is recorded. Anything unproven — no
+  // record (old orders), the alternative never shown — falls through to the regular answer.
+  if (
+    serviceChoice?.choice === "BY_BUSINESS" && serviceChoice.alternativeShown
+    && (SERVICE_LINE_CATEGORIES as readonly string[]).includes(category)
+  ) {
+    const separated = jurisdiction.optionalSeparatedRules?.[category]
+      ?? (jurisdiction.administration === "STATE_COLLECTED"
+        ? input.defaultOptionalSeparatedRules?.[category]
+        : undefined);
+    if (separated && separated !== "UNDECIDED") {
+      const word = (CATEGORY_WORDS[category] ?? category).toLowerCase();
+      return {
+        taxability: separated,
+        reason: `Optional ${word}, shown separately — ${separated === "EXEMPT" ? "not taxed" : "taxed"} by ${jurisdiction.name}`,
+        ...(jurisdiction.provisional?.[category] ? { provisional: true as const } : {}),
+      };
+    }
+  }
+
   const specific = jurisdiction.rules[category];
 
   if (specific && specific !== "UNDECIDED") {
@@ -181,7 +212,7 @@ export function computeTax(input: EngineInput): EngineResult {
         );
       }
 
-      const resolution = resolveTaxability(jurisdiction, category, input);
+      const resolution = resolveTaxability(jurisdiction, category, input, line.serviceChoice);
       if (resolution.taxability === "UNDECIDED") {
         problems.add(
           `${CATEGORY_WORDS[category]} in ${jurisdiction.name}: not decided yet`,

@@ -18,7 +18,7 @@ export default async function TaxabilityMatrixPage() {
   const jurisdictions = await prisma.taxJurisdiction.findMany({
     select: {
       id: true, name: true, level: true, administration: true,
-      rules: { select: { id: true, category: true, taxability: true, cpaConfirmedOn: true, provisional: true } },
+      rules: { select: { id: true, category: true, taxability: true, cpaConfirmedOn: true, provisional: true, optionalSeparatedTreatment: true } },
     },
     orderBy: [{ level: "asc" }, { name: "asc" }], take: 75,
   });
@@ -44,6 +44,13 @@ export default async function TaxabilityMatrixPage() {
           <select name="taxability" className={css}>
             <option value="TAXABLE">Taxable</option><option value="EXEMPT">Exempt</option>
           </select>
+        </label>
+        <label className={label}>For a service the customer can decline, when it is listed separately
+          <select name="optionalSeparatedTreatment" className={css}>
+            <option value="">Same as the decision above</option>
+            <option value="TAXABLE">Taxable</option><option value="EXEMPT">Exempt</option>
+          </select>
+          <span className="text-xs font-normal text-muted-foreground">Only matters for delivery, installation, pickup at the end and haul-away. Leaving it on the first choice settles the service with the decision above.</span>
         </label>
         <label className={label}>CPA confirmation date
           <input name="cpaConfirmedOn" type="date" required className={css} />
@@ -81,13 +88,13 @@ export default async function TaxabilityMatrixPage() {
           <tbody>{defaults.map(r => <tr key={r.id} className="border-t border-border">
             <td className="p-3">All state-collected areas (default)</td>
             <td className="p-3">{r.category.replaceAll("_", " ")}</td>
-            <td className="p-3">{r.taxability}{r.provisional ? <ProvisionalNote /> : null}</td>
+            <td className="p-3">{r.taxability}{r.provisional ? <ProvisionalNote /> : null}{r.optionalSeparatedTreatment ? <span className="block text-xs text-muted-foreground">When optional and listed separately: {r.optionalSeparatedTreatment}</span> : null}</td>
             <td className="p-3">{r.cpaConfirmedOn?.toISOString().slice(0, 10) ?? "Not confirmed"}</td>
           </tr>)}{jurisdictions.flatMap(j => j.rules.length ? j.rules.map(r => (
             <tr key={r.id} className="border-t border-border">
               <td className="p-3">{j.name}</td>
               <td className="p-3">{r.category.replaceAll("_"," ")}</td>
-              <td className="p-3">{r.taxability}{r.provisional ? <ProvisionalNote /> : null}</td>
+              <td className="p-3">{r.taxability}{r.provisional ? <ProvisionalNote /> : null}{r.optionalSeparatedTreatment ? <span className="block text-xs text-muted-foreground">When optional and listed separately: {r.optionalSeparatedTreatment}</span> : null}</td>
               <td className="p-3">{r.cpaConfirmedOn?.toISOString().slice(0,10) ?? "Not confirmed"}</td>
             </tr>
           )) : [<tr key={j.id} className="border-t border-border"><td className="p-3">{j.name}</td>

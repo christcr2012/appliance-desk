@@ -17,6 +17,7 @@ export function lineKindAccountRole(
     case "DELIVERY_FEE": return "DELIVERY_INCOME";
     case "INSTALLATION_FEE": return "INSTALLATION_INCOME";
     case "REMOVAL_FEE": return "REMOVAL_INCOME";
+    case "HAUL_AWAY_FEE": return "REMOVAL_INCOME"; // FEETAX-1: haul-away is removal-type service income; no separate chart account.
     case "DAMAGE_WAIVER": return "DAMAGE_WAIVER_INCOME";
     case "LATE_FEE": return "LATE_FEE_INCOME";
     case "EARLY_TERMINATION_FEE": return "EARLY_TERMINATION_INCOME";

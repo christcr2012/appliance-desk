@@ -1,3 +1,19 @@
+## October 27 — FEETAX-1: Optional, separately stated service lines and per-place fee rules (in progress)
+
+Branch `ai/vivienne/feetax-1`. Spec `docs/build-specs/engines/FEE-TAXABILITY.md` sections
+1–7; card `docs/pr-cards/FEETAX-1.md`; execution packet
+`docs/pr-cards/execution/FEETAX-1.json`. Building: delivery, installation, pickup at the
+end and haul-away as separate optional choices with prices shown at ordering (the free
+do-it-myself alternative included; gas appliances never offer self-install), each choice
+saved with the order as `OrderServiceChoice`, and the tax engine applying a place's
+optional-and-separately-stated answer only when the order proves the alternative was
+shown — old orders and unproven cases fall back to the regular taxed answer. Starting
+rules seed as "Researched — not confirmed"; Greeley's service answers stay unset (taxed)
+until Greeley confirms in writing. The $45 setup fee stays as set (IN-74). Lane 5 is
+paired on this card: it builds slices 4–6 and verifies slices 1–3, on its own branch,
+checkout and database (port 5433), under Lane 4's tax and fee rules.
+
+## October 27 — Lane 1 AR-12 Features + Practice (branch ai/chatgpt/ar12-feature-visibility-20261027, in implementation)
 ## October 27 — AR-11 measured desk JavaScript guard (PR #691, review/checks pending)
 
 The real Next 16 production build records the gzip JavaScript actually requested by each private desk page and rejects missing route baselines or growth over 10%. PR #691 passed its previous exact-head CI and had a pending review gate; merging AR-12 and Help changed main, so the actual branch conflict is being reconciled without reverting those releases. Fresh exact-head CI and review are required. AR-1 was incorrectly marked merged via #714, which actually shipped tax benefits; work-index correction is included. Real-phone installation remains an owner verification item.

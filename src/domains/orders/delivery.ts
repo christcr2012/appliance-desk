@@ -17,10 +17,19 @@ export const questionsSchema = z.object({
   washerHookups: z.enum(["YES", "NO", "UNKNOWN"]),
   crewNotes: z.string().trim().max(1500),
 }).strict();
+// FEETAX-1 (S5): a phone-order preference may also carry the caller's
+// service choices (who does delivery / installation / pickup at the
+// end / haul-away). It stays a preference — the binding record is made
+// at the customer's own approval, prefilled from these picks.
+export const serviceChoicePickSchema = z.object({
+  service: z.enum(["DELIVERY", "INSTALLATION", "REMOVAL", "HAUL_AWAY"]),
+  choice: z.enum(["BY_BUSINESS", "CUSTOMER_DOES_IT", "NOT_NEEDED"]),
+}).strict();
 export const deliverySelectionSchema = z.object({
   optionId: z.string().uuid(),
   expectedOfferVersion: z.number().int().min(1),
   questions: questionsSchema,
+  serviceChoices: z.array(serviceChoicePickSchema).max(4).optional(),
 }).strict();
 export type DeliverySelection = z.infer<typeof deliverySelectionSchema>;
 const optionsSchema = z.array(slotSchema).min(1).max(4);

@@ -5789,7 +5789,7 @@
         "TFA-1",
         "ZONE-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS \u2014 branch ai/vivienne/feetax-1 (2026-10-27); packet registered, building; Lane 5 paired (builds S4\u2013S6, verifies S1\u2013S3)",
       "migration": "additive (OrderServiceChoice, HAUL_AWAY, optionalSeparatedTreatment)",
       "budget": 450,
       "units": [
@@ -5913,6 +5913,10 @@
     {
       "id": "TAXBEN-2",
       "path": "docs/pr-cards/execution/TAXBEN-2.json"
+    },
+    {
+      "id": "FEETAX-1",
+      "path": "docs/pr-cards/execution/FEETAX-1.json"
     },
     {
       "id": "W-22D12",
