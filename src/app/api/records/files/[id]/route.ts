@@ -23,7 +23,7 @@ export async function GET(
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   const role = session.user.role;
-  if (role !== "OWNER" && role !== "ADMIN") {
+  if (role !== "OWNER" && role !== "ADMIN" && role !== "ACCOUNTANT") {
     return NextResponse.json({ error: "File not found." }, { status: 404 });
   }
   const { id } = await params;
@@ -35,7 +35,7 @@ export async function GET(
   const result = await readRecordFileBytes(file);
   if (!result) return NextResponse.json({ error: "File not found." }, { status: 404 });
 
-  if (role === "OWNER") {
+  if (role === "OWNER" || role === "ACCOUNTANT") {
     await auditRecordDownload(session.user.id, file.recordId, file.id);
   }
   return new Response(Buffer.from(result.bytes), {

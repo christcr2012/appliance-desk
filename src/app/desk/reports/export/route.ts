@@ -10,9 +10,11 @@ import { businessDateKey } from "@/lib/business-date";
  * src/domains/reports/accounting-export.ts for what "real money
  * movement" covers and why amounts are signed the way they are. */
 export async function GET() {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
 
-  const transactions = await getAccountingTransactions();
+  const transactions = await getAccountingTransactions({
+    forAccountant: session.user.role === "ACCOUNTANT",
+  });
 
   const csv = toCsv(
     [

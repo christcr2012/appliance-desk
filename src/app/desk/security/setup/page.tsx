@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function TwoFactorSetupPage() {
-  const session = await requireRoleForTwoFactorSetup("OWNER", "ADMIN", "STAFF");
+  const session = await requireRoleForTwoFactorSetup("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { twoFactorEnabled: true },

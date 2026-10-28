@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 // DEC-1b: a professional's completed form kept with a decision record. Owner and admins only; "no such file" and
 // "not yours" answer the same 404. Always downloaded (never shown inline), never cached.
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
-  const guard = await guardDecisionRequest(request, ["OWNER", "ADMIN"]);
+  const guard = await guardDecisionRequest(request, ["OWNER", "ADMIN", "ACCOUNTANT"]);
   if (!guard.ok) return guard.response;
   const { id } = await params;
   let found: Awaited<ReturnType<typeof decisionAttachmentForViewer>>;

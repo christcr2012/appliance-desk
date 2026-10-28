@@ -52,14 +52,16 @@ describe("file routes front door", () => {
 
 describe("screens and actions", () => {
   const read = (path: string) => readFileSync(path, "utf8");
-  it("the list and download allow owner and admin; every action and import is owner only", () => {
-    expect(read("src/app/desk/settings/decisions/page.tsx")).toContain('requireRole("OWNER", "ADMIN")');
+  it("the list allows owner, admin and the accountant; the answer allows owner and accountant; downloads, other actions and import stay closed", () => {
+    // ACCT-1: the accountant sees the CPA questions and answers them under
+    // their own name; form downloads stay owner/admin, the rest owner only.
+    expect(read("src/app/desk/settings/decisions/page.tsx")).toContain('requireRole("OWNER", "ADMIN", "ACCOUNTANT")');
     expect(read("src/app/desk/settings/decisions/form/route.ts")).toContain('requireRole("OWNER", "ADMIN")');
     expect(read("src/app/desk/settings/decisions/import/page.tsx")).toContain('requireRole("OWNER")');
     const actions = read("src/app/desk/settings/decisions/actions.ts");
     expect(actions.match(/export async function/g)).toHaveLength(5);
     expect(actions.match(/requireRole\("OWNER"\)/g)).toHaveLength(5);
-    expect(read("src/app/api/desk/decisions/answer/route.ts")).toContain('["OWNER"], { write: true }');
+    expect(read("src/app/api/desk/decisions/answer/route.ts")).toContain('["OWNER", "ACCOUNTANT"], { write: true }');
     expect(read("src/app/api/desk/decisions/import/route.ts")).toContain('["OWNER"], { write: true }');
   });
 

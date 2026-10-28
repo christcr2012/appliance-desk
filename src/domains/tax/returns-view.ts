@@ -3,6 +3,7 @@ import type { FilingPacket, FilingPacketLoad } from "@/domains/tax/filing-packet
 import { loadFilingPacket } from "@/domains/tax/filing-packet";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { maskReference } from "@/domains/paperwork/rules";
 
 function isFrozenPacket(value: unknown): value is FilingPacket {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -22,20 +23,28 @@ export async function getPrivateReturn(periodId: string): Promise<{
   }>>>>;
   result: FilingPacketLoad;
 }> {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   if (!/^[A-Za-z0-9_-]{5,128}$/.test(periodId)) throw new Error("Invalid return identifier.");
-  const period = await prisma.taxFilingPeriod.findUnique({
+  const found = await prisma.taxFilingPeriod.findUnique({
     where: { id: periodId }, include: {
       filingAccount: true,
       amendments: { orderBy: [{ sequence: "desc" }], take: 25 },
     },
   });
-  if (!period) throw new Error("Filing period not found.");
+  if (!found) throw new Error("Filing period not found.");
+  // ACCT-1: an accountant may read a return, but filing account numbers are
+  // masked for the role (spec: "filing accounts (account numbers masked)").
+  const period = session.user.role === "ACCOUNTANT" && found.filingAccount
+    ? { ...found, filingAccount: { ...found.filingAccount, accountNumber: found.filingAccount.accountNumber ? maskReference(found.filingAccount.accountNumber) : null } }
+    : found;
   if (period.status === "FILED") {
     if (!isFrozenPacket(period.worksheet)) {
       return { period, result: { status: "BLOCKED", problems: ["The original frozen worksheet cannot be read. Do not recalculate filed returns from today's tax rules."] } };
     }
-    const packet = period.worksheet as FilingPacket;
+    const frozen = period.worksheet as FilingPacket;
+    const packet = session.user.role === "ACCOUNTANT"
+      ? { ...frozen, account: { ...frozen.account, accountNumber: frozen.account.accountNumber ? maskReference(frozen.account.accountNumber) : null } }
+      : frozen;
     // Worksheets frozen before TFA-1 name the RDF grouping key rateId; the
     // current packet names it rateKey. Display only — the frozen row is never edited.
     if (packet.rdf) {
@@ -49,6 +58,11 @@ export async function getPrivateReturn(periodId: string): Promise<{
     }
     return { period, result: { status: "READY", packet } };
   }
-  return { period, result: await loadFilingPacket(periodId) };
+  const live = await loadFilingPacket(periodId);
+  if (session.user.role === "ACCOUNTANT" && live.status === "READY") {
+    live.packet.account.accountNumber = live.packet.account.accountNumber
+      ? maskReference(live.packet.account.accountNumber) : null;
+  }
+  return { period, result: live };
 }
 
