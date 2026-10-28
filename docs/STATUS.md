@@ -1,4 +1,7 @@
-## October 28 — AR-8 Settings rebuild: built (branch `ai/vivienne/ar-8b`, successor of PR #724)
+## October 28 — AR-8 Settings rebuild: in review on PR #726 (branch `ai/vivienne/ar-8b`, successor of PR #724)
+
+Two fix rounds after CI and Codex review, all batched: the catalog now also covers AR-4a's rentalEndReasons; the settings frame lives on the catalog page only (the ~15 settings sub-pages keep their own headings); the driving-origin panel is wired to the verified-origin writer (it opened empty); undo now enforces the catalog's owner-only rule and the delivery-window cross-field rule; the three domain-writer row saves check the page revision inside their locked writes like the generic path. Specs that drive editors behind panel rows open the panel first; the settings-history preview and stale-save tests now exercise the row Change sheet, which is where those guarantees live. The section SettingsForm's policies/service-area branches are superseded by the rows (the profile branch still serves the business panels).
+
 
 Settings is rebuilt on one catalog: every BusinessSettings field is a row, a panel cover, or a named not-a-setting; nine sections, search, per-row Change sheets with a From → To preview and restore-recommended, a saved toast with Undo, per-row history, and old section URLs redirecting to the new sections. The spec section 1 fixes ride along (bounded undo scan, history read guards itself, the un-revisioned save fallback deleted). New unit/integration suites green locally on Lane 6's own cluster and preflight clean; the production build and the new browser spec (`e2e/ar8-settings.spec.ts`) run in CI — the sandbox VM killed the local build three times mid-run. Card `docs/pr-cards/AR-8.md`; packet `docs/pr-cards/execution/AR-8.json`.
 

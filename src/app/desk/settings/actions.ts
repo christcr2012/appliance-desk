@@ -537,3 +537,23 @@ export async function signOutStaffEverywhereAction(
     };
   }
 }
+
+/**
+ * AR-8: verify the driving origin from Settings. Same domain writer the
+ * estimates flow uses (owner-only, audited); this is the settings route's
+ * own thin action over it.
+ */
+export async function verifyDrivingOriginAction(
+  address: string,
+  reference: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const session = await requireRole("OWNER");
+  try {
+    const { setVerifiedDrivingOrigin } = await import("@/domains/orders/route-evidence");
+    await setVerifiedDrivingOrigin(session.user.id, address, reference);
+    revalidatePath("/desk/settings");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Origin not verified." };
+  }
+}

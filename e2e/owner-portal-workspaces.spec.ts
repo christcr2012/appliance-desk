@@ -172,6 +172,8 @@ for (const role of ["owner", "customer"] as const) {
         // ZONE-1: the service-area section is now the delivery zones form. Change only the last zone's end-of-rental
         // pickup price (nothing else reads it in the browser suite) and put it back.
         await page.goto("/desk/settings?section=service-area");
+        // AR-8: the zones form opens from its panel row on Business profile.
+        await page.getByRole("button", { name: /Delivery zones/ }).click();
         const pickup = page.getByLabel("End-of-rental pickup ($)").last();
         const saved = page.getByText(/Delivery zones saved/);
         await expect(pickup).toBeEditable();

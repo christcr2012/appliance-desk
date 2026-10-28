@@ -35,6 +35,8 @@ test("the owner changes a price, publishes site words, schedules a delivery, rec
     // 1. Price: saved on the settings screen, written to the price history.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/desk/settings?section=products");
+    // AR-8: the price table opens from its panel row on Prices & fees.
+    await page.getByRole("button", { name: /Appliance prices/ }).click();
     const row = page.locator("main tr:visible, main li:visible").filter({ has: page.getByText(applianceType.name, { exact: true }) }).first();
     await row.getByRole("spinbutton", { name: `Monthly price for ${applianceType.name}` }).fill("42.50");
     await row.getByRole("button", { name: "Save", exact: true }).click();

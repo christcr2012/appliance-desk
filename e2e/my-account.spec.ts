@@ -152,15 +152,12 @@ test.describe("My account", () => {
       }
 
       // The owner turns remembering back on, so later tests see the starting value.
-      await page.goto("/desk/settings?section=security");
-      await page.getByLabel("Remember devices for (days)").fill("30");
-      const turnedOn = page.waitForResponse(
-        (response) => response.request().method() === "POST" && response.url().includes("/desk/settings"),
-      );
-      await page.getByRole("button", { name: "Save remember-device rules" }).click();
-      await turnedOn;
-      await page.reload();
-      await expect(page.getByLabel("Remember devices for (days)")).toHaveValue("30");
+      await page.goto("/desk/settings?section=team");
+      await page.locator("#row-trustedDeviceDays").getByRole("button", { name: "Change…" }).click();
+      const backOn = page.getByRole("dialog");
+      await backOn.getByLabel("Days").fill("30");
+      await backOn.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Saved Remember devices for (days)")).toBeVisible();
     });
   });
 });

@@ -45,7 +45,7 @@ test.describe("AR-8 settings (owner, desktop)", () => {
     const stored = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     expect(stored.lateFeeFlatCents).toBe(600);
     await page.getByRole("button", { name: "Undo" }).click();
-    await expect(page.getByText("$0.00")).toBeVisible();
+    await expect(row.getByText("$0.00")).toBeVisible();
     const restored = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     expect(restored.lateFeeFlatCents).toBe(0);
   });

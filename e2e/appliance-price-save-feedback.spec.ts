@@ -29,7 +29,7 @@ test("saved non-placeholder business name composes home and child browser titles
     // Save a complete valid profile through the real form.
     await page.getByLabel("Email", { exact: true }).fill(fixtureEmail);
     await page.getByRole("button", { name: "Save this section" }).click();
-    await expect(page.getByRole("status")).toHaveText("Settings saved.");
+    await expect(page.getByRole("status").filter({ hasText: "Settings saved." })).toHaveText("Settings saved.");
     expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).publicBusinessName).toBe(fixtureName);
     for (const [path, title] of [["/", `${fixtureName} — Appliance Rentals in Colorado`], ["/accessibility", `Accessibility Statement — ${fixtureName}`]]) {
       await page.goto(path);
@@ -44,7 +44,7 @@ test("saved non-placeholder business name composes home and child browser titles
       await expect(page.getByLabel("Business name", { exact: true })).toHaveValue(fixtureName);
       await page.getByLabel("Business name", { exact: true }).fill(publicBusinessName);
       await page.getByRole("button", { name: "Save this section" }).click();
-      await expect(page.getByRole("status")).toHaveText("Settings saved.");
+      await expect(page.getByRole("status").filter({ hasText: "Settings saved." })).toHaveText("Settings saved.");
     }
     // A placeholder email cannot be restored through the validated form.
     // Restore only our owned email, in this disposable database.
