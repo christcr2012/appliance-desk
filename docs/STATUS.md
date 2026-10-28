@@ -1,13 +1,14 @@
-## October 28 — AR-1 five-area navigation, code on PR branch (verification pending)
+## October 28 — AR-1 five-area navigation: tested and reviewed (PR #720)
 
-Implemented on `ai/chatgpt/ar1-five-area-navigation-20261027`: mobile five-area bar,
-responsive desktop sidebar, role- and job-role-filtered tabs, profile menu, Ctrl/⌘ K command
-search through the existing permission-aware record search, Help, remembered navigation,
-Today count without a cross-page query, and /desk/more and /desk/control-center redirects.
-Existing deep page URLs and money rules remain intact. Browser checks, exact-head CI and
-review are pending; do not call this merged or phone-verified until the gates are observed.
-The AR-0 owner phone look-over remains unchecked. Next after AR-1 merge: AR-2 (do not
-start it in this session; owner asked to pause after AR-1).
+Mobile five-area bar and area tabs, desktop collapsible remembered sidebar, profile/workspace
+controls, Help and Ctrl/⌘ K command search, staff/accountant job-role filtering, Today
+count without cross-page queries, existing deep URLs and safe redirects are implemented.
+Exact code head `5e5a1553c57c7903c6ad09bd2942f05754f737c6` passed CI run
+`40681386667` (all unit/database and browser shards, lint, typecheck, accessibility,
+security); all three Codex review findings were addressed and review-gate passed after
+self-review. PR #720 is the approved merge target; recheck the final docs-only head before
+squash merge. No production or live-provider changes; real-phone installation remains an
+unchecked owner task. Per owner request, pause after AR-1; do not start AR-2.
 
 ## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
 The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
