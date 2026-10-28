@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
@@ -50,6 +52,19 @@ describe("packet PDF wrapping (review fix)", () => {
     expect(lines.join(" ")).toBe(paragraph);
     expect(wrapPdfLine("")).toEqual([""]);
     expect(wrapPdfLine("short line")).toEqual(["short line"]);
+  });
+});
+
+describe("choices form resets per year (review fix)", () => {
+  it("keys the elect-out form by year so switching years reloads that year's choices", () => {
+    const page = readFileSync(
+      join(process.cwd(), "src/app/desk/sales-tax/benefits/page.tsx"),
+      "utf8",
+    );
+    // The checkboxes are uncontrolled (defaultChecked): without a year key,
+    // React can carry edited-but-unsaved checkbox state across the year
+    // links and a save would overwrite another year's choices.
+    expect(page).toContain("<TaxActionForm key={year} action={saveElectionsAction}");
   });
 });
 

@@ -159,7 +159,7 @@ export default async function TaxBenefitsPage({
         ))}
       </div>
 
-      <TaxActionForm action={saveElectionsAction} title={`Tax choices for ${year}`} submitLabel="Save choices">
+      <TaxActionForm key={year} action={saveElectionsAction} title={`Tax choices for ${year}`} submitLabel="Save choices">
         <p className="text-sm text-muted-foreground">
           The statements below ride on the {year} accountant packet for your CPA to
           attach to the return — due {electionStatements.dueOnKey}, or {electionStatements.extensionKey}{" "}
