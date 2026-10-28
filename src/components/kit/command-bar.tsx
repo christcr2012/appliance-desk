@@ -44,8 +44,13 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
         e.preventDefault(); setOpen(v => !v);
       }
     };
+    const openFromShortcut = () => setOpen(true);
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    window.addEventListener("desk:open-command", openFromShortcut);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("desk:open-command", openFromShortcut);
+    };
   }, []);
   useEffect(() => {
     if (!open) { setQuery(""); setResults([]); return; }
@@ -100,7 +105,7 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
       aria-label="Search or jump to anything"
       aria-keyshortcuts="Control+K Meta+K"
       className="flex min-h-11 items-center gap-2 rounded-field border border-line bg-surface px-3 text-left text-sm text-ink-soft hover:bg-tint lg:w-[360px]">
-      <Icon name="search" /> <span className="min-w-0 flex-1 truncate">Search or jump to anything…</span>
+      <Icon name="search" /> <span className="hidden min-w-0 flex-1 truncate lg:inline">Search or jump to anything…</span>
       <kbd className="hidden rounded bg-tint px-2 py-1 text-xs lg:inline">Ctrl K</kbd>
     </button>
     <Dialog.Root open={open} onOpenChange={setOpen}>
