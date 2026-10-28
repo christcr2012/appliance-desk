@@ -233,7 +233,12 @@
       "type": "EXPENSE",
       "description": "Card processing fees",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "STRIPE_SERVICE_FEES",
@@ -241,7 +246,12 @@
       "type": "EXPENSE",
       "description": "Stripe billing and service fees",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "CHARGEBACKS",
@@ -249,7 +259,12 @@
       "type": "EXPENSE",
       "description": "Disputed payments",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "BAD_DEBT",
@@ -257,7 +272,12 @@
       "type": "EXPENSE",
       "description": "Bad debt (written off)",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "DEPRECIATION",
@@ -265,7 +285,12 @@
       "type": "EXPENSE",
       "description": "Depreciation",
       "paymentSource": false,
-      "scheduleCLine": "13"
+      "scheduleCLine": "13",
+      "deduction": {
+        "scheduleCLine": "13",
+        "percent": 100,
+        "kind": "CAPITAL"
+      }
     },
     {
       "role": "DISPOSAL_LOSS",
@@ -273,7 +298,12 @@
       "type": "EXPENSE",
       "description": "Loss on retired appliances",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "BOOK_VALUE_OF_APPLIANCES_SOLD",
@@ -281,7 +311,12 @@
       "type": "EXPENSE",
       "description": "What a retired appliance was still worth on the books when it was sold (its sale price is in Sales of retired appliances)",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "USE_TAX_EXPENSE",
@@ -289,7 +324,12 @@
       "type": "EXPENSE",
       "description": "Use tax on purchases",
       "paymentSource": false,
-      "scheduleCLine": "23"
+      "scheduleCLine": "23",
+      "deduction": {
+        "scheduleCLine": "23",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "REPAIRS_PARTS",
@@ -297,7 +337,12 @@
       "type": "EXPENSE",
       "description": "Repair parts",
       "paymentSource": false,
-      "scheduleCLine": "21"
+      "scheduleCLine": "21",
+      "deduction": {
+        "scheduleCLine": "21",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "TAX_ADJUSTMENTS",
@@ -305,7 +350,12 @@
       "type": "EXPENSE",
       "description": "Sales tax rounding and adjustments",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "TAX_ABSORBED",
@@ -313,7 +363,12 @@
       "type": "EXPENSE",
       "description": "Tax/fee the business paid for a late change",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_FUEL",
@@ -321,7 +376,12 @@
       "type": "EXPENSE",
       "description": "Fuel",
       "paymentSource": false,
-      "scheduleCLine": "9"
+      "scheduleCLine": "9",
+      "deduction": {
+        "scheduleCLine": "9",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_VEHICLE_REPAIRS_AND_MAINTENANCE",
@@ -329,7 +389,12 @@
       "type": "EXPENSE",
       "description": "Vehicle repairs and maintenance",
       "paymentSource": false,
-      "scheduleCLine": "9"
+      "scheduleCLine": "9",
+      "deduction": {
+        "scheduleCLine": "9",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_VEHICLE_INSURANCE",
@@ -337,7 +402,12 @@
       "type": "EXPENSE",
       "description": "Vehicle insurance",
       "paymentSource": false,
-      "scheduleCLine": "9"
+      "scheduleCLine": "9",
+      "deduction": {
+        "scheduleCLine": "9",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_BUSINESS_INSURANCE",
@@ -345,7 +415,12 @@
       "type": "EXPENSE",
       "description": "Business insurance",
       "paymentSource": false,
-      "scheduleCLine": "15"
+      "scheduleCLine": "15",
+      "deduction": {
+        "scheduleCLine": "15",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_STORAGE___WAREHOUSE_RENT",
@@ -353,7 +428,12 @@
       "type": "EXPENSE",
       "description": "Storage / warehouse rent",
       "paymentSource": false,
-      "scheduleCLine": "20b"
+      "scheduleCLine": "20b",
+      "deduction": {
+        "scheduleCLine": "20b",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_PHONE_AND_INTERNET",
@@ -361,7 +441,12 @@
       "type": "EXPENSE",
       "description": "Phone and internet",
       "paymentSource": false,
-      "scheduleCLine": "25"
+      "scheduleCLine": "25",
+      "deduction": {
+        "scheduleCLine": "25",
+        "percent": 0,
+        "kind": "PERSONAL_SHARE"
+      }
     },
     {
       "role": "EXPENSE_SOFTWARE_AND_SUBSCRIPTIONS",
@@ -369,7 +454,12 @@
       "type": "EXPENSE",
       "description": "Software and subscriptions",
       "paymentSource": false,
-      "scheduleCLine": "18"
+      "scheduleCLine": "18",
+      "deduction": {
+        "scheduleCLine": "18",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_ADVERTISING_AND_MARKETING",
@@ -377,7 +467,12 @@
       "type": "EXPENSE",
       "description": "Advertising and marketing",
       "paymentSource": false,
-      "scheduleCLine": "8"
+      "scheduleCLine": "8",
+      "deduction": {
+        "scheduleCLine": "8",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_SUPPLIES",
@@ -385,7 +480,12 @@
       "type": "EXPENSE",
       "description": "Supplies",
       "paymentSource": false,
-      "scheduleCLine": "22"
+      "scheduleCLine": "22",
+      "deduction": {
+        "scheduleCLine": "22",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_SMALL_TOOLS_AND_EQUIPMENT",
@@ -393,7 +493,12 @@
       "type": "EXPENSE",
       "description": "Small tools and equipment",
       "paymentSource": false,
-      "scheduleCLine": "22"
+      "scheduleCLine": "22",
+      "deduction": {
+        "scheduleCLine": "22",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_PROFESSIONAL_FEES__CPA__LEGAL",
@@ -401,7 +506,12 @@
       "type": "EXPENSE",
       "description": "Professional fees (CPA, legal)",
       "paymentSource": false,
-      "scheduleCLine": "17"
+      "scheduleCLine": "17",
+      "deduction": {
+        "scheduleCLine": "17",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_LICENSES_AND_PERMITS",
@@ -409,7 +519,12 @@
       "type": "EXPENSE",
       "description": "Licenses and permits",
       "paymentSource": false,
-      "scheduleCLine": "23"
+      "scheduleCLine": "23",
+      "deduction": {
+        "scheduleCLine": "23",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_BANK_FEES",
@@ -417,7 +532,12 @@
       "type": "EXPENSE",
       "description": "Bank fees",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_OTHER",
@@ -425,7 +545,12 @@
       "type": "EXPENSE",
       "description": "Other",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EXPENSE_DUMP_AND_DISPOSAL_FEES",
@@ -433,7 +558,12 @@
       "type": "EXPENSE",
       "description": "Dump and disposal fees",
       "paymentSource": false,
-      "scheduleCLine": "27a"
+      "scheduleCLine": "27a",
+      "deduction": {
+        "scheduleCLine": "27a",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "RETAIL_DELIVERY_FEE_PAYABLE",
@@ -463,7 +593,12 @@
       "type": "EXPENSE",
       "description": "Pay for employees, before anything is taken out",
       "paymentSource": false,
-      "scheduleCLine": "26"
+      "scheduleCLine": "26",
+      "deduction": {
+        "scheduleCLine": "26",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     },
     {
       "role": "EMPLOYER_PAYROLL_TAXES",
@@ -471,7 +606,12 @@
       "type": "EXPENSE",
       "description": "The business's own share of payroll taxes: the Social Security and Medicare match, unemployment insurance and the FAMLI employer share",
       "paymentSource": false,
-      "scheduleCLine": "23"
+      "scheduleCLine": "23",
+      "deduction": {
+        "scheduleCLine": "23",
+        "percent": 100,
+        "kind": "ORDINARY"
+      }
     }
   ],
   "categories": [

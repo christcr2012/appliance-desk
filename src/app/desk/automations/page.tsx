@@ -9,6 +9,7 @@ import { Button, PageHeader } from "@/components/ui";
 import { saveLateGraceAction, setAutomationPausedAction, saveBackupRetentionAction, retryBackupAction } from "./actions";
 import { getBackupDashboard } from "@/domains/backup/dashboard";
 import { HealthLegend, HealthRow } from "./health-row";
+import { AssistantConnections } from "./assistant-connections";
 
 export const metadata = { title: "System health" };
 
@@ -47,6 +48,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
         revokedAt: key.revokedAt ? timestamp(key.revokedAt) : null,
       }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
 
+      <AssistantConnections userId={session.user.id} canSeeAll={session.user.role === "OWNER"} />
       <section id="backup-settings" aria-labelledby="backup-settings-heading" className="mb-6 rounded-card border border-line bg-surface p-4">
         <h2 id="backup-settings-heading" className="text-base font-bold text-ink">Backup and recovery</h2>
         <p className="mt-1 text-sm text-ink-soft">

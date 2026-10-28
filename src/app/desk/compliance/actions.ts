@@ -8,6 +8,7 @@ import {
   markFilingDoneElsewhere,
   markFilingNotApplicable,
   prepareFiling,
+  markFilingReviewed,
   resolveFiling,
   submitFiling,
 } from "@/domains/compliance/filings";
@@ -92,6 +93,27 @@ export async function saveFactsAction(
       hiring: {
         firstHireDate: String(formData.get("firstHireDate") ?? "").trim() || null,
       },
+      taxben: (() => {
+        const numOrNull = (name: string): number | null => {
+          const raw = String(formData.get(name) ?? "").trim();
+          return raw === "" ? null : Number(raw);
+        };
+        const moneyOrNull = (name: string): number | null => {
+          const raw = String(formData.get(name) ?? "").replace(/[$,]/g, "").trim();
+          if (raw === "") return null;
+          if (!/^\d+(\.\d{1,2})?$/.test(raw)) throw new Error("Enter amounts as dollars, like 4200 or 4200.50.");
+          return dollarsToCents(Number(raw));
+        };
+        return {
+          businessBeganOn: String(formData.get("businessBeganOn") ?? "").trim() || null,
+          homeOfficeSqFt: numOrNull("homeOfficeSqFt"),
+          homeSqFt: numOrNull("homeSqFt"),
+          homeHousingCostsCents: moneyOrNull("homeHousingCosts"),
+          homeUtilitiesCents: moneyOrNull("homeUtilities"),
+          homeInsuranceCents: moneyOrNull("homeInsurance"),
+          homeOfficeAttestedYear: numOrNull("homeOfficeAttestedYear"),
+        };
+      })(),
       payer: {
         businessLegalName: String(formData.get("businessLegalName") ?? "").trim() || null,
         businessAddress: String(formData.get("businessAddress") ?? "").trim() || null,
@@ -142,11 +164,16 @@ export async function saveTaxYearFactsAction(
       if (!/^\d+(\.\d{1,2})?$/.test(raw)) throw new Error("Enter amounts as dollars, like 4200 or 4200.50.");
       return dollarsToCents(Number(raw));
     };
+    const employerPlanMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(
+      (m) => formData.get(`employerPlanMonth${m}`) === "on",
+    );
     await saveTaxYearFacts(user.id, year, {
       federalTaxCents: money("federalTax"),
       federalAgiCents: money("federalAgi"),
       coloradoTaxCents: money("coloradoTax"),
       form1099KGrossCents: money("form1099KGross"),
+      seHealthPremiumCents: money("seHealthPremiums"),
+      seHealthEmployerPlanMonths: employerPlanMonths,
     });
     revalidatePath("/desk/compliance/facts");
     revalidatePath("/desk/compliance");
@@ -158,7 +185,7 @@ export async function saveTaxYearFactsAction(
 
 export async function prepareGuidedAction(filingId: string): Promise<ComplianceActionState> {
   try {
-    const { user } = await requireRole("OWNER", "ADMIN");
+    const { user } = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
     await requireTaxesScreen(user);
     const { prisma } = await import("@/lib/prisma");
     const filing = await prisma.complianceFiling.findUnique({ where: { id: filingId } });
@@ -352,6 +379,19 @@ export async function prepareGuidedAction(filingId: string): Promise<ComplianceA
         ? { stillNeeded: `Add ${stillNeeded.join(", ")} in Business facts so they show here.` }
         : {}),
     });
+    revalidatePath(`/desk/compliance/${filingId}`);
+    revalidatePath("/desk/compliance");
+    return { ok: true };
+  } catch (error) {
+    return { error: message(error) };
+  }
+}
+
+export async function markReviewedAction(filingId: string): Promise<ComplianceActionState> {
+  try {
+    const { user } = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
+    await requireTaxesScreen(user);
+    await markFilingReviewed(user.id, filingId);
     revalidatePath(`/desk/compliance/${filingId}`);
     revalidatePath("/desk/compliance");
     return { ok: true };

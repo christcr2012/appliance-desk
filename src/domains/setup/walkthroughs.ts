@@ -457,6 +457,32 @@ export const WALKTHROUGHS: readonly Walkthrough[] = [
     ],
   },
   {
+    key: "write-offs",
+    title: "Write-offs and tax benefits",
+    why: "The app finds your write-offs by itself — but three answers only you can give decide how much it finds: how much of a shared bill is business, whether your address sits in a state enterprise zone, and your signature on the capitalization policy the small-item write-off requires.",
+    unlocks: ["Full deductions on shared bills (phone, internet)", "The enterprise-zone credit check", "The de minimis safe harbor, backed by a signed policy"],
+    needs: ["A typical month's phone and internet bills", "Your storage/business address for the state's zone map"],
+    estimatedMinutes: 10,
+    steps: [
+      {
+        key: "business-use",
+        title: "Answer the business-use share of shared bills",
+        body: "On Taxes → Tax benefits, in Write-off settings, enter the business share of each shared account (phone and internet). Until you answer, the app deducts none of it — 0% — so this one answer is real money. Pick the share you could defend from the bills, and revisit it when your usage changes.",
+      },
+      {
+        key: "enterprise-zone",
+        title: "Check the enterprise-zone map",
+        body: "Colorado gives a credit for equipment bought for use inside an enterprise zone, but the buy must be pre-certified first. Check whether your business (or storage) address is inside a zone on the state's OEDIT map, then record the answer in Write-off settings on Taxes → Tax benefits. Your CPA confirms — equipment the fleet uses outside the zone likely does not qualify.",
+        link: { href: "https://oedit.colorado.gov/enterprise-zone-program", label: "Colorado OEDIT — enterprise zone program" },
+      },
+      {
+        key: "sign-policy",
+        title: "Sign the capitalization policy",
+        body: "The small-item write-off (the de minimis safe harbor) needs a written capitalization policy signed and stored. On Taxes → Tax benefits the policy is written out for you from the rule book — read it and sign; it is stored in Business records. A reminder comes each December to sign the next year's.",
+      },
+    ],
+  },
+  {
     key: "backups",
     title: "Backups and private storage",
     why: "Record files, signed agreements and photos live in private storage, and the nightly backup copies them. This walkthrough confirms the storage is really connected — the app cannot back up to storage that was never set up.",

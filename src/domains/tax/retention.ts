@@ -20,11 +20,13 @@ export async function saveRecordRetentionYears(actorId: string, years: number, e
 /** The same save inside a transaction the caller owns (Decisions & reviews). */
 export async function saveRecordRetentionYearsInTx(
   tx: Prisma.TransactionClient, actorId: string, years: number, expectedYears: number,
+  professionalAnswer = false,
 ): Promise<void> {
   const problem = retentionYearsProblem(years);
   if (problem) throw new Error(problem);
   if (!Number.isInteger(expectedYears)) throw new Error("Reload the page and try again.");
-  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  // ACCT-1: accountant only as a CPA professional answer through Decisions & reviews.
+  await assertActiveTeamActor(tx, actorId, professionalAnswer ? ["ACCOUNTANT"] : ["OWNER"]);
   // TFA-1: the keep-years value is a dated rule version, not a setting. The
   // compare-and-set still guards against two sessions overwriting each other.
   // (The pending IN-71 change is cancelled by the rule-version save itself.)

@@ -8,12 +8,14 @@ const m = vi.hoisted(() => ({
   totals: vi.fn(),
   balances: vi.fn(),
   detail: vi.fn(),
+  workspace: vi.fn(async () => ({ version: 0, prefs: { savedViews: [] } })),
   redirect: vi.fn((to: string) => {
     throw Object.assign(new Error("NEXT_REDIRECT"), { digest: `NEXT_REDIRECT;${to}` });
   }),
 }));
 vi.mock("next/navigation", async () => ({ ...(await import("./kit/kit-test-env")), redirect: m.redirect }));
 vi.mock("@/lib/session", () => ({ requireRole: m.guard }));
+vi.mock("@/domains/workspace", () => ({ getWorkspace: m.workspace, savedViewHref: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({ prisma: { invoice: { fields: { amountPaidCents: "paid" } } } }));
 vi.mock("@/domains/billing", () => ({ getCustomersWithOpenBalances: m.balances }));
 vi.mock("@/domains/billing/bills-list", () => ({ getBills: m.bills, getBillCounts: m.counts, getBillTotals: m.totals }));
@@ -42,7 +44,7 @@ const row = {
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
-  m.guard.mockResolvedValue({ user: { role: "OWNER" } });
+  m.guard.mockResolvedValue({ user: { id: "owner-1", role: "OWNER" } });
   m.bills.mockResolvedValue({ rows: [row], nextCursor: null, capped: false });
   m.counts.mockResolvedValue({ open: 9, "past-due": 2, paid: 40, closed: 1, drafts: 0 });
   m.totals.mockResolvedValue({ count: 2, owedCents: 14000 });
@@ -67,7 +69,8 @@ it("refuses before any money is read (staff never reach bills)", async () => {
   const denial = new Error("denied");
   m.guard.mockRejectedValue(denial);
   await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toBe(denial);
-  expect(m.guard).toHaveBeenCalledWith("OWNER", "ADMIN");
+  // ACCT-1: the accountant gets the read-only list too; staff stay refused.
+  expect(m.guard).toHaveBeenCalledWith("OWNER", "ADMIN", "ACCOUNTANT");
   expect(m.bills).not.toHaveBeenCalled();
   expect(m.counts).not.toHaveBeenCalled();
   expect(m.totals).not.toHaveBeenCalled();

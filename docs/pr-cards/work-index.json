@@ -4742,7 +4742,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "IN PROGRESS — first AR-12 selection controls and Bills/Customers saved views PR in CI; remaining outcomes pending",
       "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [
@@ -5429,7 +5429,7 @@
         "VAULT-1",
         "ACC-6"
       ],
-      "status": "IN PROGRESS — branch ai/vivienne/vault-2; packet and drift check written 2026-10-27 (docs/pr-cards/execution/VAULT-2.json). SETUP-1 close-out rides this branch.",
+      "status": "MERGED 2026-10-27 — PR #667 (squash 5aadc888; successor to #664 after a phantom-dirty rebuild), ci green at the exact head a23e5f8c; two Codex rounds, 6 findings, all fixed with regression tests.",
       "migration": "additive (VaultCredential, VaultUnlock)",
       "budget": 450,
       "units": [
@@ -5481,7 +5481,7 @@
         "CMP-1",
         "DEC-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "MERGED 2026-10-27 \u2014 PR #709, squash dc839ad6 (branch ai/vivienne/acct-1h).",
       "migration": "20261104000000_accountant_role",
       "budget": 500,
       "units": [
@@ -5712,7 +5712,7 @@
         "CMP-2",
         "DEC-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "MERGED — PR #705, squash bbc3f78f on main (2026-10-27); successor of PR #696 (identical tree; #696's API-built branch could not be merged by GitHub). Nine Codex findings across both PRs, all fixed with regression tests; CI green at the exact head b186eaee.",
       "migration": "additive (purchase capitalization fields, business-use settings)",
       "budget": 550,
       "units": [
@@ -5815,7 +5815,7 @@
         "FEETAX-1",
         "VAULT-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "MERGED — PR #684, squash 8a71a069 on main (2026-10-27); CI green at the exact head; eleven Codex findings all fixed with regression tests and resolved",
       "migration": "additive (JurisdictionReadiness, JurisdictionDeliveryCount)",
       "budget": 450,
       "units": [
@@ -5905,6 +5905,10 @@
     {
       "id": "FEETAX-2",
       "path": "docs/pr-cards/execution/FEETAX-2.json"
+    },
+    {
+      "id": "TAXBEN-1",
+      "path": "docs/pr-cards/execution/TAXBEN-1.json"
     },
     {
       "id": "W-22D12",
@@ -6097,6 +6101,10 @@
     {
       "id": "VAULT-2",
       "path": "docs/pr-cards/execution/VAULT-2.json"
+    },
+    {
+      "id": "ACCT-1",
+      "path": "docs/pr-cards/execution/ACCT-1.json"
     }
   ]
 }

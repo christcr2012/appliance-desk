@@ -91,6 +91,26 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
     remedies, record it once (STATUS + checklist if it needs Chris), and continue independent work. Stop early only
     with concrete evidence that no eligible approved work remains.
 
+## Speed-first execution protocol (within sections 1–2 and 6)
+
+1. **Choose by outcome and risk, not arbitrary PR count.** Group adjacent approved roadmap cards that share
+   screens and one security/provider boundary when they make one testable feature. A high-risk boundary (OAuth,
+   payments, personal data, permission changes) may merit its own complete PR. Never create micro-PRs or bundle
+   unrelated providers just to reach a target number.
+2. **A PR has one expensive CI cycle.** Finish the implementation, tests, docs and focused checks before pushing.
+   Use the full GitHub suite for the finished head; do not repeatedly run full local suites after small edits.
+   If CI goes red, gather every failing check, fix the group and push one corrected head.
+3. **Pipeline, not queue.** An open PR waiting for `ci`, `review-gate`, Codex or allowed auto-merge does not stop
+   unrelated approved development. Resume its review when a result actually changes. Do not poll or rebase just
+   because another agent merged to `main`. Resolve a reported real merge conflict before trying again.
+4. **Never trade correctness for throughput.** Keep access checks, real-database sensitive tests, hooks,
+   additive migrations and required checks. If a sandbox cannot finish its checks due to documented resource
+   constraints, use the repository's authorized sandbox transfer and GitHub CI route; record what was and
+   was not verified instead of weakening or silently skipping checks.
+5. **Publish complete outcomes and record blockers once.** One blocked PR does not freeze the next independent
+   roadmap outcome. Auto-merge is a convenience, not permission to bypass review, branch protections or hard
+   limits. Report completed vs merged vs externally unverified separately.
+
 ## 3. Definition of Done
 
 1. No placeholders, stubs, TODO-as-implementation or mock data presented as real.
@@ -154,11 +174,15 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
   last push. The `review-gate` status (`.github/workflows/review-gate.yml`, `scripts/review-gate.mjs`) reads exactly
   that: it fails while a Codex finding has no reply (from the PR author or a collaborator, saying fixed / already fixed / superseded / still open) or while neither Codex nor a self-review note exists, and passes
   by itself the moment they do. A clean sync with main does not erase a self-review note that names your last real commit.
-- **Merge (authorized by Chris):** the `ci` and `review-gate` checks green at the exact head and acceptance met with
-  evidence → merge. **Turn on auto-merge (squash) as soon as the PR is open** and keep working: GitHub merges it the
-  moment both checks pass, and **main moving does not force a re-sync** (the "branch must be up to date" rule is off,
-  Chris 2026-10-27; CI runs again on `main` after every merge and the nightly release only takes checked commits).
-  Sync with main yourself only when GitHub reports a real conflict. A merge never covers a hard limit in section 1.
+- **Merge (authorized by Chris):** acceptance with evidence plus `ci` and `review-gate` green at the exact
+  head are mandatory; resolve blocking Codex findings first. Use squash auto-merge, **without an up-to-date-branch
+  requirement** (Chris 2026-10-27). If `review-gate` is verified as a *required* GitHub ruleset check, enable auto-merge
+  as soon as the PR is ready; GitHub waits for both checks. If it is only *running* but not required, GitHub could
+  merge on `ci` alone: do **not** arm auto-merge until `review-gate` is green and review comments are handled.
+  In that case enable auto-merge then, or merge yourself with an expected-head SHA after both green. Never assume
+  creating the check makes it required. A different agent merging to `main` does **not** require a re-sync; only a
+  real GitHub merge conflict does. CI runs on `main` after every merge; nightly release uses checked code.
+  A merge never covers a hard limit in section 1.
 - A security or money hole already on `main` is fixed immediately in its own PR.
 - **Never delete remote branches, tags or PRs without asking Chris.** Park or list stale ones instead.
 

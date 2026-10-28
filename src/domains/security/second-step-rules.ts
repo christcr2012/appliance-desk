@@ -49,6 +49,10 @@ export function normalizeMethodPolicy(input: Partial<Record<PolicyLevel, unknown
 
 export function allowedMethodsFor(role: string, policy: MethodPolicy): SecondStepMethod[] {
   if (role === "OWNER" || role === "ADMIN" || role === "STAFF") return policy[role];
+  // ACCT-1: the accountant is not part of the owner's per-level method policy;
+  // their second step is the authenticator app, which needs no business
+  // channels and is always available.
+  if (role === "ACCOUNTANT") return ["TOTP"];
   return [];
 }
 

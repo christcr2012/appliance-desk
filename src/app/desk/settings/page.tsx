@@ -36,6 +36,8 @@ import { AppliancePricingTable } from "./appliance-pricing-table";
 import { PackageTable } from "./package-table";
 import { listPackagesForSettings } from "@/domains/packages";
 import { TeamSection } from "./team-section";
+import { CertificationSection } from "./certification-section";
+import { listTeamCertifications } from "@/domains/certifications/actions";
 import { CustomerEmailSwitch } from "./customer-email-switch";
 import { SmsTemplatePreview } from "./sms-template-preview";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
@@ -222,18 +224,25 @@ export default async function DeskSettingsPage({
       </Card>
     );
   } else if (section === "staff") {
-    const [team, teamSettings, jobRoles] = await Promise.all([getTeam(), getTeamSettings(), listJobRoles({ includeArchived: session.user.role === "OWNER" })]);
+    const [team, teamSettings, jobRoles, certifications] = await Promise.all([getTeam(), getTeamSettings(), listJobRoles({ includeArchived: session.user.role === "OWNER" }), session.user.role === "OWNER" ? listTeamCertifications() : Promise.resolve([])]);
     content = (
+      <>
       <Card title="Team">
         <TeamSection
           viewerRole={session.user.role === "OWNER" ? "OWNER" : "ADMIN"}
           viewerId={session.user.id}
           settings={teamSettings}
           jobRoles={jobRoles}
-          members={team.members.map((m) => ({ ...m, lastSignIn: m.lastSignIn ? m.lastSignIn.toISOString() : null }))}
-          invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString() }))}
+          members={team.members.map((m) => ({ ...m, lastSignIn: m.lastSignIn ? m.lastSignIn.toISOString() : null, accessEndsOn: m.accessEndsOn ? m.accessEndsOn.toISOString() : null }))}
+          invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString(), firm: i.firm, accessEndsOn: i.accessEndsOn ? i.accessEndsOn.toISOString() : null }))}
         />
       </Card>
+      {session.user.role === "OWNER" ? (
+        <Card title="Refrigerant certifications">
+          <CertificationSection people={certifications.map((c) => ({ id: c.id, name: c.name, role: c.role, certification: c.certification ? { certificationNumber: c.certification.certificationNumber, issuedOn: c.certification.issuedOn ? c.certification.issuedOn.toISOString().slice(0, 10) : null } : null }))} />
+        </Card>
+      ) : null}
+      </>
     );
   } else if (section === "website") {
     content = (
@@ -312,6 +321,10 @@ export default async function DeskSettingsPage({
                 {role === "OWNER" ? "Owner" : role === "ADMIN" ? "Admin" : "Staff"}
               </label>
             ))}
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" checked disabled className="h-4 w-4" />
+              Accountant — always required, it can&apos;t be switched off
+            </label>
           </fieldset>
           <div className="flex flex-wrap gap-2">
             <button

@@ -73,6 +73,17 @@ describe("getAccountingTransactions", () => {
     expect(transaction.mock.calls[0][1]).toEqual({ isolationLevel: "RepeatableRead" });
   });
 
+  it("ACCT-1: the accountant's export never falls back to a customer's email address", async () => {
+    receiptFindMany.mockResolvedValue([
+      receipt({ customer: customerRef({ name: null, email: "private@example.com" }) }),
+    ]);
+    const ownerRows = await getAccountingTransactions();
+    expect(ownerRows[0].customerName).toBe("private@example.com");
+    const accountantRows = await getAccountingTransactions({ forAccountant: true });
+    expect(accountantRows[0].customerName).toBe("Customer");
+    expect(JSON.stringify(accountantRows)).not.toContain("private@example.com");
+  });
+
   it("uses one row for a combined receipt and does not pretend one invoice owns it", async () => {
     receiptFindMany.mockResolvedValue([
       receipt({

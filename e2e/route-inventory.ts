@@ -13,6 +13,11 @@ export type AccessibilityRoute = {
 };
 
 export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
+  {
+    path: "/connect/consent", role: "OWNER",
+    fixture: "A registered SDK OAuth client with a valid pending authorization code and active owner login",
+    manualOnlyReason: "A live client approval request and a time-limited OAuth authorization code are required.",
+  },
   { path: "/", role: "PUBLIC", fixture: "/" },
   { path: "/accessibility", role: "PUBLIC", fixture: "/accessibility" },
   { path: "/contact", role: "PUBLIC", fixture: "/contact" },
@@ -400,6 +405,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/suppliers", role: "OWNER", fixture: "/desk/suppliers" },
   { path: "/desk/sales-tax/areas", role: "OWNER", fixture: "/desk/sales-tax/areas" },
   { path: "/desk/sales-tax/area", role: "OWNER", fixture: "/desk/sales-tax/area" },
+  { path: "/desk/sales-tax/benefits", role: "OWNER", fixture: "/desk/sales-tax/benefits" },
   { path: "/desk/sales-tax/delivery-fees", role: "OWNER", fixture: "/desk/sales-tax/delivery-fees" },
   { path: "/desk/sales-tax/exemptions", role: "OWNER", fixture: "/desk/sales-tax/exemptions" },
   { path: "/desk/sales-tax/returns", role: "OWNER", fixture: "/desk/sales-tax/returns" },
