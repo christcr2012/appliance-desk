@@ -662,8 +662,30 @@ const AS_BUILT_SUBJECTS: DecisionSubject[] = [
     id: "IN-06", legacyIds: ["IN-06"], area: "BUSINESS", audience: "OWNER",
     title: "Delivery zones and prices",
     question: "Are the delivery zones and prices right?",
-    doingNow: "Up to 15 miles free, over 15 to 30 miles $75, over 30 to 50 miles $125, beyond 50 miles not delivered (Chris's answer of 2026-10-13)",
-    affects: [{ label: "Settings", href: "/desk/settings" }],
+    doingNow: "Up to 15 miles free, over 15 to 30 miles $75, over 30 to 50 miles $125, beyond 50 miles pickup only (Chris's answer of 2026-10-13); the zone is found from the address and pickup is always offered (2026-10-25)",
+    affects: [{ label: "Delivery zones", href: "/desk/settings?section=service-area" }],
+  }),
+  // ZONE-1 (docs/build-specs/screens/SERVICE-AREA-MAP.md): starting values filed for confirmation.
+  asBuiltSubject({
+    id: "ZONE-NAMES", legacyIds: [], area: "WORDING", audience: "OWNER",
+    title: "Delivery zone names",
+    question: "Are the zone names customers see right: \"Local — free delivery\", \"Nearby\" and \"Extended\"?",
+    doingNow: "Starting names: Local — free delivery (0–15 miles), Nearby (over 15–30), Extended (over 30–50); you can rename them in Settings › Delivery zones",
+    affects: [{ label: "Delivery zones", href: "/desk/settings?section=service-area" }],
+  }),
+  asBuiltSubject({
+    id: "ZONE-PICKUP-PRICE", legacyIds: [], area: "MONEY", audience: "OWNER",
+    title: "Price for picking up at the end of a rental",
+    question: "Should our pickup at the end of a rental cost the same as delivery in each zone?",
+    doingNow: "Starting value: the same as delivery in each zone (free, $75, $125); you can change each one in Settings › Delivery zones",
+    affects: [{ label: "Delivery zones", href: "/desk/settings?section=service-area" }],
+  }),
+  asBuiltSubject({
+    id: "ZONE-DISTANCE", legacyIds: [], area: "BUSINESS", audience: "OWNER",
+    title: "How delivery distance is measured",
+    question: "Are delivery zones measured in a straight line from the center of Greeley, or by driving distance?",
+    doingNow: "Straight line from the center — Chris's answer of 2026-10-25 (\"at least for now, it is better to not use driving distance\"); driving distance stays available as a later option",
+    affects: [{ label: "Delivery zones", href: "/desk/settings?section=service-area" }],
   }),
 ];
 

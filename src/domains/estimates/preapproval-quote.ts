@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getReviewedSigningOrderReadbackInTx } from "@/domains/billing/signing-order-readback";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import { assertDeliveryReadyInTx } from "@/domains/tax/delivery-readiness";
+import { snapshotLocation as zoneLocationOf } from "@/domains/delivery/snapshot";
 import { computeTax } from "@/domains/tax/engine";
 import { effectiveMandatorySigningPolicy } from "@/domains/billing/signing-mandatory-policy";
 import { verifyPreparedEstimateScope } from "./preapproval-agreements";
@@ -142,7 +143,7 @@ export async function getPreparedEstimateQuoteInTx(
 ): Promise<EstimatePreparedQuote> {
   const estimate = await tx.estimate.findUnique({
     where: { id: estimateId },
-    select: { id: true, status: true, customerId: true, depositCents: true,
+    select: { id: true, status: true, customerId: true, depositCents: true, deliveryZoneSnapshot: true,
       lineItems: { select: {
         id: true, packageId: true, serviceAddressId: true,
         quantity: true, monthlyPriceCents: true, oneTimeFeeCents: true,
@@ -160,7 +161,7 @@ export async function getPreparedEstimateQuoteInTx(
   const agreements = await tx.rentalAgreement.findMany({
     where: { sourceEstimateId: estimateId }, orderBy: { id: "asc" },
     select: { id: true, customerId: true, sourceEstimateId: true, serviceAddressId: true, status: true,
-      depositCents:true,
+      depositCents:true, mandatoryChargeReviewVersions: true,
       lines: { select: { packageId: true, monthlyPriceCents: true } } },
   });
   let agreementIds: string[];
@@ -221,6 +222,8 @@ export async function getPreparedEstimateQuoteInTx(
         await assertDeliveryReadyInTx(tx, {
           serviceAddressId: agreement.serviceAddressId,
           agreementId: agreement.id,
+          // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
+          customerPickup: zoneLocationOf(estimate.deliveryZoneSnapshot, agreement.serviceAddressId)?.choice === "CUSTOMER_PICKUP",
         }, effectiveOn);
       } catch (error) {
         return rejected([
@@ -267,11 +270,46 @@ export async function getPreparedEstimateQuoteInTx(
         totals.advanceCents !== frozen.totals.downPaymentCents ||
         totals.dueAtSigningCents !== frozen.totals.signingAmountCents)
       return rejected(["Calculated and frozen order amounts do not reconcile."]);
+    // ZONE-1: each address's zone, delivery/pickup choice and zone prices are part of the reviewed quote, so any
+    // change in either direction makes it stale (approval then refuses until a replacement is reviewed and sent).
+    const { zoneQuoteIdentity, snapshotLocation, unresolvedDeliveryAddresses,
+      UNRESOLVED_ZONE_MESSAGE } = await import("@/domains/delivery/snapshot");
+    const lineAddresses = estimate.lineItems.map(line => line.serviceAddressId);
+    const deliveryZones = zoneQuoteIdentity(estimate.deliveryZoneSnapshot, lineAddresses);
+    if (deliveryZones && unresolvedDeliveryAddresses(estimate.deliveryZoneSnapshot, lineAddresses).length)
+      return rejected([UNRESOLVED_ZONE_MESSAGE]);
+    // The priced order's delivery charge for each address must be exactly what the one helper says: $0 for pickup,
+    // an owner-recorded driving-route exception's frozen price, else the frozen zone price. Those amounts are part of
+    // the reviewed quote, so recording or removing an exception also makes it stale.
+    const { agreementFrozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+    const { expectedDeliveryChargeForAddressInTx } = await import("@/domains/orders/route-evidence");
+    const deliveryCharges: Array<{ serviceAddressId: string; cents: number }> = [];
+    for (const serviceAddressId of [...new Set(lineAddresses.filter((id): id is string => !!id))].sort()) {
+      let expected: number | null;
+      try {
+        expected = await expectedDeliveryChargeForAddressInTx(tx, { estimateId: estimate.id, serviceAddressId,
+          zone: snapshotLocation(estimate.deliveryZoneSnapshot, serviceAddressId) });
+      } catch (error) {
+        return rejected([error instanceof Error ? error.message : "The delivery charge can't be worked out."]);
+      }
+      if (expected === null) continue;
+      let actual = 0;
+      for (const agreement of agreements.filter(row => row.serviceAddressId === serviceAddressId)) {
+        const one = await agreementFrozenDeliveryCentsInTx(tx, agreement);
+        if (one === null) return rejected(["The delivery charge in the service-fee review can't be read."]);
+        actual += one;
+      }
+      if (actual !== expected)
+        return rejected(["The delivery charge in the service-fee review doesn't match this address's delivery zone, pickup choice or recorded driving-route exception. Review the service fees again."]);
+      deliveryCharges.push({ serviceAddressId, cents: expected });
+    }
     const quoteFingerprint = createHash("sha256").update(JSON.stringify({
       estimateId: estimate.id, customerId: estimate.customerId,
       orderFingerprint: frozen.orderFingerprint, policyRevision: policy.revision,
       originalEstimateLines: [...estimate.lineItems].sort((a, b) => a.id.localeCompare(b.id)),
       depositCents: estimate.depositCents, rows, totals,
+      ...(deliveryZones ? { deliveryZones } : {}),
+      ...(deliveryCharges.length ? { deliveryCharges } : {}),
     })).digest("hex");
     return {
       status: "READY", reasons: [], quoteFingerprint,

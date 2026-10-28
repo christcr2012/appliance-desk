@@ -26,6 +26,14 @@ async function ownerIdentity(tx:Prisma.TransactionClient,userId:string){
   if(!actor||!["OWNER","ADMIN"].includes(actor.role))
     throw new Error("Only owner/administrators may prepare phone orders.");
 }
+/** ZONE-1: every current address on the estimate is "I'll pick it up". */
+async function estimateIsPickupOnly(estimateId:string,client:Prisma.TransactionClient|typeof prisma=prisma){
+  const row=await client.estimate.findUnique({where:{id:estimateId},
+    select:{deliveryZoneSnapshot:true,lineItems:{select:{serviceAddressId:true}}}});
+  if(!row) return false;
+  const { isPickupOnly }=await import("@/domains/delivery/snapshot");
+  return isPickupOnly(row.deliveryZoneSnapshot,row.lineItems.map(line=>line.serviceAddressId));
+}
 /** All phone data is owner-entered context. Never called by public approval or
  * treated as a recorded signer, a card authorization or a scheduled visit. */
 export async function recordPhoneOrderPreference(userId:string,estimateId:string,raw:unknown){
@@ -42,6 +50,8 @@ export async function recordPhoneOrderPreference(userId:string,estimateId:string
     });
     if(!estimate||!estimate.phoneEnteredAt||!allowedForChoice.has(estimate.status))
       throw new Error("This is not an editable phone-entered draft.");
+    if(await estimateIsPickupOnly(estimateId,tx))
+      throw new Error("This order is set to customer pickup, so no delivery window is needed.");
     const reviewed=assertAvailableDeliveryOption(estimate.deliveryOffer,
       estimate.deliveryOfferVersion,selected);
     await tx.estimate.update({where:{id:estimateId},data:{
@@ -107,11 +117,15 @@ export async function sendPhoneOrderToFinish(userId:string,estimateId:string){
     throw new Error("Already sent or closed. Use the original customer link.");
   if(!e.recipient||!z.email().safeParse(e.recipient).success)
     throw new Error("Enter the customer's real email before sending.");
-  if(!e.itemCount||!e.slots.length)
+  // ZONE-1: a pickup-only order needs (and accepts) no delivery date.
+  const pickupOnly=await estimateIsPickupOnly(estimateId);
+  if(!e.itemCount||(!pickupOnly&&!e.slots.length))
     throw new Error("Add all machines and offer at least one delivery date.");
-  if(!e.preferred)
-    throw new Error("Record the customer's preferred offered date and access details.");
-  assertAvailableDeliveryOption(e.slots,e.offerVersion,e.preferred);
+  if(!pickupOnly){
+    if(!e.preferred)
+      throw new Error("Record the customer's preferred offered date and access details.");
+    assertAvailableDeliveryOption(e.slots,e.offerVersion,e.preferred);
+  }
   const quote=await getPreparedEstimateQuote(estimateId);
   if(quote.status!=="READY"||quote.locations.length!==1||
       !quote.quoteFingerprint||!quote.orderFingerprint)

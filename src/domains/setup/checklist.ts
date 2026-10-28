@@ -8,6 +8,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { taxSetupGaps, type TaxSetupFacts } from "@/domains/tax/setup-readiness";
+import { readZoneSettings } from "@/domains/delivery/zone";
 
 export type SetupStepKey = "business" | "service-area" | "prices" | "tax" | "payments" | "email";
 
@@ -77,21 +78,20 @@ export function businessDetailsStep(settings: {
     : { done: true, detail: "Your business name, phone, email and address are filled in." };
 }
 
-export function serviceAreaStep(settings: {
-  serviceAreaCities: unknown;
-  serviceAreaZips: unknown;
-} | null): Pick<SetupStepDTO, "done" | "detail"> {
-  const clean = (value: unknown) => Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-    : [];
-  const cities = clean(settings?.serviceAreaCities).length;
-  const zips = clean(settings?.serviceAreaZips).length;
-  if (cities + zips === 0) return { done: false, detail: "Add the cities or ZIP codes you serve." };
-  const parts = [
-    cities > 0 && `${cities} ${cities === 1 ? "city" : "cities"}`,
-    zips > 0 && `${zips} ZIP ${zips === 1 ? "code" : "codes"}`,
-  ].filter((item): item is string => Boolean(item));
-  return { done: true, detail: `You serve ${parts.join(" and ")}.` };
+/**
+ * ZONE-1: the service area is the delivery zones (Settings › Delivery zones). They start from Chris's answer IN-06,
+ * so the step is done as soon as the settings row exists; the detail says what customers see.
+ */
+export function serviceAreaStep(settings: object | null): Pick<SetupStepDTO, "done" | "detail"> {
+  const raw = (settings as { deliveryZones?: unknown } | null)?.deliveryZones;
+  if (!settings || !Array.isArray(raw) || raw.length === 0) return { done: false, detail: "Set up your delivery zones." };
+  const zones = readZoneSettings(settings);
+  const last = zones.zones[zones.zones.length - 1]!;
+  const reach = Math.min(last.outerMiles, zones.maxMiles);
+  return {
+    done: true,
+    detail: `${zones.zones.length} delivery ${zones.zones.length === 1 ? "zone" : "zones"} up to ${reach} miles; beyond that, pickup only.`,
+  };
 }
 
 export function pricesStep(pricedAppliances: number, pricedSets: number): Pick<SetupStepDTO, "done" | "detail"> {
@@ -180,8 +180,10 @@ export type SetupFacts = {
     publicPhone: string | null;
     publicEmail: string | null;
     publicAddress: string | null;
-    serviceAreaCities: unknown;
-    serviceAreaZips: unknown;
+    deliveryZones?: unknown;
+    deliveryMaxMiles?: unknown;
+    zoneCenter?: unknown;
+    zoneDistanceMethod?: unknown;
     customerEmailEnabled: boolean;
   } | null;
   pricedAppliances: number;
@@ -250,7 +252,8 @@ export async function getSetupChecklist(
       where: { id: "singleton" },
       select: {
         publicBusinessName: true, publicPhone: true, publicEmail: true, publicAddress: true,
-        serviceAreaCities: true, serviceAreaZips: true, customerEmailEnabled: true,
+        deliveryZones: true, deliveryMaxMiles: true, zoneCenter: true, zoneDistanceMethod: true,
+        customerEmailEnabled: true,
       },
     }),
     prisma.applianceType.count({ where: { isActive: true, monthlyPriceCents: { gt: 0 } } }),

@@ -176,7 +176,10 @@ describe("Batch D customer portal completion", () => {
     ].sort());
 
     const job = data!.jobs[0]!;
+    // ZONE-1: customerPickupHandoff (a boolean about the customer's own visit) lets the portal say "pick up" instead of
+    // "delivery"; it carries no other customer's data.
     expect(Object.keys(job).sort()).toEqual([
+      "customerPickupHandoff",
       "id",
       "performedOn",
       "scheduledAt",

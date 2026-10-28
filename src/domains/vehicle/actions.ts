@@ -80,7 +80,7 @@ export async function startRouteDay(actorUserId: string, vehicleId: string, star
     if (unfinished) throw new VehicleError(`The trip from ${businessDateKey(unfinished.tripDate)} was never finished. Enter its ending reading first.`);
     const known = await latestOdometer(tx, vehicleId);
     if (startOdometer < known) throw new VehicleError(`That's lower than the last reading we have (${known.toLocaleString("en-US")}). Check the number.`);
-    const jobs = await tx.job.findMany({ where: { scheduledAt: { gte: tripDate, lt: businessDayBounds(now).end }, status: { not: "CANCELLED" } }, select: { type: true } });
+    const jobs = await tx.job.findMany({ where: { scheduledAt: { gte: tripDate, lt: businessDayBounds(now).end }, status: { not: "CANCELLED" }, customerPickupHandoff: false }, select: { type: true } });
     const trip = await tx.mileageTrip.create({
       data: { vehicleId, tripDate, startOdometer, purpose: purposeFromJobTypes(jobs.map((j) => j.type)), source: "ROUTE", stops: jobs.length, createdByUserId: actorUserId },
     });

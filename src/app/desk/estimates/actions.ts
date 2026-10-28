@@ -195,6 +195,16 @@ export async function addEstimateLineItemAction(
       message: error instanceof Error ? error.message : "Couldn't add that line.",
     };
   }
+  // ZONE-1: a line with a delivery address finds that address's zone right away. A lookup problem never blocks the
+  // line: the estimate then shows "We'll confirm your delivery price" and the To do list asks staff to confirm it.
+  if (data.serviceAddressId) {
+    try {
+      const { checkEstimateDeliveryZones } = await import("@/domains/delivery/estimate-zone");
+      await checkEstimateDeliveryZones(session.user.id, estimateId);
+    } catch {
+      // The panel's "Find the delivery zone" button retries.
+    }
+  }
 
   revalidatePath(`/desk/estimates/${estimateId}`);
   return { status: "success" };
@@ -213,6 +223,14 @@ export async function removeEstimateLineItemAction(
       status: "error",
       message: error instanceof Error ? error.message : "Couldn't remove that line.",
     };
+  }
+  // ZONE-1: rebuild the zone list from the remaining lines, so a removed address drops off (addresses already looked
+  // up are not looked up again). A problem here never undoes the removal; readers ignore removed addresses anyway.
+  try {
+    const { checkEstimateDeliveryZones } = await import("@/domains/delivery/estimate-zone");
+    await checkEstimateDeliveryZones(session.user.id, estimateId);
+  } catch {
+    // The panel's "Check the zone again" button retries.
   }
 
   revalidatePath(`/desk/estimates/${estimateId}`);

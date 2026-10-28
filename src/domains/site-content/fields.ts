@@ -14,8 +14,8 @@ import { checkInlineLinks } from "./richtext";
 import type { ValueRules } from "./values";
 
 /** The facts a sentence may mention by name. Each is filled in from its owner (Settings) when the page is shown. */
-export type SitePlaceholder = "businessName" | "name" | "phone" | "email" | "city" | "graceDays" | "serviceCities" | "contents" | "amount" | "year";
-export const SITE_PLACEHOLDERS: ReadonlyArray<SitePlaceholder> = ["businessName", "name", "phone", "email", "city", "graceDays", "serviceCities", "contents", "amount", "year"];
+export type SitePlaceholder = "businessName" | "name" | "phone" | "email" | "city" | "graceDays" | "serviceCities" | "contents" | "amount" | "year" | "zone" | "price" | "miles";
+export const SITE_PLACEHOLDERS: ReadonlyArray<SitePlaceholder> = ["businessName", "name", "phone", "email", "city", "graceDays", "serviceCities", "contents", "amount", "year", "zone", "price", "miles"];
 
 export type SiteFieldKind = "short" | "paragraph" | "url" | "alt" | "meta";
 

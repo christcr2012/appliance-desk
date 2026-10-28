@@ -22,6 +22,7 @@ import { getJobCompletionScope } from "@/domains/jobs";
 import { pendingDeliveriesForJob } from "@/domains/billing/pickup-billing-events";
 import { substituteChoices } from "@/domains/jobs/substitution";
 import { businessDateKey } from "@/lib/business-date";
+import { jobKindLabel } from "@/lib/status-labels";
 import { LateReturnWaiverForm } from "./late-return-waiver-form";
 import { getLateReturnWaiverState } from "@/domains/billing/late-return-waiver";
 import { RecordConnections } from "@/components/desk/record-connections";
@@ -82,7 +83,7 @@ export default async function JobDetailPage({
     : new Map<string, Awaited<ReturnType<typeof substituteChoices>>>();
 
   const pickupCase = await prisma.collectionCase.findFirst({ where: { pickupJobId: job.id, objectedAt: null }, select: { agreementId: true } });
-  const feeData = session.user.role==="OWNER"&&job.type==="DELIVERY"
+  const feeData = session.user.role==="OWNER"&&job.type==="DELIVERY"&&!job.customerPickupHandoff
     ? await prisma.job.findUnique({where:{id:job.id},select:{
       type:true,status:true,version:true,noShowAt:true,noShowEvidence:true,
       approvedTripFeeCents:true,approvedRelocationFeeCents:true,
@@ -102,7 +103,7 @@ export default async function JobDetailPage({
       </Link>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">{job.type}</h1>
+        <h1 className="text-xl font-semibold">{job.customerPickupHandoff ? jobKindLabel(job) : job.type}</h1>
         <Link
           href={`/desk/jobs/${job.id}/work-order`}
           className="text-sm text-primary hover:underline"
@@ -213,6 +214,7 @@ export default async function JobDetailPage({
           substituteVisits: choices.get(p.id)?.visits ?? [],
         }))} today={businessDateKey(new Date())} job={{
           id: job.id, type: job.type, status: job.status,
+          customerPickupHandoff: job.customerPickupHandoff === true,
           completionNotes: job.completionNotes, checklist: job.checklist,
           swapReplacementIds: job.swapReplacementIds,
           appliances: job.appliances.map(({ appliance, result, role, newHookupItemsInstalled }) => ({

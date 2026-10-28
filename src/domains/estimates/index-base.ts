@@ -18,6 +18,7 @@ import {
 } from "@/domains/leads";
 
 import { estimateExpiresAt, isEstimatePastValidity } from "./validity";
+import { snapshotLocation as zoneLocationOf } from "@/domains/delivery/snapshot";
 import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
 import { validatePreparedConversion, validateConvertedEstimateReplay } from "./prepared-conversion";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -636,6 +637,13 @@ export async function approveEstimate(
       throw new Error("This estimate isn't available to approve right now.");
     }
     if (await expireIfPastValidityInTx(tx, estimate)) return { expired: true as const };
+    // ZONE-1: no approval while an address would be delivered without a known zone (price not known yet).
+    if (estimate.deliveryZoneSnapshot !== null && estimate.deliveryZoneSnapshot !== undefined) {
+      const { unresolvedDeliveryAddresses, UNRESOLVED_ZONE_MESSAGE } = await import("@/domains/delivery/snapshot");
+      const lines = await tx.estimateLineItem.findMany({ where: { estimateId: id }, select: { serviceAddressId: true } });
+      if (unresolvedDeliveryAddresses(estimate.deliveryZoneSnapshot, lines.map((line) => line.serviceAddressId)).length)
+        throw new Error(UNRESOLVED_ZONE_MESSAGE);
+    }
     const approvedOffer = await getPreparedEstimateQuoteInTx(tx, id);
     if (approvedOffer.status !== "READY" || !approvedOffer.quoteFingerprint ||
         typeof input.expectedQuoteFingerprint !== "string" ||
@@ -656,7 +664,10 @@ export async function approveEstimate(
       select: { serviceAddressId: true },
     });
     for (const prepared of preparedForReadiness) {
-      const readiness = await deliveryTaxReadinessWith(tx, prepared.serviceAddressId);
+      // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
+      const readiness = await deliveryTaxReadinessWith(tx, prepared.serviceAddressId, new Date(),
+        zoneLocationOf(estimate.deliveryZoneSnapshot, prepared.serviceAddressId)?.choice === "CUSTOMER_PICKUP"
+          ? { customerPickup: true } : undefined);
       if (!readiness.ready) {
         throw new Error("We don't deliver there yet — call us.");
       }
@@ -666,20 +677,56 @@ export async function approveEstimate(
     // stale/replaced options cannot be accepted and no scheduling occurs here.
     const { readOfferedSlots, recordEstimateDeliverySelectionInTx } =
       await import("@/domains/orders/delivery");
-    if (readOfferedSlots(estimate.deliveryOffer).length) {
+    // ZONE-1: when every address on the estimate is "I'll pick it up", no delivery window is needed or accepted.
+    const { isPickupOnly } = await import("@/domains/delivery/snapshot");
+    const hasZones = estimate.deliveryZoneSnapshot !== null && estimate.deliveryZoneSnapshot !== undefined;
+    const lineAddresses = hasZones ? (await tx.estimateLineItem.findMany({
+      where: { estimateId: id }, select: { serviceAddressId: true },
+    })).map((line) => line.serviceAddressId) : [];
+    const pickupOnly = hasZones && isPickupOnly(estimate.deliveryZoneSnapshot, lineAddresses);
+    // Always (delivery windows offered or not): each address's priced delivery charge must be exactly the one
+    // helper's answer — $0 for pickup, an owner-recorded driving-route exception's frozen price, else the frozen
+    // zone price. A customer who picks it up can never owe a delivery charge frozen into the quote they approve.
+    {
+      const { frozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+      const { expectedDeliveryChargeForAddressInTx } = await import("@/domains/orders/route-evidence");
+      const { snapshotLocation } = await import("@/domains/delivery/snapshot");
+      const addresses = [...new Set((await tx.estimateLineItem.findMany({ where: { estimateId: id },
+        select: { serviceAddressId: true } })).map((line) => line.serviceAddressId).filter((x): x is string => !!x))];
+      for (const serviceAddressId of addresses) {
+        const zone = snapshotLocation(estimate.deliveryZoneSnapshot, serviceAddressId);
+        const expected = await expectedDeliveryChargeForAddressInTx(tx, { estimateId: id, serviceAddressId, zone });
+        if (expected === null) continue;
+        if (await frozenDeliveryCentsInTx(tx, estimate, serviceAddressId) !== expected)
+          throw new Error(zone?.choice === "CUSTOMER_PICKUP"
+            ? "This quote still includes delivery for an address you'll pick up. We'll send you an updated quote."
+            : "This quote's delivery charge doesn't match your delivery zone. We'll send you an updated quote.");
+      }
+    }
+    if (pickupOnly) {
+      if (input.deliverySelection)
+        throw new Error("You chose to pick it up, so no delivery window is needed.");
+    } else if (readOfferedSlots(estimate.deliveryOffer).length) {
       if (!input.deliverySelection)
         throw new Error("Choose an offered delivery window and provide delivery details.");
       // W-24 cannot accept a delivery route charge that was never frozen
       // into the exact signed all-in V2 order. No fee from ZIP/air miles.
       const preparedAgreements=await tx.rentalAgreement.findMany({
-        where:{sourceEstimateId:id},select:{id:true},
+        where:{sourceEstimateId:id},select:{id:true,serviceAddressId:true},
       });
-      if(preparedAgreements.length!==1||!estimate.deliveryRouteProof)
+      if(preparedAgreements.length!==1)
         throw new Error("Owner route/fee review required for this delivery order.");
-      const { assertRouteMatchesFrozenFeeInTx } =
+      // ZONE-1: the amount was checked above with the one helper. Here: the address must be priced (a zone or an
+      // owner-recorded route exception — older estimates with neither still need the owner's route review) and the
+      // exact reviewed V2 order must exist.
+      const { snapshotLocation } = await import("@/domains/delivery/snapshot");
+      const { expectedDeliveryChargeForAddressInTx, assertFrozenV2DeliveryOrderInTx } =
         await import("@/domains/orders/route-evidence");
-      await assertRouteMatchesFrozenFeeInTx(tx,preparedAgreements[0].id,
-        estimate.deliveryRouteProof);
+      if(await expectedDeliveryChargeForAddressInTx(tx,{estimateId:id,agreementId:preparedAgreements[0].id,
+        serviceAddressId:preparedAgreements[0].serviceAddressId,
+        zone:snapshotLocation(estimate.deliveryZoneSnapshot, preparedAgreements[0].serviceAddressId)})===null)
+        throw new Error("Owner route/fee review required for this delivery order.");
+      await assertFrozenV2DeliveryOrderInTx(tx,preparedAgreements[0].id);
       await recordEstimateDeliverySelectionInTx(tx, estimate, input.deliverySelection);
     } else if (input.deliverySelection) {
       throw new Error("No current owner-offered delivery choice is available.");
@@ -791,6 +838,7 @@ async function assertConversionReadinessInTx(
   userId: string,
   agreementIds: string[],
   overrideReason: string | undefined,
+  estimateZoneSnapshot: unknown = null,
 ): Promise<void> {
   const agreements = await tx.rentalAgreement.findMany({
     where: { id: { in: agreementIds } },
@@ -798,7 +846,10 @@ async function assertConversionReadinessInTx(
     orderBy: [{ id: "asc" }],
   });
   for (const agreement of agreements) {
-    const readiness = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId);
+    // ZONE-1: a customer pickup address needs no city delivery license (other tax readiness still applies).
+    const customerPickup = zoneLocationOf(estimateZoneSnapshot, agreement.serviceAddressId)?.choice === "CUSTOMER_PICKUP";
+    const readiness = await deliveryTaxReadinessWith(tx, agreement.serviceAddressId, new Date(),
+      customerPickup ? { customerPickup: true } : undefined);
     if (readiness.ready) continue;
     if (overrideReason?.trim() && !agreement.readinessOverrideByUserId) {
       await recordReadinessOverrideInTx(tx, {
@@ -806,11 +857,13 @@ async function assertConversionReadinessInTx(
         actorUserId: userId,
         reason: overrideReason,
         serviceAddressId: agreement.serviceAddressId,
+        customerPickup,
       });
     }
     await assertDeliveryReadyInTx(tx, {
       serviceAddressId: agreement.serviceAddressId,
       agreementId: agreement.id,
+      customerPickup,
     });
   }
 }
@@ -909,6 +962,7 @@ export async function convertEstimateToAgreements(
             actorUserId: userId,
             reason: input.overrideReason,
             serviceAddressId: agreement.serviceAddressId,
+            customerPickup: zoneLocationOf(estimate.deliveryZoneSnapshot, agreement.serviceAddressId)?.choice === "CUSTOMER_PICKUP",
           });
         }
       }
@@ -929,7 +983,8 @@ export async function convertEstimateToAgreements(
         estimateDepositCents: estimate.depositCents,
         estimateDepositPaidAt: estimate.depositPaidAt, quote: reviewedQuote,
       });
-      await assertConversionReadinessInTx(tx, userId, evidence.agreementIds, input.overrideReason);
+      await assertConversionReadinessInTx(tx, userId, evidence.agreementIds, input.overrideReason,
+        estimate.deliveryZoneSnapshot);
       await tx.estimate.update({
         where: { id: estimateId }, data: { status: "CONVERTED", convertedAt: new Date() },
       });
@@ -973,7 +1028,8 @@ export async function convertEstimateToAgreements(
           depositCents: estimate.depositCents,
           overrideReason: input.overrideReason,
         },
-        { sourceEstimateId: estimate.id, settings },
+        { sourceEstimateId: estimate.id, settings,
+          customerPickup: zoneLocationOf(estimate.deliveryZoneSnapshot, serviceAddressId)?.choice === "CUSTOMER_PICKUP" },
       );
 
       if (applyPrepaidDepositHere) {
@@ -992,7 +1048,8 @@ export async function convertEstimateToAgreements(
       where: { id: estimateId },
       data: { status: "CONVERTED", convertedAt: new Date() },
     });
-    await assertConversionReadinessInTx(tx, userId, createdAgreementIds, input.overrideReason);
+    await assertConversionReadinessInTx(tx, userId, createdAgreementIds, input.overrideReason,
+      estimate.deliveryZoneSnapshot);
     await tx.auditLog.create({
       data: {
         userId,

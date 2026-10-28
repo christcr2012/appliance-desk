@@ -1,3 +1,22 @@
+## October 27 — ZONE-1: delivery zones from the address, zone map (in review, PR #604)
+
+Zones are owner settings (Settings › Delivery zones; starting values IN-06, straight line). An address is looked up
+with the U.S. Census Bureau (server only, 5 s, saved per address in its own table) → zone and price on the estimate;
+lookup trouble → "We'll confirm" + a To do. Delivery or "I'll pick it up" ($0) on desk and customer estimate pages;
+frozen once sent, copied to the agreement. `/service-area` is our own SVG map + town list + checker; `/rent/{town}`
+from the town list. One rule sets each address's delivery charge for the fee review, quote, approval and signing:
+pickup $0, else an owner-recorded driving-route exception's frozen price, else the zone price — and the desk and
+customer estimate pages show that same price (an exception says so in plain words).
+**Pickup hand-over (new):** signing a pickup rental creates one "Customer pickup: hand over {items} to {name}" job (on
+To do, never "Schedule delivery"); marking it **Handed over** runs the normal delivered steps — rental start date,
+Rented, custody, monthly billing — but it is never a driver-route stop, trip-log stop, day-of reminder, delivery count
+or retail delivery fee (CDOR: no fee when the customer picks up). The fee review puts no retail delivery fee on a
+pickup address (an all-pickup order needs no fee event), and a city's delivery-license rule doesn't stop a pickup order (quote, approval, conversion or hand-over).
+**Signed stays signed (new):** signing freezes the zone and delivery/pickup choice onto the agreement; a still-open
+estimate can't change a signed agreement's delivery or pickup (refused with a plain message).
+Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
+Proof: unit tests here; database and browser tests run in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
+
 ## October 27 — Lane 1 AR-12 next-step status explanations (PR #695)
 Connected exhaustive bill, rental and visit next steps, automatic-work labels and plain-words checks to current main without dropping the previously merged saved views. Original Reviewgate passed; recheck exact-head CI after resolving a real conflict. Feature controls and Help are separate AR-12 outcomes.
 
@@ -662,8 +681,9 @@ Bills and the revenue dashboard), the Bills list reads, Today's weekly health, C
 grouping, the customer-scoped next steps and summary, and the three screens with loading/error screens. Same server
 actions and role checks as before (staff: no money on Today, refused on Bills, operational customer view). Proof: unit
 tests here; database and browser tests run in CI only. Your look-over row is on the checklist. Next: AR-1.
-**Open (unexplained):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. The
-phone-width scan now names the element that overflows, so the next occurrence identifies the cause — fix it then.
+**Resolved (was open):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. Cause
+found and fixed by BA-1 (#610): the shared phone-width scan helper measured right after a resize, before the desktop
+sidebar padding recalculated, so it briefly reported phone width with desktop padding.
 
 ## October 25 (night) — MCP-1: System health that tells the truth (merged PR #602)
 

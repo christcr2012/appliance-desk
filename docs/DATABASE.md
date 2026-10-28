@@ -1463,6 +1463,32 @@ The starting Manager job role gains the new owner/admin `feedback` screen. All f
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
 
+## Delivery zones (ZONE-1, additive migration `20261130000000_delivery_zones`)
+
+- `BusinessSettings.deliveryZones` (JSON list of `{ name, outerMiles, deliveryCents, pickupCents, color }`, starting
+  Local — free delivery 0–15 / Nearby over 15–30 $75 / Extended over 30–50 $125, IN-06), `deliveryMaxMiles` (50),
+  `zoneCenter` (`{ lat, lon }`, central Greeley 40.4233, -104.7091), `zoneDistanceMethod` (`STRAIGHT_LINE`, Chris
+  2026-10-25; `DRIVING` = staff type the miles), `showDeliveryPricesOnWebsite` (false). Read by
+  `src/domains/delivery/zone.ts` (`readZoneSettings`); saved only by the owner (`saveZoneSettings`, compare-and-set,
+  audited). The old `serviceAreaCities` / `serviceAreaZips` columns stay but are no longer read (except to send an
+  old city-page link that isn't on the town list to `/service-area`).
+- `ServiceAddressGeocode` (new table, one row per address, cascade with the address): the address's map position
+  (`latitude`, `longitude`), `addressHash` (SHA-256 of the one-line address; a new street means look it up again),
+  `source` (`CENSUS`), `geocodedAt`, `geocodedByUserId`. Kept apart from `ServiceAddress` so no ordinary address read
+  (`serviceAddress: true`) can carry a position to a customer. In the backup manifest; deleted on a privacy erasure.
+- `Estimate.deliveryZoneSnapshot` (+ `deliveryZoneSnapshotAt`): `{ version: 1, locations: [{ serviceAddressId, zone
+  (1..n | "OUTSIDE" | "UNKNOWN"), name, miles, method, center, priceCents, pickupPriceCents, choice ("DELIVER" |
+  "CUSTOMER_PICKUP"), unknownReason?, confirmed?, pickupArranged?, checkedAt }] }`. Rechecked only while DRAFT /
+  CHANGES_REQUESTED; frozen once sent. `RentalAgreement.deliveryZoneSnapshot` is that address's entry, copied once at
+  conversion — or frozen at signing when an agreement is signed before conversion. Only an agreement not signed yet
+  (DRAFT / AWAITING_SIGNATURE) may still follow its estimate; estimate-side zone or choice changes are refused for an
+  address whose agreement is signed (SCHEDULED / ACTIVE / ENDED).
+- `Job.customerPickupHandoff` (Boolean, default false; additive migration `20261130000001_job_customer_pickup_handoff`):
+  marks the DELIVERY job that is a customer pickup hand-over at our place. Created at signing for a pickup rental
+  (the only DELIVERY job such a rental may have). Completing it runs the normal delivered path (`firstDeliveredOn`,
+  continuity, Rented, custody, `START_RECURRING_BILLING` hand-off) but it is excluded from the driver's route, the
+  vehicle trip log, day-of reminders, delivery counts, the retail delivery fee record and trip/relocation fees.
+
 ### BA-1: books autopilot (implementation branch)
 
 The additive `20261026050000_books_autopilot` migration adds an automatic-enrollment marker,

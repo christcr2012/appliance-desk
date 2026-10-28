@@ -203,6 +203,8 @@ export type CreateDraftAgreementInTxOptions = {
    * Real order saves (desk wizard, estimate conversion) leave it unset.
    */
   skipDeliveryReadinessCheck?: boolean;
+  /** ZONE-1: the customer picks this address's items up — no city delivery license needed (other readiness applies). */
+  customerPickup?: boolean;
 };
 
 function validateDraftTerms(input: NewAgreementInput) {
@@ -302,7 +304,8 @@ export async function createDraftAgreementInTx(
   // overridden, and the refusal rolls the whole save back.
   const readiness = options.skipDeliveryReadinessCheck
     ? null
-    : await deliveryTaxReadinessWith(tx, input.serviceAddressId);
+    : await deliveryTaxReadinessWith(tx, input.serviceAddressId, new Date(),
+      options.customerPickup ? { customerPickup: true } : undefined);
   if (readiness && !readiness.ready) {
     if (input.overrideReason?.trim()) {
       await recordReadinessOverrideInTx(tx, {
@@ -310,11 +313,13 @@ export async function createDraftAgreementInTx(
         actorUserId: userId,
         reason: input.overrideReason,
         serviceAddressId: input.serviceAddressId,
+        customerPickup: options.customerPickup === true,
       });
     }
     await assertDeliveryReadyInTx(tx, {
       serviceAddressId: input.serviceAddressId,
       agreementId: agreement.id,
+      customerPickup: options.customerPickup === true,
     });
   }
 
@@ -697,21 +702,38 @@ export async function signAgreement(
     // current window, never book an appointment or alter frozen money.
     const { readOfferedSlots, assertAvailableDeliveryOption } =
       await import("@/domains/orders/delivery");
-    const choices=readOfferedSlots(agreement.deliveryOffer);
-    if(choices.length){
-      if(!input.deliverySelection)
-        throw new Error("Select an offered delivery choice before signing.");
-      const { assertRouteMatchesFrozenFeeInTx } =
-        await import("@/domains/orders/route-evidence");
-      if(!agreement.deliveryRouteProof)
+    // ZONE-1: the address's zone decides delivery first — the agreement's frozen copy (made at conversion), or before
+    // conversion the source estimate's entry for this address (a prepared agreement can be sent for signature first).
+    const { agreementZoneLocationInTx } = await import("@/domains/delivery/pickup-guard");
+    const ownZone = await agreementZoneLocationInTx(tx, agreement);
+    // Always, windows offered or not: the frozen order's delivery charge is exactly the one helper's answer ($0 for
+    // pickup, an owner-recorded driving-route exception's frozen price, else the frozen zone price).
+    const { expectedDeliveryChargeForAddressInTx, assertFrozenV2DeliveryOrderInTx } =
+      await import("@/domains/orders/route-evidence");
+    const expectedDelivery = await expectedDeliveryChargeForAddressInTx(tx, { estimateId: agreement.sourceEstimateId,
+      agreementId: agreement.id, serviceAddressId: agreement.serviceAddressId, zone: ownZone });
+    if (expectedDelivery !== null) {
+      const { agreementFrozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+      if (await agreementFrozenDeliveryCentsInTx(tx, agreement) !== expectedDelivery)
+        throw new Error("The delivery charge in this agreement doesn't match its delivery zone or pickup choice. Ask us for an updated agreement.");
+    }
+    const pickupOnly = ownZone ? ownZone.choice === "CUSTOMER_PICKUP"
+      : agreement.sourceEstimateId
+        ? await (await import("@/domains/delivery/pickup-guard")).isAgreementPickupInTx(tx, agreement.id)
+        : false;
+    const { deliveryWindowStep } = await import("@/domains/delivery/pickup-guard");
+    const step = deliveryWindowStep({ pickup: pickupOnly,
+      offeredCount: readOfferedSlots(agreement.deliveryOffer).length, hasSelection: !!input.deliverySelection });
+    if(step==="CHOOSE"&&input.deliverySelection){ // deliveryWindowStep already refused the other combinations
+      // ZONE-1: the amount was checked above. Older agreements with neither a zone nor an owner-recorded route
+      // exception still need the owner's route review, and the exact reviewed V2 order must exist.
+      if(expectedDelivery===null)
         throw new Error("Owner road-route fee evidence is required before signing.");
-      await assertRouteMatchesFrozenFeeInTx(tx,agreement.id,agreement.deliveryRouteProof);
+      await assertFrozenV2DeliveryOrderInTx(tx,agreement.id);
       const selected=assertAvailableDeliveryOption(agreement.deliveryOffer,
         agreement.deliveryOfferVersion,input.deliverySelection);
       await tx.rentalAgreement.update({where:{id:agreement.id},
         data:{deliveryRequested:selected,deliveryRequestedAt:new Date()}});
-    }else if(input.deliverySelection){
-      throw new Error("This agreement has no current offered delivery choices.");
     }
     let informationalTerms: Array<{english:string;spanish:string}> = [];
     if (input.interfaceLanguage === "es") {
@@ -771,6 +793,12 @@ export async function signAgreement(
     });
 
     const scheduledRenewal = Boolean(agreement.renewedFromAgreementId && agreement.startDate);
+    // ZONE-1 (Codex finding on PR #604): the zone and delivery/pickup choice this signature was checked against are
+    // frozen onto the agreement in the same write, so later edits of a still-open source estimate can never change a
+    // signed agreement's delivery or pickup (pickup checks read this copy first; estimate-side changes refuse).
+    const frozenZone = agreement.deliveryZoneSnapshot === null && ownZone
+      ? { deliveryZoneSnapshot: { ...ownZone, estimateId: agreement.sourceEstimateId } as unknown as Prisma.InputJsonObject }
+      : {};
     await tx.rentalAgreement.update({
       where: { id: agreement.id },
       // A renewal keeps the start date it was agreed with and is only
@@ -778,10 +806,12 @@ export async function signAgreement(
       // ends) in one step at its start date; see renewal-start.ts.
       data: scheduledRenewal
         ? {
+            ...frozenZone,
             status: "SCHEDULED",
             endDate: agreement.termMonths ? fixedTermEndDate(agreement.startDate!, agreement.termMonths) : null,
           }
         : {
+            ...frozenZone,
             status: "ACTIVE",
             startDate: signedAt,
             // A new month-to-month rental starts on the newest published terms.

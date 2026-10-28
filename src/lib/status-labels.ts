@@ -84,6 +84,7 @@ export const SPANISH_STATUS_LABELS: Record<string, string> = {
   "In progress": "En curso",
   "Completed": "Completado",
   "Delivery": "Entrega",
+  "Customer pickup (hand-over)": "Recogida por el cliente",
   "Installation": "Instalación",
   "Swap": "Intercambio",
   "Maintenance visit": "Visita de mantenimiento",
@@ -132,6 +133,16 @@ export const rentalAgreementStatusTone = (status: string): StatusTone =>
 export const jobStatusLabel = (status: string, language: CustomerLanguage = "en") => lookup(JOB_STATUS_LABELS, status, language);
 
 export const jobTypeLabel = (type: string, language: CustomerLanguage = "en") => lookup(JOB_TYPE_LABELS, type, language);
+
+/**
+ * ZONE-1: the job's kind, where a customer pickup hand-over (a DELIVERY job marked customerPickupHandoff) never reads
+ * "Delivery" — the customer collects it at our place.
+ */
+export const jobKindLabel = (job: { type: string; customerPickupHandoff?: boolean | null },
+  language: CustomerLanguage = "en") =>
+  job.type === "DELIVERY" && job.customerPickupHandoff
+    ? (language === "es" ? SPANISH_STATUS_LABELS["Customer pickup (hand-over)"]! : "Customer pickup (hand-over)")
+    : jobTypeLabel(job.type, language);
 
 const JOB_STATUS_TONE: Record<string, StatusTone> = {
   SCHEDULED: "pending",

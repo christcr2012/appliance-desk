@@ -20,6 +20,9 @@ import { QuoteLanguageChoice } from "./language-choice";
 import { parseCustomerLanguage } from "@/domains/language/copy";
 import { quoteLanguage } from "@/domains/language/quote-note";
 import { estimateCopy } from "@/domains/language/estimate-copy";
+import { EstimateDeliveryChoice } from "./delivery-choice";
+import { currentLocations, isPickupOnly } from "@/domains/delivery/snapshot";
+import { customerDeliveryChargesForEstimate } from "@/domains/orders/route-evidence";
 
 export const metadata = {
   title: "Your estimate",
@@ -32,7 +35,7 @@ export default async function PublicEstimatePage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{deposit?:string;signingPayment?:string;language?:string}>;
+  searchParams?: Promise<{deposit?:string;signingPayment?:string;language?:string;delivery?:string}>;
 }) {
   const { id } = await params;
   const payment = await searchParams;
@@ -66,6 +69,11 @@ export default async function PublicEstimatePage({
   const formatBusinessDate=(date:Date)=>originalBusinessDate(date,language);
   const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language,word);
   const tr = (key: Parameters<typeof estimateCopy>[1]) => estimateCopy(language, key);
+  // ZONE-1: every address set to "I'll pick it up" → no delivery window to choose.
+  const pickupOnly = isPickupOnly(estimate.deliveryZoneSnapshot, estimate.lineItems.map((line) => line.serviceAddressId));
+  // ZONE-1: the delivery price shown per address is the one approval and signing require (route exceptions included).
+  const deliveryCharges = await customerDeliveryChargesForEstimate(estimate.id,
+    currentLocations(estimate.deliveryZoneSnapshot, estimate.lineItems.map((line) => line.serviceAddressId)));
   const customerName = estimate.customer
     ? (estimate.customer.user.name ?? estimate.customer.user.email)
     : estimate.lead?.contactName;
@@ -124,6 +132,10 @@ export default async function PublicEstimatePage({
         )}
       </div>
 
+      <EstimateDeliveryChoice estimateId={estimate.id} status={estimate.status} snapshot={estimate.deliveryZoneSnapshot}
+        addresses={estimate.lineItems.flatMap((line) => line.serviceAddress
+          ? [{ id: line.serviceAddress.id, label: `${line.serviceAddress.line1}, ${line.serviceAddress.city}` }] : [])}
+        result={typeof payment?.delivery === "string" ? payment.delivery : undefined} charges={deliveryCharges} />
       {reviewedQuote && <ReviewedPreapprovalQuote quote={reviewedQuote} language={language} />}
       {(estimate.status === "SENT" || estimate.status === "VIEWED") && !reviewedQuote && (
         <section className="mt-4 rounded border border-amber-400 p-4 text-sm" role="alert">
@@ -196,7 +208,7 @@ export default async function PublicEstimatePage({
         {!RESPONDED_STATUSES.has(estimate.status) && (
           <EstimateResponseForm language={language} estimateId={estimate.id} allowApproval={!!reviewedQuote}
             expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint}
-            deliveryOptions={readOfferedSlots(estimate.deliveryOffer)}
+            deliveryOptions={pickupOnly ? [] : readOfferedSlots(estimate.deliveryOffer)}
             offerVersion={estimate.deliveryOfferVersion}
             phonePrefill={publicPhoneOrderPrefill(estimate)} />
         )}

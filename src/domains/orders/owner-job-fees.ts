@@ -16,9 +16,11 @@ export async function approveW24JobFee(actorId:string,jobId:string,
       select:{type:true,status:true,version:true,agreementId:true,customerId:true,
         noShowAt:true,noShowCause:true,noShowEvidence:true,
         tripFeeApprovedAt:true,relocationFeeApprovedAt:true,
-        approvedTripFeeCents:true,approvedRelocationFeeCents:true}});
+        approvedTripFeeCents:true,approvedRelocationFeeCents:true,customerPickupHandoff:true}});
     if(j.version!==expectedVersion)throw new Error("Job changed; refresh before approving a fee.");
     if(j.type==="SWAP"||j.type==="MAINTENANCE_VISIT")throw new Error("No setup or trip charge on service/swap visits.");
+    // ZONE-1: the customer collects it at our place, so there is no trip to charge for.
+    if(j.customerPickupHandoff)throw new Error("No trip or relocation charge on a customer pickup hand-over.");
     const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
       select:{missedTripFeeCents:true,relocationFeeCents:true}});
     const amount=kind==="MISSED_TRIP"?settings?.missedTripFeeCents??0:settings?.relocationFeeCents??7500;

@@ -89,11 +89,13 @@ export function positiveResultFor(type: JobType, role: JobApplianceRole): JobApp
   return allowedResults(type, role)[0];
 }
 
-function taskNote(result: JobApplianceResult, label: string, customerName: string | null): string {
+function taskNote(result: JobApplianceResult, label: string, customerName: string | null, handoff = false): string {
   const who = customerName ? ` (${customerName})` : "";
   switch (result) {
     case "NOT_DELIVERED":
-      return `Deliver ${label}${who}: it was not delivered on the visit.`;
+      return handoff
+        ? `Customer pickup: hand over ${label}${who}. It was not handed over yet.`
+        : `Deliver ${label}${who}: it was not delivered on the visit.`;
     case "NOT_RETURNED":
       return `Collect ${label}${who}: it was not picked up.`;
     case "NOT_REPAIRED":
@@ -576,7 +578,8 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         tx,
         { userId: actor.id, role: actor.role as "OWNER" | "ADMIN" | "STAFF" },
         {
-          note: taskNote(given, `${appliance.applianceType.name} ${appliance.assetNumber}`, customerName),
+          note: taskNote(given, `${appliance.applianceType.name} ${appliance.assetNumber}`, customerName,
+            before.customerPickupHandoff === true),
           priority: "HIGH",
           jobId: before.id,
           customerId: customerId ?? null,
@@ -636,13 +639,20 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       },
     });
     if (updated.count !== 1) throw new JobVersionError();
-    if (isDelivery && before.agreementId && deliveredIds.length > 0) {
+    // ZONE-1: a customer pickup hand-over runs every step above exactly like a delivery (first delivered date,
+    // continuity, Rented, custody, the recurring-billing hand-off) but it is not a delivery by motor vehicle, so it
+    // records no Colorado retail delivery fee and doesn't count toward a city's delivery license rule. CDOR, "Retail
+    // Delivery Fees" (Oct 2026): "If a purchaser picks up items ... at a retailer's business location, the retail
+    // delivery fees do not apply because there was no delivery."
+    // https://tax.colorado.gov/sites/default/files/2026-10/ST_Retail_Delivery_Fees_Oct_2026.pdf (accessed 2026-10-27)
+    const truckDelivery = isDelivery && !before.customerPickupHandoff;
+    if (truckDelivery && before.agreementId && deliveredIds.length > 0) {
       await recordRentalDeliveryFeeInTx(tx, {
         jobId: before.id, agreementId: before.agreementId,
         saleKey: "agreement:" + before.agreementId, deliveredOn: serviceDate,
       });
     }
-    if (isDelivery && before.agreementId && deliveredIds.length > 0) {
+    if (truckDelivery && before.agreementId && deliveredIds.length > 0) {
       // FEETAX-2: count this delivery toward the place's license rule
       // (some cities require a license after the first delivery, or
       // after more than one delivery in 12 months). One row per order.
