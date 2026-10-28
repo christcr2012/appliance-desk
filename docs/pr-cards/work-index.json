@@ -4378,7 +4378,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "APPROVED — not merged; #714 is TAXBEN-2 (not AR-1). Navigation implementation branch ai/chatgpt/ar1-five-area-navigation-20261027",
+      "status": "IN PROGRESS \u2014 picked up by Lane 4 on branch ai/vivienne/ar-1 (2026-10-28): the ai/chatgpt/ar1 implementation merged onto current main, pickup fixes applied, packet suites and production build green locally; PR opening.",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -6114,5 +6114,5 @@
       "id": "ACCT-1",
       "path": "docs/pr-cards/execution/ACCT-1.json"
     }
-  ]
+  ,{"id": "AR-1", "path": "docs/pr-cards/execution/AR-1.json"}]
 }

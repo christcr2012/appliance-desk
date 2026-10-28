@@ -40,5 +40,17 @@ None new (the AR-0 look-over row covers the new look).
 Moving pages' content (each area's unit does that); the Money overview page (AR-3); Settings sections (AR-8);
 the in-app notifications bell (AR-13, after AR-2).
 
+### Implementation and verification plan — October 27 (one full AR-1 outcome)
+
+Approved scope: NAVIGATION 1–7, five areas and their safe tabs; profile/settings menu and help, responsive shell, server-checked command search and quick actions, redirects, Today count, accessibility and old-link compatibility. AR-11 and AR-12 are dependencies; if either remains open, keep this PR in review until its real acceptance is merged. No permissions are widened.
+
+Acceptance evidence to record before merging:
+- [ ] `desk-areas.ts` is the sole role/job-role/feature-filtered source of five areas, active tabs and profile links, with all exact routes and finance restrictions checked.
+- [ ] Phone bottom bar and scrollable area tabs, desktop collapsible remembered sidebar, top search, profile menu, Today count with zero additional cross-page DB reads, keyboard skip/focus and theme/sign-out.
+- [ ] Command search and quick actions (2-character minimum; 150 ms debounce; grouped areas/actions/records/Help), server-side role-filtered existing search, and disabled/absent actions for staff.
+- [ ] Safe redirects for /desk/more and /desk/control-center, no existing deep URL broken, old menu wrappers work for remaining pages.
+- [ ] Security tests for each role and job-role, record search authorization on disposable PostgreSQL, client/component tests, five-width axe/browser and keyboard paths.
+- [ ] Docs/card and owner records accurate, full exact-head CI and Reviewgate green, no unanswered Codex findings. Phone real-world acceptance remains unchecked.
+
 ## Progress
-Not started.
+Source committed on `ai/chatgpt/ar1-five-area-navigation-20261027` on October 28, 2026. The five-area responsive frame, area tabs, role/job-role/feature filtering, profile menu, command palette with existing server-side search permissions, Today badge, old-route redirects, compatibility tests and new browser coverage are implemented. Exact-head CI, missing integration proof, complete code review and merge have not yet been observed. The owner phone look-over stays unchecked.
