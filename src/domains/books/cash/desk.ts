@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 /** No balances are invented. This is only registered source and journal evidence. */
 export async function getCashDesk(userId:string) {
   return prisma.$transaction(async tx=>{
-    await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+    await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
     const [registered,availableBanks,events] = await Promise.all([
       tx.cashAccount.findMany({where:{active:true},orderBy:{createdAt:"asc"},take:100,
         include:{ledgerAccount:{select:{id:true,name:true}},
