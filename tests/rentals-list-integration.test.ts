@@ -199,7 +199,7 @@ describe.skipIf(!ready)("rentals list (real Postgres)", () => {
     expect(found.rows.map((r) => r.id)).toEqual([assetAgreementId]);
   });
 
-  it("staff rows carry no money at runtime", async () => {
+  it("staff rows carry no money and no line labels at runtime", async () => {
     role.current = "STAFF";
     try {
       const listed = await getRentals(base, new Date());
@@ -208,8 +208,12 @@ describe.skipIf(!ready)("rentals list (real Postgres)", () => {
         const row = listed.rows.find((r) => r.id === assetAgreementId);
         expect(row).toBeTruthy();
         expect(row).not.toHaveProperty("monthlyCents");
-        expect(row!.lines[0]).not.toHaveProperty("monthlyPriceCents");
-        expect(row!.lines[0].assignments[0].appliance.assetNumber).toBe(`RLT-${tag}`);
+        // No line rows at all for staff: a line label is owner-written text
+        // that can carry a price, so staff get the appliance count only
+        // (the pre-AR-4a list's staff branch did the same).
+        expect(row).not.toHaveProperty("lines");
+        expect(row!.applianceCount).toBe(1);
+        expect(JSON.stringify(row)).not.toContain("Washer");
       }
     } finally {
       role.current = "OWNER";
