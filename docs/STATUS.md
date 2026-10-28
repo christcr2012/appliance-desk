@@ -3688,3 +3688,12 @@ payment evidence or approval to collect; all such paths remain disabled.
 **Next: W-22C5 reviewed immutable per-agreement tax-inclusive freeze and
 server send/sign gates**, followed by W-22 checkout/manual payment, credit,
 refund/cancellation and delivery acceptance. IN-79 open; W-23 blocked.
+
+## October 28 — MCP-4 direct read diagnostics (PR #704; merge reconciliation)
+
+The nine privacy-safe MCP reads, authorization checks, continuation cursors and
+verified backup evidence were implemented and reviewed in PR #704. All Codex
+findings were answered and resolved; GitHub's exact-source CI and review-gate
+passed. This status note is deliberately kept outside the top-of-file latest
+updates so other lane agents can prepend their new work without creating the
+same merge conflict. Merge and deployed acceptance remain separate from checks.
