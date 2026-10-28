@@ -19,7 +19,7 @@ export type RowSaveState =
   | { status: "success"; auditId?: string }
   | { status: "error"; message: string };
 
-const GENERIC: RowSaveState = {
+const GENERIC: Extract<RowSaveState, { status: "error" }> = {
   status: "error",
   message: "Settings could not be saved. Your change is still here; please try again.",
 };

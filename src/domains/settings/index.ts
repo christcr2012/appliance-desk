@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = {
   publicPhone: "[Phone Number]",
   publicEmail: "[Email Address]",
   publicAddress: "[Business Address]",
+  drivingOriginAddress: "UNVERIFIED: owner must choose central Greeley origin",
   serviceAreaCities: [] as unknown,
   serviceAreaZips: [] as unknown,
   hours: {} as unknown,
@@ -197,6 +198,16 @@ export type BusinessSettingsUpdate = Partial<{
   // Visits and scheduling (Batch C P1-A).
   defaultJobDurationMinutes: number;
   staffMayWorkUnassignedJobs: boolean;
+  // AR-8: the catalog's scalar rows save through this same locked, audited path.
+  relocationFeeCents: number;
+  missedTripFeeCents: number;
+  deliveryMorningStartHour: number;
+  deliveryMorningEndHour: number;
+  deliveryAfternoonStartHour: number;
+  deliveryAfternoonEndHour: number;
+  tenantContactRetentionMonths: number;
+  lemonRepairPercent: number;
+  exportPayoutLines: Prisma.InputJsonValue;
 }>;
 
 /**

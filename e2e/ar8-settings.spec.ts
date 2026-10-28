@@ -72,7 +72,7 @@ test.describe("AR-8 settings (owner, desktop)", () => {
   });
 
   test("accessibility scan of the rentals section", async ({ page }) => {
-    await scanAccessibilityRoute(page, { path: "/desk/settings?section=rentals", name: "Settings rentals" });
+    await scanAccessibilityRoute(page, { path: "/desk/settings", role: "OWNER", fixture: "/desk/settings?section=rentals" });
   });
 });
 
