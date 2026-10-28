@@ -181,6 +181,8 @@ export interface PacketData {
   worksheet4562: import("./worksheets").Worksheet4562;
   worksheet4797: import("./worksheets").Worksheet4797;
   homeOffice: boolean;
+  /** TAXBEN-2: the year's election statements. Optional — packets prepared before TAXBEN-2 have none. */
+  elections?: import("@/domains/taxben/elections").ElectionStatements | null;
 }
 
 /** The accountant packet as a CSV: Schedule C, the 1099-K tie-out, and both worksheets. */
@@ -258,6 +260,19 @@ export function packetCsv(packet: PacketData): string {
   if (packet.homeOffice) {
     sections.push(csvSection("Home office", ["Note"], [["The business facts say a home office is used. The simplified or regular method, and the amount, are worked out with the CPA — no amount is claimed here."]]));
   }
+  if (packet.elections) {
+    const e = packet.elections;
+    const eRows: Array<Array<string | number>> = [
+      ["Return due date", e.dueOnKey],
+      ["Extension date", e.extensionKey],
+      ["De minimis safe harbor", e.deMinimisText],
+    ];
+    if (e.electOutText) eRows.push(["Election out of bonus depreciation", e.electOutText]);
+    if (e.startupNoteText) eRows.push(["Start-up costs", e.startupNoteText]);
+    sections.push(
+      csvSection(`Elections and statements — ${packet.year}`, ["Item", "Text"], eRows),
+    );
+  }
   return sections.join("\r\n\r\n") + "\r\n";
 }
 
@@ -319,6 +334,21 @@ export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
     push("");
     push("Home office", true);
     push("The business facts say a home office is used. The method and amount are worked out with the CPA.");
+  }
+  if (packet.elections) {
+    const e = packet.elections;
+    push("");
+    push("Elections and statements", true);
+    push(`Return due date: ${e.dueOnKey}. With an extension: ${e.extensionKey}.`);
+    for (const line of e.deMinimisText.split("\n")) push(line);
+    if (e.electOutText) {
+      push("");
+      for (const line of e.electOutText.split("\n")) push(line);
+    }
+    if (e.startupNoteText) {
+      push("");
+      for (const line of e.startupNoteText.split("\n")) push(line);
+    }
   }
   push("");
   push(`Prepared ${businessDateKey(new Date())}. Amounts tie to the approved filing numbers.`);
