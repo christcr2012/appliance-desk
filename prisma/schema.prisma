@@ -3965,6 +3965,7 @@ model TaxYearFacts {
   form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
   seHealthPremiumCents Int? // TAXBEN-1: that year's self-employed health insurance premiums, as typed
   seHealthEmployerPlanMonths Json? // TAXBEN-1: month numbers (1-12) the owner was eligible for an employer health plan (own or spouse's)
+  bonusElectOutClasses Json? // TAXBEN-2: property class keys (from us.class_life_months) the business elects out of bonus depreciation for, this year
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

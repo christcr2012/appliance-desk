@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { personalShareAccounts, saveWriteOffSettings } from "@/domains/taxben/classification";
+import { bonusClassOptions, saveBonusElectOut } from "@/domains/taxben/elections";
 import { signCapitalizationPolicy } from "@/domains/taxben/policy";
+import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import type { TaxActionState } from "../setup/actions";
 
@@ -69,4 +71,33 @@ export async function saveWriteOffSettingsAction(
   revalidatePath("/desk/sales-tax/benefits");
   revalidatePath("/desk");
   return { success: "Your write-off settings are saved.", error: "" };
+}
+
+export async function saveElectionsAction(
+  _state: TaxActionState,
+  form: FormData,
+): Promise<TaxActionState> {
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
+  const year = Number(form.get("year"));
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    return { success: "", error: "That year couldn't be read." };
+  }
+  try {
+    const options = await bonusClassOptions(prisma, year);
+    const classes = options
+      .filter((option) => form.get(`electOut_${option.key}`) === "on")
+      .map((option) => option.key);
+    await saveBonusElectOut(session.user.id, year, classes);
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : "";
+    return {
+      success: "",
+      error: /failed|changed|already|only|missing|invalid|cannot|not in the rule book/i.test(raw)
+        ? raw.slice(0, 250)
+        : "Your choices couldn't be saved. Refresh and try again.",
+    };
+  }
+  revalidatePath("/desk/sales-tax/benefits");
+  revalidatePath("/desk");
+  return { success: `Your choices for ${year} are saved. The change is listed for the owner.`, error: "" };
 }
