@@ -4378,7 +4378,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "APPROVED — Chris 2026-10-25; NOT MERGED (PR #714 was TAXBEN-2, not AR-1)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4715,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662/#663/#665; measured JavaScript guard PR #691 exact-head CI verified, merge pending",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662/#663/#665; measured JavaScript guard PR #691 conflict reconciled, exact-head checks pending",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -5739,7 +5739,7 @@
         "CMP-2",
         "ACCT-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/taxben-2 (2026-10-27); packet registered, building",
       "migration": "none",
       "budget": 250,
       "units": [
@@ -5909,6 +5909,10 @@
     {
       "id": "TAXBEN-1",
       "path": "docs/pr-cards/execution/TAXBEN-1.json"
+    },
+    {
+      "id": "TAXBEN-2",
+      "path": "docs/pr-cards/execution/TAXBEN-2.json"
     },
     {
       "id": "W-22D12",

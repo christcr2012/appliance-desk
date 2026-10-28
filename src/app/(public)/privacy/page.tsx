@@ -79,6 +79,11 @@ export default async function PrivacyPage({
         </section>
 
         <section>
+          <h2 className="font-display text-xl font-semibold text-ink">Delivery zone check</h2>
+          <p className="mt-2">To check an address we send it to the U.S. Census Bureau&apos;s address lookup; we don&apos;t keep addresses typed into the checker.</p>
+        </section>
+
+        <section>
           <h2 className="font-display text-xl font-semibold text-ink">Website visit statistics</h2>
           <p className="mt-2">We use Metricool to understand visits to our public marketing pages and which campaigns bring visitors to our site. Metricool receives the public page address, fixed campaign labels, browser-window size, referring website domain, and the IP address needed to receive the visit request. This tracking does not use cookies. We exclude account, staff, signing, estimate, and privacy-request pages, and remove other query values and referring-page paths. This Metricool tracking honors browser Do Not Track and Global Privacy Control signals. Form entries are not included in these visit requests.</p>
         </section>

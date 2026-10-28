@@ -8,7 +8,9 @@ import {
   generateUnusedAccountPassword,
   normalizeAccountEmail,
 } from "@/lib/account-provisioning";
-import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { getBusinessSettings } from "@/domains/settings";
+import { townByName } from "@/domains/delivery/towns";
+import { readZoneSettings, zoneForPoint } from "@/domains/delivery/zone";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
 import { leadContactKeys } from "./keys";
@@ -30,23 +32,18 @@ import type { Lead, LeadStatus, Prisma } from "@prisma/client";
  */
 export async function createLead(input: LeadFormInput) {
   const settings = await getBusinessSettings();
-  const serviceArea = parseServiceArea(settings);
   const scoringPolicy = parseLeadScoringPolicy(
     (settings as { leadScoringPolicy?: unknown }).leadScoringPolicy,
   );
 
+  // ZONE-1: a town on the delivery-zone list answers by the zone its center is in; any other town is unknown (null)
+  // until staff check the address — never a guess.
   const zip = input.zip?.trim() || null;
   const city = input.city?.trim() || null;
-  const inServiceArea =
-    zip || city
-      ? Boolean(
-          (zip && serviceArea.zips.includes(zip)) ||
-            (city &&
-              serviceArea.cities.some(
-                (c) => c.toLowerCase() === city.toLowerCase(),
-              )),
-        )
-      : null;
+  const town = townByName(city);
+  const inServiceArea = town
+    ? zoneForPoint({ lat: town.lat, lon: town.lon }, readZoneSettings(settings)).kind === "ZONE"
+    : null;
 
   const { score, reasons, isHighValue } = scoreLead(
     {
@@ -172,7 +169,7 @@ export async function createLead(input: LeadFormInput) {
         `Best time to contact: ${lead.bestTimeToContact ?? "(not given)"}`,
         `Wants: ${applianceSummary}`,
         `Term: ${lead.desiredTerm ?? "(not given)"}`,
-        `Location: ${[lead.city, lead.zip].filter(Boolean).join(", ") || "(not given)"}${inServiceArea === false ? " — OUTSIDE configured service area" : ""}`,
+        `Location: ${[lead.city, lead.zip].filter(Boolean).join(", ") || "(not given)"}${inServiceArea === false ? " — OUTSIDE the delivery zones (pickup only)" : ""}`,
         `How they heard about us: ${lead.howHeard ?? "(not given)"}`,
         `Notes: ${lead.notes ?? "(none)"}`,
         "",

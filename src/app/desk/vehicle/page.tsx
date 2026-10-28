@@ -116,21 +116,22 @@ export default async function VehiclePage() {
       ) : null}
 
       <Card title="Miles and the mileage deduction" description="Business miles by year.">
-        {o.years.length === 0 ? <p className="text-sm">No finished trips yet.</p> : (
+        {(o.years.length === 0 || (o.years.length === 1 && o.years[0].miles === 0 && !o.years[0].actualCents)) ? <p className="text-sm">No finished trips yet.</p> : (
           <table className="w-full text-sm">
-            <thead><tr className="text-left"><th className="py-1">Year</th><th>Business miles</th><th>Rate</th><th>{o.settings.mileageMethod === "STANDARD_RATE" ? "Deduction at the standard rate" : "Standard-rate figure (for comparison)"}</th></tr></thead>
+            <thead><tr className="text-left"><th className="py-1">Year</th><th>Business miles</th><th>Rate</th><th>{o.settings.mileageMethod === "STANDARD_RATE" ? "Deduction at the standard rate" : "Standard-rate figure (for comparison)"}</th><th>Vehicle costs in your books</th></tr></thead>
             <tbody>
               {o.years.map((y) => (
                 <tr key={y.year} className="border-t border-line">
                   <td className="py-1">{y.year}</td><td>{num(y.miles)}</td>
                   <td>{y.rateTenths != null ? `${y.rateTenths / 10}¢ a mile` : "No rate recorded"}</td>
                   <td>{y.deductionCents != null ? formatMoney(y.deductionCents) : "—"}</td>
+                  <td>{y.actualCents != null ? formatMoney(y.actualCents) : "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <p className="mt-2 text-xs text-ink-soft">The rate comes from the dated rule book (2026: 72.5¢ a mile, IRS Notice 2026-10). Comparing with your actual vehicle costs isn&apos;t connected to your books yet; ask your accountant. Your accountant uses these miles for the vehicle line on your tax return.</p>
+        <p className="mt-2 text-xs text-ink-soft">The rate comes from the dated rule book (2026: 72.5¢ a mile, IRS Notice 2026-10). The last column is what your books posted for fuel, vehicle repairs and vehicle insurance. You can use only one way on a tax return: your tax packet uses the way chosen below (line 9, car and truck), and shows the other as a comparison. Ask your accountant before changing it.</p>
       </Card>
 
       <Card title="How you claim vehicle costs" description="Ask your accountant; it matters most in the first year.">

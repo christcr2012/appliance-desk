@@ -23,7 +23,7 @@ Migration `20261111000000_cmp4_colorado_local`.
 ## November 10 — Income tax helpers (CMP-2, additive)
 
 Migration `20261110000000_cmp2_income_tax`.
-- TAXBEN-1 additions (migration `20261113000000_taxben_benefits`, additive): `Appliance.capDecision`/`capReason`/`capLineCents`/`capRuleKey`/`capRuleValue`/`capDecidedAt`/`capPlacedInServiceOn` — the recorded capital-vs-expense decision per purchased unit, written once and never rewritten by later rule or election changes; `Purchase.boughtFromRelatedParty` (nullable: null = never asked); `ComplianceProfile.businessBeganOn` plus the home-office facts (`homeOfficeSqFt`, `homeSqFt`, `homeHousingCostsCents`, `homeUtilitiesCents`, `homeInsuranceCents`, `homeOfficeAttestedYear`); `BusinessSettings.businessUsePercents` (JSON by account role; missing = unanswered = 0%), `deMinimisElections` (JSON by tax year; missing = the starting value, on) and `enterpriseZone` (`UNKNOWN` | `YES` | `NO`); `TaxYearFacts.seHealthPremiumCents` and `seHealthEmployerPlanMonths` (JSON month numbers). The same migration seeds the TAXBEN rule-book values (`us.de_minimis_per_item`, `us.startup_costs`, `us.qbi`, `us.se_tax`, `us.sep_ira`, `us.solo_401k`, `us.home_office_simplified`, `us.class_life_months`, `us.passenger_auto_caps`, `co.enterprise_zone_credit`, `co.bpp_exemption`) — every TAXBEN number reads from `LegalRuleVersion` through `ruleAsOf`, never a code literal. No new models, so the backup manifest is unchanged. Follow-ups: migration `20261113010000_taxben_capitalization_preference` adds `BusinessSettings.capitalizationPreference` (`BONUS` | `SECTION179`, starting value `BONUS`; DQ-TAXBEN-179-VS-BONUS), and migration `20261113020000_taxben_benefit_rates` seeds two more rule-book values the benefit list reads: `us.se_tax_rates` (the self-employment tax rates and floors) and `us.mid_quarter` (the mid-quarter percentage line).
+- TAXBEN-1 additions (migration `20261113000000_taxben_benefits`, additive): `Appliance.capDecision`/`capReason`/`capLineCents`/`capRuleKey`/`capRuleValue`/`capDecidedAt`/`capPlacedInServiceOn` — the recorded capital-vs-expense decision per purchased unit, written once and never rewritten by later rule or election changes; `Purchase.boughtFromRelatedParty` (nullable: null = never asked); `ComplianceProfile.businessBeganOn` plus the home-office facts (`homeOfficeSqFt`, `homeSqFt`, `homeHousingCostsCents`, `homeUtilitiesCents`, `homeInsuranceCents`, `homeOfficeAttestedYear`); `BusinessSettings.businessUsePercents` (JSON by account role; missing = unanswered = 0%), `deMinimisElections` (JSON by tax year; missing = the starting value, on) and `enterpriseZone` (`UNKNOWN` | `YES` | `NO`); `TaxYearFacts.seHealthPremiumCents` and `seHealthEmployerPlanMonths` (JSON month numbers). The same migration seeds the TAXBEN rule-book values (`us.de_minimis_per_item`, `us.startup_costs`, `us.qbi`, `us.se_tax`, `us.sep_ira`, `us.solo_401k`, `us.home_office_simplified`, `us.class_life_months`, `us.passenger_auto_caps`, `co.enterprise_zone_credit`, `co.bpp_exemption`) — every TAXBEN number reads from `LegalRuleVersion` through `ruleAsOf`, never a code literal. No new models, so the backup manifest is unchanged. Follow-ups: migration `20261113010000_taxben_capitalization_preference` adds `BusinessSettings.capitalizationPreference` (`BONUS` | `SECTION179`, starting value `BONUS`; DQ-TAXBEN-179-VS-BONUS), and migration `20261113020000_taxben_benefit_rates` seeds two more rule-book values the benefit list reads: `us.se_tax_rates` (the self-employment tax rates and floors) and `us.mid_quarter` (the mid-quarter percentage line). TAXBEN-2 follow-up: migration `20261114000000_taxben_elections` (additive) adds `TaxYearFacts.bonusElectOutClasses` (JSON array of class-life keys the business elected out of bonus depreciation for that year, e.g. `rentalAppliances`; null = no election) — written by the audited elect-out save on the Tax benefits screen (owner, admin or accountant), read by the purchase write-off decision and the packet's election statements. No new models, so the backup manifest is unchanged.
 - `LedgerAccount.scheduleCLine` — the Schedule C line this account's year totals land on (a line code like `1`, `20b`, `27a`). The migration fills it for every system account from the system chart (`src/domains/books/system-chart.json`, the same values); owner-added accounts stay null, which the accountant packet reads as line 27a (Other expenses), listed by name — an account is never dropped or guessed into a more specific line.
 - `TaxYearFacts` — one row per finished tax year (`year` unique): `federalTaxCents`, `federalAgiCents`, `coloradoTaxCents` (what that year's returns said — the quarterly estimates' safe-harbor basis) and `form1099KGrossCents` (the 1099-K box 1a typed from Stripe's form, for the tie-out). All nullable: a missing figure means the app shows words ("ask your CPA"), never an invented number. Entered by the owner on Business facts; registered in the backup manifest.
 
@@ -1462,6 +1462,32 @@ Settings: `BusinessSettings.feedbackMaxAttachments` (0–3, starting 3) and `fee
 The starting Manager job role gains the new owner/admin `feedback` screen. All four tables are in the backup manifest;
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
+
+## Delivery zones (ZONE-1, additive migration `20261130000000_delivery_zones`)
+
+- `BusinessSettings.deliveryZones` (JSON list of `{ name, outerMiles, deliveryCents, pickupCents, color }`, starting
+  Local — free delivery 0–15 / Nearby over 15–30 $75 / Extended over 30–50 $125, IN-06), `deliveryMaxMiles` (50),
+  `zoneCenter` (`{ lat, lon }`, central Greeley 40.4233, -104.7091), `zoneDistanceMethod` (`STRAIGHT_LINE`, Chris
+  2026-10-25; `DRIVING` = staff type the miles), `showDeliveryPricesOnWebsite` (false). Read by
+  `src/domains/delivery/zone.ts` (`readZoneSettings`); saved only by the owner (`saveZoneSettings`, compare-and-set,
+  audited). The old `serviceAreaCities` / `serviceAreaZips` columns stay but are no longer read (except to send an
+  old city-page link that isn't on the town list to `/service-area`).
+- `ServiceAddressGeocode` (new table, one row per address, cascade with the address): the address's map position
+  (`latitude`, `longitude`), `addressHash` (SHA-256 of the one-line address; a new street means look it up again),
+  `source` (`CENSUS`), `geocodedAt`, `geocodedByUserId`. Kept apart from `ServiceAddress` so no ordinary address read
+  (`serviceAddress: true`) can carry a position to a customer. In the backup manifest; deleted on a privacy erasure.
+- `Estimate.deliveryZoneSnapshot` (+ `deliveryZoneSnapshotAt`): `{ version: 1, locations: [{ serviceAddressId, zone
+  (1..n | "OUTSIDE" | "UNKNOWN"), name, miles, method, center, priceCents, pickupPriceCents, choice ("DELIVER" |
+  "CUSTOMER_PICKUP"), unknownReason?, confirmed?, pickupArranged?, checkedAt }] }`. Rechecked only while DRAFT /
+  CHANGES_REQUESTED; frozen once sent. `RentalAgreement.deliveryZoneSnapshot` is that address's entry, copied once at
+  conversion — or frozen at signing when an agreement is signed before conversion. Only an agreement not signed yet
+  (DRAFT / AWAITING_SIGNATURE) may still follow its estimate; estimate-side zone or choice changes are refused for an
+  address whose agreement is signed (SCHEDULED / ACTIVE / ENDED).
+- `Job.customerPickupHandoff` (Boolean, default false; additive migration `20261130000001_job_customer_pickup_handoff`):
+  marks the DELIVERY job that is a customer pickup hand-over at our place. Created at signing for a pickup rental
+  (the only DELIVERY job such a rental may have). Completing it runs the normal delivered path (`firstDeliveredOn`,
+  continuity, Rented, custody, `START_RECURRING_BILLING` hand-off) but it is excluded from the driver's route, the
+  vehicle trip log, day-of reminders, delivery counts, the retail delivery fee record and trip/relocation fees.
 
 ### BA-1: books autopilot (implementation branch)
 

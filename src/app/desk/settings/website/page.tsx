@@ -6,7 +6,9 @@ import { WEBSITE_PAGES } from "@/domains/site-content/pages";
 import { siteFacts } from "@/domains/site-content/facts";
 import { listWebsiteAssets } from "@/domains/site-content/assets";
 import { getDraftReview, getEditorValueState, getWebsiteOverview, listPublishedHistory, siteDefaultValues } from "@/domains/site-content";
-import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { getBusinessSettings } from "@/domains/settings";
+import { townsWithZones } from "@/domains/delivery/towns";
+import { readZoneSettings } from "@/domains/delivery/zone";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { HistoryPanel } from "./history-panel";
 import { ReviewPanel } from "./review-panel";
@@ -18,10 +20,6 @@ type SearchParams = { view?: string; page?: string; key?: string; focus?: string
 
 const when = (date: Date | null) => (date ? `${formatBusinessDate(date)} · ${formatBusinessTime(date)}` : "not yet");
 
-function citySlug(city: string) {
-  return city.trim().toLowerCase().replace(/\s+/g, "-");
-}
-
 export default async function WebsitePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   await requireRole("OWNER", "ADMIN");
   const params = await searchParams;
@@ -29,8 +27,9 @@ export default async function WebsitePage({ searchParams }: { searchParams: Prom
   const settings = await getBusinessSettings();
   const facts = siteFacts(settings);
   const nowIso = new Date().toISOString();
-  const firstCity = parseServiceArea(settings).cities[0];
-  const cityPath = firstCity && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(citySlug(firstCity)) ? `/rent/${citySlug(firstCity)}` : null;
+  // ZONE-1: the town pages come from the delivery-zone town list; preview the town at the zones' center.
+  const firstTown = townsWithZones(readZoneSettings(settings))[0];
+  const cityPath = firstTown ? `/rent/${firstTown.slug}` : null;
   const pages: WorkspacePage[] = WEBSITE_PAGES.map((p) => ({
     id: p.id,
     name: p.name,

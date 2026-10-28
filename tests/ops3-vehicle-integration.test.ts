@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { addManualTrip, archiveVehicle, finishRouteDay, latestOdometer, recordMaintenance, saveVehicle, saveVehicleSettings, startRouteDay } from "@/domains/vehicle/actions";
-import { loadDriverMileage, loadVehicleOverview } from "@/domains/vehicle/reads";
+import { loadDriverMileage, loadDriverStopCounts, loadVehicleOverview } from "@/domains/vehicle/reads";
 import { listVehicleAttention } from "@/domains/exceptions/vehicle-attention";
 
 // OPS-3 on real Postgres.
@@ -188,5 +188,19 @@ describe.skipIf(!enabled)("vehicle and mileage (real Postgres)", () => {
     } finally {
       await prisma.ownerInsurancePolicy.deleteMany({ where: { id: { in: policyIds } } });
     }
+  });
+  it("counts the day's route stops even after they are finished, so the last-stop reminder can appear", async () => {
+    const now = new Date();
+    const start = businessDayBounds(now).start;
+    const at = new Date(start.getTime() + 10 * 3_600_000);
+    const before = await loadDriverStopCounts(now);
+    const make = (status: "SCHEDULED" | "COMPLETED" | "CANCELLED", handoff = false) =>
+      prisma.job.create({ data: { type: "DELIVERY", status, scheduledAt: at, customerPickupHandoff: handoff } });
+    const rows = [await make("SCHEDULED"), await make("COMPLETED"), await make("COMPLETED"), await make("CANCELLED"), await make("COMPLETED", true)];
+    jobs.push(...rows.map((r) => r.id));
+    const after = await loadDriverStopCounts(now);
+    // One open stop and two finished ones count; a cancelled visit and a customer pick-up hand-over do not.
+    expect(after.total - before.total).toBe(3);
+    expect(after.finished - before.finished).toBe(2);
   });
 });

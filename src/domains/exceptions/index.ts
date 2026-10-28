@@ -9,6 +9,7 @@ import { listRuleChangeAttention } from "@/domains/rules/observations";
 import { listDeliveryReadinessAttention } from "@/domains/tax/delivery-readiness";
 import { listPolicyAttention } from "@/domains/taxben/policy";
 import { listBenefitsAttention } from "@/domains/taxben/benefits";
+import { listYearEndPlanningAttention } from "@/domains/taxben/elections";
 import { ruleDef } from "@/domains/rules/registry";
 import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
@@ -26,6 +27,7 @@ import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listFeedbackWaiting } from "./feedback-attention";
+import { listDeliveryZoneAttention } from "./delivery-zone-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listComplianceDue } from "./compliance-attention";
 import { listSupplierW9Needed } from "./supplier-w9-attention";
@@ -69,6 +71,7 @@ import {
   deliveryReadinessException,
   capitalizationPolicyException,
   midQuarterWarningException,
+  yearEndPlanningException,
   retirementComparisonException,
   enterpriseZonePrecertifyException,
   businessUsePercentException,
@@ -417,6 +420,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     deliveryReadinessAttention,
     taxbenPolicyAttention,
     taxbenBenefitsAttention,
+    taxbenYearEndAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -578,6 +582,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     canViewFinance ? listDeliveryReadinessAttention(now) : Promise.resolve([]),
     canViewFinance ? listPolicyAttention(now) : Promise.resolve([]),
     canViewFinance ? listBenefitsAttention(now) : Promise.resolve([]),
+    canViewFinance ? listYearEndPlanningAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -1036,6 +1041,17 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         since: item.since,
       }),
     ),
+    ...taxbenYearEndAttention.map((item) =>
+      yearEndPlanningException({
+        year: item.year,
+        profitCents: item.profitCents,
+        sepCents: item.sepCents,
+        soloCents: item.soloCents,
+        midQuarterNote: item.midQuarterNote,
+        deMinimisExpensedCents: item.deMinimisExpensedCents,
+        since: item.since,
+      }),
+    ),
     ...taxbenPolicyAttention.map((item) =>
       capitalizationPolicyException({
         year: item.year,
@@ -1217,6 +1233,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   // MCP-10a: app feedback waiting for the team (owner and admins only).
   const feedbackWaiting = canViewFinance ? await listFeedbackWaiting(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
+  // ZONE-1: unknown delivery zones and customer pickups to arrange (owner and admins only).
+  const deliveryZoneAttention = canViewFinance ? await listDeliveryZoneAttention(EXCEPTION_CATEGORY_CAP)
+    : { unknown: noTurningPoints, pickups: noTurningPoints, requotes: noTurningPoints };
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -1257,6 +1276,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...visitNeedsAssignment.rows,
     ...cleaningNeeded.rows,
     ...feedbackWaiting.rows,
+    ...deliveryZoneAttention.unknown.rows,
+    ...deliveryZoneAttention.pickups.rows,
+    ...deliveryZoneAttention.requotes.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1341,6 +1363,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],
       ["CLEANING_NEEDED", cleaningNeeded],
       ["FEEDBACK_WAITING", feedbackWaiting],
+      ["DELIVERY_ZONE_UNKNOWN", deliveryZoneAttention.unknown],
+      ["PICKUP_TO_ARRANGE", deliveryZoneAttention.pickups],
+      ["PICKUP_REQUOTE", deliveryZoneAttention.requotes],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],

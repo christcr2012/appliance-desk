@@ -35,6 +35,8 @@ function makeTx() {
         paidInFullInAdvance: prepaidInFull,
       }),
       update: rentalAgreementUpdate,
+      // ZONE-1: the delivery-charge helper looks for an owner-recorded driving-route exception (none here).
+      findMany: async () => [],
     },
     rentalLine: { findMany: rentalLineFindMany },
     auditLog: { create: auditLogCreate },

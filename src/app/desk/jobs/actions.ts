@@ -46,8 +46,11 @@ const ALL_JOB_STATUSES: JobStatus[] = [
   "CANCELLED",
 ];
 
+/** ZONE-1: the form's choice for a customer pickup hand-over (a DELIVERY job marked customerPickupHandoff). */
+const CUSTOMER_PICKUP_HANDOFF = "CUSTOMER_PICKUP_HANDOFF" as const;
+
 const newJobSchema = z.object({
-  type: z.enum(ALL_JOB_TYPES as [JobType, ...JobType[]]),
+  type: z.enum([CUSTOMER_PICKUP_HANDOFF, ...ALL_JOB_TYPES]),
   scheduledAt: z.string().trim().optional().or(z.literal("")),
   customerId: z.string().trim().optional().or(z.literal("")),
   serviceAddressId: z.string().trim().optional().or(z.literal("")),
@@ -130,8 +133,11 @@ export async function createJobAction(
       revalidatePath(`/desk/maintenance/${data.maintenanceRequestId}`);
       return { status: "success", jobId: scheduled.jobId };
     }
+    const handoff = data.type === CUSTOMER_PICKUP_HANDOFF;
     job = await createJob(session.user.id, {
-      type: data.type,
+      // Only a pickup rental accepts a hand-over (createJobInTx checks), and its only DELIVERY job is one.
+      type: handoff ? "DELIVERY" : data.type as JobType,
+      ...(handoff ? { customerPickupHandoff: true } : {}),
       scheduledAt,
       assignedToUserId: data.assignedToUserId || null,
       sealedSystem: data.sealedSystem === true,

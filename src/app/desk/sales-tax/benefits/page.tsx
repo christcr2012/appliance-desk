@@ -7,12 +7,18 @@ import {
   personalShareAccounts,
 } from "@/domains/taxben/classification";
 import { getPolicyState, previewCapitalizationPolicy } from "@/domains/taxben/policy";
+import {
+  bonusClassOptions,
+  bonusElectOutClasses,
+  buildElectionStatements,
+  returnDueKey,
+} from "@/domains/taxben/elections";
 import { businessDateKey } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "../setup/forms";
-import { saveWriteOffSettingsAction, signPolicyAction } from "./actions";
+import { saveElectionsAction, saveWriteOffSettingsAction, signPolicyAction } from "./actions";
 
 type Query = { year?: string };
 
@@ -53,19 +59,32 @@ export default async function TaxBenefitsPage({
 }: {
   searchParams: Promise<Query>;
 }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const owner = session.user.role === "OWNER";
+  const canUseSettings = session.user.role !== "ACCOUNTANT";
   const query = await searchParams;
   const currentYear = Number(businessDateKey(new Date()).slice(0, 4));
   const parsed = Number(query.year);
   const year = Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100 ? parsed : currentYear;
 
-  const [benefits, policy, policyPreview, settings] = await Promise.all([
-    computeTaxBenefits(year),
-    getPolicyState(prisma, year),
-    previewCapitalizationPolicy(prisma, year),
-    prisma.businessSettings.findUnique({ where: { id: "singleton" } }),
-  ]);
+  const [benefits, policy, policyPreview, settings, profileRow, classOptions, electOutChosen] =
+    await Promise.all([
+      computeTaxBenefits(year),
+      getPolicyState(prisma, year),
+      previewCapitalizationPolicy(prisma, year),
+      prisma.businessSettings.findUnique({ where: { id: "singleton" } }),
+      prisma.complianceProfile.findUnique({
+        where: { id: "singleton" },
+        select: { entityType: true },
+      }),
+      bonusClassOptions(prisma, year),
+      bonusElectOutClasses(prisma, year),
+    ]);
+  const electionStatements = await buildElectionStatements(
+    prisma,
+    year,
+    returnDueKey(profileRow?.entityType, year),
+  );
   const shareAccounts = personalShareAccounts();
   const electionOn = deMinimisElectionFor(settings?.deMinimisElections ?? null, year);
 
@@ -140,6 +159,47 @@ export default async function TaxBenefitsPage({
         ))}
       </div>
 
+      <TaxActionForm key={year} action={saveElectionsAction} title={`Tax choices for ${year}`} submitLabel="Save choices">
+        <p className="text-sm text-muted-foreground">
+          The statements below ride on the {year} accountant packet for your CPA to
+          attach to the return — due {electionStatements.dueOnKey}, or {electionStatements.extensionKey}{" "}
+          with an extension. The owner, an admin or your accountant can set the elect-out choice;
+          every change is listed for the owner.
+        </p>
+        {classOptions.map((option) => (
+          <label key={option.key} className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name={`electOut_${option.key}`}
+              value="on"
+              defaultChecked={electOutChosen.includes(option.key)}
+              className="mt-1"
+            />
+            <span>
+              Elect out of bonus depreciation for {option.label} placed in service in {year} —
+              it is depreciated under the regular rules instead.
+            </span>
+          </label>
+        ))}
+        <input type="hidden" name="year" value={year} />
+        <div className="space-y-3">
+          <pre className="whitespace-pre-wrap rounded-lg border border-border bg-background p-4 text-sm">
+            {electionStatements.deMinimisText}
+          </pre>
+          {electionStatements.electOutText ? (
+            <pre className="whitespace-pre-wrap rounded-lg border border-border bg-background p-4 text-sm">
+              {electionStatements.electOutText}
+            </pre>
+          ) : null}
+          {electionStatements.startupNoteText ? (
+            <pre className="whitespace-pre-wrap rounded-lg border border-border bg-background p-4 text-sm">
+              {electionStatements.startupNoteText}
+            </pre>
+          ) : null}
+        </div>
+      </TaxActionForm>
+
+      {canUseSettings ? (
       <TaxActionForm action={saveWriteOffSettingsAction} title="Write-off settings" submitLabel="Save settings">
         <p className="text-sm text-muted-foreground">
           The answers only you can give. They are remembered, and every
@@ -208,6 +268,7 @@ export default async function TaxBenefitsPage({
         </label>
         <input type="hidden" name="deMinimisYear" value={year} />
       </TaxActionForm>
+      ) : null}
     </div>
   );
 }

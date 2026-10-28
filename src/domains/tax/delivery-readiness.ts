@@ -90,6 +90,8 @@ async function deliveryCounts(
       // Completion counts DELIVERY and INSTALLATION jobs alike (both
       // put appliances in the home), so the in-flight count does too.
       type: { in: ["DELIVERY", "INSTALLATION"] },
+      // ZONE-1: a customer pickup hand-over is not a delivery into the place.
+      customerPickupHandoff: false,
       status: "IN_PROGRESS",
       id: { not: countDispatchedForJobId },
       OR: [
@@ -120,7 +122,7 @@ export async function evaluatePlaceReadiness(
     administration: string;
   },
   now: Date,
-  opts?: { countDispatchedForJobId?: string },
+  opts?: { countDispatchedForJobId?: string; customerPickup?: boolean },
 ): Promise<PlaceReadiness> {
   const base = { jurisdictionId: jurisdiction.id, name: jurisdiction.name };
   const readiness = await db.jurisdictionReadiness.findUnique({
@@ -168,7 +170,9 @@ export async function evaluatePlaceReadiness(
     }
   }
 
-  const licenseRequired = readiness?.licenseRequired ?? "NONE";
+  // ZONE-1: a customer pickup sends no truck into the place, so its delivery-license rule is skipped here (not
+  // filtered afterwards), and a "rules not decided" problem for the place is still returned below.
+  const licenseRequired = opts?.customerPickup ? "NONE" : readiness?.licenseRequired ?? "NONE";
   if (licenseRequired === "ALWAYS" || licenseRequired === "AFTER_FIRST_DELIVERY" || licenseRequired === "AFTER_SECOND_DELIVERY_IN_12_MONTHS") {
     const onFile = await licenseOnFile(db, readiness?.licenseRecordId ?? null, now);
     if (licenseRequired === "ALWAYS") {
@@ -218,7 +222,7 @@ export async function deliveryTaxReadinessWith(
   db: Db,
   serviceAddressId: string,
   now = new Date(),
-  opts?: { countDispatchedForJobId?: string },
+  opts?: { countDispatchedForJobId?: string; customerPickup?: boolean },
 ): Promise<DeliveryReadiness> {
   const address = await db.serviceAddress.findUnique({
     where: { id: serviceAddressId },
@@ -309,10 +313,16 @@ export async function assertDeliveryReadyInTx(
     serviceAddressId: string;
     agreementId?: string | null;
     countDispatchedForJobId?: string;
+    /**
+     * ZONE-1: a customer pickup hand-over sends no truck into the place, so a city's delivery license rule
+     * (LICENSE_REQUIRED) doesn't apply to it. Every other problem (address not located, out of state, place not set
+     * up, rules not decided) still stops it.
+     */
+    customerPickup?: boolean;
   },
   now = new Date(),
 ): Promise<void> {
-  if (input.countDispatchedForJobId) {
+  if (input.countDispatchedForJobId && !input.customerPickup) {
     // Dispatch consumes a delivery-count slot, so two dispatches to the
     // same taxing place must not both read the counts before either
     // lands. Lock the place rows (in id order, so competing dispatches
@@ -336,9 +346,8 @@ export async function assertDeliveryReadyInTx(
       await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${jurisdictionId} FOR UPDATE`;
     }
   }
-  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, {
-    countDispatchedForJobId: input.countDispatchedForJobId,
-  });
+  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, input.customerPickup
+    ? { customerPickup: true } : { countDispatchedForJobId: input.countDispatchedForJobId });
   if (readiness.ready) return;
 
   if (input.agreementId) {
@@ -371,6 +380,8 @@ export async function recordReadinessOverrideInTx(
     actorUserId: string;
     reason: string;
     serviceAddressId: string;
+    /** ZONE-1: a customer pickup address — the delivery-license rule doesn't apply (see assertDeliveryReadyInTx). */
+    customerPickup?: boolean;
   },
   now = new Date(),
 ): Promise<void> {
@@ -378,7 +389,8 @@ export async function recordReadinessOverrideInTx(
   const reason = input.reason.trim();
   if (!reason) throw new Error("Say why this order may go ahead.");
 
-  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now);
+  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now,
+    input.customerPickup ? { customerPickup: true } : undefined);
   if (readiness.ready) return;
   if (!readiness.overrideable) {
     const first = readiness.places.find((place) => place.problem);

@@ -357,6 +357,8 @@ model ServiceAddress {
   estimateLineItems EstimateLineItem[]
   custodyEpisodes ApplianceCustodyEpisode[]
   taxLocations AddressTaxLocation[]
+  // ZONE-1: map position, kept in its own table so no ordinary address read can carry it to a customer.
+  geocode ServiceAddressGeocode?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1306,6 +1308,9 @@ model RentalAgreement {
   deliveryRequested Json?
   deliveryRequestedAt DateTime?
   deliveryRouteProof Json?
+  // ZONE-1: this address's delivery zone, miles, method, prices and delivery/pickup choice, copied from the estimate
+  // when it was converted. Never recalculated: later zone changes don't touch it.
+  deliveryZoneSnapshot Json?
 
 
   termMonths Int? // null = month-to-month
@@ -1972,6 +1977,10 @@ model Job {
   @@index([assignedToUserId, scheduledAt])
   /// OPS-2: a repair on a sealed refrigerant system. Only someone with a refrigerant certification on file may be assigned.
   sealedSystem     Boolean   @default(false)
+  // ZONE-1: "I'll pick it up". A DELIVERY-type job that is the hand-over at our place, not a truck trip: completing
+  // it runs the normal delivered path (first delivered date, rented status, custody, billing start) but it never
+  // appears on the driver's route, the vehicle trip log, day-of reminders, the delivery fee or delivery counts.
+  customerPickupHandoff Boolean @default(false)
 }
 
 // An agreement item that was NOT delivered on the delivery visit that started
@@ -2308,6 +2317,10 @@ model Estimate {
   phonePreferredAt DateTime?
   // Explicit owner decision for already-prepared single-site self completion.
   customerAutoFinishEnabled Boolean @default(false)
+  // ZONE-1: per delivery address, the zone found from the address (or confirmed by staff), its prices and the
+  // deliver / "I'll pick it up" choice. Frozen once the estimate is sent (src/domains/delivery/estimate-zone.ts).
+  deliveryZoneSnapshot   Json?
+  deliveryZoneSnapshotAt DateTime?
 
   // The OWNER/ADMIN who created this — every Estimate is staff-created,
   // never self-service.
@@ -3855,6 +3868,27 @@ model BusinessSettings {
   marketingTextEndHour Int @default(21)
   // OPS-7: how many months before a service provider's security terms are due for a re-read.
   vendorReviewMonths Int @default(12)
+
+  // ZONE-1 delivery zones (Settings › Delivery zones; src/domains/delivery/zone.ts). Starting values are IN-06's.
+  deliveryZones               Json    @default("[{\"name\":\"Local — free delivery\",\"outerMiles\":15,\"deliveryCents\":0,\"pickupCents\":0,\"color\":\"GREEN\"},{\"name\":\"Nearby\",\"outerMiles\":30,\"deliveryCents\":7500,\"pickupCents\":7500,\"color\":\"BLUE\"},{\"name\":\"Extended\",\"outerMiles\":50,\"deliveryCents\":12500,\"pickupCents\":12500,\"color\":\"AMBER\"}]")
+  deliveryMaxMiles            Float   @default(50)
+  zoneCenter                  Json    @default("{\"lat\":40.4233,\"lon\":-104.7091}")
+  zoneDistanceMethod          String  @default("STRAIGHT_LINE")
+  showDeliveryPricesOnWebsite Boolean @default(false)
+}
+
+// ZONE-1: a customer address's map position (U.S. Census Bureau lookup or a staff pin). Internal only: never shown to
+// customers, never logged. Deleted with the customer's other address details on a privacy erasure.
+model ServiceAddressGeocode {
+  serviceAddressId String         @id
+  serviceAddress   ServiceAddress @relation(fields: [serviceAddressId], references: [id], onDelete: Cascade)
+  latitude         Float
+  longitude        Float
+  // SHA-256 of the one-line address that was looked up; a different street means look it up again.
+  addressHash      String
+  source           String // CENSUS | STAFF_PIN
+  geocodedAt       DateTime
+  geocodedByUserId String?
 }
 
 model ComplianceProfile {
@@ -3931,6 +3965,7 @@ model TaxYearFacts {
   form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
   seHealthPremiumCents Int? // TAXBEN-1: that year's self-employed health insurance premiums, as typed
   seHealthEmployerPlanMonths Json? // TAXBEN-1: month numbers (1-12) the owner was eligible for an employer health plan (own or spouse's)
+  bonusElectOutClasses Json? // TAXBEN-2: property class keys (from us.class_life_months) the business elects out of bonus depreciation for, this year
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

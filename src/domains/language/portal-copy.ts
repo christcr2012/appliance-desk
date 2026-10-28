@@ -70,6 +70,7 @@ export const PORTAL_TRANSLATIONS = {
   "Requests are reviewed by the business. A pickup request does not automatically cancel a rental or change billing.": "La empresa revisa las solicitudes. Pedir una recogida no cancela automáticamente el alquiler ni cambia la facturación.",
   "Next visit": "Próxima visita",
   "Delivery is being arranged. The business has not confirmed a date or time yet. This is a request in progress, not a booked appointment.": "Se está coordinando la entrega. La fecha y hora aún no están confirmadas; no es una cita reservada.",
+  "You're picking this rental up. We'll contact you to arrange when to collect it; the rental starts the day you collect it.": "Usted recogerá este alquiler. Nos comunicaremos con usted para acordar cuándo recogerlo; el alquiler empieza el día que lo recoja.",
   "No visit is scheduled for this rental.": "No hay visitas programadas para este alquiler.",
   "Items": "Artículos",
   "Paid in full, in advance — your first month was free.": "Pagado por adelantado en su totalidad; el primer mes fue gratis.",

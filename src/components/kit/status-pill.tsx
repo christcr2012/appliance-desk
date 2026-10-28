@@ -13,9 +13,9 @@ export const PILL_TONE: Record<Tone, string> = {
 
 const PILL = "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold";
 
-export function StatusPill({ label, tone, info }: { label: string; tone: Tone; info?: GlossaryKey }) {
+export function StatusPill({ label, tone, info, next }: { label: string; tone: Tone; info?: GlossaryKey; next?: string }) {
   const className = `${PILL} ${PILL_TONE[tone]}`;
-  if (!info) {
+  if (!info && !next) {
     return (
       <span className={className} data-tone={tone}>
         {label}
@@ -25,7 +25,8 @@ export function StatusPill({ label, tone, info }: { label: string; tone: Tone; i
   return (
     <GlossaryPopover
       term={info}
-      triggerLabel={`${label}: what this means`}
+      next={next}
+      triggerLabel={info ? `${label}: what this means` : `${label}: what happens next`}
       // The invisible ::before grows the tap area to 44 px tall without changing how the pill looks.
       triggerClassName={`${className} relative before:absolute before:-inset-x-1 before:-inset-y-3 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring`}
       trigger={

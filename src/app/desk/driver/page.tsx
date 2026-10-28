@@ -1,6 +1,6 @@
 import { getDriverJobsForToday } from "@/domains/jobs";
 import { EmptyState, PageHeader } from "@/components/ui";
-import { loadDriverMileage } from "@/domains/vehicle/reads";
+import { loadDriverMileage, loadDriverStopCounts } from "@/domains/vehicle/reads";
 import { MileageCard } from "./mileage-card";
 import { prisma } from "@/lib/prisma";
 import { NoteAction } from "@/app/desk/collections/controls";
@@ -16,6 +16,7 @@ export const metadata = { title: "Driver view" };
 export default async function DriverViewPage() {
   const jobs = await getDriverJobsForToday();
   const mileage = await loadDriverMileage(new Date());
+  const stopCounts = await loadDriverStopCounts(new Date());
   const objectable = jobs.length ? await prisma.collectionCase.findMany({ where: { pickupJobId: { in: jobs.map((j) => j.id) }, objectedAt: null }, select: { pickupJobId: true, agreementId: true } }) : [];
   const objectionFor = new Map(objectable.map((c) => [c.pickupJobId, c.agreementId]));
 
@@ -26,7 +27,7 @@ export default async function DriverViewPage() {
         description="All scheduled visits for the team today."
       />
 
-      <MileageCard vehicles={mileage} />
+      <MileageCard vehicles={mileage} stops={stopCounts} />
 
       {jobs.length === 0 ? (
         <EmptyState

@@ -18,6 +18,35 @@ export const BANNED = [
   { pattern: /\bwebhooks?\b/i, say: "payment updates from Stripe" },
 ];
 
+
+// AR-12: only newly redesigned screens and the shared kit get the stricter vocabulary.
+// The accountant's books reports must keep their professional field names.
+export const EVERYDAY_BANNED = [
+  { pattern: /\binvoices?\b/i, say: "bill" },
+  { pattern: /\baccounts? receivable\b|\breceivables?\b/i, say: "money customers owe you" },
+  { pattern: /\baccounts? payable\b|\bpayables?\b/i, say: "bills you owe" },
+  { pattern: /\bjournal entr\w*|\bledger\b|\bposting\b/i, say: "your records" },
+  { pattern: /\baccrual\b|\bcash basis\b/i, say: "when billed / when paid" },
+  { pattern: /\bdepreciat\w*/i, say: "equipment value going down" },
+  { pattern: /\bcapitaliz\w*/i, say: "count as equipment" },
+  { pattern: /\breconcil\w*/i, say: "check against your bank" },
+  { pattern: /\bwrite-?offs?\b|\bwritten off\b/i, say: "give up on this bill" },
+  { pattern: /\bchargebacks?\b/i, say: "customer disputed the payment with their bank" },
+  { pattern: /\bdeferred revenue\b|\bunearned\b/i, say: "rent paid in advance" },
+  { pattern: /\bpayment intents?\b|\bcheckout session\b|\bcron\b|\bAPI\b|\bsync(?:ed|ing)?\b/i, say: "say what happened" },
+  { pattern: /(?<!rental )\bagreements?\b/i, say: "rental" },
+  { pattern: /\bSKUs?\b|\basset numbers?\b/i, say: "item number / appliance number" },
+];
+
+const migrated = JSON.parse(readFileSync("docs/build-specs/migrated-pages.json", "utf8"));
+const migratedPaths = new Set(migrated.map((item) => typeof item === "string" ? item : item.file));
+export function isEverydayScreen(path) {
+  const normalized = path.replaceAll("\\", "/");
+  // Accountant-only books pages intentionally use specialized field labels.
+  if (/^src\/app\/desk\/books\/(reports|exports?|closing|assets)(?:\/|$)/.test(normalized)) return false;
+  return normalized.startsWith("src/components/kit/") || migratedPaths.has(normalized);
+}
+
 const TEXT_PROPS = "title|label|description|placeholder|submitLabel|confirmText|aria-label|detail|summary|emptyMessage|heading|hint";
 const RULES = [
   // Text between tags on one line, without braces: <p>Some words</p>
@@ -43,7 +72,7 @@ export function visibleText(source) {
 export function findViolations(path, source, allow = []) {
   const found = [];
   for (const { line, text } of visibleText(source)) {
-    for (const rule of BANNED) {
+    for (const rule of (isEverydayScreen(path) ? [...BANNED, ...EVERYDAY_BANNED] : BANNED)) {
       const hit = rule.pattern.exec(text);
       if (!hit) continue;
       if (allow.some((entry) => entry.file === path && entry.phrase.toLowerCase() === hit[0].toLowerCase())) continue;
@@ -78,6 +107,7 @@ function main() {
   const scanned = [
     ...files("src/app/desk", [".tsx"]),
     ...files("src/components/desk", [".tsx"]),
+    ...files("src/components/kit", [".ts", ".tsx"]),
     "src/domains/exceptions/rules.ts",
     "src/domains/exceptions/money-turning-points.ts",
   ].filter(existsSync);

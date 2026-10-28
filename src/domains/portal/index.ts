@@ -30,6 +30,7 @@ const jobSelect = {
   status: true,
   scheduledAt: true,
   performedOn: true,
+  customerPickupHandoff: true,
   serviceAddress: { select: serviceAddressSelect },
 } as const;
 

@@ -51,7 +51,7 @@ export const CONTENT_SCHEMA_VERSION_TYPED = 2;
 export type ContentSchemaVersion = 1 | 2;
 
 /** The website layout the current code renders (V-C5 gives this a contract). */
-export const SITE_TEMPLATE_VERSION = "signature-1";
+export const SITE_TEMPLATE_VERSION = "signature-2";
 
 /** A stored value that cannot be read as what its field expects. Never rendered as text such as [object Object]. */
 export class SiteContentError extends Error {

@@ -28,6 +28,24 @@ describe("signed agreement delivery To do",()=>{
   expect(query.where).toMatchObject({status:"SCHEDULED",scheduledAt:null,type:"DELIVERY",
    agreement:{is:{status:"ACTIVE",firstDeliveredOn:null,renewedFromAgreementId:null}}});
  });
+ it("a customer pickup hand-over says what to hand over to whom, never 'Schedule delivery' (ZONE-1)",async()=>{
+  mock.findMany.mockResolvedValueOnce([{
+   id:"job-handoff-1",createdAt:new Date("2026-10-14T10:00:00Z"),customerPickupHandoff:true,
+   agreement:{signature:{signedAt:new Date("2026-10-14T16:30:00Z")},customer:{user:{name:"Customer B",email:"b@example.test"}},
+    lines:[{label:"Washer/Dryer set",assignments:[{appliance:{applianceType:{name:"Washer"}}},{appliance:{applianceType:{name:"Dryer"}}}]}]},
+  }]);
+  const result=await listSignedDeliveryAttention(10);
+  expect(result.rows[0]).toMatchObject({
+   title:"Customer pickup: hand over Washer and Dryer to Customer B",
+   href:"/desk/jobs/job-handoff-1",primaryAction:{href:"/desk/jobs/job-handoff-1",label:"Open hand-over"},
+  });
+  expect(JSON.stringify(result.rows[0])).not.toMatch(/Schedule|delivery visit/);
+  expect(result.rows[0].detail).toMatch(/Handed over/);
+  // Before any unit is set aside, the rental line names are used.
+  mock.findMany.mockResolvedValueOnce([{id:"job-handoff-2",createdAt:new Date(),customerPickupHandoff:true,
+   agreement:{customer:{user:{name:null,email:"c@example.test"}},lines:[{label:"Chest freezer",assignments:[]}]}}]);
+  expect((await listSignedDeliveryAttention(10)).rows[0].title).toBe("Customer pickup: hand over Chest freezer to c@example.test");
+ });
  it("rejects invalid limits and requires owner/admin",async()=>{
   await expect(listSignedDeliveryAttention(0)).rejects.toThrow(/bounded/);
   await expect(listSignedDeliveryAttention(51)).rejects.toThrow(/bounded/);

@@ -105,6 +105,7 @@ export function pagesAffected(changes: ReviewChange[]): PageEffect[] {
 const FACT_LABELS: Record<SitePlaceholder, string> = {
   businessName: "Business name", name: "Appliance name", phone: "Phone number", email: "Email address", city: "City",
   graceDays: "Late-fee grace days", serviceCities: "Cities you serve", contents: "Set contents", amount: "Monthly saving", year: "Year",
+  zone: "Delivery zone name", price: "Delivery price", miles: "Miles",
 };
 
 export type FactUse = { placeholder: SitePlaceholder; label: string; value: string | null };

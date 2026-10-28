@@ -3,10 +3,13 @@ import { Container } from "@/components/site/container";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { SiteCta } from "@/components/site/site-cta";
 import { AddressCheck } from "@/components/site/address-check";
+import { addressCheckCopy } from "@/components/site/address-check-copy";
+import { readZoneSettings } from "@/domains/delivery/zone";
+import { townsWithZones } from "@/domains/delivery/towns";
 import { RichText } from "@/components/site/rich-text";
 import { HeroPicture } from "@/components/site/hero-picture";
 import { FeaturedPromotion } from "@/components/site/featured-promotion";
-import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getLaunchSettings } from "@/domains/launch";
 import { getSiteForRequest } from "@/domains/site-content/request";
@@ -31,8 +34,8 @@ export default async function HomePage({
     getSiteForRequest(params),
   ]);
   const content = site.text;
-  const serviceArea = parseServiceArea(settings);
-  const city = serviceArea.cities[0] ?? "Colorado";
+  // ZONE-1: the town at the center of the delivery zones (starting value: Greeley).
+  const city = townsWithZones(readZoneSettings(settings))[0]?.name ?? "Colorado";
   const facts = siteFacts(settings, { city });
   const c = siteCopy(content, facts);
   const profile = { phone: settings.publicPhone, email: settings.publicEmail };
@@ -48,11 +51,11 @@ export default async function HomePage({
   })).filter((item) => item.q && item.a);
   const showPrelaunchHome = launch.prelaunchMode;
 
-  // The address check answers from the owner's ZIP list, so it only appears when the owner has listed ZIP codes.
+  // ZONE-1: the address check answers from the delivery zones, which always exist (starting values).
   const quoteLink = siteLinkValue(site.values, "home.hero.cta.primary");
   const quoteResolved = quoteLink ? resolveLinkHref(quoteLink.target, profile) : null;
   const quoteHref = quoteResolved?.startsWith("/") ? quoteResolved : "/contact";
-  const showCheck = serviceArea.zips.length > 0 && quoteLink !== undefined;
+  const showCheck = quoteLink !== undefined;
   const split = splitHighlight(c("home.hero.heading"), c("home.hero.highlight"));
   const heading = split ? (
     <>
@@ -138,17 +141,9 @@ export default async function HomePage({
               {showCheck ? (
                 <AddressCheck
                   quoteHref={quoteHref}
-                  launchHref="/launch"
                   copy={{
-                    addressLabel: c("home.check.address.label"),
-                    zipLabel: c("home.check.zip.label"),
+                    ...addressCheckCopy(c),
                     button: quoteLink ? fillSiteText(quoteLink.label, facts) : "",
-                    served: c("home.check.served"),
-                    servedLink: c("home.check.served.cta"),
-                    notYet: c("home.check.notyet"),
-                    notYetLink: c("home.check.notyet.cta"),
-                    invalid: c("home.check.invalid"),
-                    limited: c("home.check.limited"),
                   }}
                 />
               ) : (

@@ -1,3 +1,14 @@
+## October 27 — Customer pickup is a hand-over job, and signing freezes delivery or pickup (design, ZONE-1)
+
+A signed "I'll pick it up" rental gets one DELIVERY job marked `customerPickupHandoff` ("Customer pickup: hand over
+{items} to {name}") instead of a delivery visit, so the hand-over reuses the one completion path that sets the rental's
+first delivered date, Rented status, custody and the billing start. It is never a truck trip: no driver route, trip
+log, day-of reminder, delivery count, trip fee or retail delivery fee — Colorado DOR, "Retail Delivery Fees" (Oct 2026,
+accessed 2026-10-27): "If a purchaser picks up items ... at a retailer's business location, the retail delivery fees
+do not apply because there was no delivery" (https://tax.colorado.gov/sites/default/files/2026-10/ST_Retail_Delivery_Fees_Oct_2026.pdf).
+Signing copies the zone it was checked against onto the agreement; after signing the estimate can't change that
+agreement's delivery or pickup (Codex findings on PR #604).
+
 ## October 25 — Delivery zones use straight-line miles, not driving distance (Chris)
 
 "I think, at least for now, it is better to not use driving distance." Zones are measured as the crow flies from

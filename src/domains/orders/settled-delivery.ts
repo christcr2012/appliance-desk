@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { readOfferedSlots, slotSchema } from "./delivery";
+import { agreementFollowsEstimateZone, isPickupAddress } from "@/domains/delivery/pickup-guard";
 
 /**
  * Only verified receipt-backed settlement calls this, in the same transaction
@@ -13,7 +14,7 @@ export async function requestPaidDeliveryInTx(
     where: { id: agreementId },
     select: { id: true, customerId: true, sourceEstimateId: true,
       serviceAddressId: true, deliveryRequested: true, deliveryOffer: true,
-      deliveryOfferActorUserId: true,
+      deliveryOfferActorUserId: true, deliveryZoneSnapshot: true, status: true,
       signingPaymentObligation: {
         select: { status: true, receiptId: true },
       },
@@ -26,9 +27,15 @@ export async function requestPaidDeliveryInTx(
     ? await tx.estimate.findUnique({
         where:{id:agreement.sourceEstimateId},
         select:{customerId:true,createdByUserId:true,
-          deliveryRequested:true,deliveryOffer:true},
+          deliveryRequested:true,deliveryOffer:true,deliveryZoneSnapshot:true},
       })
     : null;
+  // ZONE-1: an address the customer picks up never gets a delivery visit, whatever request was kept. A signed
+  // agreement's own frozen zone decides; the source estimate only for an agreement that is not signed yet.
+  const own = agreement.deliveryZoneSnapshot ?? null;
+  if (isPickupAddress(own, own === null && agreementFollowsEstimateZone(agreement.status)
+    ? estimate?.deliveryZoneSnapshot : null, agreement.serviceAddressId))
+    return null;
   const source = estimate && estimate.customerId === agreement.customerId &&
     estimate.deliveryRequested
     ? {choice:estimate.deliveryRequested,offer:estimate.deliveryOffer,
@@ -55,7 +62,7 @@ export async function requestPaidDeliveryInTx(
     return null;
   }
   const current = await tx.job.findFirst({
-    where: { agreementId, type: "DELIVERY",
+    where: { agreementId, type: "DELIVERY", customerPickupHandoff: false,
       status: { not: "CANCELLED" } },
     select: { id: true, requestedDeliveryAt: true,
       requestedDelivery: true, scheduledAt: true },
