@@ -587,6 +587,45 @@ export function enterpriseZonePrecertifyException(input: {
   };
 }
 
+/** TAXBEN-2: the November 15 year-end planning To do — the year's facts and
+ * the questions for the CPA. Information only; it never advises a purchase. */
+export function yearEndPlanningException(input: {
+  year: number;
+  profitCents: number;
+  sepCents: number | null;
+  soloCents: number | null;
+  midQuarterNote: string | null;
+  deMinimisExpensedCents: number | null;
+  since: Date;
+}): ExceptionItem {
+  const facts: string[] = [
+    `Tentative profit for ${input.year} so far is ${formatMoney(input.profitCents)}.`,
+  ];
+  if (input.sepCents !== null || input.soloCents !== null) {
+    facts.push(
+      `Retirement room on that profit: a SEP-IRA could take about ${formatMoney(input.sepCents ?? 0)}; a solo 401(k) about ${formatMoney(input.soloCents ?? 0)}.`,
+    );
+  }
+  if (input.deMinimisExpensedCents !== null) {
+    facts.push(
+      `Equipment expensed under the de minimis safe harbor so far: ${formatMoney(input.deMinimisExpensedCents)}. Whether buying equipment you need before December 31 changes the tax depends on the whole picture — Taxes > Tax benefits shows the figures, and your CPA can run it both ways.`,
+    );
+  }
+  if (input.midQuarterNote) facts.push(input.midQuarterNote);
+  facts.push(
+    "Questions for your CPA: whether the de minimis election stays on, bonus depreciation or Section 179, the rental-appliance class life, the business-began date, the solo 401(k) first-year deadline, and the enterprise-zone fleet question.",
+  );
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Year-end tax planning for ${input.year}`,
+    detail: facts.join(" "),
+    href: `/desk/sales-tax/benefits?year=${input.year}`,
+    todoKey: `taxben-year-end:${input.year}`,
+    since: input.since,
+  };
+}
+
 /** TAXBEN-1: a shared bill deducts 0% until the owner answers its business-use share. */
 export function businessUsePercentException(input: {
   year: number;

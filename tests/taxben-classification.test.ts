@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
@@ -114,6 +114,19 @@ describe("decideCapitalization", () => {
     const chosen = decideCapitalization(facts({ preferSection179: true }));
     expect(chosen.decision).toBe("CAPITALIZED_SECTION179");
     expect(chosen.ruleKey).toBe("us.section179");
+  });
+
+  it("honors the year's bonus elect-out for the class (TAXBEN-2 review)", () => {
+    const out = decideCapitalization(facts({ bonusElectedOut: true }));
+    expect(out.decision).toBe("CAPITALIZED");
+    expect(out.reason).toContain("elected out of bonus depreciation");
+    expect(out.ruleValue).toContain("electedOut");
+    // The Section 179 preference still wins over the elect-out.
+    const chosen = decideCapitalization(facts({ bonusElectedOut: true, preferSection179: true }));
+    expect(chosen.decision).toBe("CAPITALIZED_SECTION179");
+    // And the de minimis expense still wins first.
+    const expensed = decideCapitalization(facts({ bonusElectedOut: true, lineCents: 100_000 }));
+    expect(expensed.decision).toBe("EXPENSED_DE_MINIMIS");
   });
 
   it("requires property acquired strictly after the bonus boundary date", () => {
@@ -253,6 +266,34 @@ describe.skipIf(!enabled)("recorded capitalization decisions (real Postgres)", (
           where: { action: "taxben.capitalization_decided", entityId: purchase.id },
         });
         expect(audit).toHaveLength(1);
+        throw new Rollback();
+      }),
+    ).rejects.toBeInstanceOf(Rollback);
+  });
+
+  it("applies the year's saved bonus elect-out to new classifications (TAXBEN-2 review)", async () => {
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.taxYearFacts.upsert({
+          where: { year: 2026 },
+          create: { year: 2026, bonusElectOutClasses: ["rentalAppliances"] },
+          update: { bonusElectOutClasses: ["rentalAppliances"] },
+        });
+        const bought = await fixture(tx, { prices: [300_000], otherChargesCents: 0 });
+        await classifyPurchaseInTx(tx, bought.purchase.id, actorId);
+        const unit = await tx.appliance.findUniqueOrThrow({ where: { id: bought.units[0]!.id } });
+        expect(unit.capDecision).toBe("CAPITALIZED");
+        expect(unit.capReason).toContain("elected out of bonus depreciation");
+        // A decision recorded before the elect-out is never rewritten:
+        // clearing the choice and re-running changes nothing already decided.
+        await tx.taxYearFacts.update({
+          where: { year: 2026 },
+          data: { bonusElectOutClasses: Prisma.DbNull },
+        });
+        const decidedAgain = await classifyPurchaseInTx(tx, bought.purchase.id, actorId);
+        expect(decidedAgain).toBe(0);
+        const still = await tx.appliance.findUniqueOrThrow({ where: { id: bought.units[0]!.id } });
+        expect(still.capDecision).toBe("CAPITALIZED");
         throw new Rollback();
       }),
     ).rejects.toBeInstanceOf(Rollback);

@@ -9,6 +9,7 @@ import { listRuleChangeAttention } from "@/domains/rules/observations";
 import { listDeliveryReadinessAttention } from "@/domains/tax/delivery-readiness";
 import { listPolicyAttention } from "@/domains/taxben/policy";
 import { listBenefitsAttention } from "@/domains/taxben/benefits";
+import { listYearEndPlanningAttention } from "@/domains/taxben/elections";
 import { ruleDef } from "@/domains/rules/registry";
 import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
@@ -70,6 +71,7 @@ import {
   deliveryReadinessException,
   capitalizationPolicyException,
   midQuarterWarningException,
+  yearEndPlanningException,
   retirementComparisonException,
   enterpriseZonePrecertifyException,
   businessUsePercentException,
@@ -418,6 +420,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     deliveryReadinessAttention,
     taxbenPolicyAttention,
     taxbenBenefitsAttention,
+    taxbenYearEndAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -579,6 +582,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     canViewFinance ? listDeliveryReadinessAttention(now) : Promise.resolve([]),
     canViewFinance ? listPolicyAttention(now) : Promise.resolve([]),
     canViewFinance ? listBenefitsAttention(now) : Promise.resolve([]),
+    canViewFinance ? listYearEndPlanningAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -1034,6 +1038,17 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         sourceUrl: item.sourceUrl,
         filesThrough: item.filesThrough,
         licenseRequired: item.licenseRequired,
+        since: item.since,
+      }),
+    ),
+    ...taxbenYearEndAttention.map((item) =>
+      yearEndPlanningException({
+        year: item.year,
+        profitCents: item.profitCents,
+        sepCents: item.sepCents,
+        soloCents: item.soloCents,
+        midQuarterNote: item.midQuarterNote,
+        deMinimisExpensedCents: item.deMinimisExpensedCents,
         since: item.since,
       }),
     ),
