@@ -23,7 +23,8 @@
       "books-reports.spec.ts",
       "money-bills.spec.ts",
       "staff-security.spec.ts",
-      "features.spec.ts"
+      "features.spec.ts",
+      "ar8-settings.spec.ts"
     ],
     "browser-b": [
       "owner-controls.spec.ts",
