@@ -28,7 +28,7 @@ beforeEach(() => {
 it("reads, saves and records the audit in the same transaction", async () => {
   await expect(
     updateBusinessSettings("owner", { publicBusinessName: "After" }),
-  ).resolves.toEqual({ publicBusinessName: "After" });
+  ).resolves.toEqual({ after: { publicBusinessName: "After" }, auditId: undefined });
   expect(m.transaction).toHaveBeenCalledTimes(1);
   expect(m.audit).toHaveBeenCalledWith({
     data: expect.objectContaining({
