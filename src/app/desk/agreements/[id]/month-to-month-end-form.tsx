@@ -1,5 +1,7 @@
 import { endMonthToMonthForCustomerAction } from "../actions";
 import { formatBusinessDate } from "@/lib/business-date";
+import { EndReasonFields } from "./end-reason-fields";
+import { RECOMMENDED_END_REASONS } from "@/domains/agreements/end-reasons";
 
 /** Owner/admin: end a month-to-month rental on the customer's behalf. No fee. */
 export function MonthToMonthEndForm(props: {
@@ -7,6 +9,8 @@ export function MonthToMonthEndForm(props: {
   noticeDays: number;
   effectiveOn: Date;
   earlierOptions: Date[];
+  /** The owner's current reason list; falls back to the recommended list. */
+  endReasons?: string[];
 }) {
   return (
     <form action={endMonthToMonthForCustomerAction} className="mt-6 rounded-lg border border-line bg-white p-5">
@@ -35,6 +39,7 @@ export function MonthToMonthEndForm(props: {
           <input id="reason" name="reason" maxLength={500} className="mt-1 min-h-11 w-full rounded-lg border border-control px-3" />
         </div>
       )}
+      <EndReasonFields reasons={props.endReasons ?? [...RECOMMENDED_END_REASONS]} />
       <button type="submit" className="mt-4 min-h-11 rounded-lg border border-control px-4 py-2 text-sm text-primary hover:bg-subtle">
         End rental
       </button>

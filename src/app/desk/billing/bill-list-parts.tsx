@@ -2,34 +2,51 @@
 // and the customer record's Bills section so a bill reads and acts the same in both places. Every button is a link to
 // the existing bill pages; nothing here moves money.
 import Link from "next/link";
-import { ActionButton, StatusPill, type ActionSpec, type Column, type MenuItem } from "@/components/kit";
+import { StatusPill, type Column, type MenuItem } from "@/components/kit";
 import { billPill, billPillInfo } from "@/domains/billing/bill-status";
 import type { BillRow } from "@/domains/billing/bills-list";
+import { suggestPaymentLinkReason } from "@/domains/billing/payment-link-message";
 import { formatMoney } from "@/lib/money-ui";
 import { billNext } from "@/lib/status-next";
 import { formatShortDate } from "@/lib/business-date";
+import { TakePaymentSheet } from "./take-payment-sheet";
+import { RecordPaymentSheet } from "./record-payment-sheet";
+import { TakeCardPaymentButton } from "./take-card-payment-button";
 
 const enc = encodeURIComponent;
 export const billHref = (row: Pick<BillRow, "id" | "customerId">) => `/desk/billing/customer/${enc(row.customerId)}/invoice/${enc(row.id)}`;
 const statementHref = (row: Pick<BillRow, "customerId">) => `/desk/billing/customer/${enc(row.customerId)}`;
 const FINISHED = new Set(["PAID", "VOID", "WRITTEN_OFF", "REFUNDED"]);
 
-/** The main way to collect this bill, or nothing when there is nothing to collect. */
-export function billPayActions(row: BillRow): ActionSpec[] {
-  // BILL-1: the customer already paid by bank and the bank is confirming it. Nothing to collect, so no button (⋯ only).
-  if (row.beingConfirmed) return [];
+/**
+ * AR-3 (MONEY-AREA 4): the main way to collect this bill, as in-place controls — which one comes only from
+ * payPathFor. STRIPE_LINK opens the Take payment sheet; SHOP_CARD starts the sale card payment; MANUAL_ONLY
+ * opens the Record cash or check sheet locked to this bill. Nothing when there is nothing to collect
+ * (including BILL-1: a bank payment is being confirmed, so no button, ⋯ only).
+ */
+export function BillPayButtons({ row }: { row: BillRow }) {
+  if (row.beingConfirmed || !row.payPath) return null;
   switch (row.payPath) {
-    case "STRIPE_LINK":
-      return [
-        { kind: "link", label: "Take payment", href: `${billHref(row)}#take-payment`, primary: true },
-        { kind: "link", label: "Remind", href: `${billHref(row)}#take-payment` },
-      ];
+    case "STRIPE_LINK": {
+      const suggestedReason = suggestPaymentLinkReason({ status: row.status, amountPaidCents: row.paidCents });
+      return (
+        <div className="flex flex-wrap gap-2">
+          <TakePaymentSheet invoiceId={row.id} owedCents={row.owedCents} suggestedReason={suggestedReason} variant="primary" />
+          <TakePaymentSheet invoiceId={row.id} owedCents={row.owedCents} suggestedReason={suggestedReason} label="Send reminder" />
+        </div>
+      );
+    }
     case "SHOP_CARD":
-      return [{ kind: "link", label: "Take card payment", href: `/desk/sales/${enc(row.id)}`, primary: true }];
+      return <TakeCardPaymentButton invoiceId={row.id} />;
     case "MANUAL_ONLY":
-      return [{ kind: "link", label: "Record cash or check", href: `${statementHref(row)}#record-payment`, primary: true }];
-    default:
-      return [];
+      return (
+        <RecordPaymentSheet
+          customerId={row.customerId}
+          openInvoices={[{ id: row.id, invoiceNumber: row.number, balanceCents: row.owedCents }]}
+          lockedInvoice={{ id: row.id, invoiceNumber: row.number }}
+          variant="primary"
+        />
+      );
   }
 }
 
@@ -59,7 +76,6 @@ function detailLine(row: BillRow): string | null {
 export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
   const pill = billPill({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents, beingConfirmed: row.beingConfirmed }, now);
   const detail = detailLine(row);
-  const actions = billPayActions(row);
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-start justify-between gap-3">
@@ -80,13 +96,7 @@ export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
         </div>
       </div>
       {detail ? <p className="text-sm text-ink-soft">{detail}</p> : null}
-      {actions.length > 0 ? (
-        <div className="mt-1.5 flex flex-wrap gap-2">
-          {actions.map((spec, index) => (
-            <ActionButton key={spec.label} spec={spec} variant={index === 0 ? "primary" : "secondary"} className={index === 0 ? "min-w-0 flex-1 whitespace-normal! text-center" : "whitespace-normal! text-center"} />
-          ))}
-        </div>
-      ) : null}
+      <BillPayButtons row={row} />
     </div>
   );
 }

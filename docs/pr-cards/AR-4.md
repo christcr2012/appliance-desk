@@ -27,4 +27,6 @@ Reason: each list is an independent, usable screen with its own data and risks; 
 - [ ] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+AR-4a (Rentals) is built and in review — see the top STATUS entry and packet
+AR-4A. AR-4b (Leads), AR-4c (Customers list) and AR-4d (Quotes and Messages)
+have not started.

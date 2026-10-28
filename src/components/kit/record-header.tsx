@@ -119,7 +119,7 @@ export function RecordHeader({ title, transitionId, pills = [], subtitle, contac
   );
 }
 
-export type StatItem = { label: string; value: string; tone?: Tone; info?: GlossaryKey };
+export type StatItem = { label: string; value: string; tone?: Tone; info?: GlossaryKey; sub?: string };
 
 /** Phone: two columns inside one card. Desktop: up to five equal cards in a row. */
 export function StatStrip({ items }: { items: StatItem[] }) {
@@ -148,6 +148,7 @@ export function StatStrip({ items }: { items: StatItem[] }) {
           >
             {item.value}
           </dd>
+          {item.sub ? <dd className="mt-0.5 text-xs font-bold text-ink-soft tabular-nums">{item.sub}</dd> : null}
         </div>
       ))}
     </dl>

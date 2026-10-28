@@ -12,7 +12,7 @@ test("desk sidebar returns to the same Today filter without changing explicit li
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/desk/today?group=snoozed", { waitUntil: "load" });
   await expect(page).toHaveURL(/group=snoozed/);
-  const nav = page.getByRole("navigation", { name: "Owner desk" });
+  const nav = page.getByRole("navigation", { name: "Areas" });
   await nav.getByRole("link", { name: "Customers", exact: true }).click();
   await expect(page).toHaveURL(/\/desk\/customers$/);
   await nav.getByRole("link", { name: "Today", exact: true }).click();

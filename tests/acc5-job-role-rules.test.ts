@@ -29,6 +29,15 @@ describe("job role screens", () => {
     expect(jobRoleAllowsPath(["customers"], "/api/whatever")).toBe(false);
   });
 
+  it("AR-3: the Money overview and Payments addresses belong to the billing screen", () => {
+    // An admin whose job role includes Money keeps the new pages (and the billing view that redirects to one).
+    for (const p of ["/desk/money", "/desk/payments", "/desk/payments?status=deposits", "/desk/billing?view=waiting"]) {
+      expect(screenForPath(p)).toBe("billing");
+      expect(jobRoleAllowsPath(["billing"], p)).toBe(true);
+      expect(jobRoleAllowsPath(["customers"], p)).toBe(false);
+    }
+  });
+
   it("every screen address in the menu belongs to a known screen", () => {
     const links = [...deskNavigation("OWNER").flatMap((g) => g.links), ...deskMoreLinks("OWNER")];
     for (const link of links) expect(screenForPath(link.href), link.href).not.toBeNull();
@@ -40,8 +49,8 @@ describe("job role screens", () => {
     expect(hrefs).toContain("/desk/today");
     expect(hrefs).toContain("/desk/dispatch");
     expect(hrefs).not.toContain("/desk/customers");
-    expect(hrefs).toContain("/desk/more");
-    expect(deskMoreLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/activity", "/desk/account", "/desk/help"]);
+    expect(hrefs).not.toContain("/desk/more");
+    expect(deskMoreLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/account", "/desk/activity", "/desk/help", "/desk/feedback/new"]);
     // No job role: exactly what the access level gave before.
     expect(deskNavigation("STAFF", null)).toEqual(deskNavigation("STAFF"));
   });

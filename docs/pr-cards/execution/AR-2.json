@@ -1,0 +1,105 @@
+{
+  "acceptance": [
+    "Slice 1: decideApprovalAction / finishApprovalAction live in src/app/desk/approvals/actions.ts; with inline=1 they return { outcome } instead of redirecting, and both revalidate /desk/approvals and /desk/today; without inline the approvals page behaves exactly as today (unit test covers inline=1; existing approvals tests pass)",
+    "OUTCOME_WORDS and STATUS_WORDS live in src/domains/approvals/words.ts and are imported by both the approvals page and Today",
+    "Slice 2: the APPROVAL_REQUEST inbox item's primary action is 'Review requests' opening the Waiting for your approval Sheet (OWNER only); Approve and Decline always go through the KIT 6.6 confirmation, never optimistic, never Undo; the outcome toast uses OUTCOME_WORDS (danger tone for failed/uncertain/refused); the item's overflow keeps 'Open approvals page'",
+    "Slice 2: staff and admins never see the approvals Sheet; the actions themselves refuse non-owners (requireRole OWNER, unchanged)",
+    "Slice 3: task cards finish optimistically via the AR-11 helper with Undo calling reopenTaskAction(id, version + 1); a conflict or error surfaces completeTaskAction's own message; staff see only their own due tasks (existing selection unchanged)",
+    "Slice 3: notices keep only their primary link to /desk/notices/{id} and gain no inline actions (verified in the browser spec)",
+    "e2e/today-inline.spec.ts: owner approves and declines seeded requests through the confirmation with outcome toasts; staff sees no approvals; a task marked done disappears and Undo brings it back; axe + 5 sizes",
+    "Each slice lands as its own PR with ci green at the exact head and every review comment read before the next slice starts"
+  ],
+  "baseline": "51c33173aadac3a4a2b8b8e143f043ee20ea5bf9",
+  "card": "docs/pr-cards/AR-2.md",
+  "checks": {
+    "browser": [
+      "e2e/today-inline.spec.ts"
+    ],
+    "db": [
+      "tests/approvals-integration.test.ts",
+      "tests/approval-money-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/approval-actions.test.ts",
+      "tests/approvals.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "AR-2",
+  "invariants": [
+    "No money rule changes: approving and declining call the same domain functions (decideApproval, finishApprovedRequest) with the same arguments as the approvals page does today",
+    "Approving is always a confirmation, never optimistic, never Undo (KIT 6.6); the approvals To do stays ONE item (approval-attention rule unchanged)",
+    "Roles filtered at the boundary: approvals are OWNER only in the domain, the actions and the Sheet; staff task visibility keeps the existing selection(role) clauses",
+    "Snooze stays on Today only; /desk/approvals, /desk/tasks and /desk/notices keep working unchanged for their own visitors"
+  ],
+  "next": "AR-4c \u2014 Customers list (CUSTOMERS.md) on the CU-1 engine (Lane 5 queue after AR-2, per the 2026-10-28 direction).",
+  "outcome": "Chris can clear his day from Today without opening other pages: approval requests are decided in place from a Sheet (approve/decline through a confirmation, outcome shown as a toast), due tasks are marked done in place with Undo, and notices keep linking to their page. Built in three short laps, one PR per slice: (1) the approval server actions move out of the approvals page into actions.ts with an inline result mode and the outcome/status words move to the approvals domain; (2) the OWNER-only approvals Sheet on Today; (3) optimistic task completion with Undo plus the notices verification and the browser spec.",
+  "parent": "AR-2",
+  "proposedFiles": [
+    "docs/STATUS.md",
+    "docs/pr-cards/AR-2.md",
+    "docs/pr-cards/execution/AR-2.json",
+    "docs/pr-cards/work-index.json",
+    "e2e/shards.json",
+    "e2e/today-inline.spec.ts",
+    "src/app/desk/approvals/actions.ts",
+    "src/app/desk/approvals/page.tsx",
+    "src/app/desk/today/approvals-sheet.tsx",
+    "src/app/desk/today/page.tsx",
+    "src/app/desk/today/today-inbox.tsx",
+    "src/domains/approvals/words.ts",
+    "tests/approval-actions.test.ts"
+  ],
+  "references": [
+    {
+      "anchor": "Move the approval server actions",
+      "path": "docs/pr-cards/AR-2.md",
+      "purpose": "The card: the three steps in order, the exact confirmation and toast wording, the acceptance list"
+    },
+    {
+      "anchor": "# Screen spec \u2014 Today (the inbox)",
+      "path": "docs/build-specs/screens/TODAY.md",
+      "purpose": "The inbox the card finishes: groups, item actions and words the Today page already renders (built in AR-0)"
+    },
+    {
+      "anchor": "export const listWaitingApprovals",
+      "path": "src/domains/approvals/index.ts",
+      "purpose": "The existing owner-only waiting list the Slice 2 Sheet loads"
+    }
+  ],
+  "risk": "Money: approvals approve refunds, write-offs, deposits, credits and expenses, executed immediately as the owner. The conservative direction is structural: the domain functions and their arguments do not change at all in any slice; slice 1 is a pure move of the existing actions (same bodies, same role check) with an added inline return for the new caller; slice 2 adds only the confirmation-first Sheet around them (never optimistic, never Undo); slice 3 touches no money (task completion only, with the domain's own version check).",
+  "sequence": [
+    "S1 approval actions move to actions.ts (inline=1 returns { outcome }, both paths revalidated) + words.ts + inline unit test",
+    "S2 approvals Sheet on Today (OWNER only) + browser spec approvals half",
+    "S3 tasks optimistic done + Undo, notices verified + browser spec tasks half"
+  ],
+  "slices": [
+    {
+      "acceptance": [
+        "decideApprovalAction/finishApprovalAction exported from src/app/desk/approvals/actions.ts; inline=1 returns { outcome } and never redirects; both revalidate /desk/approvals and /desk/today",
+        "tests/approval-actions.test.ts green (domain spies: same arguments as the page used); tests/approvals.test.ts and the approvals integration suites still pass",
+        "The approvals page renders identically with no inline field"
+      ],
+      "id": "AR-2-S1",
+      "title": "Move the approval server actions into approvals/actions.ts; OUTCOME_WORDS/STATUS_WORDS to domains/approvals/words.ts"
+    },
+    {
+      "acceptance": [
+        "Sheet lists waiting approvals with Approve/Decline behind the spec's ConfirmDialogs; outcome toast from OUTCOME_WORDS; card removed after deciding; Sheet closes when none remain",
+        "Browser spec: approve + decline through the confirmation; staff context never sees approvals"
+      ],
+      "id": "AR-2-S2",
+      "title": "Approvals Sheet on Today (OWNER only): Review requests primary on the APPROVAL_REQUEST item"
+    },
+    {
+      "acceptance": [
+        "Task done is optimistic with Undo (reopenTaskAction at version + 1); errors surface the action's message",
+        "Browser spec: task disappears on done, Undo restores it; notices show only their page link; axe + 5 sizes pass"
+      ],
+      "id": "AR-2-S3",
+      "title": "Tasks finished in place with Undo; notices verified link-only"
+    }
+  ],
+  "version": 1
+}

@@ -13,13 +13,16 @@ test("mobile Today supports gesture refresh and keeps the bottom bar reachable",
   await page.goto("/desk/today", { waitUntil: "load" });
   const pull = page.locator("[data-pull-to-refresh]").first();
   await expect(pull).toBeVisible();
+  await expect(pull).toHaveAttribute("data-pull-ready", "true");
   // Real Chromium touch input, not dispatched DOM events: this exercises scroll
   // arbitration and the browser's pointercancel behavior.
   await page.evaluate(() => window.scrollTo(0, 0));
-  const rect = await pull.boundingBox();
+  await expect.poll(() => page.evaluate(() => document.scrollingElement?.scrollTop ?? window.scrollY)).toBe(0);
+  const strip = pull.getByTestId("pull-refresh-status");
+  const rect = await strip.boundingBox();
   expect(rect).not.toBeNull();
-  const x = rect!.x + 12;
-  const y = rect!.y + 8; // the dedicated non-interactive status strip
+  const x = rect!.x + rect!.width / 2;
+  const y = rect!.y + rect!.height / 2; // the dedicated non-interactive status strip, away from screen edges
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
   for (const offset of [30, 60, 95]) {

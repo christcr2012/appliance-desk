@@ -87,6 +87,9 @@ export function DeskShortcuts({ role }: { role: string }) {
         if (search) {
           event.preventDefault();
           search.focus();
+        } else {
+          event.preventDefault();
+          window.dispatchEvent(new Event("desk:open-command"));
         }
         return;
       }

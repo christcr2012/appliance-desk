@@ -37,6 +37,7 @@ export { InboxCard, type InboxCardProps } from "./inbox-card";
 export { Timeline, type TimelineItem } from "./timeline";
 export { Fab } from "./fab";
 export { OverflowMenu } from "./overflow-menu";
+export { ActionMenu, type ActionMenuItem } from "./action-menu";
 export { DecisionCard, type DecisionCardProps } from "./decision-card";
 export { InfoTip } from "./info-tip";
 export { useMediaQuery, DESKTOP_QUERY } from "./use-media-query";
@@ -48,3 +49,4 @@ export { PullToRefresh, pullDistance, canPullRefresh, PULL_REFRESH_THRESHOLD } f
 export { RememberList, rememberedListHref, followRememberedClick, readListPosition, saveListPosition, clearRememberedLists } from "./remember-list";
 export { useOptimisticAction, type OptimisticChangeOptions, type OptimisticFormAction } from "./use-optimistic-action";
 export { SegmentedControl, Select, SearchablePicker, OptionCards, Switch, PICKER_DEBOUNCE_MS, PICKER_MIN_CHARS } from "./selection-controls";
+export { Stepper, type StepperStep } from "./stepper";

@@ -53,10 +53,14 @@ export function AgreementDetailPanel({
   agreement,
   availableAppliances,
   packages = [],
+  hideActions = false,
 }: {
   agreement: AgreementRow;
   availableAppliances: ApplianceOption[];
   packages?: PackageLineOption[];
+  /** AR-4a: on the kit record page the actions live in the header/next-step
+   * card instead, and the visits list has its own tab — hide both here. */
+  hideActions?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -145,6 +149,7 @@ export function AgreementDetailPanel({
               ? `Signed, starts ${agreement.startDate ? new Date(agreement.startDate).toLocaleDateString("en-US", { timeZone: "America/Denver" }) : "later"}`
               : agreement.status}
           </h2>
+          {!hideActions && (
           <div className="flex gap-2">
             {agreement.status === "DRAFT" && (
               <button
@@ -178,6 +183,7 @@ export function AgreementDetailPanel({
               </Link>
             )}
           </div>
+          )}
         </div>
 
         <p className="mt-2 text-sm text-ink-soft">
@@ -380,32 +386,6 @@ export function AgreementDetailPanel({
         )}
       </div>
 
-      <div className="rounded-lg border border-line bg-white p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium text-ink">Jobs</h2>
-          {agreement.status === "ACTIVE" && (
-            <Link
-              href={`/desk/jobs/new?agreementId=${agreement.id}`}
-              className="text-sm text-primary hover:underline"
-            >
-              + Schedule a job
-            </Link>
-          )}
-        </div>
-        {agreement.jobs.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-soft">No jobs scheduled yet.</p>
-        ) : (
-          <ul className="mt-2 space-y-1 text-sm text-ink-soft">
-            {agreement.jobs.map((j) => (
-              <li key={j.id}>
-                <Link href={`/desk/jobs/${j.id}`} className="hover:underline">
-                  {j.type} — {j.status}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
     </div>
   );
 }

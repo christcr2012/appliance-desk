@@ -102,6 +102,7 @@ export async function lockRentalAgreementInTx(
 export async function getAgreementsCount(filter?: {
   status?: RentalAgreementStatus;
 }): Promise<number> {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.rentalAgreement.count({
     where: filter?.status ? { status: filter.status } : undefined,
   });

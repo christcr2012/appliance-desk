@@ -3,6 +3,7 @@ import { getStripeClient } from "@/lib/stripe";
 import { businessMonthBounds } from "@/lib/business-date";
 import { computeMrrTrend, revenuePeriod } from "./revenue";
 import { pastDueInvoiceWhere } from "./bill-status";
+import { failedPaymentsWhere } from "./payment-status";
 
 export { pastDueInvoiceWhere } from "./bill-status";
 
@@ -149,7 +150,7 @@ export async function getRevenueDashboard(now = new Date()) {
       select: { amountDueCents: true, amountPaidCents: true },
     }),
     prisma.payment.count({
-      where: { status: "failed", createdAt: period },
+      where: failedPaymentsWhere(period),
     }),
   ]);
 

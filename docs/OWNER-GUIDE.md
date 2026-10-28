@@ -1,12 +1,20 @@
-## Settings → Features (AR-12, pending normal release)
+## Five areas and quick search (AR-1, awaiting CI and normal release)
 
-Open **Settings → Features** to choose which extra menu items to show. Only the owner can change a choice; administrators can see the choices. Features that are already being used (two or more people on your team, a property manager, or your existing budget) stay on automatically with a reason. A hidden menu entry does not prevent someone with the existing permission from visiting that page directly. These controls never grant anyone new access.
-
-**Practice safely** appears here only after you set a separate HTTPS testing-app address in the server setting `PRACTICE_APP_URL` on your production Vercel project. It never appears inside the testing app. Opening the link uses a separate tab. Do not try real customer cards, customer texts, or emails while learning.
+On a phone the bottom bar has **Today, Customers, Schedule, Equipment and Money** (only areas
+you have access to are shown). On a computer these areas are in the sidebar; use **Collapse
+menu** to make room for your work, and it remembers your choice. Pick an area and use the
+section tabs to change what you are working on. Search at the top, or press **Ctrl K** on
+Windows / **⌘ K** on Mac, to find a customer, an appliance, a screen or a common action.
+Open **Profile** to find Settings, Help, Your account, App feedback, your theme and Sign out. Owners also see Set up your business. Team members
+see only links permitted by their account and job role; an absent link does not change
+access to an existing screen. Use **Today → Manage my workspace** to show hidden optional notes again, unpin a shortcut,
+remove a saved view or start over with your personal shortcuts. This changes only your own
+workspace preferences. Old `/desk/more` and `/desk/control-center` links now open Today; all existing record links still work. These instructions
+apply after AR-1 is merged and the normal tested release reaches the app.
 
 ## How do I…? — the short help guides (AR-12)
 
-Open **More → How do I…?** (or `/desk/help`) on your phone or computer. Search for a task by
+Open **Profile → Help** (or `/desk/help`) on your phone or computer. Search for a task by
 ordinary words such as *refund*, *driver*, *receipt* or *install*. Choose a question to read three simple
 steps, then **Go there** opens the correct screen. Any signed-in team member may read Help; guides to
 money, owner settings or screens their job role cannot use are not offered to them. Nothing is
@@ -103,7 +111,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Activity | `/desk/activity` | A combined "what happened" feed |
 | Search | `/desk/search` | One box for customers, machines, leads, purchases |
 | Settings | `/desk/settings` | Prices, fees, wording, rules, notifications |
-| More | `/desk/more` | The less-used screens (including Website) |
+| Profile menu | Your account, Help and permitted Settings links | Open using your initials on a phone or at the bottom of the sidebar |
 | Customer portal | `/account` | What your customers see after signing in |
 | Sign in | `/login` | Everyone's sign-in page |
 
@@ -316,7 +324,7 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 ![Billing](owner-guide/screenshots/billing.png)
 
-**What it's for.** Rent is charged through Stripe, agreement by agreement. **Billing → Statements** lists every customer with a balance; a statement groups invoices by property and has a CSV. **+ Record payment** records a check, cash or bank transfer (leave "Apply to" on all open invoices, oldest first, for one check covering several); extra becomes account credit. **Write off** marks an uncollectible invoice without deleting it. **Send payment link** shows you the exact message first (or **Copy link**); **Take payment by phone** opens Stripe's own page. **Deposits** lists what you hold and have not decided; **Decide** gives it back in full or in part with a written reason. **Money decisions** on an invoice lets you refund or pay with account credit, and every decision repeats the amount in dollars and words for you to tick. **Waiting for Stripe** shows requests Stripe has not finished; there is nothing to press, the system retries every night. **Held payments** needs your review. Late fees are added once a day using each agreement's own terms and are never charged to a card automatically, and never while a bank payment is being confirmed.
+**What it's for.** Rent is charged through Stripe, agreement by agreement. **Money → Overview** (`/desk/money`) shows money in this month, what is still owed and past due, and what is coming in the next 30 days. **Payments** (`/desk/payments`) lists every payment — received, failed and held — with deposits and what is still waiting for Stripe as tabs on the same page. **Billing → Statements** lists every customer with a balance; a statement groups invoices by property and has a CSV. **+ Record payment** records a check, cash or bank transfer (leave "Apply to" on all open invoices, oldest first, for one check covering several); extra becomes account credit. **Write off** marks an uncollectible invoice without deleting it. **Send payment link** shows you the exact message first (or **Copy link**); **Take payment by phone** opens Stripe's own page. **Deposits** lists what you hold and have not decided; **Decide** gives it back in full or in part with a written reason. **Money decisions** on an invoice lets you refund or pay with account credit, and every decision repeats the amount in dollars and words for you to tick. **Waiting for Stripe** shows requests Stripe has not finished; there is nothing to press, the system retries every night. **Held payments** needs your review. Late fees are added once a day using each agreement's own terms and are never charged to a card automatically, and never while a bank payment is being confirmed.
 
 **Bank payments.** A customer who pays by bank transfer waits up to 4 banking days. The bill shows **Being confirmed** (Bills has its own tab for these); it is not counted as paid and not chased as late, and no late fee is added meanwhile. Nothing for you to do. If a bank payment is still waiting after your number of banking days (**Settings › Bank payments**, starting value 6, with **Restore recommended**), a calm item appears on Today. If Stripe says it cleared but it isn't on the bill, press **Record it now** (Today, or Billing › Reconciliation › Bank payments Stripe says cleared); it records once even if pressed twice.
 

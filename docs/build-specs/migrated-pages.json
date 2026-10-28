@@ -3,6 +3,9 @@
   { "file": "src/app/desk/settings/decisions/import/page.tsx", "kind": "other" },
   { "file": "src/app/desk/today/page.tsx", "kind": "other" },
   "src/app/desk/billing/page.tsx",
+  { "file": "src/app/desk/money/page.tsx", "kind": "other" },
+  "src/app/desk/payments/page.tsx",
+  "src/app/desk/billing/customer/[id]/invoice/[invoiceId]/page.tsx",
   "src/app/desk/customers/[id]/page.tsx",
   { "file": "src/app/desk/sales-tax/rules/page.tsx", "kind": "list" }
 ]

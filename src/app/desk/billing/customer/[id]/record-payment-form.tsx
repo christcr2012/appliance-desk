@@ -9,19 +9,28 @@ import { businessDateKey } from "@/lib/business-date";
 type OpenInvoiceOption = { id: string; invoiceNumber: number; balanceCents: number };
 
 /** Chris recording a check/cash/bank-transfer payment. With no invoice
- * picked, the amount spreads across every open invoice oldest-due-first. */
+ * picked, the amount spreads across every open invoice oldest-due-first.
+ * AR-3: `lockedInvoiceId` pins the payment to one bill (no selector, a hidden
+ * field, "For bill #…"); `variant="sheet"` renders the bare form for the
+ * Record cash or check sheet, which reports success through `onRecorded`. */
 export function RecordPaymentForm({
   customerId,
   openInvoices,
+  lockedInvoiceId,
+  variant = "card",
+  onRecorded,
 }: {
   customerId: string;
   openInvoices: OpenInvoiceOption[];
+  lockedInvoiceId?: { id: string; invoiceNumber: number };
+  variant?: "card" | "sheet";
+  onRecorded?: (result: { totalAppliedCents: number; overpaymentCents: number }) => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(variant === "sheet");
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -43,15 +52,132 @@ export function RecordPaymentForm({
       }
       setError(null);
       formRef.current?.reset();
-      setShowForm(false);
-      setSuccess(
-        `Applied ${formatCents(result.totalAppliedCents)} across ${result.invoicesTouched} invoice(s).` +
-          (result.overpaymentCents > 0
-            ? ` ${formatCents(result.overpaymentCents)} left over was added as an account credit.`
-            : ""),
-      );
+      if (onRecorded) {
+        onRecorded({ totalAppliedCents: result.totalAppliedCents, overpaymentCents: result.overpaymentCents });
+      } else {
+        setShowForm(false);
+        setSuccess(
+          `Applied ${formatCents(result.totalAppliedCents)} across ${result.invoicesTouched} invoice(s).` +
+            (result.overpaymentCents > 0
+              ? ` ${formatCents(result.overpaymentCents)} left over was added as an account credit.`
+              : ""),
+        );
+      }
       router.refresh();
     });
+  }
+
+  const form = showForm ? (
+    <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-3">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div>
+          <label htmlFor="amountDollars" className="block text-xs font-medium text-ink-soft">
+            Amount ($)
+          </label>
+          <input
+            id="amountDollars"
+            name="amountDollars"
+            type="number"
+            step="0.01"
+            min="0.01"
+            required
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label htmlFor="method" className="block text-xs font-medium text-ink-soft">
+            Method
+          </label>
+          <select
+            id="method"
+            name="method"
+            defaultValue="check"
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
+          >
+            <option value="check">Check</option>
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank transfer</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="receivedOn" className="block text-xs font-medium text-ink-soft">
+            Date received
+          </label>
+          <input
+            id="receivedOn"
+            name="receivedOn"
+            type="date"
+            required
+            defaultValue={businessDateKey(new Date())}
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
+          />
+        </div>
+      </div>
+
+      {lockedInvoiceId ? (
+        <div>
+          <input type="hidden" name="invoiceId" value={lockedInvoiceId.id} />
+          <p className="text-sm text-ink-soft">For bill #{lockedInvoiceId.invoiceNumber}</p>
+        </div>
+      ) : (
+        <div>
+          <label htmlFor="invoiceId" className="block text-xs font-medium text-ink-soft">
+            Apply to
+          </label>
+          <select
+            id="invoiceId"
+            name="invoiceId"
+            defaultValue=""
+            className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
+          >
+            <option value="">All open invoices, oldest first</option>
+            {openInvoices.map((inv) => (
+              <option key={inv.id} value={inv.id}>
+                Invoice #{inv.invoiceNumber} — {formatCents(inv.balanceCents)} owed
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <input
+        name="reference"
+        placeholder="Check # / reference (optional)"
+        className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
+      />
+      <textarea
+        name="notes"
+        rows={2}
+        placeholder="Notes (optional)"
+        className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
+      />
+
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={isPending}
+        className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
+      >
+        {isPending ? "Recording…" : "Record payment"}
+      </button>
+    </form>
+  ) : null;
+
+  if (variant === "sheet") {
+    return (
+      <div>
+        <p className="text-sm text-ink-soft">
+          For money that came in outside Stripe — a check, cash, or a bank transfer you confirmed yourself.
+        </p>
+        {form}
+      </div>
+    );
   }
 
   return (
@@ -77,100 +203,7 @@ export function RecordPaymentForm({
         </p>
       )}
 
-      {showForm && (
-        <form ref={formRef} onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div>
-              <label htmlFor="amountDollars" className="block text-xs font-medium text-ink-soft">
-                Amount ($)
-              </label>
-              <input
-                id="amountDollars"
-                name="amountDollars"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
-              />
-            </div>
-            <div>
-              <label htmlFor="method" className="block text-xs font-medium text-ink-soft">
-                Method
-              </label>
-              <select
-                id="method"
-                name="method"
-                defaultValue="check"
-                className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
-              >
-                <option value="check">Check</option>
-                <option value="cash">Cash</option>
-                <option value="bank_transfer">Bank transfer</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="receivedOn" className="block text-xs font-medium text-ink-soft">
-                Date received
-              </label>
-              <input
-                id="receivedOn"
-                name="receivedOn"
-                type="date"
-                required
-                defaultValue={businessDateKey(new Date())}
-                className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="invoiceId" className="block text-xs font-medium text-ink-soft">
-              Apply to
-            </label>
-            <select
-              id="invoiceId"
-              name="invoiceId"
-              defaultValue=""
-              className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
-            >
-              <option value="">All open invoices, oldest first</option>
-              {openInvoices.map((inv) => (
-                <option key={inv.id} value={inv.id}>
-                  Invoice #{inv.invoiceNumber} — {formatCents(inv.balanceCents)} owed
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <input
-            name="reference"
-            placeholder="Check # / reference (optional)"
-            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
-          />
-          <textarea
-            name="notes"
-            rows={2}
-            placeholder="Notes (optional)"
-            className="w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
-          />
-
-          {error && (
-            <p role="alert" className="text-sm text-red-700">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
-          >
-            {isPending ? "Recording…" : "Record payment"}
-          </button>
-        </form>
-      )}
+      {form}
     </div>
   );
 }

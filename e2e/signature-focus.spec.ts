@@ -43,16 +43,19 @@ test.describe("owner Today", () => {
     }
   });
 
-  test("Ctrl K focuses the one existing search box, and the key hint is shown", async ({ page }) => {
+  test("Ctrl K opens the command palette, shows a shortcut hint and opens search results", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/desk/today", { waitUntil: "load" });
-    const search = page.getByRole("searchbox", { name: "Search customers, appliances, and leads" });
-    await expect(search).toHaveAttribute("placeholder", "Search or jump to…");
-    await expect(page.locator("aside kbd")).toBeVisible();
+    const trigger = page.getByRole("button", { name: "Search or jump to anything" });
+    await expect(trigger).toHaveAttribute("aria-keyshortcuts", "Control+K Meta+K");
+    await expect(page.locator("header kbd", { hasText: "Ctrl K" })).toBeVisible();
     await page.keyboard.press("Control+k");
-    await expect(search).toBeFocused();
-    await page.keyboard.type("zzz-no-such-customer");
-    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Search or jump to anything" });
+    await expect(dialog).toBeVisible();
+    const input = dialog.getByRole("combobox", { name: "Search the desk" });
+    await expect(input).toBeFocused();
+    await input.fill("zzz-no-such-customer");
+    await dialog.getByText("See all results for").click();
     await expect(page).toHaveURL(/\/desk\/search\?q=zzz-no-such-customer/);
   });
 
@@ -67,11 +70,11 @@ test.describe("owner Today", () => {
     }).toPass({ timeout: 10000 });
     expect(await card.evaluate((el) => getComputedStyle(el).clipPath)).toBe("none");
     expect(await card.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
-    const search = page.getByRole("searchbox", { name: "Search customers, appliances, and leads" });
-    await expect(async () => {
-      await search.focus();
-      await expect(search).toBeFocused({ timeout: 1000 });
-    }).toPass({ timeout: 10000 });
+    await page.keyboard.press("Control+k");
+    const dialog = page.getByRole("dialog", { name: "Search or jump to anything" });
+    await expect(dialog).toBeVisible();
+    const search = dialog.getByRole("combobox", { name: "Search the desk" });
+    await expect(search).toBeFocused();
     expect(await search.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
   });
 });

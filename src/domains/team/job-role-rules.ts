@@ -79,6 +79,8 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   maintenance: "maintenance",
   inventory: "inventory", parts: "inventory", purchases: "inventory", "purchase-orders": "inventory",
   billing: "billing", sales: "billing", revenue: "billing", reports: "billing", fleet: "billing", dashboard: "billing",
+  // AR-3: the Money overview and the Payments list belong to the same Money screen as billing.
+  money: "billing", payments: "billing",
   compliance: "sales-tax",
   "sales-tax": "sales-tax", books: "books", expenses: "expenses", suppliers: "suppliers", activity: "activity",
   settings: "management", paperwork: "management", privacy: "management", automations: "management", growth: "management",

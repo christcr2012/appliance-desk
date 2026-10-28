@@ -46,6 +46,17 @@ describe("kit AreaTabs (KIT 4.2)", () => {
     ).toBe(1);
   });
 
+  it("matches Payments by query or nested alias rather than Bills", () => {
+    const tabs = [
+      { href: "/desk/billing", label: "Bills" },
+      { href: "/desk/billing?view=deposits", label: "Payments", query: { param: "view", values: ["deposits", "waiting"] }, matches: ["/desk/billing/held-payments"] },
+    ];
+    expect(currentAreaTab(tabs, "/desk/billing", "")).toBe(0);
+    expect(currentAreaTab(tabs, "/desk/billing", "view=deposits")).toBe(1);
+    expect(currentAreaTab(tabs, "/desk/billing/held-payments")).toBe(1);
+    expect(currentAreaTab(tabs, "/desk/billing/customer/123")).toBe(0);
+  });
+
   it("matches record tabs by their ?tab= value, and defaults to the first tab", () => {
     const tabs = [
       { href: "/desk/customers/c1?tab=activity", label: "Activity" },

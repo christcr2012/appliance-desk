@@ -15,6 +15,9 @@ test("How do I has searchable 3-step answers, real links, keyboard and accessibl
     await page.setViewportSize({ width, height: width >= 820 ? 800 : 844 });
     await page.goto("/desk/help");
     await expect(page.getByRole("heading", { level: 1, name: "How do I…?" })).toBeVisible();
+    // Next.js streams page metadata after the visible content. Assert the
+    // actual accessible document title before axe reads the settled page.
+    await expect(page).toHaveTitle(/How do I/);
     const search = page.getByRole("searchbox", { name: "Search questions" });
     await search.fill("refund");
     const activeList = width < 1024
@@ -33,6 +36,9 @@ test("How do I has searchable 3-step answers, real links, keyboard and accessibl
     await page.keyboard.press("Escape");
     await expect(sheet).not.toBeVisible();
     await expect(question).toBeFocused();
+    // Closing the Sheet changes router state and can stream a fresh <title>.
+    // The accessibility audit must run after this second metadata transition.
+    await expect(page).toHaveTitle(/How do I/);
     const audit = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(audit.violations).toEqual([]);
     if (width === 390 || width === 1280) {
@@ -49,9 +55,10 @@ test("staff can reach Help without gaining links to money or settings", async ({
   const context = await browser.newContext({ storageState: staff });
   try {
     const page = await context.newPage();
-    await page.goto("/desk/more");
-    await expect(page.getByRole("link", { name: "How do I…?" })).toHaveAttribute("href", "/desk/help");
-    await page.getByRole("link", { name: "How do I…?" }).click();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/desk/today");
+    await page.getByRole("button", { name: "Profile menu" }).click();
+    await page.getByRole("menuitem", { name: "Help" }).click();
     await expect(page.getByRole("heading", { name: "How do I…?" })).toBeVisible();
     await expect(page.getByText("How do I take a card payment?")).toHaveCount(0);
   } finally {

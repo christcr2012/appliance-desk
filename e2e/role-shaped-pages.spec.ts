@@ -28,7 +28,7 @@ const ownerOnly = ["/desk/settings/permissions", "/desk/approvals", "/desk/priva
 /** Pages an owner and any admin may open (limits only stop saving, never reading), and staff may not.
  * /desk/paperwork (Business records) joined this list with VAULT-1: admins may read the
  * record kinds the owner allows; records holding a number stay owner-only inside the page. */
-const adminPages = ["/desk/settings", "/desk/billing", "/desk/revenue", "/desk/fleet", "/desk/notices", "/desk/settings/goals", "/desk/control-center", "/desk/paperwork"];
+const adminPages = ["/desk/settings", "/desk/billing", "/desk/revenue", "/desk/fleet", "/desk/notices", "/desk/settings/goals", "/desk/settings/workspace", "/desk/paperwork"];
 
 type Who = "owner" | "admin" | "limited" | "staff";
 const contexts = new Map<Who, BrowserContext>();
@@ -138,14 +138,14 @@ for (const route of adminPages) {
   });
 }
 
-test("the control center hides cards a limited admin may not use, from the page itself and not only on screen", async () => {
+test("workspace settings hide cards a limited admin may not use, from the page itself and not only on screen", async () => {
   // "Business name, phone, hours and logo" and "Schedule a price change for later" need Change business settings.
   const cards = [/Business name, phone, hours and logo/, /Schedule a price change for later/];
   for (const who of ["owner", "admin"] as const) {
-    const body = (await fetchPage(who, "/desk/control-center")).body;
+    const body = (await fetchPage(who, "/desk/settings/workspace")).body;
     for (const card of cards) expect(body, `${who} should see the card`).toMatch(card);
   }
-  const limited = (await fetchPage("limited", "/desk/control-center")).body;
+  const limited = (await fetchPage("limited", "/desk/settings/workspace")).body;
   for (const card of cards) expect(limited, "limited admin payload").not.toMatch(card);
 });
 
@@ -155,7 +155,7 @@ for (const width of [360, 1280]) {
       const page = await contexts.get(who)!.newPage();
       try {
         await page.setViewportSize({ width, height: 900 });
-        await page.goto(who === "limited" ? "/desk/control-center" : "/desk/jobs/ci-security-job");
+        await page.goto(who === "limited" ? "/desk/settings/workspace" : "/desk/jobs/ci-security-job");
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         await page.keyboard.press("Tab");
         expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);

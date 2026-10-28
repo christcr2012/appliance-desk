@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { Sheet, useOptimisticAction } from "@/components/kit";
 import { businessDateFromKey, formatShortDate } from "@/lib/business-date";
+import { ApprovalsSheet, type ApprovalCardData } from "./approvals-sheet";
 
 export type InboxEntry = { key: string; todoKey?: string; title: string; node: ReactNode };
 type ServerAction = (fd: FormData) => Promise<unknown>;
@@ -19,6 +20,8 @@ export function TodayInbox({
   resumeAction,
   dates,
   initialSnoozeKey,
+  approvals,
+  taskActions,
   children,
 }: {
   entries: InboxEntry[];
@@ -27,6 +30,10 @@ export function TodayInbox({
   /** YYYY-MM-DD in Colorado: earliest (tomorrow), latest (90 days) and the starting value (3 business days). */
   dates: { min: string; max: string; initial: string };
   initialSnoozeKey?: string;
+  /** AR-2 slice 2: the OWNER-only approvals Sheet, present only when the inbox holds the approvals item. */
+  approvals?: { requests: ApprovalCardData[]; decideAction: ServerAction; initialOpen?: boolean };
+  /** AR-2 slice 3: task cards' Done runs optimistically (AR-11 treatment) with Undo. */
+  taskActions?: { complete: ServerAction; reopen: ServerAction };
   children?: ReactNode;
 }) {
   const router = useRouter();
@@ -37,8 +44,17 @@ export function TodayInbox({
     (current, key) => [...current, key],
     snoozeAction ?? (async () => { throw new Error("Snooze is unavailable."); }),
   );
+  // AR-2 slice 3: a task's Done hides its card the moment it is tapped
+  // (AR-11's optimistic treatment for a reversible, non-money action); a
+  // failure brings the card back and the action's own message is the toast.
+  const { items: doneHidden, run: runTaskDone } = useOptimisticAction<string, string>(
+    [],
+    (current, key) => [...current, key],
+    taskActions?.complete ?? (async () => { throw new Error("Completing a task is unavailable."); }),
+  );
   const known = (key: string | undefined) => (key ? entries.find((entry) => entry.todoKey === key) : undefined);
   const [snoozing, setSnoozing] = useState<InboxEntry | null>(() => (snoozeAction ? (known(initialSnoozeKey) ?? null) : null));
+  const [approvalsOpen, setApprovalsOpen] = useState<boolean>(() => approvals?.initialOpen ?? false);
 
   function clearSnoozeParam() {
     const params = new URLSearchParams(search);
@@ -48,16 +64,30 @@ export function TodayInbox({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
+  function clearApprovalsParam() {
+    const params = new URLSearchParams(search);
+    if (!params.has("approvals")) return;
+    params.delete("approvals");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
   function onClickCapture(event: MouseEvent<HTMLDivElement>) {
-    if (!snoozeAction) return;
     const anchor = (event.target as Element | null)?.closest?.("a[href]");
     if (!anchor) return;
-    let key: string | null = null;
+    let params: URLSearchParams | null = null;
     try {
-      key = new URL(anchor.getAttribute("href") ?? "", window.location.href).searchParams.get("snooze");
+      params = new URL(anchor.getAttribute("href") ?? "", window.location.href).searchParams;
     } catch {
       return;
     }
+    if (approvals && params.get("approvals") === "1") {
+      event.preventDefault();
+      setApprovalsOpen(true);
+      return;
+    }
+    if (!snoozeAction) return;
+    const key = params.get("snooze");
     const entry = known(key ?? undefined);
     if (!entry) return;
     event.preventDefault();
@@ -91,9 +121,34 @@ export function TodayInbox({
     });
   }
 
-  const shown = entries.filter((entry) => !hidden.includes(entry.key));
+  function onSubmitCapture(event: FormEvent<HTMLDivElement>) {
+    if (!taskActions) return;
+    const form = event.target as HTMLFormElement;
+    const data = new FormData(form);
+    const taskId = data.get("taskId");
+    const version = Number(data.get("version"));
+    if (typeof taskId !== "string" || !taskId || !Number.isSafeInteger(version)) return;
+    const key = `task-${taskId}`;
+    if (!entries.some((entry) => entry.key === key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    runTaskDone(key, data, {
+      success: "Task done",
+      undo: async () => {
+        const back = new FormData();
+        back.set("taskId", taskId);
+        // Completing moved the version by exactly one; the reopen presents it.
+        back.set("version", String(version + 1));
+        const result = await taskActions.reopen(back);
+        router.refresh();
+        return result;
+      },
+    });
+  }
+
+  const shown = entries.filter((entry) => !hidden.includes(entry.key) && !doneHidden.includes(entry.key));
   return (
-    <div onClickCapture={onClickCapture}>
+    <div onClickCapture={onClickCapture} onSubmitCapture={onSubmitCapture}>
       <ul className="flex flex-col gap-2.5" aria-label="To do">
         {shown.map((entry) => (
           <li key={entry.key}>{entry.node}</li>
@@ -109,6 +164,17 @@ export function TodayInbox({
             clearSnoozeParam();
           }}
           onSubmit={submit}
+        />
+      ) : null}
+      {approvals ? (
+        <ApprovalsSheet
+          requests={approvals.requests}
+          decideAction={approvals.decideAction}
+          open={approvalsOpen}
+          onOpenChange={(next) => {
+            setApprovalsOpen(next);
+            if (!next) clearApprovalsParam();
+          }}
         />
       ) : null}
     </div>

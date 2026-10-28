@@ -15,6 +15,8 @@ import {
 } from "@/domains/agreements/early-return";
 import { choiceFromFields, fieldsFromChoice, type EarlyReturnFields } from "@/domains/agreements/early-return-form";
 import { earlyReturnSettingsFrom } from "@/domains/settings/early-return";
+import { getRentalEndReasons } from "@/domains/agreements/end-reasons";
+import { EndReasonFields } from "../end-reason-fields";
 
 export const metadata = { title: "Equipment returned early" };
 
@@ -52,8 +54,15 @@ export default async function EarlyReturnPage({
   const error = first(query.error);
   const done = first(query.done) === "1";
 
+  const fromEnd = first(query.from) === "end";
   const header = (
     <>
+      {fromEnd && (
+        <p className="mb-3 rounded-lg border border-line bg-subtle p-3 text-sm" role="status">
+          Ending {name}&apos;s rental — step 2 of 3{" "}
+          <Link href={`/desk/agreements/${id}`} className="font-medium underline">&larr; Back to the rental</Link>
+        </p>
+      )}
       <Link href={`/desk/agreements/${id}`} className="text-sm text-ink-soft hover:underline">
         &larr; Back to the agreement
       </Link>
@@ -217,7 +226,8 @@ export default async function EarlyReturnPage({
             <input type="hidden" name="feeDollars" value={f.feeDollars} />
             <input type="hidden" name="feeReason" value={f.feeReason} />
             <input type="hidden" name="preview" value={serializePreview(preview)} />
-            <button type="submit" className="min-h-11 rounded-lg bg-action px-5 py-2 text-sm font-semibold text-on-action">
+            <EndReasonFields reasons={await getRentalEndReasons()} />
+            <button type="submit" className="mt-4 min-h-11 rounded-lg bg-action px-5 py-2 text-sm font-semibold text-on-action">
               Confirm these choices
             </button>
           </form>

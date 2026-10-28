@@ -18,9 +18,9 @@ export const BUILT_IN_VIEWS: Record<ListKey, BuiltInView[]> = {
     { id:"property-managers", label:"Property managers", params:{kind:"pm"}, feature:"propertyManagers" },
   ],
   rentals: [
-    { id:"starting-this-week", label:"Starting this week", params:{starts:"this-week"}, pending:true },
-    { id:"ending-this-month", label:"Ending this month", params:{ends:"this-month"}, pending:true },
-    { id:"waiting-signature", label:"Waiting for signature", params:{status:"awaiting-signature"}, pending:true },
+    { id:"starting-this-week", label:"Starting this week", params:{starts:"this-week"} },
+    { id:"ending-this-month", label:"Ending this month", params:{ends:"this-month"} },
+    { id:"waiting-signature", label:"Waiting for signature", params:{status:"signing"} },
   ],
   inventory: [
     { id:"ready-to-rent", label:"Ready to rent", params:{status:"AVAILABLE"} },
