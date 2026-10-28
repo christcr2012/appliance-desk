@@ -1,3 +1,14 @@
+## October 28 — MCP-4 merge reconciliation (PR #704)
+
+GitHub reported a real STATUS-only conflict while ci and review-gate were green. Retained current main's Lane 1/Lane 7 updates alongside the existing MCP-4 diagnosis; the final integration commit needs exact-head checks before merge.
+
+## October 27 — MCP-4 read-only assistant diagnostics (PR #704; merge conflict resolved locally)
+
+Nine read-only diagnostic tools, scoped permission checks and pagination passed focused tests.
+Previous exact-head GitHub `ci` and `review-gate` were green. GitHub later reported a real
+`docs/STATUS.md` conflict with newer main; this integration reconciles both status notes.
+Re-run exact-head checks and review before squash merging; MCP-5 execution is still unfinished.
+
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
 AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
