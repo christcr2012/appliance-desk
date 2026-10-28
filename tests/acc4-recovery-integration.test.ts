@@ -144,6 +144,6 @@ describe.skipIf(!enabled)("Sign-in recovery on real Postgres", () => {
     await expect(resetTeamSignIn(ids.owner, ids.admin)).rejects.toThrow("Restore");
     await prisma.user.update({ where: { id: ids.admin }, data: { archivedAt: null } });
     const secondOwner = await prisma.user.create({ data: { id: `acc4-o2-${tag}`, name: "O2", email: email("o2"), role: "OWNER", emailVerified: true } });
-    await expect(resetTeamSignIn(ids.owner, secondOwner.id)).rejects.toThrow("staff and admin");
+    await expect(resetTeamSignIn(ids.owner, secondOwner.id)).rejects.toThrow("staff, admin and accountant");
   });
 });
