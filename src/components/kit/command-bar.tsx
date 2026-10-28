@@ -138,7 +138,7 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
                   else if (query.trim().length >= 2) window.open("/desk/search?q=" + encodeURIComponent(query.trim()), "_blank", "noopener,noreferrer");
                 }}
                 aria-label="Search the desk"
-                className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none" />
+                className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none focus-visible:rounded-field focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />
               <Dialog.Close aria-label="Close search" className="min-h-11 min-w-11 rounded-field border border-line">Esc</Dialog.Close>
             </div>
             <Command.List className="min-h-0 flex-1 overflow-y-auto px-2 pb-4" aria-label="Search results">
