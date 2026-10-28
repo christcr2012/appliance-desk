@@ -24,6 +24,7 @@ type FormValues = ProfileExtrasForm & {
   deliveryFeeDollars: number;
   installationFeeDollars: number;
   removalFeeDollars: number;
+  haulAwayFeeDollars: number;
   damageWaiverEnabled: boolean;
   depositEnabled: boolean;
   lateFeeGraceDays: number;
@@ -246,6 +247,10 @@ export function SettingsForm({
           <DollarInput
             label="Pickup/removal fee"
             {...register("removalFeeDollars", { valueAsNumber: true })}
+          />
+          <DollarInput
+            label="Haul-away fee (for taking away the customer's old appliance; 0 = not offered)"
+            {...register("haulAwayFeeDollars", { valueAsNumber: true })}
           />
           <Checkbox
             label="Require a refundable security deposit"

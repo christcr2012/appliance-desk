@@ -163,6 +163,8 @@ export const BACKUP_MODEL_POLICY = {
   ComplianceFiling: "complianceFiling",
   W9Request: "w9Request",
   TaxYearFacts: "taxYearFacts",
+  // FEETAX-1: the per-order service choices are tax evidence (they decide how fee lines are taxed).
+  OrderServiceChoice: "orderServiceChoice",
   PayrollImport: "payrollImport",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",

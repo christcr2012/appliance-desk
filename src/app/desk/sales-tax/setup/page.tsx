@@ -8,12 +8,13 @@ import { TAXES_SETUP_LINKS } from "@/lib/taxes-tabs";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { businessDateKey } from "@/lib/business-date";
 import { addRdfRateAction, saveTaxAccountAction, saveTaxSettingsAction, lookUpBusinessTaxAreasAction, confirmBusinessTaxAreasAction } from "./actions";
+import { greeleyFeeEmailDraft } from "@/domains/tax/greeley-email";
 const css = "w-full rounded border border-input bg-background p-2 text-sm";
 const field = "grid gap-1 text-sm font-medium";
 export default async function TaxSetupPage() {
   const session = await requireRole("OWNER", "ADMIN");
   const owner = session.user.role === "OWNER";
-  const [settings, accounts, rates, rdfThresholdCents, sources, businessLocation, knownAreas, rdfLock] = await Promise.all([
+  const [settings, accounts, rates, rdfThresholdCents, sources, businessLocation, knownAreas, rdfLock, complianceProfile] = await Promise.all([
     prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{
       updatedAt:true,shortTermLeaseElection:true,shortTermLeaseElectionNote:true,
       rdfHandling:true,rdfCpaConfirmedOn:true,
@@ -41,6 +42,8 @@ export default async function TaxSetupPage() {
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       select: { createdAt: true },
     }),
+    // FEETAX-1: the legal business name signs the drafted Greeley email.
+    prisma.complianceProfile.findFirst({ select: { businessLegalName: true } }),
   ]);
   const address = settings.businessTaxAddress && typeof settings.businessTaxAddress==="object" &&
     !Array.isArray(settings.businessTaxAddress) ? settings.businessTaxAddress as Record<string,unknown> : {};
@@ -132,6 +135,17 @@ export default async function TaxSetupPage() {
           {!knownAreas.length && <p className="text-sm">No areas on record yet. Use the lookup above first.</p>}
         </fieldset>
       </TaxActionForm>
+    </section>
+    <section id="greeley-email" className="rounded border border-border p-4 space-y-3">
+      <h2 className="font-semibold">Email Greeley — ask how rentals and fees are taxed</h2>
+      <p className="text-sm text-muted-foreground">Greeley collects its own tax and its answers for rentals and service fees are not published, so the app taxes them until Greeley confirms in writing. This draft asks the three open questions. The app never sends it — the button opens the draft in your own email app so their reply comes to you.</p>
+      {(() => { const draft = greeleyFeeEmailDraft(complianceProfile?.businessLegalName ?? ""); return <>
+        <p className="text-sm">To: {draft.to}</p>
+        <p className="text-sm">Subject: {draft.subject}</p>
+        <pre className="whitespace-pre-wrap rounded border border-border bg-card p-3 text-sm">{draft.body}</pre>
+        <p><a className="font-semibold underline" href={draft.mailto}>Open the draft in your email app</a></p>
+      </>; })()}
+      <p className="text-sm text-muted-foreground">When the written reply arrives, record the answers on Taxes › Rules — the questions FEETAX-GREELEY-LEASE, FEETAX-GREELEY-SERVICE and FEETAX-GREELEY-OTHER then show as confirmed.</p>
     </section>
     <section id="fee-rates" className="space-y-3">
       <h2 className="font-semibold">Recorded fee rates</h2>

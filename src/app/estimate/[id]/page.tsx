@@ -23,6 +23,7 @@ import { estimateCopy } from "@/domains/language/estimate-copy";
 import { EstimateDeliveryChoice } from "./delivery-choice";
 import { currentLocations, isPickupOnly } from "@/domains/delivery/snapshot";
 import { customerDeliveryChargesForEstimate } from "@/domains/orders/route-evidence";
+import { serviceChoiceOfferInputsForEstimate } from "@/domains/orders/service-choice-offers";
 
 export const metadata = {
   title: "Your estimate",
@@ -74,6 +75,9 @@ export default async function PublicEstimatePage({
   // ZONE-1: the delivery price shown per address is the one approval and signing require (route exceptions included).
   const deliveryCharges = await customerDeliveryChargesForEstimate(estimate.id,
     currentLocations(estimate.deliveryZoneSnapshot, estimate.lineItems.map((line) => line.serviceAddressId)));
+  // FEETAX-1 (S4): the service-choice offers the approval screen shows —
+  // prices from the settings and the frozen delivery charges.
+  const serviceChoiceInputs = await serviceChoiceOfferInputsForEstimate(estimate.id);
   const customerName = estimate.customer
     ? (estimate.customer.user.name ?? estimate.customer.user.email)
     : estimate.lead?.contactName;
@@ -210,6 +214,7 @@ export default async function PublicEstimatePage({
             expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint}
             deliveryOptions={pickupOnly ? [] : readOfferedSlots(estimate.deliveryOffer)}
             offerVersion={estimate.deliveryOfferVersion}
+            serviceChoiceInputs={serviceChoiceInputs}
             phonePrefill={publicPhoneOrderPrefill(estimate)} />
         )}
       </div>
