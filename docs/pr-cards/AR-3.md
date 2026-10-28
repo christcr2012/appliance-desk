@@ -41,4 +41,12 @@ The "Being confirmed" tabs on Bills and Payments (BILL-1 adds them); Expenses, B
 Taxes screens (AR-7); statement page redesign (stays as is, linked from ⋯); bulk actions.
 
 ## Progress
-Not started.
+Started 2026-10-28 by Lane 4 on branch `ai/vivienne/ar-3` (baseline main `bda3cf41`, AR-1 merged via
+PR #720). Step 0a done: execution packet `docs/pr-cards/execution/AR-3.json` created and registered in
+the work index; drift check found everything the build spec names present on current main — no card
+corrections needed. Built Steps 0–6 the same day: job-role routes, the read-only money data files,
+the Money overview and Payments pages, the in-place payment sheets, the rebuilt bill record, and the
+browser spec. Opened as PR #725 on 2026-10-28, closed unmerged the same day and replaced by PR #730 with the identical tree (git-data pushes carry no merge ancestry, so #725 computed as permanently conflicted after main advanced; the replacement branch was recreated from current main per the AUD-E playbook). Head tree verified file by file against the local
+tree). Unit (20) and database (10) tests, typecheck and lint pass locally; the browser suite's
+re-run on the final head runs in CI — the shared box repeatedly killed the local production build
+while other lanes were building. Next: CI, review, merge, close-out.

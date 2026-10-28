@@ -55,7 +55,9 @@ describe("AR-1 five areas (W-8 backward-compatible tab helpers)", () => {
     const areas = visibleAreas("OWNER", null);
     expect(activeArea("/desk/billing/held-payments", new URLSearchParams(), areas)).toEqual({ area: "money", tab: "payments" });
     expect(activeArea("/desk/billing/customer/x", new URLSearchParams(), areas)).toEqual({ area: "money", tab: "bills" });
-    expect(activeArea("/desk/billing", new URLSearchParams("view=waiting"), areas)).toEqual({ area: "money", tab: "payments" });
+    // AR-3: /desk/billing?view=waiting no longer renders — it redirects to /desk/payments, where the
+    // Payments tab is current by href. The pre-redirect URL itself resolves to the Bills tab's page.
+    expect(activeArea("/desk/billing", new URLSearchParams("view=waiting"), areas)).toEqual({ area: "money", tab: "bills" });
     expect(activeSectionTab("/desk/inventory/x", deskSectionTabs("equipment", "OWNER"))).toBe("/desk/inventory");
     expect(activeSectionTab("/desk/today", deskSectionTabs("money", "OWNER"))).toBeNull();
     const groups = deskNavigation("OWNER");

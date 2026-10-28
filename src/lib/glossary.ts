@@ -46,5 +46,9 @@ export const GLOSSARY = {
   "signing-tax-review": { title: "Setup tax working figures", description: "Tax candidates calculated for owner review only. These are not signed, payable or customer-approved totals, and nothing here authorizes a collection." },
   "large-order-down-payment": { title: "Large-order down payment", description: "For orders of at least five machines, or business and property-manager clients, the proposed signing payment includes the first month of each rental. That amount must later be credited to the first invoice exactly once." },
   "setup-fee-tax": { title: "Setup fee tax treatment", description: "Whether Colorado taxes the separately stated administrative setup fee needs tax-adviser confirmation. Undecided treatment blocks collection in the proposed signing-charge plan." },
+  // AR-3 Money area (Overview and Payments).
+  "expected-30": { title: "Coming in 30 days", description: "Rent from active rentals whose next bill falls in the next 30 days. Tax is added on the bill." },
+  "held-payment": { title: "Needs a decision", description: "A card payment arrived after the bill was given up or cancelled. Decide whether to keep it as credit or send it back." },
+  "held-conflict": { title: "Check this", description: "Refunded in Stripe after it was kept as credit and partly used. Look at it with your bookkeeper." },
 } as const;
 export type GlossaryKey = keyof typeof GLOSSARY;

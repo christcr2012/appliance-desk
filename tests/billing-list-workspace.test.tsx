@@ -84,8 +84,9 @@ it("past due: tabs with counts, summary, pay buttons and the customer-scoped bil
   expect(tabs.getByRole("link", { name: "Open 9" })).toBeVisible();
   expect(tabs.queryByRole("link", { name: /Drafts/ })).toBeNull();
   expect(screen.getAllByText("2 bills · $140.00 still owed").length).toBeGreaterThan(0);
-  const take = screen.getAllByRole("link", { name: "Take payment" });
-  expect(take[0]).toHaveAttribute("href", "/desk/billing/customer/c1/invoice/i1#take-payment");
+  // AR-3: the pay actions are buttons that open the payment sheet in place, not links to the bill record.
+  const take = screen.getAllByRole("button", { name: "Take payment" });
+  expect(take.length).toBeGreaterThan(0);
   expect(screen.getAllByRole("link", { name: "Maria Lopez" })[0]).toHaveAttribute("href", "/desk/billing/customer/c1/invoice/i1");
   expect(screen.queryByText(/invoice/i)).toBeNull();
 });
@@ -122,6 +123,6 @@ it("?open= renders the side panel from the bill detail", async () => {
   const panel = within(screen.getByRole("complementary", { name: "Bill #1042" }));
   expect(panel.getByText("Still owed")).toBeVisible();
   expect(panel.getByText("Payment failed")).toBeVisible();
-  expect(panel.getByRole("link", { name: "Send reminder" })).toHaveAttribute("href", "/desk/billing/customer/c1/invoice/i1#take-payment");
+  expect(panel.getByRole("button", { name: "Send reminder" })).toBeVisible();
   expect(panel.getByRole("link", { name: "Open full bill →" })).toBeVisible();
 });

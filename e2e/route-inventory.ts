@@ -341,6 +341,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/purchase-orders", role: "OWNER", fixture: "/desk/purchase-orders" },
   { path: "/desk/reports", role: "OWNER", fixture: "/desk/reports" },
   { path: "/desk/revenue", role: "OWNER", fixture: "/desk/revenue" },
+  { path: "/desk/money", role: "OWNER", fixture: "/desk/money" },
+  { path: "/desk/payments", role: "OWNER", fixture: "/desk/payments" },
   { path: "/desk/books", role: "OWNER", fixture: "/desk/books" },
   { path: "/desk/books/cash", role: "OWNER", fixture: "/desk/books/cash" },
   { path: "/desk/books/cash/checks", role: "OWNER", fixture: "/desk/books/cash/checks" },

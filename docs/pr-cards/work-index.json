@@ -4436,7 +4436,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN REVIEW — PR #730 (Lane 4, 2026-10-28; replaces #725, same tree)",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -6121,6 +6121,11 @@
     {
       "id": "ACCT-1",
       "path": "docs/pr-cards/execution/ACCT-1.json"
+    }
+  ,
+    {
+      "id": "AR-3",
+      "path": "docs/pr-cards/execution/AR-3.json"
     }
   ]
 }
