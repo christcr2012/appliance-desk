@@ -125,7 +125,7 @@ export async function prepareAgentAction(
         throw new Error("DATABASE_BACKUP_NOT_VERIFIED");
       targetRef = artifact.id;
       version = { id: artifact.id, kind: artifact.kind, state: artifact.state, sha256: artifact.sha256,
-        verifiedAt: artifact.verifiedAt?.toISOString() ?? null, prunedAt: artifact.prunedAt?.toISOString() ?? null };
+        verifiedAt: artifact.verifiedAt?.toISOString() ?? null, prunedAt: null };
       preview = { summary: "Retry the photo inventory for a verified backup", changes: [
         { label: "Photo inventory", now: "Needs checking", after: "Copy missing private photos and check the inventory" },
       ], costNote: "Uses existing private photo and backup storage only." };
