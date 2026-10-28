@@ -80,8 +80,8 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
 
   const local = commandLocalChoices(query, role, screens, areas, profile, shownSet);
   const guidesShown = query.trim().length >= 2 ?
-    searchHelpGuides(guides, query).slice(0, 3).map(g => ({
-      group: "Help" as const, label: g.question, href: g.href, id: g.id,
+    searchHelpGuides(guides, query).slice(0, 3).map((g): CommandChoice => ({
+      group: "Help", label: g.question, href: g.href, id: g.id,
     })) : [];
   const entries = [
     ...local,
