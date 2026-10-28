@@ -32,12 +32,31 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CommandChoice[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [recent, setRecent] = useState<CommandChoice[]>([]);
+  // Search results are tagged with the query that produced them; the render
+  // derives what is shown (and whether the bar is busy) from that tag.
+  const [results, setResults] = useState<{ q: string; items: CommandChoice[] }>({ q: "", items: [] });
+  const [storedRecent, setStoredRecent] = useState<unknown>(() => {
+    try { return JSON.parse(localStorage.getItem("desk.recent") ?? "[]") as unknown; } catch { return []; }
+  });
   const [help, setHelp] = useState<HelpGuide | null>(null);
   const request = useRef(0);
   const shownSet = useMemo(() => new Set(shown), [shown]);
+  const recent = useMemo(() => {
+    const validPrefixes = new Set(
+      SAFE_RECENT.filter(s => areas.some(a => a.tabs.some(t => t.href.startsWith("/desk/" + s))))
+    );
+    const allow = new Set([...validPrefixes].map(s => "/desk/" + s));
+    return recentCommandChoices(storedRecent, allow);
+  }, [storedRecent, areas]);
+  // Closing the bar clears the search (React's adjust-state-during-render pattern).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (!open) { setQuery(""); setResults({ q: "", items: [] }); }
+  }
+  const trimmed = query.trim();
+  const shownResults = open && trimmed.length >= 2 && results.q === trimmed ? results.items : [];
+  const busy = open && trimmed.length >= 2 && results.q !== trimmed;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -53,27 +72,15 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
     };
   }, []);
   useEffect(() => {
-    if (!open) { setQuery(""); setResults([]); return; }
-    try {
-      const validPrefixes = new Set(
-        SAFE_RECENT.filter(s => areas.some(a => a.tabs.some(t => t.href.startsWith("/desk/" + s))))
-      );
-      const stored = JSON.parse(localStorage.getItem("desk.recent") ?? "[]") as unknown;
-      const allow = new Set([...validPrefixes].map(s => "/desk/" + s));
-      setRecent(recentCommandChoices(stored, allow));
-    } catch { setRecent([]); }
-  }, [open, areas]);
-  useEffect(() => {
     const q = query.trim();
+    if (!open || q.length < 2) return;
     const seq = ++request.current;
-    if (!open || q.length < 2) { setResults([]); setBusy(false); return; }
-    setBusy(true);
     const timer = setTimeout(() => {
       commandSearchAction(q).then(items => {
-        if (seq === request.current) setResults(items);
+        if (seq === request.current) setResults({ q, items });
       }).catch(() => {
-        if (seq === request.current) setResults([]);
-      }).finally(() => { if (seq === request.current) setBusy(false); });
+        if (seq === request.current) setResults({ q, items: [] });
+      });
     }, 150);
     return () => clearTimeout(timer);
   }, [query, open]);
@@ -85,7 +92,7 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
     })) : [];
   const entries = [
     ...local,
-    ...results,
+    ...shownResults,
     ...guidesShown,
     ...(query ? [] : recent),
   ];
@@ -96,7 +103,9 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
       if (guide) setHelp(guide);
       return;
     }
-    keepRecent(item); setOpen(false);
+    keepRecent(item);
+    try { setStoredRecent(JSON.parse(localStorage.getItem("desk.recent") ?? "[]") as unknown); } catch { /* private storage */ }
+    setOpen(false);
     if (newTab) window.open(item.href, "_blank", "noopener,noreferrer");
     else router.push(item.href);
   }

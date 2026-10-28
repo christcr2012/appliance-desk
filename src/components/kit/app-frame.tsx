@@ -116,7 +116,7 @@ export function AppFrame({ areas, profileLinks, user, jobRoleScreens, shown, hel
   const active = activeArea(pathname, new URLSearchParams(search?.toString() ?? ""), areas)?.area ?? null;
   const collapsed = useSyncExternalStore(subscribeSidebar, sidebarSnapshot, () => false);
   return <div className={`desk-app min-h-screen w-full min-w-0 max-w-full bg-canvas print:pl-0 ${collapsed ? "lg:pl-[72px]" : "lg:pl-[248px]"}`}>
-    <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-field focus:bg-primary focus:p-3 focus:text-on-primary">
+    <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-field focus:bg-primary focus:p-3 focus:text-on-primary">
       Skip to content
     </a>
     <Sidebar areas={areas} active={active} profileLinks={profileLinks} user={user} collapsed={collapsed}
@@ -126,7 +126,7 @@ export function AppFrame({ areas, profileLinks, user, jobRoleScreens, shown, hel
       <OfflineBar />
       <TopBar areas={areas} active={active} profileLinks={profileLinks} user={user}
         jobRoleScreens={jobRoleScreens} shown={shown} helpGuides={helpGuides} />
-      <main id="main" tabIndex={-1}
+      <main id="main-content" tabIndex={-1}
         className="mx-auto min-w-0 max-w-screen-2xl overscroll-y-contain p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 lg:p-8 lg:pb-8 print:max-w-none print:p-0">
         <ViewTransition key={pathname.split("/")[2] ?? "desk"} default="none"
           enter="desk-area-enter" exit="desk-area-exit">

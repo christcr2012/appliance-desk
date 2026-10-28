@@ -9,9 +9,9 @@ const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] as const;
 /**
  * Wait for the *actual* breakpoint layout after a resize, before measuring anything. A 1440 → 360
  * resize can report innerWidth=360 before Chromium has recalculated Tailwind's desktop sidebar
- * padding (256px), especially during the second/dark pass under parallel CI load — the mobile
+ * padding (248px), especially during the second/dark pass under parallel CI load — the mobile
  * header's Search link was once measured 49px past a 360px viewport for exactly this. Waiting on
- * the shell's computed padding (256 on desktop, 0 on phone) catches the stale layout; the two
+ * the shell's computed padding (248 on desktop, 0 on phone) catches the stale layout; the two
  * frames after it let the browser finish laying out at the new width. A genuinely overflowing
  * phone page still fails the overflow check below.
  */
@@ -21,7 +21,7 @@ export async function waitForBreakpointLayout(page: Page): Promise<void> {
     if (!shell) return true;
     const padding = Number.parseFloat(getComputedStyle(shell).paddingLeft);
     const desktop = window.innerWidth >= 1024;
-    return Number.isFinite(padding) && Math.abs(padding - (desktop ? 256 : 0)) < 1;
+    return Number.isFinite(padding) && Math.abs(padding - (desktop ? 248 : 0)) < 1;
   }, undefined, { timeout: 5000 });
   await page.evaluate(() => new Promise<void>((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));

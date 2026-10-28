@@ -35,7 +35,7 @@ test.describe("AR-1 five area navigation", () => {
     const skip = page.getByRole("link", { name: "Skip to content" });
     await skip.focus();
     await page.keyboard.press("Enter");
-    await expect(page.locator("#main")).toBeFocused();
+    await expect(page.locator("#main-content")).toBeFocused();
   });
 
   test("area tabs, keyboard command and retired landing-page redirects", async ({ page }) => {
@@ -43,8 +43,9 @@ test.describe("AR-1 five area navigation", () => {
     await page.goto("/desk/today");
     await page.getByRole("navigation", { name: "Areas" }).getByRole("link", { name: "Customers" }).click();
     const tabs = page.getByRole("navigation", { name: "Customers sections" });
-    await expect(tabs.getByRole("link", { name: "Customers" })).toHaveAttribute("aria-current", "page");
-    await expect(tabs.getByRole("link", { name: "Leads" })).toBeVisible();
+    // Entering an area lands on its first visible tab — Leads for the owner.
+    await expect(tabs.getByRole("link", { name: "Leads" })).toHaveAttribute("aria-current", "page");
+    await expect(tabs.getByRole("link", { name: "Customers" })).toBeVisible();
     await page.keyboard.press("Control+k");
     const command = page.getByRole("dialog", { name: "Search or jump to anything" });
     await expect(command).toBeVisible();
