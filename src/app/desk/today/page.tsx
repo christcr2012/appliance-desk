@@ -537,10 +537,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
             Snoozed ({snoozed.length})
           </Link>
         ) : null}
+        {canManage ? <Link href="/desk/settings/workspace#my-workspace" className="inline-flex min-h-11 items-center self-start text-[15px] font-bold text-primary hover:underline">Manage my workspace</Link> : null}
         {hiddenNoteCount > 0 ? (
           <p className="text-sm text-ink-soft">
             {hiddenNoteCount} optional note{hiddenNoteCount === 1 ? " is" : "s are"} hidden.{" "}
-            <Link href="/desk/control-center#my-workspace" className="font-semibold text-primary underline">
+            <Link href="/desk/settings/workspace#my-workspace" className="font-semibold text-primary underline">
               Show again
             </Link>
           </p>

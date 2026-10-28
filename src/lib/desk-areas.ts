@@ -109,6 +109,12 @@ export function activeArea(pathname: string, search: URLSearchParams, areas: Are
 }
 
 export function visibleProfileLinks(role: string | undefined, screens: readonly string[] | null): ProfileLink[] {
-  if (role === "ACCOUNTANT") return PROFILE_LINKS.filter(l => l.href === "/desk/account");
+  if (role === "ACCOUNTANT") return [
+    { href: "/desk/account", label: "Your account" },
+    { href: "/desk/settings/decisions", label: "Decisions & reviews" },
+    { href: "/desk/compliance", label: "Compliance" },
+    { href: "/desk/reports", label: "Money reports" },
+    { href: "/desk/paperwork", label: "Business paperwork" },
+  ];
   return PROFILE_LINKS.filter(link => roleAllows(role, link.restriction) && jobRoleAllowsPath(screens, link.href));
 }

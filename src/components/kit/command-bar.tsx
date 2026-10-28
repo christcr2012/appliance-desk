@@ -119,6 +119,16 @@ export function CommandBar({ role, screens, areas, profile, guides, shown }: {
               <Icon name="search" />
               <Command.Input autoFocus value={query} onValueChange={setQuery}
                 placeholder="Search customers, appliances, bills… or type what you want to do"
+                onKeyDown={event => {
+                  if (event.key !== "Enter" || (!event.ctrlKey && !event.metaKey)) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const selected = document.querySelector<HTMLElement>('[cmdk-item][data-selected="true"]');
+                  const href = selected?.getAttribute("data-command-href");
+                  const found = entries.find(item => item.href === href);
+                  if (found) pick(found, true);
+                  else if (query.trim().length >= 2) window.open("/desk/search?q=" + encodeURIComponent(query.trim()), "_blank", "noopener,noreferrer");
+                }}
                 aria-label="Search the desk"
                 className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none" />
               <Dialog.Close aria-label="Close search" className="min-h-11 min-w-11 rounded-field border border-line">Esc</Dialog.Close>

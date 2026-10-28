@@ -32,7 +32,9 @@ describe("AR-1 five desk areas", () => {
     expect(visibleAreas("CUSTOMER", null, all)).toEqual([]);
     expect(visibleAreas(undefined, null, all)).toEqual([]);
     expect(visibleProfileLinks("STAFF", null).map(link => link.href)).not.toContain("/desk/settings");
-    expect(visibleProfileLinks("ACCOUNTANT", null).map(link => link.href)).toEqual(["/desk/account"]);
+    expect(visibleProfileLinks("ACCOUNTANT", null).map(link => link.href)).toEqual([
+      "/desk/account", "/desk/settings/decisions", "/desk/compliance", "/desk/reports", "/desk/paperwork",
+    ]);
   });
 
   it("always narrows by job-role screens and feature navigation switches", () => {

@@ -51,6 +51,12 @@ test.describe("AR-1 five area navigation", () => {
     const input = command.getByRole("combobox", { name: "Search the desk" });
     await input.fill("estimate");
     await expect(command.getByText("New quote")).toBeVisible();
+    await input.fill("customer");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Control+Enter");
+    await expect(command).not.toBeVisible();
+    await page.keyboard.press("Control+k");
+    await expect(command).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(command).not.toBeVisible();
     await page.goto("/desk/more");
