@@ -110,7 +110,7 @@ export function SettingsLayout({ attention, children }: { attention: SettingsSec
     <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
       <div className="lg:sticky lg:top-4 lg:self-start">
         <div className="hidden lg:block">
-          <ScreenHeader title="Settings" />
+          <p className="pb-4 text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink">Settings</p>
           <label className="mb-3 block">
             <span className="sr-only">Search settings</span>
             <input
@@ -131,11 +131,7 @@ export function SettingsLayout({ attention, children }: { attention: SettingsSec
         ) : null}
       </div>
       <div className="max-w-[760px]">
-        {current ? (
-          <div className="lg:hidden">
-            <ScreenHeader title={SETTINGS_SECTIONS_V2.find((s) => s.id === current)!.label} />
-          </div>
-        ) : null}
+        <ScreenHeader title={current ? SETTINGS_SECTIONS_V2.find((s) => s.id === current)!.label : "Settings"} />
         {children}
       </div>
     </div>
@@ -147,7 +143,6 @@ export function SettingsIndex({ attention, role }: { attention: SettingsSectionI
   const [query, setQuery] = useState("");
   return (
     <div>
-      <ScreenHeader title="Settings" />
       <label className="mb-3 block lg:hidden">
         <span className="sr-only">Search settings</span>
         <input
