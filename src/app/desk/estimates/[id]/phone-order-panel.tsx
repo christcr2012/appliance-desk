@@ -5,13 +5,18 @@ import {recordPhoneOrderPreferenceAction,sendPhoneOrderToFinishAction,
   preparePhoneLeadCustomerAction}
   from "./phone-order-actions";
 import type {DeliverySelection} from "@/domains/orders/delivery";
+import {computeServiceChoiceOffers,defaultServiceChoice,serviceCategoriesForOrder,
+  type ServiceChoiceService,type ServiceChoiceValue} from "@/domains/orders/service-choices";
+import type {ServiceChoiceOfferInputs} from "@/domains/orders/service-choice-offers";
+import {formatMoney} from "@/lib/money-ui";
 
 type Slot={id:string;date:string;window:"AM"|"PM"};
 export function PhoneOrderPanel({id,status,enteredBy,recipient,slots,offerVersion,
-  initial,siteReady,customerId,leadId}:{
+  initial,siteReady,customerId,leadId,serviceChoiceInputs}:{
   id:string;status:string;enteredBy:string;recipient:string|null;
   slots:Slot[];offerVersion:number;initial:DeliverySelection|null;
   siteReady:boolean;customerId:string|null;leadId:string|null;
+  serviceChoiceInputs?:ServiceChoiceOfferInputs|null;
 }) {
   const [pending,start]=useTransition();
   const [selected,setSelected]=useState(initial?.expectedOfferVersion===offerVersion &&
@@ -30,9 +35,23 @@ export function PhoneOrderPanel({id,status,enteredBy,recipient,slots,offerVersio
   const editable=["DRAFT","CHANGES_REQUESTED"].includes(state);
   // Always use the exact same customer URL that existing estimate emails use.
   const href="/estimate/"+id;
+  // FEETAX-1 (S5): the caller's service choices ride the same
+  // preference — they prefill the customer's own approval screen,
+  // where the binding record is made.
+  const [servicePicks,setServicePicks]=useState<Partial<Record<ServiceChoiceService,ServiceChoiceValue>>>(
+    ()=>Object.fromEntries((initial?.serviceChoices??[]).map(pick=>[pick.service,pick.choice])));
+  const serviceOffers=serviceChoiceInputs?computeServiceChoiceOffers({
+    ...serviceChoiceInputs,
+    categories:serviceCategoriesForOrder({
+      applianceTypeSlugs:serviceChoiceInputs.applianceTypeSlugs,dryerOutlet}),
+  }):[];
   function selection():DeliverySelection{
     return {optionId:selected,expectedOfferVersion:offerVersion,
-      questions:{dryerOutlet,washerHookups,stairs,crewNotes:notes}};
+      questions:{dryerOutlet,washerHookups,stairs,crewNotes:notes},
+      ...(serviceOffers.length?{serviceChoices:serviceOffers.map(offer=>({
+        service:offer.service,
+        choice:servicePicks[offer.service]??defaultServiceChoice(offer,!!serviceChoiceInputs?.pickupOnly),
+      }))}:{})};
   }
   return <section className="space-y-3 rounded-lg border border-line bg-surface p-4">
     <h2 className="font-semibold">Finish phone order with customer</h2>
@@ -85,6 +104,43 @@ export function PhoneOrderPanel({id,status,enteredBy,recipient,slots,offerVersio
             <textarea maxLength={1500} value={notes} onChange={e=>{setNotes(e.target.value);setHasPreference(false);}}
               className="mt-1 block w-full rounded border border-line p-2"/>
           </label>
+          {serviceOffers.length>0&&<fieldset className="space-y-2 rounded border border-line p-3">
+            <legend className="text-sm font-medium">Service choices (caller&apos;s picks — the customer confirms them)</legend>
+            {serviceOffers.map(offer=>{
+              const pick=servicePicks[offer.service]??defaultServiceChoice(offer,!!serviceChoiceInputs?.pickupOnly);
+              const name={
+                DELIVERY:"Delivery",INSTALLATION:"Installation",
+                REMOVAL:"Pickup at the end",HAUL_AWAY:"Haul away the old appliance",
+              }[offer.service];
+              const ours={
+                DELIVERY:"We deliver",INSTALLATION:"We install",
+                REMOVAL:"We pick it up at the end",HAUL_AWAY:"We haul it away",
+              }[offer.service];
+              const theirs={
+                DELIVERY:"They pick it up",INSTALLATION:"They install it themselves",
+                REMOVAL:"They return it themselves",HAUL_AWAY:"No thanks",
+              }[offer.service];
+              return <div key={offer.service} className="space-y-1">
+                <p className="text-sm font-medium">{name} — {offer.priceCents>0?formatMoney(offer.priceCents):"free"}</p>
+                <label className="flex gap-2 text-sm">
+                  <input type="radio" name={`phone-service-${offer.service}`} checked={pick==="BY_BUSINESS"}
+                    onChange={()=>{setServicePicks(prev=>({...prev,[offer.service]:"BY_BUSINESS" as ServiceChoiceValue}));setHasPreference(false);}}/>
+                  {ours}
+                </label>
+                {offer.service==="HAUL_AWAY"?<label className="flex gap-2 text-sm">
+                  <input type="radio" name={`phone-service-${offer.service}`} checked={pick==="NOT_NEEDED"}
+                    onChange={()=>{setServicePicks(prev=>({...prev,[offer.service]:"NOT_NEEDED" as ServiceChoiceValue}));setHasPreference(false);}}/>
+                  {theirs}
+                </label>:offer.alternativeShown?<label className="flex gap-2 text-sm">
+                  <input type="radio" name={`phone-service-${offer.service}`} checked={pick==="CUSTOMER_DOES_IT"}
+                    onChange={()=>{setServicePicks(prev=>({...prev,[offer.service]:"CUSTOMER_DOES_IT" as ServiceChoiceValue}));setHasPreference(false);}}/>
+                  {theirs} — free
+                </label>:<p className="text-xs text-ink-soft">
+                  No do-it-themselves option for this order (a professional hookup may be needed).
+                </p>}
+              </div>;
+            })}
+          </fieldset>}
           <button type="button" disabled={pending||!selected}
             onClick={()=>start(async()=>{
               const r=await recordPhoneOrderPreferenceAction(id,selection());

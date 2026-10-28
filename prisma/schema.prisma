@@ -2416,6 +2416,8 @@ enum InvoiceLineItemKind {
   // Batch M: items sold over the counter (a part) and used appliances sold after retirement.
   MERCHANDISE
   USED_APPLIANCE
+  // FEETAX-1: hauling away the customer's old appliance, a separate optional service line.
+  HAUL_AWAY_FEE
 }
 
 // Batch T — Colorado sales and use tax
@@ -2450,6 +2452,8 @@ enum TaxChargeCategory {
   // Batch M: items and used appliances sold to customers.
   MERCHANDISE
   USED_APPLIANCE_SALE
+  // FEETAX-1: hauling away the customer's old appliance (REMOVAL is pickup of the rental at the end).
+  HAUL_AWAY
 }
 
 enum Taxability {
@@ -3099,12 +3103,40 @@ model LegalRuleObservation {
   @@index([observedAt])
 }
 
+// FEETAX-1: who does a service — us, the customer, or it is not needed at all.
+enum ServiceChoice {
+  BY_BUSINESS
+  CUSTOMER_DOES_IT
+  NOT_NEEDED
+}
+
+// FEETAX-1: one row per service on an order, frozen at signing. The record is the
+// proof the tax engine needs before it may treat a service line as optional:
+// the price shown at ordering (also when the customer declined) and whether the
+// free do-it-myself alternative was actually on the customer's screen.
+model OrderServiceChoice {
+  id                String          @id @default(cuid())
+  orderId           String
+  agreementId       String?
+  service           TaxChargeCategory
+  choice            ServiceChoice
+  offeredPriceCents Int
+  alternativeShown  Boolean
+  quoteVersion      Int
+  decidedAt         DateTime
+
+  @@unique([orderId, service])
+}
+
 model TaxabilityRule {
   id              String           @id @default(cuid())
   jurisdictionId  String?
   jurisdiction    TaxJurisdiction? @relation(fields: [jurisdictionId], references: [id])
   category        TaxChargeCategory
   taxability      Taxability       @default(UNDECIDED)
+  // FEETAX-1: the answer for a service line when the order proves it was optional and
+  // separately stated; null = same as taxability.
+  optionalSeparatedTreatment Taxability?
   reason          String?
   cpaConfirmedOn  DateTime?
   updatedByUserId String?
@@ -3125,6 +3157,8 @@ model TaxabilityRuleVersion {
   jurisdictionId  String?
   category        TaxChargeCategory
   taxability      Taxability
+  // FEETAX-1: optional-and-separately-stated answer carried with the dated version; null = same as taxability.
+  optionalSeparatedTreatment Taxability?
   effectiveFrom   DateTime
   provisional     Boolean           @default(false)
   cpaConfirmedOn  DateTime?
@@ -3605,6 +3639,16 @@ model BusinessSettings {
   // TAXBEN-1: how capitalized equipment is written off first: BONUS | SECTION179.
   // Starting value BONUS (DQ-TAXBEN-179-VS-BONUS, CPA).
   capitalizationPreference String @default("BONUS")
+  // FEETAX-1: warn when a service price is more than this percent of its typical cost
+  // (starting 150 — pricing services far above cost to shrink taxed rent is not allowed).
+  serviceFeeCostLimitPercent Int @default(150)
+  // FEETAX-1: appliance categories a customer may install themselves (gas never listed —
+  // a gas hookup needs a professional; the order screens say so).
+  selfInstallAllowedCategories Json @default("[\"WASHER\",\"DRYER_ELECTRIC\",\"FRIDGE\",\"FREEZER\"]")
+  // FEETAX-1: what a truck mile and a labor minute really cost, for the price-vs-cost
+  // warning. Null = not set yet; the mileage side starts from the rule book rate.
+  truckCostPerMileCents Int?
+  laborCostPerMinuteCents Int?
   lemonRepairPercent Int @default(30)
   vendor1099ThresholdCents Int @default(200000)
   exportPayoutLines Json @default("{\"QBO_JOURNAL_CSV\":true,\"XERO_JOURNAL_CSV\":false,\"GENERIC_JOURNAL_CSV\":true,\"CASH_MOVEMENTS_CSV\":true}")
@@ -3659,6 +3703,10 @@ model BusinessSettings {
   oneTimeDeliveryFeeCents     Int @default(0)
   oneTimeInstallationFeeCents Int @default(0)
   oneTimeRemovalFeeCents      Int @default(0)
+  // FEETAX-1 (Lane 5, name settled with Lane 4): hauling away the
+  // customer's old appliance. 0 = not priced yet; the service is only
+  // offered at ordering once the owner sets a price.
+  oneTimeHaulAwayFeeCents     Int @default(0)
   // W-22A: configuration only; money collection is a separate guarded integration.
   administrativeSetupFeeCents Int @default(4500)
   largeOrderMachineThreshold  Int @default(5)

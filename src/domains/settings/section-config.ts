@@ -37,6 +37,7 @@ export const SETTINGS_FIELDS = {
     "deliveryFeeDollars",
     "installationFeeDollars",
     "removalFeeDollars",
+    "haulAwayFeeDollars",
     "damageWaiverEnabled",
     "depositEnabled",
     "lateFeeGraceDays",

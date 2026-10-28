@@ -32,6 +32,7 @@ export function SigningChargeForm({ settings, editable, activeTaxTreatment, upco
       </div>}
     </section>
     <p className="text-sm text-ink-soft">The recommended one-time administrative setup fee is $45.00 per new delivery location. This section only records settings; collecting any fee at signing requires the separate approved checkout and tax gates.</p>
+    <p className="text-sm text-ink-soft">Because this fee is required, home-rule cities are likely to tax it. Folding it into the optional installation price instead is one of your open choices in Decisions &amp; reviews (FEETAX-ADMIN-FEE).</p>
     <form action={action} className="grid min-w-0 gap-3 md:grid-cols-2">
       <input type="hidden" name="updatedAt" value={settings.updatedAt.toISOString()} />
       <label className="grid min-w-0 gap-1 text-sm font-medium">Setup fee per new location ($) <InfoTip term="admin-setup-fee" />
