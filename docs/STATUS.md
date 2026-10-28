@@ -17,7 +17,7 @@ estimate can't change a signed agreement's delivery or pickup (refused with a pl
 Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
 Proof: unit tests here; database and browser tests run in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
 
-## October 27 — ACCT-1: Accountant sign-in
+## October 27 — ACCT-1: Accountant sign-in (MERGED — PR #709, squash dc839ad6)
 
 ## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (MERGED — PR #705, squash bbc3f78f)
 

@@ -4,12 +4,12 @@ Build spec: `docs/build-specs/engines/ACCOUNTANT-ACCESS.md`. Requested and appro
 limited widening of access). Depends on ACC-1…6, BA-1, CMP-1, DEC-1. Risk: **permissions** — a new access level.
 
 ## Acceptance
-- [ ] Only the owner can invite an accountant; second step required; no "remember this device"; access ends on a date.
-- [ ] The accountant sees only Books, Taxes, Compliance, CPA Decisions, money reports and records Chris shares; every other route and function is refused (inventory tests).
-- [ ] Allowed changes (adjustments, mappings, closes, reviewed marks, professional answers) are audited and listed for Chris.
-- [ ] Never the vault, full tax ids, customer contact details, payments, refunds, sends or settings (tests).
-- [ ] Remove, reset sign-in, change end date and "replace with a new accountant" work; history kept.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Only the owner can invite an accountant; second step required; no "remember this device"; access ends on a date.
+- [x] The accountant sees only Books, Taxes, Compliance, CPA Decisions, money reports and records Chris shares; every other route and function is refused (inventory tests).
+- [x] Allowed changes (adjustments, mappings, closes, reviewed marks, professional answers) are audited and listed for Chris.
+- [x] Never the vault, full tax ids, customer contact details, payments, refunds, sends or settings (tests).
+- [x] Remove, reset sign-in, change end date and "replace with a new accountant" work; history kept.
+- [x] `ci` green at the exact head; every review comment read.
 
 ### Drift check (spec vs the repo as it stands at `5aadc888`)
 
@@ -27,3 +27,4 @@ limited widening of access). Depends on ACC-1…6, BA-1, CMP-1, DEC-1. Risk: **p
 ## Progress
 Packet and drift check written 2026-10-27 (this branch also lands the VAULT-2 merged close-out: VAULT-2 card acceptance + work-index + STATUS). Build follows.
 Build completed 2026-10-27 in five stages on this branch: (1) schema + migration, session/end-date refusal, two-factor membership with no remembered device for accountants, the accountant screen gate and navigation; (2) compliance prepare + reviewed mark, CPA decision answers stamped with the accountant's own name/firm, paperwork sharing (masked, shared-only, stamped uploads); (3) the accountant domain (plain-words changes feed, unseen marker, end-date attention, daily access-expiry sweep); (4) the desk pages (invite form with firm + end date, end-date editing, replace, restore-with-new-date, books adjustments UI, read-only billing list, compliance reviewed button, decisions self-answer); (5) tests and docs. Verified locally: `tests/accountant-allowlist.test.ts` 14/14 (the exact route/function inventory + screen-gate rules + the shell/two-factor-setup gate inventory — added after the first browser run caught the desk layout's `requireRoleForTwoFactorSetup` still refusing the role outright; the layout, the enrollment page, and the self-service My account pages now admit the accountant), `tests/accountant-access-integration.test.ts` 10/10 on disposable Postgres, the related suites (team invitations, decisions, business records, paperwork, month review, compliance filings, books exports/cash, vault, today roles, shared-settings list) green, full typecheck clean, and `e2e/accountant-access.spec.ts` covering the invite → sign-in → allowed-screens → adjustment → owner-feed → removal journey.
+Merged 2026-10-27 via PR #709 (squash dc839ad6, branch ai/vivienne/acct-1h, exact head 3b418738; ci + review-gate green, auto-merge). The publishing chain ran #673 → #675 → #686 → #697 → #698 → #703 → #706 → #709 as main kept moving; the tree was hash-verified identical at every rebuild. Seven Codex rounds across the chain raised 17 findings — all real, all fixed with regression tests (two-factor always required for the role, masked filing-account numbers on filed AND live returns, the enrollment-path gates, in-transaction actor re-checks, cash readers, CPA answers through the setting writers, cash-basis ADJUSTMENT handling, the live filing-packet loader, pre-opening-date adjustments, the export email fallback, and the month-packet reader). Lane 6's card list (ACC-6, VAULT-1, SETUP-1, VAULT-2, ACCT-1) is complete; ACCT-1 merging unblocks Lane 4's TAXBEN-2.
