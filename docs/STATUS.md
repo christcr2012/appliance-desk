@@ -1,13 +1,15 @@
-## October 28 — MCP-4 merge reconciliation (PR #704)
+## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
 
-GitHub reported a real STATUS-only conflict while ci and review-gate were green. Retained current main's Lane 1/Lane 7 updates alongside the existing MCP-4 diagnosis; the final integration commit needs exact-head checks before merge.
-
-## October 27 — MCP-4 read-only assistant diagnostics (PR #704; merge conflict resolved locally)
-
-Nine read-only diagnostic tools, scoped permission checks and pagination passed focused tests.
-Previous exact-head GitHub `ci` and `review-gate` were green. GitHub later reported a real
-`docs/STATUS.md` conflict with newer main; this integration reconciles both status notes.
-Re-run exact-head checks and review before squash merging; MCP-5 execution is still unfinished.
+AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is
+the refactor only: the approval server actions now live in
+src/app/desk/approvals/actions.ts (decideApprovalAction, finishApprovalAction) —
+same domain calls, same OWNER check, same outcome mapping — except with inline=1
+they return { outcome } instead of redirecting, and finish also revalidates
+/desk/today. OUTCOME_WORDS and STATUS_WORDS moved to src/domains/approvals/words.ts;
+the approvals page imports everything back and behaves exactly as before. New
+tests/approval-actions.test.ts pins the contract (domain spies, both revalidations,
+inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
+adds optimistic task completion with Undo.
 
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
@@ -3686,3 +3688,12 @@ payment evidence or approval to collect; all such paths remain disabled.
 **Next: W-22C5 reviewed immutable per-agreement tax-inclusive freeze and
 server send/sign gates**, followed by W-22 checkout/manual payment, credit,
 refund/cancellation and delivery acceptance. IN-79 open; W-23 blocked.
+
+## October 28 — MCP-4 direct read diagnostics (PR #704; merge reconciliation)
+
+The nine privacy-safe MCP reads, authorization checks, continuation cursors and
+verified backup evidence were implemented and reviewed in PR #704. All Codex
+findings were answered and resolved; GitHub's exact-source CI and review-gate
+passed. This status note is deliberately kept outside the top-of-file latest
+updates so other lane agents can prepend their new work without creating the
+same merge conflict. Merge and deployed acceptance remain separate from checks.

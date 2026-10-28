@@ -1,58 +1,12 @@
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
-import { redirect } from "next/navigation";
-import { ApprovalInputError, decideApproval, finishApprovedRequest, listDecidedApprovals, listWaitingApprovals } from "@/domains/approvals";
+import { listDecidedApprovals, listWaitingApprovals } from "@/domains/approvals";
+import { OUTCOME_WORDS, STATUS_WORDS } from "@/domains/approvals/words";
+import { decideApprovalFormAction, finishApprovalFormAction } from "./actions";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 
 export const metadata = { title: "Approvals", robots: { index: false, follow: false } };
-
-async function decide(form: FormData) {
-  "use server";
-  const session = await requireRole("OWNER");
-  let outcome = "refused";
-  try {
-    const result = await decideApproval(
-      session.user.id,
-      String(form.get("requestId") ?? ""),
-      form.get("decision") === "APPROVE" ? "APPROVE" : "DECLINE",
-      String(form.get("note") ?? ""),
-    );
-    outcome = result.status === "APPROVED" ? ({ WAITING: "waiting", UNCERTAIN: "uncertain" } as Record<string, string>)[result.state ?? "DONE"] ?? "approved" : result.status.toLowerCase();
-  } catch (e) {
-    if (!(e instanceof ApprovalInputError)) throw e;
-  }
-  revalidatePath("/desk/approvals");
-  revalidatePath("/desk/today");
-  redirect(`/desk/approvals?outcome=${outcome}`);
-}
-
-async function finish(form: FormData) {
-  "use server";
-  const session = await requireRole("OWNER");
-  let outcome = "refused";
-  try {
-    const result = await finishApprovedRequest(session.user.id, String(form.get("requestId") ?? ""));
-    outcome = result.status === "APPROVED" ? ({ WAITING: "waiting", UNCERTAIN: "uncertain" } as Record<string, string>)[result.state ?? "DONE"] ?? "approved" : result.status.toLowerCase();
-  } catch (e) {
-    if (!(e instanceof ApprovalInputError)) throw e;
-  }
-  revalidatePath("/desk/approvals");
-  redirect(`/desk/approvals?outcome=${outcome}`);
-}
-
-const OUTCOME_WORDS: Record<string, string> = {
-  approved: "Approved and done.",
-  waiting: "Approved, but not finished: Stripe has not confirmed yet. See the note under Recently decided; do not repeat it.",
-  uncertain: "Approved, but we could not confirm what happened. Money may already have been sent, so do not repeat it. Use Check and finish in two minutes, or see Billing → Waiting for Stripe.",
-  failed: "Approved, but it could not be done. The reason is under Recently decided. Nothing was sent.",
-  declined: "Declined. Nothing was changed.",
-  expired: "That request had expired, so nothing was done.",
-  refused: "That could not be done (it may already be decided, or is too new to finish).",
-};
-
-const STATUS_WORDS: Record<string, string> = { APPROVED: "Approved and done", DECLINED: "Declined", EXPIRED: "Expired", FAILED: "Approved but could not be done" };
 
 export default async function ApprovalsPage({ searchParams }: { searchParams: Promise<{ outcome?: string }> }) {
   await requireRole("OWNER");
@@ -70,7 +24,7 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
         <h2 id="waiting-h" className="font-semibold">Waiting for you ({waiting.length})</h2>
         {waiting.length === 0 && <p className="rounded-md border p-4 text-sm">Nothing is waiting. Limits are set under <Link href="/desk/settings/approvals" className="underline">Settings</Link>; until you set one, admins act without asking.</p>}
         {waiting.map((r) => (
-          <form key={r.id} action={decide} className="space-y-2 rounded-md border p-4">
+          <form key={r.id} action={decideApprovalFormAction} className="space-y-2 rounded-md border p-4">
             <input type="hidden" name="requestId" value={r.id} />
             <p className="font-medium">{r.summary}</p>
             <p className="text-xs text-ink-soft">
@@ -95,7 +49,7 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
                 <p>{r.status === "APPROVED" && !r.finished ? "Approved, but not confirmed as finished" : STATUS_WORDS[r.status] ?? r.status}: {r.summary}</p>
                 {r.status === "APPROVED" && !r.finished && <p className="text-xs">{r.stateNote ?? "Nothing has been sent yet, or it was interrupted. Use “Check and finish” below; it first looks for the refund so the money is never sent twice."}</p>}
                 {r.canFinish && (
-                  <form action={finish} className="mt-2">
+                  <form action={finishApprovalFormAction} className="mt-2">
                     <input type="hidden" name="requestId" value={r.id} />
                     <button type="submit" className="min-h-11 rounded-md border px-4 py-2 text-sm">Check and finish</button>
                   </form>
