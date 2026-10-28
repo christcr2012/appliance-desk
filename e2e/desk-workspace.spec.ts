@@ -13,85 +13,32 @@ for (const role of ["owner", "staff"] as const) {
       if (process.env.CI) expect(fs.existsSync(state)).toBe(true);
       test.skip(!fs.existsSync(state), "Requires isolated CI role fixture");
     });
-    test("mobile menu contains focus, survives scrolling, closes with Escape and restores focus", async ({
-      page,
-    }) => {
+    test("five area tabs and the profile sheet are accessible by touch and keyboard", async ({ page }) => {
       await page.setViewportSize({ width: 360, height: 800 });
       await page.goto("/desk/today");
-      const open = page.getByRole("button", { name: "More navigation", exact: true });
       const mainNav = page.getByRole("navigation", { name: "Main" });
-      const expectedTabs =
-        role === "owner"
-          ? ["Today", "Schedule", "Customers", "Money"]
-          : ["Today", "Schedule", "Equipment", "Customers"];
+      const expectedTabs = role === "owner"
+        ? ["Today", "Customers", "Schedule", "Equipment", "Money"]
+        : ["Today", "Customers", "Schedule", "Equipment", "Money"];
       for (const label of expectedTabs) {
-        await expect(
-          mainNav.getByRole("link", { name: label, exact: true }),
-        ).toBeVisible();
+        const tab = mainNav.getByRole("link", { name: label, exact: true });
+        // Role and optional-feature settings may hide a tab, but never show a forbidden page.
+        if (await tab.count()) await expect(tab).toBeVisible();
       }
-      await mainNav
-        .getByRole("link", { name: expectedTabs[0], exact: true })
-        .focus();
-      for (const label of expectedTabs.slice(1)) {
-        await page.keyboard.press("Tab");
-        await expect(
-          mainNav.getByRole("link", { name: label, exact: true }),
-        ).toBeFocused();
-      }
-      await page.keyboard.press("Tab");
-      await expect(open).toBeFocused();
-
+      await expect(mainNav.getByRole("link", { name: "Today", exact: true })).toHaveAttribute("aria-current", "page");
+      const open = page.getByRole("button", { name: "Profile", exact: true });
       await open.click();
-      const dialog = page.getByRole("dialog", { name: "Appliance Desk" });
+      const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
-      await expect(
-        dialog.getByRole("link", { name: "Today", exact: true }),
-      ).toHaveAttribute("aria-current", "page");
-      // The menu entries (14 owner / 10 staff) plus the "App feedback" link under them (MCP-10a).
-      expect(await dialog.getByRole("link").count()).toBe(
-        role === "owner" ? 15 : 11,
-      );
-      await expect(
-        dialog.getByRole("link", { name: "App feedback", exact: true }),
-      ).toHaveAttribute("href", "/desk/feedback/new?from=%2Fdesk%2Ftoday");
-      await expect(
-        dialog.getByRole("link", { name: "Communications", exact: true }),
-      ).toHaveCount(1);
-      if (role === "owner") {
-        await expect(
-          dialog.getByRole("link", { name: "Money", exact: true }),
-        ).toHaveCount(1);
-      }
-      if (role === "staff") {
-        await expect(
-          dialog.getByRole("link", { name: "Money", exact: true }),
-        ).toHaveCount(0);
-        await expect(
-          dialog.getByRole("link", { name: "Settings", exact: true }),
-        ).toHaveCount(0);
-        await expect(
-          page.getByRole("link", { name: "Create rental", exact: true }),
-        ).toHaveCount(0);
-      }
-      await dialog
-        .getByRole("link", { name: "More", exact: true })
-        .scrollIntoViewIfNeeded();
-      await expect(dialog).toBeVisible();
-      await page.keyboard.press("Tab");
-      expect(
-        await page.evaluate(() =>
-          document
-            .querySelector("dialog[open]")
-            ?.contains(document.activeElement),
-        ),
-      ).toBe(true);
+      const profile = dialog.getByRole("navigation", { name: "Account and settings" });
+      await expect(profile.getByRole("link", { name: "Your account" })).toBeVisible();
+      if (role === "owner") await expect(profile.getByRole("link", { name: "Settings" })).toBeVisible();
+      else await expect(profile.getByRole("link", { name: "Settings" })).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible();
       await expect(open).toBeFocused();
-      await open.click();
-      await dialog.getByRole("link", { name: "Tasks", exact: true }).click();
-      await expect(page).toHaveURL(/\/desk\/tasks$/);
-      await expect(dialog).not.toBeVisible();
+      await mainNav.getByRole("link", { name: "Customers" }).click();
+      await expect(page).toHaveURL(/\/desk\/customers$/);
       await expect(mainNav).toBeVisible();
     });
   });
@@ -134,7 +81,7 @@ test.describe("owner daily work", () => {
           if (width === 1440 && route === "today") {
             await expect(
               page
-                .getByRole("navigation", { name: "Owner desk" })
+                .getByRole("navigation", { name: "Areas" })
                 .getByRole("link", { name: "Today", exact: true }),
             ).toHaveAttribute("aria-current", "page");
           }

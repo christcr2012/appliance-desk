@@ -111,7 +111,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Activity | `/desk/activity` | A combined "what happened" feed |
 | Search | `/desk/search` | One box for customers, machines, leads, purchases |
 | Settings | `/desk/settings` | Prices, fees, wording, rules, notifications |
-| More | `/desk/more` | The less-used screens (including Website) |
+| Profile menu | Your account, Help and permitted Settings links | Open using your initials on a phone or at the bottom of the sidebar |
 | Customer portal | `/account` | What your customers see after signing in |
 | Sign in | `/login` | Everyone's sign-in page |
 

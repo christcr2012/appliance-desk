@@ -65,7 +65,7 @@ export default async function ControlCenterPage({ searchParams }: { searchParams
   const found = q ? searchOwnerActions(actions, q) : null;
   const checkedAt = readiness[0]?.checkedAt;
   return (
-    <main className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <h1 className="text-xl font-semibold">Manage my business</h1>
       <p className="text-sm text-ink-soft">
         Everything you can do, grouped by what you are trying to get done. This page only shows and links; each screen asks
@@ -213,7 +213,7 @@ export default async function ControlCenterPage({ searchParams }: { searchParams
             <button type="submit" disabled={prefs.pinnedActionIds.length + prefs.savedViews.length + prefs.hiddenOptionalCardIds.length === 0} className="min-h-11 rounded-md border px-3 disabled:opacity-50">Reset my workspace</button></form>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 
