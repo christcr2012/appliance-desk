@@ -20,7 +20,7 @@ import { approveRuleChange, dismissRuleChange } from "@/domains/rules/observatio
 import { acknowledgeOfficialSourceChange } from "@/domains/tax/official-source-watch";
 import { snoozeTodo, todoDeadlineLabel, unsnoozeTodo } from "@/domains/exceptions/todo";
 import { getDueTaskSummary } from "@/domains/tasks/workspace";
-import { completeTaskAction } from "../tasks/actions";
+import { completeTaskAction, reopenTaskAction } from "../tasks/actions";
 import { getSetupChecklist } from "@/domains/setup/checklist";
 import { getBudgetPlanning } from "@/domains/budget/planning";
 import { getWeeklyHealth, type WeeklyHealth } from "@/domains/dashboard/weekly-health";
@@ -161,6 +161,18 @@ async function completeTaskFromTodayAction(formData: FormData) {
   if (typeof id !== "string" || !id || !Number.isSafeInteger(version)) return { error: "This task changed. Refresh and try again." };
   const result = await completeTaskAction(id, version);
   return result.status === "success" ? { success: "Task done" } : { error: result.message };
+}
+
+/** Undo for the task card's Done (AR-2 slice 3): completing moved the version
+ * by one, so the reopen presents version + 1 — the same reopenTaskAction the
+ * Tasks list uses. */
+async function reopenTaskFromTodayAction(formData: FormData) {
+  "use server";
+  const id = formData.get("taskId");
+  const version = Number(formData.get("version"));
+  if (typeof id !== "string" || !id || !Number.isSafeInteger(version)) return { error: "This task changed. Refresh and try again." };
+  const result = await reopenTaskAction(id, version);
+  return result.status === "success" ? { success: "Task reopened" } : { error: result.message };
 }
 
 type Search = { screen?: string; group?: string; snooze?: string; approvals?: string };
@@ -379,7 +391,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
       title: task.note,
       node: (
         <InboxCard
-          eyebrow={["Tasks", deadline].filter(Boolean).join(" · ")}
+          eyebrow={["Task", deadline].filter(Boolean).join(" · ")}
           eyebrowTone={deadline?.startsWith("Overdue") ? "attention" : "neutral"}
           title={task.note}
           detail={about ?? undefined}
@@ -392,7 +404,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
               primary: true,
               pendingLabel: "Saving…",
             },
-            { kind: "link", label: "Open tasks", href: "/desk/tasks" },
+            { kind: "link", label: "Open", href: "/desk/tasks" },
           ]}
         />
       ),
@@ -567,6 +579,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
                 ? { requests: approvalsWaiting, decideAction: decideApprovalAction, initialOpen: query.approvals === "1" }
                 : undefined
             }
+            taskActions={{ complete: completeTaskFromTodayAction, reopen: reopenTaskFromTodayAction }}
           >
             {truncationLines.map((line) => (
               <p key={line.g} className="pt-2 text-sm text-ink-soft">
@@ -574,6 +587,13 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
                 {line.text}
               </p>
             ))}
+            {(group === "all" || group === "tasks") && followUps.totalCount > followUps.tasks.length ? (
+              <p className="pt-1">
+                <Link href="/desk/tasks" className="text-sm font-bold text-primary hover:underline">
+                  See all tasks
+                </Link>
+              </p>
+            ) : null}
           </TodayInbox>
         )}
         {group !== "snoozed" && snoozed.length > 0 ? (
