@@ -9,7 +9,7 @@ TFA-1, CMP-2, DEC-1. Risk: **tax estimates** (always "your CPA confirms").
 - [x] Signed capitalization policy generated and renewed each December.
 - [x] Start-up costs tagged and computed; the benefit list (vehicle, home office, QBI, SE, retirement, enterprise zone, county value, losses, ordinary deductions) with amounts, conditions and deadlines.
 - [x] Mid-quarter warning before Q4 buying; every number from the rule book (lint test).
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 Built on branch `ai/vivienne/taxben-1` (execution packet `docs/pr-cards/execution/TAXBEN-1.json`):
