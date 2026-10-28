@@ -5789,7 +5789,7 @@
         "TFA-1",
         "ZONE-1"
       ],
-      "status": "IN PROGRESS \u2014 branch ai/vivienne/feetax-1 (2026-10-27); packet registered, building; Lane 5 paired (builds S4\u2013S6, verifies S1\u2013S3)",
+      "status": "MERGED \u2014 PR #718 (squash e2a1e45e, 2026-10-28); paired build (Lane 4 S1\u2013S3, Lane 5 S4\u2013S6); close-out in progress",
       "migration": "additive (OrderServiceChoice, HAUL_AWAY, optionalSeparatedTreatment)",
       "budget": 450,
       "units": [
