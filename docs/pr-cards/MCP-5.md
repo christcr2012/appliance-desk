@@ -45,3 +45,19 @@ messaging, account deletion or unapproved production writes.
 
 **Dependency:** branch builds on MCP-4 and must not merge until MCP-4 succeeds.
 
+
+**Checkpoint — October 27, not ready for PR:** A first additive journal
+migration and model exist with a backup policy and restore fail-closed behavior.
+A preview-only journal service checks current connection grants, role, action
+scope and bounded canonical arguments under the connection lock; owner-only
+approve/decline locks the connection and operation. No assistant write tool
+or business action has been exposed or executed yet.
+
+Evidence: Prisma validation and generation passed; 20-way preview deduplication,
+same-key changed-args conflict, OWNER-only approval, disconnection/scope/archival
+checks passed on disposable PostgreSQL (4 integration tests). The full
+restore drill passed with a RUNNING operation cancelled, its lease cleared,
+a SUCCEEDED operation preserved, and the connection revoked (1 integration
+test). Backup policy tests 15/15, migration check and changed-file ESLint passed.
+The main execute/verify/UNKNOWN reconciliation and owner activity UI still
+remain, so MCP-5 is deliberately not called complete or published.

@@ -1,3 +1,12 @@
+## October 27 — MCP-5 approved assistant actions (branch ai/chatgpt/mcp-5-action-journal, local only)
+
+The full acceptance plan is committed. The additive journal schema, preview-only
+deduplication and owner approval gates are implemented; 20-way real-Postgres
+concurrency and full restore safety tests pass. No assistant write tools or
+business effects have been activated. Remaining: execute/verification/reconciliation,
+all domain actions, activity screen and exact-head CI. Do not publish or merge
+this incomplete high-risk feature.
+
 ## October 27 — MCP-4 read-only assistant diagnostics (branch `ai/chatgpt/mcp-4-read-diagnostics`)
 
 All nine spec'd tools are coded and covered by eleven passing SDK/privacy tests plus a

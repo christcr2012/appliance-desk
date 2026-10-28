@@ -22,6 +22,8 @@ export const BACKUP_MODEL_POLICY = {
   OauthClientAssertion: null,
   // Connection labels are business evidence, but a restore must leave all disconnected.
   McpConnection: "mcpConnection",
+  // Operation attempts are durable business audit evidence, not active consent.
+  AgentOperation: "agentOperation",
   User: "user",
   Session: null,
   Account: null,

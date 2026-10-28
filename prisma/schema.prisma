@@ -6865,4 +6865,50 @@ model McpConnection {
   revokedReason String? @db.VarChar(200)
   @@unique([userId, oauthClientId])
   @@index([userId, revokedAt])
+  operations AgentOperation[]
+}
+
+enum AgentOperationState {
+  PREVIEWED
+  AWAITING_APPROVAL
+  AUTHORIZED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  UNKNOWN
+  DENIED
+  CANCELLED
+  EXPIRED
+}
+
+model AgentOperation {
+  id String @id @default(cuid())
+  connectionId String
+  connection McpConnection @relation(fields: [connectionId], references: [id], onDelete: Restrict)
+  actorUserId String
+  tool String @db.VarChar(80)
+  action String @db.VarChar(60)
+  targetRef String? @db.VarChar(120)
+  requestKeyDigest String @db.Char(64)
+  argsHash String @db.Char(64)
+  args Json
+  previewHash String? @db.Char(64)
+  preview Json?
+  verifyIntent Json?
+  state AgentOperationState
+  leaseToken String? @db.Char(32)
+  leaseExpiresAt DateTime?
+  attempt Int @default(0)
+  approvedByUserId String?
+  approvedAt DateTime?
+  expiresAt DateTime
+  startedAt DateTime?
+  finishedAt DateTime?
+  safeResult Json?
+  failureCode String? @db.VarChar(60)
+  verification Json?
+  createdAt DateTime @default(now())
+  @@unique([connectionId, tool, requestKeyDigest])
+  @@index([state, leaseExpiresAt])
+  @@index([actorUserId, createdAt])
 }

@@ -1,3 +1,13 @@
+## MCP-5 agent action journal — additive migration 20261130000000_agent_operations
+
+The new AgentOperation table is append-safe, references an existing McpConnection,
+and uses a unique connection/tool/request digest to prevent duplicate operation
+creation. It records sanitized previews, owner approvals, lease ownership, a
+post-effect verification record and a final/uncertain state. No action runs merely
+because the migration is installed. Assistant action records are included in
+backups; restore turns all non-final operations into CANCELLED with the RESTORED
+reason and clears in-flight leases. Restored MCP connections remain revoked.
+
 ## October 27 — MCP-3 safe reconnect generation (additive)
 
 Migration `20261129000000_mcp_reconnect_generation` adds `McpConnection.grantVersion`. Each new owner approval rotates this opaque value; signed MCP access tokens carry its current version, so a disconnected token cannot be resurrected by approving the same client again. Existing connections receive a distinct version during migration; old JWTs cannot regain access. Consent activation and disconnect serialize on user and connection rows. The private backup snapshot continues to omit OAuth grants.
