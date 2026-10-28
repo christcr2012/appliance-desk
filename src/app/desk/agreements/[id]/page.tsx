@@ -40,6 +40,7 @@ import {
   StatusPill,
   Stepper,
   Timeline,
+  Toaster,
   recordBarActions,
   type ActionSpec,
   type MenuItem,
@@ -373,6 +374,7 @@ export default async function AgreementDetailPage({
   );
 
   return (
+    <>
     <RentalRecordClient
       agreementId={id}
       endOptions={endOpts}
@@ -717,5 +719,7 @@ export default async function AgreementDetailPage({
       </div>
       <ActionBar actions={recordBarActions(primary, [])} label="Rental actions" />
     </RentalRecordClient>
+    <Toaster />
+    </>
   );
 }

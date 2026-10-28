@@ -139,6 +139,10 @@ test.describe("Rentals list and record", () => {
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText(`End ${active.name}'s rental today?`)).toBeVisible();
       await dialog.getByRole("button", { name: "End the rental" }).click();
+      // The success toast renders only when the page mounts the kit Toaster —
+      // asserting it guards the mount (PR #723: a missing mount silently
+      // swallowed every toast on this page, including action errors).
+      await expect(page.getByText("Rental ended. A pickup visit is in your To do list.")).toBeVisible();
       await expect(page.getByText("Ended").first()).toBeVisible();
     } finally {
       await active.cleanup();
