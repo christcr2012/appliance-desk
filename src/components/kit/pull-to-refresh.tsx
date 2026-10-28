@@ -94,7 +94,10 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
     root.addEventListener("touchmove", move, { passive: false });
     root.addEventListener("touchend", end);
     root.addEventListener("touchcancel", cancelTouch);
+    // The touch listener must be attached before the user (or a browser test) begins a gesture.
+    root.dataset.pullReady = "true";
     return () => {
+      delete root.dataset.pullReady;
       root.removeEventListener("touchstart", start);
       root.removeEventListener("touchmove", move);
       root.removeEventListener("touchend", end);
