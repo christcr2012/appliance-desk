@@ -1,4 +1,4 @@
-## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (PR #696)
+## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (MERGED — PR #705, squash bbc3f78f)
 
 Branch `ai/vivienne/taxben-1`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` sections 1–3.
 Every expense account in the system chart now carries a **deduction mapping** (Schedule C line,
@@ -30,11 +30,14 @@ class life, business-began date, solo 401(k) deadline, enterprise-zone fleet use
 `tests/taxben-classification.test.ts`, `tests/taxben-startup.test.ts`,
 `tests/taxben-policy.test.ts`, `tests/taxben-benefits-integration.test.ts`,
 `tests/taxben-rule-book-lint.test.ts` on throwaway Postgres, plus the purchase, packet,
-exceptions and setup suites. All six Codex findings on PR #696 were fixed in one batch
-(contra-income sign, de minimis purchase-year, the missing owner save path for the new
-facts, de minimis units in the mid-quarter basis, the derived began date, and the renewal
-link's year), each with a regression test; local suites 55/55 green before the push.
-exceptions and setup suites.
+exceptions and setup suites. MERGED 2026-10-27 via PR #705 (squash bbc3f78f; successor
+of PR #696, whose API-built branch GitHub refused to merge with checks green). Nine Codex
+findings across both PRs, all fixed in batches with regression tests: contra-income sign,
+de minimis purchase-year, the missing owner save path for the new facts, de minimis units
+in the mid-quarter basis, the derived began date, both year links, signed-policy
+immutability, and the deduction-based profit behind the estimates. CI green at the exact
+head b186eaee; review-gate green; 0 unresolved threads. Lane 4 next: FEETAX-1 when ZONE-1
+lands, TAXBEN-2 when ACCT-1 lands.
 ## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
 
 A repair visit can be marked "sealed refrigerant system". Only a person with a refrigerant (Type I) certification on file can be
