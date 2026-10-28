@@ -52,3 +52,15 @@ export async function finishApprovalAction(form: FormData) {
   if (form.get("inline") === "1") return { outcome };
   redirect(`/desk/approvals?outcome=${outcome}`);
 }
+
+// Void-returning form shapes for the approvals page itself: a <form action>
+// may not return a value, and an inline async adapter defined in the page
+// component is not a server action (Codex P1 on PR #727) — so the adapters
+// live here, in the server-actions module.
+export async function decideApprovalFormAction(form: FormData): Promise<void> {
+  await decideApprovalAction(form);
+}
+
+export async function finishApprovalFormAction(form: FormData): Promise<void> {
+  await finishApprovalAction(form);
+}

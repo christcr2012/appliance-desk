@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { listDecidedApprovals, listWaitingApprovals } from "@/domains/approvals";
 import { OUTCOME_WORDS, STATUS_WORDS } from "@/domains/approvals/words";
-import { decideApprovalAction, finishApprovalAction } from "./actions";
+import { decideApprovalFormAction, finishApprovalFormAction } from "./actions";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 
@@ -24,7 +24,7 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
         <h2 id="waiting-h" className="font-semibold">Waiting for you ({waiting.length})</h2>
         {waiting.length === 0 && <p className="rounded-md border p-4 text-sm">Nothing is waiting. Limits are set under <Link href="/desk/settings/approvals" className="underline">Settings</Link>; until you set one, admins act without asking.</p>}
         {waiting.map((r) => (
-          <form key={r.id} action={async (formData) => { await decideApprovalAction(formData); }} className="space-y-2 rounded-md border p-4">
+          <form key={r.id} action={decideApprovalFormAction} className="space-y-2 rounded-md border p-4">
             <input type="hidden" name="requestId" value={r.id} />
             <p className="font-medium">{r.summary}</p>
             <p className="text-xs text-ink-soft">
@@ -49,7 +49,7 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
                 <p>{r.status === "APPROVED" && !r.finished ? "Approved, but not confirmed as finished" : STATUS_WORDS[r.status] ?? r.status}: {r.summary}</p>
                 {r.status === "APPROVED" && !r.finished && <p className="text-xs">{r.stateNote ?? "Nothing has been sent yet, or it was interrupted. Use “Check and finish” below; it first looks for the refund so the money is never sent twice."}</p>}
                 {r.canFinish && (
-                  <form action={async (formData) => { await finishApprovalAction(formData); }} className="mt-2">
+                  <form action={finishApprovalFormAction} className="mt-2">
                     <input type="hidden" name="requestId" value={r.id} />
                     <button type="submit" className="min-h-11 rounded-md border px-4 py-2 text-sm">Check and finish</button>
                   </form>

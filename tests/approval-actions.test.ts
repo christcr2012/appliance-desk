@@ -28,7 +28,7 @@ vi.mock("@/domains/approvals", () => ({
   finishApprovedRequest: m.finish,
 }));
 
-import { decideApprovalAction, finishApprovalAction } from "@/app/desk/approvals/actions";
+import { decideApprovalAction, decideApprovalFormAction, finishApprovalAction, finishApprovalFormAction } from "@/app/desk/approvals/actions";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -93,5 +93,23 @@ describe("finishApprovalAction", () => {
     expect(m.finish).toHaveBeenCalledWith("owner-1", "req-9");
     expect(m.revalidate).toHaveBeenCalledWith("/desk/approvals");
     expect(m.revalidate).toHaveBeenCalledWith("/desk/today");
+  });
+});
+
+describe("the page's form shapes (PR #727 Codex P1)", () => {
+  // A <form action> may not return a value, and an inline async adapter in
+  // the page component is not a server action — the void adapters live in
+  // the actions module. These pin that they delegate and propagate.
+  it("decideApprovalFormAction delegates and lets the redirect through", async () => {
+    m.decide.mockResolvedValue({ status: "APPROVED", state: "DONE" });
+    await expect(decideApprovalFormAction(form({ requestId: "r", decision: "APPROVE" })))
+      .rejects.toThrow("NEXT_REDIRECT:/desk/approvals?outcome=approved");
+    expect(m.decide).toHaveBeenCalledWith("owner-1", "r", "APPROVE", "");
+  });
+
+  it("finishApprovalFormAction returns void even when the outcome comes back inline", async () => {
+    m.finish.mockResolvedValue({ status: "APPROVED", state: "DONE" });
+    await expect(finishApprovalFormAction(form({ requestId: "req-9", inline: "1" })))
+      .resolves.toBeUndefined();
   });
 });
