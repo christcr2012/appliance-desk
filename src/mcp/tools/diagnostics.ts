@@ -29,7 +29,7 @@ export async function healthOverview(ctx: AgentContext, input: { cursor?: string
     states,
     jobs: selected.map((row) => ({
       key: row.ruleKey, title: row.label, state: row.state,
-      explanation: row.explanation, nextStep: row.state === "working" ? "No action needed" : "Review System health in the app",
+      explanation: row.explanation, nextStep: row.state === "healthy" ? "No action needed" : "Review System health in the app",
       lastGoodUtc: at(row.lastSuccessAt), nextDueUtc: at(row.nextDueAt),
       nextDueDenver: row.nextDueAt ? new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", dateStyle: "short", timeStyle: "short" }).format(row.nextDueAt) : null,
       failureCode: row.lastFailure?.code ?? null,
@@ -53,8 +53,8 @@ function safeIssue(row: {
   failure?: { code: string | null; stage: string | null; reference: string | null; explain: string; next: string } | null;
 }) {
   const failure = row.failure ?? (row.failureCode ? {
-    code: row.failureCode, stage: row.failureStage ?? null, reference: row.correlationId ?? null,
     ...failureExplanation(row.failureCode),
+    stage: row.failureStage ?? null, reference: row.correlationId ?? null,
   } : null);
   return {
     id: row.id, kind: row.kind, severity: row.severity, status: row.status,

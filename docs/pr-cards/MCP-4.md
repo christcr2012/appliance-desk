@@ -48,3 +48,5 @@ the cursor is set to its final returned entry. Four additional tests cover the
 full 37-job/41-decision catalogs, SDK cursor input, and output-budget truncation.
 Focused SDK/privacy test suite now passes 11/11; changed-file ESLint passed.
 Review-thread replies/resolutions and GitHub exact-head CI remain required.
+
+**CI follow-up — October 27:** The exact-head CI run caught two typecheck errors missed by the memory-limited local sandbox: health state is healthy (not working), and typed failure spreading must not duplicate code. Both have been corrected and the required GitHub CI will be rerun at the new head.

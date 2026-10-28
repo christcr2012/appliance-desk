@@ -3,8 +3,8 @@
 All nine spec'd tools are coded and covered by eleven passing SDK/privacy tests plus a
 passing disposable-Postgres role-downgrade/archived-user test. The private-data canary caught and fixed a diagnostic-reference leak;
 Codex pagination findings are fixed with tested health and decision cursors. MCP-3 (#692) and the fast-lane rules (#701)
-have merged. Sandbox full typecheck still hits the Node memory limit; GitHub exact-head
-CI/Reviewgate and PR review are still required on PR #704 (auto-merge enabled).
+have merged. Sandbox full typecheck still hits the Node memory limit; GitHub CI identified two TypeScript errors and the repair is being published.
+Exact-head CI and Reviewgate are still required on PR #704 (auto-merge enabled).
 Next: complete #704 exact-head CI/review and begin MCP-5 while checks run.
 
 ## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
