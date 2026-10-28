@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import systemChart from "@/domains/books/system-chart.json";
+import { vehicleYearFigures } from "@/domains/vehicle/yearly";
+import { wrapLine } from "@/domains/compliance/wrap-line";
 
 /**
  * CMP-2 — Schedule C mapping and the year's totals.
@@ -82,8 +84,21 @@ export interface ScheduleCLineTotal {
   accounts: ScheduleCAccountTotal[];
 }
 
+/** How line 9 (car and truck) was worked out, so the packet and the vehicle page can show both ways side by side. */
+export interface VehicleLineBasis {
+  method: "STANDARD_RATE" | "ACTUAL_COSTS";
+  miles: number;
+  rateTenths: number | null;
+  /** Business miles times the year's standard rate, or null when the rule book has no rate for that year. */
+  standardCents: number | null;
+  /** Vehicle costs posted in the books to line 9 (fuel, repairs, insurance). */
+  actualCents: number;
+  note: string;
+}
+
 export interface ScheduleCYear {
   year: number;
+  vehicle: VehicleLineBasis;
   lines: ScheduleCLineTotal[];
   grossReceiptsCents: number; // line 1
   returnsCents: number; // line 2
@@ -144,6 +159,32 @@ export async function computeScheduleCYear(year: number): Promise<ScheduleCYear>
     bucket.accounts.push({ name: total.name, systemRole: total.systemRole, cents: total.cents });
   }
   for (const line of lines) line.accounts.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Line 9 (car and truck): one method per return, never both. Standard rate = logged business miles times the rate; actual
+  // costs = what the books posted. The other way is shown as a comparison, not added.
+  const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { mileageMethod: true } });
+  const method = settings?.mileageMethod ?? "STANDARD_RATE";
+  const figures = await vehicleYearFigures(year);
+  const vehicleLine = byLine.get("9")!;
+  const actualCents = vehicleLine.cents;
+  const dollars = (c: number) => formatMoney(c);
+  let note: string;
+  if (method === "STANDARD_RATE") {
+    if (figures.standardCents === null) {
+      note = `Standard mileage rate chosen, but the rule book has no rate for ${year}, so line 9 is $0.00 until one is added. The books show ${dollars(actualCents)} of vehicle costs, which are not used with the standard rate.`;
+      vehicleLine.cents = 0;
+      vehicleLine.accounts = [{ name: "Standard mileage rate: no rate on file for this year", systemRole: null, cents: 0 }];
+    } else {
+      note = figures.miles === 0
+        ? `Standard mileage rate chosen and no business miles are logged for ${year}, so line 9 is $0.00. The books show ${dollars(actualCents)} of vehicle costs, which are not used with the standard rate.`
+        : `Standard mileage rate: ${figures.miles.toLocaleString("en-US")} business miles at ${(figures.rateTenths! / 10).toFixed(1)} cents = ${dollars(figures.standardCents)}. The books show ${dollars(actualCents)} of vehicle costs, shown for comparison only (parking and tolls can be added separately; your CPA confirms).`;
+      vehicleLine.cents = figures.standardCents;
+      vehicleLine.accounts = [{ name: `Standard mileage rate: ${figures.miles.toLocaleString("en-US")} business miles`, systemRole: null, cents: figures.standardCents }];
+    }
+  } else {
+    note = `Actual costs chosen: line 9 is the ${dollars(actualCents)} posted in the books. The standard rate would have given ${figures.standardCents === null ? "an unknown amount (no rate on file)" : dollars(figures.standardCents)} for ${figures.miles.toLocaleString("en-US")} logged miles. Keep a mileage log either way.`;
+  }
+  const vehicle: VehicleLineBasis = { method, miles: figures.miles, rateTenths: figures.rateTenths, standardCents: figures.standardCents, actualCents, note };
   const centsOf = (line: string) => byLine.get(line)?.cents ?? 0;
   const grossReceiptsCents = centsOf("1");
   const returnsCents = centsOf("2");
@@ -155,6 +196,7 @@ export async function computeScheduleCYear(year: number): Promise<ScheduleCYear>
   const totalIncomeCents = grossReceiptsCents - returnsCents + otherIncomeCents;
   return {
     year,
+    vehicle,
     lines,
     grossReceiptsCents,
     returnsCents,
@@ -194,6 +236,7 @@ export function packetCsv(packet: PacketData): string {
       for (const account of line.accounts) scRows.push(["", `  ${account.name}`, account.cents]);
     }
   }
+  scRows.push(["Line 9 basis", sc.vehicle.note, ""]);
   scRows.push(["Line 3", "Gross profit before other income (line 1 − line 2)", sc.grossReceiptsCents - sc.returnsCents]);
   scRows.push(["Line 7", "Total income", sc.totalIncomeCents]);
   scRows.push(["Line 28", "Total expenses", sc.totalExpensesCents]);
@@ -278,6 +321,7 @@ export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
     push(`Line ${line.line} — ${line.label}: ${money(line.cents)}`);
     if (line.line === "27a") for (const a of line.accounts) push(`    ${a.name}: ${money(a.cents)}`);
   }
+  push(`Car and truck (line 9): ${packet.scheduleC.vehicle.note}`);
   push(`Total income (line 7): ${money(packet.scheduleC.totalIncomeCents)}`);
   push(`Total expenses (line 28): ${money(packet.scheduleC.totalExpensesCents)}`);
   push(`Tentative profit (line 29): ${money(packet.scheduleC.netProfitCents)}`);
@@ -323,9 +367,11 @@ export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
   push("");
   push(`Prepared ${businessDateKey(new Date())}. Amounts tie to the approved filing numbers.`);
 
+  // Long lines wrap (at word breaks, keeping the indent) instead of being cut off, so no figure or caveat is lost.
+  const wrapped = text.flatMap((entry) => wrapLine(entry.s, 105).map((s) => ({ s, b: entry.b })));
   let page = pdf.addPage();
   let y = 720;
-  for (const line of text) {
+  for (const line of wrapped) {
     if (y < 60) {
       page = pdf.addPage();
       y = 720;
