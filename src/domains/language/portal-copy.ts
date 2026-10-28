@@ -397,6 +397,21 @@ export const PORTAL_TRANSLATIONS = {
   "Your request to end the rental was recorded. We will arrange pickup and confirm the final day. The final bill is shown in Billing.": "Se registró su solicitud para finalizar el alquiler. Organizaremos la recogida y confirmaremos el último día. La factura final aparecerá en Facturación.",
   "This estimate may not have been sent yet, or the link may no longer be valid. If you think this is a mistake, contact us directly.": "Es posible que este presupuesto aún no se haya enviado o que el enlace no sea válido. Si cree que es un error, comuníquese directamente con nosotros.",
   "Couldn't save your preference. Try again.": "No se pudo guardar su preferencia. Inténtelo de nuevo.",
+  "Your service choices": "Sus opciones de servicio",
+  "We deliver": "Nosotros lo entregamos",
+  "I'll pick it up": "Yo lo recojo",
+  "You'll pick it up": "Usted lo recoge",
+  "Installation": "Instalación",
+  "We install": "Nosotros lo instalamos",
+  "I'll install it myself": "Yo lo instalo por mi cuenta",
+  "Our crew installs this order — some appliances need a professional hookup, so self-install isn't offered here.": "Nuestro equipo instala este pedido — algunos aparatos necesitan una conexión profesional, por lo que aquí no se ofrece la instalación por su cuenta.",
+  "Pickup at the end": "Recogida al final",
+  "We pick it up at the end": "Nosotros lo recogemos al final",
+  "I'll return it myself": "Yo lo devuelvo por mi cuenta",
+  "Haul away my old appliance": "Retirar mi aparato viejo",
+  "We haul it away": "Nosotros lo retiramos",
+  "No thanks": "No, gracias",
+  "Free": "Gratis",
 } as const;
 
 export type PortalLabel = keyof typeof PORTAL_TRANSLATIONS;

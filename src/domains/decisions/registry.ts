@@ -139,6 +139,7 @@ const CATEGORY_WORDS: Record<TaxChargeCategory, string> = {
   DELIVERY: "delivery charges",
   INSTALLATION: "installation charges",
   REMOVAL: "removal and haul-away charges",
+  HAUL_AWAY: "hauling away the customer's old appliance",
   DAMAGE_WAIVER: "the damage waiver",
   EARLY_TERMINATION: "the early ending fee",
   LATE_PAYMENT_FEE: "late payment fees",
@@ -188,7 +189,7 @@ function taxCellSubject(scope: TaxCellScope, category: TaxChargeCategory): Decis
       : " The state, Weld County and the special districts are paid through one state return."),
     options: TAXABILITY_OPTIONS,
     allowOther: true,
-    covers: ["TaxabilityRule.taxability"],
+    covers: ["TaxabilityRule.taxability", "TaxabilityRule.optionalSeparatedTreatment", "TaxabilityRuleVersion.optionalSeparatedTreatment"],
     read: async (ctx) => cellOf(ctx, scope, category)?.taxability ?? "UNDECIDED",
     write: async (tx, actorId, value, _effectiveFrom, meta) => {
       const taxability = value === "TAXABLE" || value === "EXEMPT" ? value : null;

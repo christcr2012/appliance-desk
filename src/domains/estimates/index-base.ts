@@ -620,6 +620,11 @@ export type ApproveEstimateInput = {
   approverName: string;
   approverEmail: string;
   ipAddress: string | null;
+  // FEETAX-1 (S4): the customer's service choices from the approval
+  // screen. Only who does the work — prices and whether the free
+  // alternative was shown are recomputed inside the transaction.
+  serviceChoices?: import("@/domains/orders/service-choices").ServiceChoiceSelection[];
+  serviceDryerOutlet?: "THREE_PRONG" | "FOUR_PRONG" | "GAS" | "UNKNOWN" | null;
 };
 
 /**
@@ -730,6 +735,25 @@ export async function approveEstimate(
       await recordEstimateDeliverySelectionInTx(tx, estimate, input.deliverySelection);
     } else if (input.deliverySelection) {
       throw new Error("No current owner-offered delivery choice is available.");
+    }
+    // FEETAX-1 (S4): record the service choices in this same locked
+    // transaction. The offers are recomputed here from the settings,
+    // the frozen delivery charges and the order's own lines, so the
+    // saved record states the price the customer was actually shown
+    // and whether the free alternative was really on their screen —
+    // the client's submission only says who does the work.
+    {
+      const { serviceChoiceOffersInTx } = await import("@/domains/orders/service-choice-offers");
+      const { recordServiceChoicesInTx } = await import("@/domains/orders/service-choices");
+      const { offers } = await serviceChoiceOffersInTx(tx, estimate,
+        input.deliverySelection?.questions.dryerOutlet ?? input.serviceDryerOutlet ?? null);
+      await recordServiceChoicesInTx(tx, {
+        orderId: id,
+        quoteVersion: estimate.deliveryOfferVersion,
+        offers,
+        selections: input.serviceChoices ?? [],
+        pickupOnly,
+      });
     }
     let customerId = estimate.customerId;
     let activationEmail: string | null = null;
