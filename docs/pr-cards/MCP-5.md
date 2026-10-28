@@ -23,4 +23,25 @@ unsafe, and the journal without actions does nothing.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+
+**Acceptance plan — 2026-10-27 (before implementation).** Deliver a complete
+approved-write path: additive AgentOperation schema and backup/restore policy,
+canonical preview and stored arguments, owner approval and decline, locked/fenced
+claim, executor using existing domain commands, post-effect verification and
+nightly UNKNOWN reconciliation, plus six safe action types. Every action rechecks
+the connection grant, actor and role, preview version, TTL and scope. No payment,
+messaging, account deletion or unapproved production writes.
+
+**Testable lines:**
+- [ ] Same connection/tool/request key/args has one operation; changed args conflict; test 20 simultaneous requests on disposable Postgres.
+- [ ] Preview payload bounded and free of secrets; stale change expires; forged hash and arguments fail.
+- [ ] OWNER-only in-app approval and explicit preview-bound conversation approval; decline consumes the grant.
+- [ ] Disconnect, grant rotation, role downgrade, archival and expiry block execution on real DB.
+- [ ] Existing domain command preserves its own authorization; operation lease fencing and readback prevent duplicates.
+- [ ] UNKNOWN reconciles through readback only; no automated re-execution.
+- [ ] All six action types, DEC-1 answer application and safe backup retry have tests; preview causes no write.
+- [ ] Assistant Activity Approve/Decline passes accessible phone/desktop light/dark checks.
+- [ ] Exact-head CI and Reviewgate green and every finding dispositioned before merge.
+
+**Dependency:** branch builds on MCP-4 and must not merge until MCP-4 succeeds.
+
