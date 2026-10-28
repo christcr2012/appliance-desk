@@ -226,7 +226,7 @@ export async function prepareAgentAction(
       const report = sourceKind === "FEEDBACK"
         ? await prisma.feedbackReport.findUnique({ where: { id: sourceId } }) : null;
       if (!issue && !report) throw new Error("REPAIR_SOURCE_NOT_FOUND");
-      if (report && (report.contentRemovedAt || report.aiReview !== "OPTED_IN"))
+      if (report && (report.contentRemovedAt || report.aiReview !== "ALLOWED"))
         throw new Error("REPORT_HAS_NO_AGENT_PERMISSION");
       const active = await prisma.repairCase.findFirst({ where: {
         sourceKind, sourceId, stage: { notIn: ["VERIFIED", "REJECTED", "SUPERSEDED"] },

@@ -3774,3 +3774,8 @@ MCP-6 journal checkpoint (October 28): MCP-5 reconciled branch; new
 17+2 passing transport/unit tests. Three real-database tests verified owner
 approval, replay idempotency, revoked grants, and unverified PR preservation.
 Feedback human check, automated source workflow, and full CI are pending.
+
+MCP-6 feedback consent correction (Oct 28): fixed the actual `ALLOWED`
+consent state, plus fresh consent checks before candidate PR linking or
+external evidence reads. Seven real PostgreSQL case tests passed, including
+withdrawal/deletion refusal; no feedback case is auto-marked verified.

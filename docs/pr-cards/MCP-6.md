@@ -55,6 +55,12 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
 - Browser proof is **not** complete: `e2e/mcp-repair-cases.spec.ts` is registered
   but the local 4 GB sandbox's Next.js build was killed (exit 137). GitHub CI
   must run it on a published, fully implemented head.
+- Feedback permission checkpoint: the live database consent enum is `ALLOWED`
+  (not `OPTED_IN`). Corrected both repair creation and journal preview,
+  and now rechecks consent before attaching a PR or reading GitHub evidence.
+  A withdrawn or privacy-deleted report cannot continue a case. Seven real
+  disposable-PostgreSQL case tests passed including allowed/human-only/withdrawn
+  feedback paths and no external fetch after withdrawal; no skips.
 - Journal and MCP tool checkpoint: added `repairs:write` consent scope;
   journal-backed owner-approved create, link-candidate and check actions; and
   bounded read-only case list/details. `tests/mcp-repair-tools.test.ts` and the

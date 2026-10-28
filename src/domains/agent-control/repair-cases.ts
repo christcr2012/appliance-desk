@@ -54,7 +54,7 @@ export async function createRepairCase(input: RepairCaseInput) {
     const report = input.sourceKind === "FEEDBACK"
       ? await tx.feedbackReport.findUnique({ where: { id: input.sourceId } }) : null;
     if (!issue && !report) throw new RepairEvidenceError("REPAIR_SOURCE_NOT_FOUND");
-    if (report && (report.contentRemovedAt || report.aiReview !== "OPTED_IN"))
+    if (report && (report.contentRemovedAt || report.aiReview !== "ALLOWED"))
       throw new RepairEvidenceError("REPORT_HAS_NO_AGENT_PERMISSION");
     const title = safe((issue?.summary ?? report?.title) || "Problem", 160);
     await assertNoKnownPersonNames(tx, [title, expectedBehavior, howToCheck].join(" "));
@@ -92,6 +92,12 @@ export async function linkRepairPullRequest(input: {
     await assertActiveTeamActor(tx, input.actorId, ["OWNER", "ADMIN"]);
     const record = await tx.repairCase.findUnique({ where: { id: input.caseId } });
     if (!record || FINAL.has(record.stage)) throw new RepairEvidenceError("REPAIR_CASE_NOT_OPEN");
+    if (record.sourceKind === "FEEDBACK") {
+      const report = await tx.feedbackReport.findUnique({ where: { id: record.sourceId },
+        select: { aiReview: true, contentRemovedAt: true } });
+      if (!report || report.aiReview !== "ALLOWED" || report.contentRemovedAt)
+        throw new RepairEvidenceError("REPORT_HAS_NO_AGENT_PERMISSION");
+    }
     if (record.prNumber && record.prNumber !== input.prNumber)
       throw new RepairEvidenceError("REPAIR_PR_ALREADY_LINKED");
     if (!record.prNumber) {
@@ -182,6 +188,12 @@ export async function checkRepairCase(
   let deployedRevision: string | null = null;
   const evidence: Array<{ kind: string; ref: string; status: string; verifier: string; detail: object }> = [];
   try {
+    if (record.sourceKind === "FEEDBACK") {
+      const report = await prisma.feedbackReport.findUnique({ where: { id: record.sourceId },
+        select: { aiReview: true, contentRemovedAt: true } });
+      if (!report || report.aiReview !== "ALLOWED" || report.contentRemovedAt)
+        throw new RepairEvidenceError("REPORT_HAS_NO_AGENT_PERMISSION");
+    }
     const pull = await fetchGitHubEvidence<GitHubPr>(`/pulls/${record.prNumber}`, fetcher);
     if (pull.number !== record.prNumber || pull.base?.ref !== "main" ||
       pull.head?.repo?.full_name !== REPO) throw new RepairEvidenceError("PR_NOT_IN_ALLOWED_REPOSITORY");

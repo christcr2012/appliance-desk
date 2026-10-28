@@ -8,6 +8,8 @@ import {
 const actorId = "mcp-repair-user-" + randomUUID();
 const issueId = "mcp-repair-issue-" + randomUUID();
 const transitionId = "mcp-repair-evidence-" + randomUUID();
+const feedbackReporterId = "mcp-repair-reporter-" + randomUUID();
+let feedbackReportId = "";
 const revision = "a".repeat(40);
 const originalRevision = process.env.VERCEL_GIT_COMMIT_SHA;
 
@@ -26,7 +28,23 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
     } });
   });
 
+  beforeAll(async () => {
+    await prisma.user.create({ data: { id: feedbackReporterId,
+      email: `${feedbackReporterId}@example.test`, role: "CUSTOMER",
+      name: "Synthetic reporter" } });
+    const report = await prisma.feedbackReport.create({ data: {
+      reporterUserId: feedbackReporterId, reporterRole: "CUSTOMER", kind: "BUG",
+      title: "Synthetic opted-in issue", description: "Synthetic malfunction",
+      routeTemplate: "/account", safeContext: {},
+      requestKey: feedbackReporterId.slice(0, 60), aiReview: "HUMAN_ONLY",
+    } });
+    feedbackReportId = report.id;
+  });
+
   afterAll(async () => {
+    await prisma.repairCase.deleteMany({ where: { sourceId: feedbackReportId } });
+    await prisma.feedbackReport.delete({ where: { id: feedbackReportId } });
+    await prisma.user.delete({ where: { id: feedbackReporterId } });
     await prisma.repairCase.deleteMany({ where: { sourceId: { in: [issueId, transitionId] } } });
     await prisma.systemIssue.deleteMany({ where: { id: { in: [issueId, transitionId] } } });
     await prisma.automationRun.deleteMany({ where: { runKey: transitionId } });
@@ -51,6 +69,42 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
       sourceKind: "SYSTEM_ISSUE", sourceId: issueId,
       stage: { notIn: ["VERIFIED", "REJECTED", "SUPERSEDED"] },
     } })).toBe(1);
+  });
+
+  it("requires explicit feedback AI consent and rechecks withdrawn or deleted consent", async () => {
+    const reportInput = { actorId, sourceKind: "FEEDBACK" as const,
+      sourceId: feedbackReportId, expectedBehavior: "The screen loads correctly",
+      howToCheck: "Owner verifies the corrected screen" };
+    await expect(createRepairCase(reportInput)).rejects
+      .toMatchObject({ code: "REPORT_HAS_NO_AGENT_PERMISSION" });
+    await prisma.feedbackReport.update({ where: { id: feedbackReportId },
+      data: { aiReview: "ALLOWED" } });
+    const record = await createRepairCase(reportInput);
+    expect(record.sourceKind).toBe("FEEDBACK");
+    expect(record.sourceId).toBe(feedbackReportId);
+    await prisma.feedbackReport.update({ where: { id: feedbackReportId },
+      data: { aiReview: "WITHDRAWN" } });
+    await expect(createRepairCase(reportInput)).rejects
+      .toMatchObject({ code: "REPORT_HAS_NO_AGENT_PERMISSION" });
+    await expect(linkRepairPullRequest({ actorId, caseId: record.id, prNumber: 704 }))
+      .rejects.toMatchObject({ code: "REPORT_HAS_NO_AGENT_PERMISSION" });
+    await prisma.feedbackReport.update({ where: { id: feedbackReportId },
+      data: { aiReview: "ALLOWED" } });
+    await linkRepairPullRequest({ actorId, caseId: record.id, prNumber: 704 });
+    await prisma.feedbackReport.update({ where: { id: feedbackReportId },
+      data: { aiReview: "WITHDRAWN" } });
+    let evidenceCalls = 0;
+    const blocked = await checkRepairCase(actorId, record.id, { fetcher: async () => {
+      evidenceCalls++;
+      throw new Error("GitHub must never be called after consent withdrawal");
+    } });
+    expect(blocked?.stage).toBe("BLOCKED");
+    expect(blocked?.blocker).toBe("REPORT_HAS_NO_AGENT_PERMISSION");
+    expect(evidenceCalls).toBe(0);
+    await prisma.feedbackReport.update({ where: { id: feedbackReportId },
+      data: { aiReview: "ALLOWED", contentRemovedAt: new Date() } });
+    await expect(createRepairCase(reportInput)).rejects
+      .toMatchObject({ code: "REPORT_HAS_NO_AGENT_PERMISSION" });
   });
 
   it("rejects invented sources and personal information", async () => {
