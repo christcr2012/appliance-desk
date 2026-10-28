@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
+import { getShownFeatures } from "@/domains/features";
+import { isHrefHidden } from "@/domains/features/registry";
 import { getBooksWorkspace, currentOpeningBalances } from "@/domains/books/management";
 import { OpeningCorrectionSheet } from "./opening-correction-sheet";
 import { formatBusinessDate } from "@/lib/business-date";
@@ -24,6 +26,7 @@ const sourceLabel = (type: string) => SOURCE_LABEL[type.toUpperCase()] ?? type.r
 export default async function BooksPage({searchParams}:{searchParams:Promise<{month?:string;page?:string;notice?:string}>}) {
   const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
   const params=await searchParams;
+  const shown=await getShownFeatures();
   const owner=session.user.role==="OWNER";
   const accountant=session.user.role==="ACCOUNTANT";
   // ACCT-1: the owner's feed of accountant changes (spec section 4). The owner
@@ -41,10 +44,11 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
     <header className="space-y-2">
       <nav aria-label="More about your books" className="flex flex-wrap gap-x-5 gap-y-2">
       {!accountant&&<Link className="underline" href="/desk/expenses">Expenses and receipts</Link>}
-      <Link className="underline" href="/desk/books/exports">Export to QuickBooks, Xero or CSV</Link>
+      {!isHrefHidden("/desk/books/exports", shown) && <Link className="underline" href="/desk/books/exports">Export to QuickBooks, Xero or CSV</Link>}
       <Link className="underline" href="/desk/books/assets">Rental equipment and book depreciation</Link>
       <Link className="underline" href="/desk/books/reports">Profit, balance and payback</Link>
-      <Link className="underline" href="/desk/books/cash">Bank statements and cash records</Link>
+      {!accountant && !isHrefHidden("/desk/books/budget", shown) && <Link className="underline" href="/desk/books/budget">Budget envelopes</Link>}
+      {!isHrefHidden("/desk/books/cash", shown) && <Link className="underline" href="/desk/books/cash">Bank statements and cash records</Link>}
       {!accountant&&<Link className="underline" href="/desk/books/closing">Cash forecast, customer health and year-end</Link>}
       </nav>
       <h1 className="text-2xl font-bold">Your books</h1>
@@ -75,7 +79,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
         <label>Month <input className={input} type="month" name="month" defaultValue={selected}/></label>
         <button type="submit" className={button}>View this month</button>
         <Link className="underline" href="/desk/books">All entries</Link>
-        <a className="underline" href={"/desk/books/export?month="+encodeURIComponent(selected)}>Download this month for your accountant (CSV)</a>
+        {!isHrefHidden("/desk/books/export", shown) && <a className="underline" href={"/desk/books/export?month="+encodeURIComponent(selected)}>Download this month for your accountant (CSV)</a>}
       </form>
       <div className="overflow-x-auto"><table className="min-w-full text-sm">
         <caption className="text-left text-muted-foreground pb-2">{model.total} entries; 30 per page</caption>

@@ -10,7 +10,7 @@ export const metadata = { title: "Features", robots: { index: false, follow: fal
 export default async function FeaturesSettingsPage() {
   const session = await requireRole("OWNER", "ADMIN");
   const { shown, automatic } = await getFeatureVisibility();
-  const practice = practiceAppUrl(process.env);
+  const practice = practiceAppUrl({ PRACTICE_APP_URL: process.env.PRACTICE_APP_URL, APP_ENV: process.env.APP_ENV });
   return (
     <main className="mx-auto max-w-3xl px-5 py-5 lg:px-7 lg:py-6">
       <ScreenHeader title="Features" back={{ href: "/desk/settings", label: "Back to Settings" }} />

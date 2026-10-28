@@ -22,3 +22,20 @@ test("Settings Features shows guarded controls at five sizes and passes accessib
     expect(issues.violations).toEqual([]);
   }
 });
+
+test("Books navigation follows the owner's feature choices without changing direct access", async ({ page }) => {
+  await page.goto("/desk/settings/features");
+  const links = [
+    { name: "Files for your accountant", href: "/desk/books/exports", text: /Export to QuickBooks/ },
+    { name: "Bank statements", href: "/desk/books/cash", text: /Bank statements and cash records/ },
+    { name: "Budget envelopes", href: "/desk/books/budget", text: /Budget envelopes/ },
+  ];
+  const choices = await Promise.all(links.map(async l => ({
+    ...l, on: (await page.getByRole("switch", { name: l.name }).getAttribute("aria-checked")) === "true",
+  })));
+  await page.goto("/desk/books");
+  const navigation = page.getByRole("navigation", { name: "More about your books" });
+  for (const choice of choices) {
+    await expect(navigation.getByRole("link", { name: choice.text })).toHaveCount(choice.on ? 1 : 0);
+  }
+});
