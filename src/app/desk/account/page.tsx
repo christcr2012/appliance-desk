@@ -11,7 +11,7 @@ export const metadata = { title: "My account", robots: { index: false, follow: f
 
 /** Everyone on the desk (owner, admin, staff) sees only their own account here. Nothing takes a person id from the address or a form. */
 export default async function MyAccountPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const params = await searchParams;
   const [account, sessions, step, knownDevices] = await Promise.all([
     getMyAccount(session.user.id),

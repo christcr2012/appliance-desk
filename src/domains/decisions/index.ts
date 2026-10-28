@@ -78,7 +78,8 @@ export type DecisionCard = Pick<DecisionSubject,
 };
 
 const HISTORY_LIMIT = 50;
-const READ_ROLES = ["OWNER", "ADMIN"] as const;
+// ACCT-1: an accountant may read — but listDecisions/getDecision narrow them to CPA-audience questions.
+const READ_ROLES = ["OWNER", "ADMIN", "ACCOUNTANT"] as const;
 const TX_OPTIONS = { maxWait: 10_000, timeout: 20_000 };
 
 /** Everything the registry reads, in one pass: settings row once, tax cells once, filing accounts once. */
@@ -221,10 +222,12 @@ export async function listDecisions(
   filter: { audience?: Audience; state?: DecisionState; area?: string } = {},
 ): Promise<DecisionCard[]> {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorId, READ_ROLES);
+    const actor = await assertActiveTeamActor(tx, actorId, READ_ROLES);
     const subjects = filter.area ? DECISION_SUBJECTS.filter((subject) => subject.area === filter.area) : DECISION_SUBJECTS;
     const cards = await buildCards(tx, subjects);
     return cards.filter((card) =>
+      // ACCT-1: an accountant only ever sees questions addressed to a CPA.
+      (actor.role !== "ACCOUNTANT" || card.audience === "CPA") &&
       (!filter.audience || card.audience === filter.audience) && (!filter.state || card.state === filter.state));
   }, TX_OPTIONS);
 }
@@ -232,8 +235,12 @@ export async function listDecisions(
 export async function getDecision(actorId: string, id: string): Promise<DecisionCard> {
   const subject = requireSubject(id);
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorId, READ_ROLES);
-    return (await buildCards(tx, [subject]))[0]!;
+    const actor = await assertActiveTeamActor(tx, actorId, READ_ROLES);
+    const card = (await buildCards(tx, [subject]))[0]!;
+    if (actor.role === "ACCOUNTANT" && card.audience !== "CPA") {
+      throw new Error("That question isn't addressed to a CPA.");
+    }
+    return card;
   }, TX_OPTIONS);
 }
 
@@ -313,6 +320,8 @@ type ApplyInput = {
   now: Date;
   /** The context `previous` was read from (decides whether saving the same value again changes anything). */
   ctx: DecisionContext;
+  /** ACCT-1: see DecisionWriteMeta.professionalAnswer — set only by the accountant branch below. */
+  professionalAnswer?: boolean;
 };
 
 /** Record the decision, then save it now or keep it for its start date. Returns the record id. */
@@ -335,6 +344,7 @@ async function applyDecisionInTx(tx: Prisma.TransactionClient, actorId: string, 
     await input.subject.write(tx, actorId, input.value, null, {
       kind: input.kind, confirmedOn: input.confirmedOn, reason: input.reason, sources: input.sources,
       effectiveFrom: start.start, previousValue: input.previous,
+      professionalAnswer: input.professionalAnswer === true,
     });
   }
   return recordId;
@@ -457,7 +467,7 @@ async function professionalAudience(tx: Prisma.TransactionClient, subject: Decis
 
 async function recordProfessionalAnswerInTx(
   tx: Prisma.TransactionClient, actorId: string, subject: DecisionSubject, input: ProfessionalAnswerInput,
-  via: DecisionVia, now: Date, attachmentUrl: string | null,
+  via: DecisionVia, now: Date, attachmentUrl: string | null, professionalAnswer = false,
 ) {
   const professionalName = cleanText(input.professionalName, 120, "name of who answered");
   if (!professionalName) throw new Error("Enter who answered.");
@@ -485,7 +495,7 @@ async function recordProfessionalAnswerInTx(
   await applyDecisionInTx(tx, actorId, {
     subject, kind: "PROFESSIONAL_ANSWER", value: chosen, previous, effectiveFrom: input.effectiveFrom,
     confirmedOn: answeredOn, reason: `Answered by ${who}${explanation ? ": " + explanation : ""}`.slice(0, 500),
-    sources: [], record: { ...professional, explanation }, now, ctx,
+    sources: [], record: { ...professional, explanation }, now, ctx, professionalAnswer,
   });
 }
 
@@ -497,8 +507,35 @@ export async function recordProfessionalAnswer(
   if (input.value !== null) checkOption(subject, input.value);
   decisionStart(input.effectiveFrom, now);
   const attachmentUrl = checkAttachment(input.attachmentUrl, subject.id);
-  await runWrite(actorId, input.value === null ? [] : [subject], (tx) =>
-    recordProfessionalAnswerInTx(tx, actorId, subject, input, via, now, attachmentUrl));
+  // ACCT-1: an accountant may answer — but only a question addressed to a CPA, and the name/firm on the
+  // record are the accountant's own from their account, never whatever the request claims. Every other
+  // decisions write stays owner-only (beginWrite inside runWrite is unchanged).
+  // The branch is decided inside the one transaction, from the actor row the
+  // transaction itself reads — the same shape every decisions write uses.
+  await prisma.$transaction(async (tx) => {
+    const me = await tx.user.findUnique({ where: { id: actorId }, select: { role: true, name: true, firm: true } });
+    if (me?.role === "ACCOUNTANT") {
+      if (via !== "SCREEN") throw new Error("That question isn't addressed to a CPA.");
+      await assertActiveTeamActor(tx, actorId, ["ACCOUNTANT"]);
+      await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+      if ((await professionalAudience(tx, subject)) !== "CPA") {
+        throw new Error("That question isn't addressed to a CPA.");
+      }
+      const mine: ProfessionalAnswerInput = {
+        ...input,
+        professionalName: me?.name?.trim() ? me.name : input.professionalName,
+        professionalFirm: me?.firm?.trim() ? me.firm : input.professionalFirm,
+      };
+      if (input.value !== null && input.effectiveFrom && new Date(input.effectiveFrom).getTime() > now.getTime()) {
+        throw new Error("An accountant's answer takes effect right away. For an answer that starts later, the owner records it instead.");
+      }
+      await recordProfessionalAnswerInTx(tx, actorId, subject, mine, via, now, attachmentUrl, true);
+      return;
+    }
+    await beginWrite(tx, actorId);
+    await recordProfessionalAnswerInTx(tx, actorId, subject, input, via, now, attachmentUrl);
+  }, TX_OPTIONS);
+  if (input.value !== null) await subject.afterCommit?.();
 }
 
 /**

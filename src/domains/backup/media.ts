@@ -493,4 +493,3 @@ export async function verifyMediaRecoverySample(
 
   return { checked, skippedTombstoned };
 }
-

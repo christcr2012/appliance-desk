@@ -8,6 +8,7 @@ import {
   renameAccountAction, createAccountAction, mapExportAccountAction,
   postBooksAction,
 } from "./actions";
+import { listAccountantChanges, markAccountantChangesSeen } from "@/domains/accountant";
 
 export const metadata={title:"Your books"};
 const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
@@ -16,13 +17,19 @@ const SOURCE_LABEL: Record<string, string> = {
   INVOICE: "A bill to a customer", PAYMENT: "A customer payment", REFUND: "A refund", EXPENSE: "A business expense",
   CUSTOMER_CREDIT: "Credit on a customer's account", APPLIANCE: "An appliance you own", USE_TAX: "Use tax you owe",
   TAX_FILING: "A tax filing", OPENING: "Your starting balances", HELD_PAYMENT: "A payment held for review",
+  ADJUSTMENT: "An adjusting entry",
   STRIPE_BALANCE_TXN: "A Stripe card transaction", RECURRING_EXPENSE: "A repeating expense",
 };
 const sourceLabel = (type: string) => SOURCE_LABEL[type.toUpperCase()] ?? type.replace(/_/g, " ").toLowerCase();
 export default async function BooksPage({searchParams}:{searchParams:Promise<{month?:string;page?:string;notice?:string}>}) {
-  const session=await requireRole("OWNER","ADMIN");
+  const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
   const params=await searchParams;
   const owner=session.user.role==="OWNER";
+  const accountant=session.user.role==="ACCOUNTANT";
+  // ACCT-1: the owner's feed of accountant changes (spec section 4). The owner
+  // looking at this page is what "seen" means; stamp it after reading.
+  const feed=!accountant?await listAccountantChanges(session.user.id).catch(()=>[]):[];
+  if(owner&&feed.length>0)await markAccountantChangesSeen(session.user.id).catch(()=>{});
   const model=await getBooksWorkspace({id:session.user.id,role:session.user.role},{
     month:params.month,page:Number(params.page)||1,
   });
@@ -33,17 +40,25 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
   return <div className="space-y-6">
     <header className="space-y-2">
       <nav aria-label="More about your books" className="flex flex-wrap gap-x-5 gap-y-2">
-      <Link className="underline" href="/desk/expenses">Expenses and receipts</Link>
+      {!accountant&&<Link className="underline" href="/desk/expenses">Expenses and receipts</Link>}
       <Link className="underline" href="/desk/books/exports">Export to QuickBooks, Xero or CSV</Link>
       <Link className="underline" href="/desk/books/assets">Rental equipment and book depreciation</Link>
       <Link className="underline" href="/desk/books/reports">Profit, balance and payback</Link>
       <Link className="underline" href="/desk/books/cash">Bank statements and cash records</Link>
-      <Link className="underline" href="/desk/books/closing">Cash forecast, customer health and year-end</Link>
+      {!accountant&&<Link className="underline" href="/desk/books/closing">Cash forecast, customer health and year-end</Link>}
       </nav>
       <h1 className="text-2xl font-bold">Your books</h1>
       <p className="text-muted-foreground">This is the record your accountant and your tax return will use. It fills itself in from your bills, payments, refunds and expenses, so you never type entries here. Nothing on this screen sends or moves money.</p>
       {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
     </header>
+    {feed.length>0&&<section className="rounded-lg border border-border p-4 space-y-3">
+      <h2 className="text-lg font-semibold">Changes by your accountant</h2>
+      <p className="text-sm text-muted-foreground">Everything your accountant changed, newest first. Adjusting entries can be reversed from the month they are dated in.</p>
+      <ul className="space-y-2">{feed.map(row=><li key={row.id} className="border-t border-border py-2">
+        <p className="font-medium">{row.summary}</p>
+        <p className="text-xs text-muted-foreground">{row.actorName}{row.actorFirm?` (${row.actorFirm})`:""} · {formatBusinessDate(row.at)}{row.href&&<> · <Link className="underline" href={row.href}>Open</Link></>}</p>
+      </li>)}</ul>
+    </section>}
     {!model.settings?.booksStartDate ? <section className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Start your books</h2>
       <p>Get the business&apos;s starting date and balances in order using four simple steps. You can correct an opening balance later without changing the original record.</p>
@@ -55,7 +70,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
       {opening&&<OpeningCorrectionSheet
         opening={{bankCents:opening.bankCents,stripeCents:opening.stripeCents,
           cardCents:opening.cardCents}}/>}
-      <form action={postBooksAction}><button type="submit" className={button}>Bring the books up to date</button></form>
+      {!accountant&&<form action={postBooksAction}><button type="submit" className={button}>Bring the books up to date</button></form>}
       <form method="GET" className="flex flex-wrap items-end gap-3">
         <label>Month <input className={input} type="month" name="month" defaultValue={selected}/></label>
         <button type="submit" className={button}>View this month</button>
@@ -99,7 +114,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
         {owner?<form action={renameAccountAction} className="flex gap-2 items-end">
           <input type="hidden" name="accountId" value={a.id}/><label className="flex-1">Account name<input className={input} name="name" defaultValue={a.name} maxLength={120}/></label><button className={button}>Save</button>
         </form>:<p>{a.name}</p>}
-        {owner?<form action={mapExportAccountAction} className="flex flex-wrap gap-2 items-end">
+        {owner||accountant?<form action={mapExportAccountAction} className="flex flex-wrap gap-2 items-end">
           <input type="hidden" name="accountId" value={a.id}/>
           <label>Export to<select name="target" className={input}><option value="GENERIC_JOURNAL_CSV">Generic CSV</option><option value="QBO_JOURNAL_CSV">QuickBooks</option><option value="XERO_JOURNAL_CSV">Xero</option><option value="CASH_MOVEMENTS_CSV">Cash movements</option></select></label>
           <label className="flex-1">External account<input name="externalName" className={input} placeholder="Account name or code" required/></label>

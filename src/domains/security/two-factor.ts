@@ -2,13 +2,15 @@ import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 
-export type TwoFactorRequiredRole = "OWNER" | "ADMIN" | "STAFF";
+export type TwoFactorRequiredRole = "OWNER" | "ADMIN" | "STAFF" | "ACCOUNTANT";
 export const RECOMMENDED_TWO_FACTOR_ROLES: readonly TwoFactorRequiredRole[] = [
   "OWNER",
   "ADMIN",
+  // ACCT-1: an accountant always needs a second step, like the owner/admin default.
+  "ACCOUNTANT",
 ];
 
-const TEAM_ROLES: readonly TwoFactorRequiredRole[] = ["OWNER", "ADMIN", "STAFF"];
+const TEAM_ROLES: readonly TwoFactorRequiredRole[] = ["OWNER", "ADMIN", "STAFF", "ACCOUNTANT"];
 
 export function twoFactorRolesFromSetting(value: unknown): TwoFactorRequiredRole[] {
   if (!Array.isArray(value)) return [...RECOMMENDED_TWO_FACTOR_ROLES];
@@ -19,7 +21,10 @@ export function twoFactorRolesFromSetting(value: unknown): TwoFactorRequiredRole
         TEAM_ROLES.includes(role as TwoFactorRequiredRole),
     ),
   );
-  return TEAM_ROLES.filter((role) => selected.has(role));
+  // ACCT-1: an accountant ALWAYS needs a second step — it is not the owner's
+  // choice, so the stored policy can never switch it off for the role (and
+  // saving the settings form, which only submits the other roles, keeps it).
+  return TEAM_ROLES.filter((role) => role === "ACCOUNTANT" || selected.has(role));
 }
 
 export function isTwoFactorEnrollmentExemptPath(pathname: string | null): boolean {

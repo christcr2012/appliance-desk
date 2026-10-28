@@ -38,8 +38,8 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date(),tx?
  const db=tx??prisma;
  monthKey(key);
  if(key>lastCompletedMonth(now))throw new Error("Review a month that has ended.");
- if(tx)await assertActiveTeamActor(tx,actor.id,["OWNER","ADMIN"]);
- else await prisma.$transaction(current=>assertActiveTeamActor(current,actor.id,["OWNER","ADMIN"]));
+ if(tx)await assertActiveTeamActor(tx,actor.id,["OWNER","ADMIN","ACCOUNTANT"]);
+ else await prisma.$transaction(current=>assertActiveTeamActor(current,actor.id,["OWNER","ADMIN","ACCOUNTANT"]));
  const first=businessDateFromKey(key+"-01")!,last=lastBusinessDay(key);
  const next=businessDateFromKey(nextMonth(key)+"-01")!;
  const settings=await db.businessSettings.findUniqueOrThrow({where:{id:"singleton"},

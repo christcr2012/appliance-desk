@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 export default async function FilingReturnsPage({
   searchParams,
 }: { searchParams: Promise<{ cursor?: string }> }) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const { cursor } = await searchParams;
   if (cursor && !/^[A-Za-z0-9_-]{5,128}$/.test(cursor)) notFound();
   const records = await prisma.taxFilingPeriod.findMany({

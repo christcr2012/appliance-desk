@@ -16,6 +16,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/communications-foundation-integration.test.ts", // reads the shared text master switch, which the COM-N1 tests turn on for a few seconds.
   "tests/com-n1a-workflow-integration.test.ts", // COM-N1A changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/acc2-team-invitations-integration.test.ts", // ACC-2 changes and restores the shared invitation settings.
+  "tests/accountant-access-integration.test.ts", // ACCT-1 stamps and restores the shared accountant-changes seen marker and the books start date.
   "tests/acc3-second-step-integration.test.ts", // ACC-3 changes and restores the shared sign-in method rules and text-code switch.
   "tests/acc4-recovery-integration.test.ts", // ACC-4 changes and restores the shared wrong-password pause numbers and invitation link days.
   "tests/acc5-job-roles-integration.test.ts", // ACC-5 edits the shared starting job roles and the invitation settings.
@@ -23,6 +24,8 @@ const SHARED_SETTINGS_TESTS = [
   "tests/business-records-integration.test.ts", // VAULT-1 changes and restores the shared admin-visible record kinds setting.
   "tests/setup-guide-integration.test.ts", // SETUP-1 creates a Colorado filing account and reads guide state across all records.
   "tests/vault-integration.test.ts", // VAULT-2 changes and restores the shared emergency-access settings on the singleton row.
+  "tests/taxben-classification.test.ts", // TAXBEN-1 writes the shared business-settings singleton inside a rolled-back transaction.
+  "tests/taxben-benefits-integration.test.ts", // TAXBEN-1 writes the shared settings and compliance-profile singletons inside a rolled-back transaction.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.
@@ -43,6 +46,8 @@ const SHARED_SETTINGS_TESTS = [
   "tests/books-cash-events-integration.test.ts", // K-CASH-2 fixture changes global Books opening date and restores it.
   "tests/books-closing-integration.test.ts", // K-8 toggles Books start during isolated real-database source tests.
   "tests/books-reports-integration.test.ts", // K-7 read-only reports fixture temporarily seeds an isolated Books opening date.
+  "tests/books-cash-adjustments-integration.test.ts", // ACCT-1 cash-basis adjustments fixture temporarily seeds an isolated Books opening date.
+  "tests/tax-filing-packet-accountant-integration.test.ts", // ACCT-1 live filing packet fixture creates its own filing account and period.
   "tests/books-depreciation-integration.test.ts", // K-6 adjusts verified opening date and book life defaults in a serial database fixture.
   "tests/ba1-books-autopilot-integration.test.ts", // BA-1 modifies singleton Books dates and depreciation.
   "tests/ba1-nightly-autopilot-integration.test.ts", // BA-1 changes the singleton Books start and health settings.

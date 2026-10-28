@@ -1,12 +1,54 @@
-## October 27 — Lane 1 AR-12 help guides (implementation PR)
+## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
+The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
 
-AR-12 step 7: fifteen short searchable task guides, new Help screen linked from More,
-three-step accessible Sheet, working route targets and job-role-filtered results. Added
-five-size phone/tablet/desktop browser and accessibility tests plus route/permission checks.
-No financial action or customer message is executed by reading instructions. Branch
-`ai/chatgpt/ar12-help-guides-20261027`; exact-head CI, Codex and review-gate still pending.
-Feature switches/Practice link remain separate AR-12 work.
+## October 27 — ACCT-1: Accountant sign-in (MERGED — PR #709, squash dc839ad6)
 
+## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (MERGED — PR #705, squash bbc3f78f)
+
+Branch `ai/vivienne/taxben-1`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` sections 1–3.
+Every expense account in the system chart now carries a **deduction mapping** (Schedule C line,
+percent, kind); shared accounts (phone and internet) deduct the owner's answered business-use
+percent and **0% until answered**, with the answer kept in **Write-off settings** on the new
+**Taxes › Tax benefits** page and asked once in the guided setup. Each purchase is classified
+when it is recorded: the invoice line (price plus its share of the same invoice's delivery and
+installation charges) at or under the rule book's de minimis limit is **expensed** when the
+year's election is on; the rest is **capitalized** — Section 179 when the CPA preference says
+so, never bonus for a purchase from a relative or the owner's other business (the purchase form
+asks), bonus after the rule's boundary date, else class life — and the decision, its plain-words
+reason and the rule value used are recorded on the unit and never rewritten. The **written
+capitalization policy** is generated from the rule book, signed by the owner on screen, stored
+as a Business record, and re-asked every December. **Start-up costs** (posted expenses before
+the business-began day — stored fact, else the earlier of the first appliance available and the
+first public lead) exclude fleet purchases, interest and taxes; the Section 195 result prints on
+the accountant packet and the depreciation worksheet's Part VI block. The **benefit list**
+computes on read: depreciation and expensing totals, the mid-quarter watch with an
+October/November To do, vehicle mileage vs actual costs, home office both methods, the
+self-employment chain (SE tax at the rule-book rates, its deductible half, SEP-IRA and solo
+401(k) estimates with a January–March To do), SE health insurance less employer-plan months,
+QBI with its minimum, the enterprise-zone row and January pre-certification To do, the county
+property line against the exemption, the bad-debt explanation, the loss row, and the ordinary
+deductions checklist with "missing anything?" prompts — every number from the rule book,
+guarded by a lint test over the taxben module. Thirteen new rules seeded (including
+`us.se_tax_rates` and `us.mid_quarter` in a follow-up migration); registry count 39. Six
+starting values filed as DQ-TAXBEN-* (de minimis election, bonus vs Section 179, appliance
+class life, business-began date, solo 401(k) deadline, enterprise-zone fleet use). Proof:
+`tests/taxben-classification.test.ts`, `tests/taxben-startup.test.ts`,
+`tests/taxben-policy.test.ts`, `tests/taxben-benefits-integration.test.ts`,
+`tests/taxben-rule-book-lint.test.ts` on throwaway Postgres, plus the purchase, packet,
+exceptions and setup suites. MERGED 2026-10-27 via PR #705 (squash bbc3f78f; successor
+of PR #696, whose API-built branch GitHub refused to merge with checks green). Nine Codex
+findings across both PRs, all fixed in batches with regression tests: contra-income sign,
+de minimis purchase-year, the missing owner save path for the new facts, de minimis units
+in the mid-quarter basis, the derived began date, both year links, signed-policy
+immutability, and the deduction-based profit behind the estimates. CI green at the exact
+head b186eaee; review-gate green; 0 unresolved threads. Lane 4 next: FEETAX-1 when ZONE-1
+lands, TAXBEN-2 when ACCT-1 lands.
+## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
+
+A repair visit can be marked "sealed refrigerant system". Only a person with a refrigerant (Type I) certification on file can be
+given it, you included; certifications are entered by the owner in Settings > Team. The rule applies when the visit is created,
+when it comes from a maintenance request, and when it is reassigned. Question DQ-OPS2-2 filed (starting value, not confirmed).
+Tests on real Postgres pass. This was the last unbuilt OPS-2 item.
 ## October 27 — Fast-lane execution rules alignment (branch `ai/chatgpt/fast-lane-protocol`)
 
 Aligned session instructions with the already-approved squash auto-merge, final-head `ci` and `review-gate`,
@@ -41,6 +83,19 @@ live policies can be picked; deleting a policy just clears the link. Additive mi
 Merged earlier today: review check (#685), insurance certificate on a record (#687, #688). GitHub rule: the
 up-to-date requirement is off; `review-gate` still needs to be saved as a required check (OWNER-CHECKLIST section A).
 NEXT: OPS-2 leftovers (sealed-system technician check, receipt photo).
+
+## October 27 — MCP-3 backup recovery compatibility, CI follow-up (unmerged)
+
+The OAuth tables are deliberately excluded from business backup. The backup restore dependency scanner previously rejected ANY `@@map` model, even an excluded OAuth model, which caused CI unit/restore failures. The parser now allows excluded mapped tables but still rejects restoring mapped business tables. Backup policy test fixtures list the OAuth exclusions explicitly. Focused backup tests passed 15/15, and real disposable-PostgreSQL restore drill passed 1/1; changed-file ESLint, secret/migration and route checks passed. All three reviewer threads on PR #692 have a code fix, reply and resolution. Final-head CI and Reviewgate remain before auto-merge.
+
+## October 27 — MCP-3 PR #692 review fixes (in progress, not merged)
+
+GitHub PR #692 was published through the documented sandbox-transfer route with auto-merge enabled. Three reviewer findings are being fixed: disconnected signed tokens must stay invalid after reconnect, consent/disconnect must serialize, and older active assistants must remain visible to disconnect. The owner-triggered GitHub CI run and `review-gate` must pass at the final head; no deployment settings were changed.
+
+## October 27 — MCP-3 AI assistant OAuth (PR #692 open)
+
+Secure assistant OAuth implementation has been published as PR #692 with automatic merge enabled. Disposable-PostgreSQL roundtrip and 17 focused security/scope checks passed; the sandbox full TypeScript quick gate exhausted its memory. GitHub exact-head CI and Reviewgate are required for merge. No production provider settings or real data were changed.
+
 ## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
 React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 
@@ -113,6 +168,23 @@ boxes, now corrected (acceptance 1 stays open only for the "Not built" items eac
 #653 (its note stayed "running" on an older commit): self-read, nothing blocking. Unblocked by VAULT-1 but still not built:
 OPS-4 certificate upload and OPS-2 sealed-system technician check. Browser proof for the public page is CI only.
 
+## October 27 — Lane 2 MCP-3 local SDK OAuth round trip passed (not merged)
+
+On `ai/chatgpt/mcp-3-oauth-connect` a disposable-PostgreSQL test now covers PKCE registration, owner consent, signed resource token, refresh, MCP whoami and instant token rejection after Disconnect. Seventeen additional focused unit/security/size tests and changed-file ESLint passed. The only allowed dynamic-registration resource is the canonical app MCP endpoint. Full quick check, browser/axe, exact-head CI and review **remain**, so MCP-3 is not shipped. MCP-2 was merged on #611; MCP-4 read tools remain on a separate dependent plan branch. No real accounts or deployment settings were touched.
+
+## October 27 — MCP-3 OAuth hardening checkpoint (still unshipped)
+
+PR #611 MCP-2 is merged with final-head green CI; MCP-3 remains in its separate
+branch. MCP-3 now denies stale-owner/admin grants, revokes refresh/access/consent
+records atomically and tests those rules on disposable PostgreSQL (3/3 passing).
+Its bearer/request/issuer tests and stream-size tests passed (17 focused tests).
+The complete OAuth client handshake and CI are NOT yet verified. No live issuer,
+customer email/SMS/payment or production database change was made.
+
+## October 27 — Lane 2 MCP-3 secure assistant connection (in progress, not shipped)
+
+Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Thirteen focused tests passed; scoped TypeScript checking exposed three fixable errors. New OAuth revocation tests require disposable PostgreSQL verification. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 merged at bc204189 after exact-head CI and resolved reviews. No customer data, hosting settings, production keys or live communications changed.
+
 ## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
 A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
 Undo only after the server confirms. Failed writes restore the task. Different items
@@ -125,9 +197,9 @@ React 19.3/title transitions and measured JS budget remain in progress.
 
 
 
-## October 27 — VAULT-2: Logins vault and emergency access (in build)
+## October 27 — VAULT-2: Logins vault and emergency access (PR #667 merged)
 
-Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+Merged 2026-10-27 (squash `5aadc888`; successor to #664 after a phantom-dirty rebuild; two Codex rounds, six real findings, all fixed with regression tests — the second round: the emergency code now honours the owner's security-texting switch, the export PDF wrap is character-exact including repeated spaces, and characters the PDF fonts cannot print are substituted there while a new `logins.txt` in the export ZIP carries every login exactly as saved). New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
 the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
 encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
 beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
@@ -150,28 +222,48 @@ rotation, key separation), `tests/vault-secret-fields-grep.test.ts`, `tests/vaul
 Postgres, serial: owner boundary, unlock lifecycle, lockout, emergency end to end), `e2e/vault.spec.ts`
 (browser-e). Next for this lane: **ACCT-1** (accountant sign-in), which also unblocks Lane 4's TAXBEN-2.
 
+
 ## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
 GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
 selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings
 (portalled Confirm interactions and long labels) were fixed and regression-tested; replies posted.
 Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
 optimistic Snooze and bundle budget remain. No user payment or permission path changed.
+## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
-## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR #669)
+Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
+walkthroughs for the real-world accounts — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley
+license, Weld assessor, IRS accounts, the IRIS TCC, insurance, the vehicle, email domain, texting, the
+encryption keys, the CPA and backups. Each has plain steps with official links, what to have ready, and the
+VAULT-1 record it fills; where a step produces a number or a file, saving it lands on that record through
+the VAULT-1 rules (encrypted, masked, sniffed). Steps the app can verify check themselves — presence only
+for keys (`ENV_PRESENT` allowlist), a saved number or file on a record, a set-up filing account. Progress is
+the audit log folded on read (no new table); "Not for me" dismisses a walkthrough. The suggested next is the
+one whose needed-by date comes soonest (the IRIS TCC before January 31), and one To do names it until all
+are done or dismissed. The OWNER-CHECKLIST rows for the keys, the TCC and backups now link here. This branch
+also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthroughs.test.ts` (data + order),
+`tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
+saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
-Branch `ai/vivienne/feetax-2-final` (successor to the first PR, #666). Every place within 50 miles of Greeley is seeded with its delivery
+## October 27 — FEETAX-2: delivery-area tax readiness (merged)
+
+MERGED via PR #684, squash `8a71a069` on main (chain #666 → #669 → #677 → #678 → #684; the
+earlier PRs were closed unmerged for GitHub merge-check reasons as main moved, the tree was
+blob-verified at every step). Every place within 50 miles of Greeley is seeded with its delivery
 readiness (city license rule, how returns are filed, source and review state — no tax rates
 seeded, and no rent-tax decisions either: whether a place taxes rentals stays in the tax rules). Before an address can be quoted, ordered
 or scheduled, the new readiness check refuses it with a plain reason when a place's rules are
 undecided, a required city license is missing or expired, the delivery count crosses a city's
 license rule, the address's tax places aren't confirmed, or the address is outside Colorado. The
 one override — owner-only, with a reason, written to Activity — covers "rules not decided" only;
-a missing license can never be overridden. Delivery counts are recorded when a delivery job
-finishes. New screen **Taxes › Delivery area** lists every place and runs "Check an address";
+a missing license can never be overridden. Delivery counts are recorded when a delivery or
+installation job finishes, and dispatch counts in-flight deliveries of both kinds with the
+address's places locked, so two dispatches cannot both slip under a city's license line. New
+screen **Taxes › Delivery area** lists every place and runs "Check an address";
 a "Get ready to deliver in {city}" item lands on the To do list only for places a real customer
-address needs. Proof so far: `tests/delivery-readiness-integration.test.ts` (19 tests), the
-conversion suite and the wired-path suites on throwaway Postgres; PR #669 carries the full
-verification record. Starting values filed as
+address needs. Proof: `tests/delivery-readiness-integration.test.ts` (24 tests), the
+conversion suite and the wired-path suites on throwaway Postgres; 17 CI runs across the chain;
+eleven Codex findings, all real, all fixed with regression tests. Starting values filed as
 DQ-FEETAX2-1 (Boulder rent "likely") and DQ-FEETAX2-2 (presumed city licenses).
 
 ## October 27 — CMP-4 merged (PR #670)

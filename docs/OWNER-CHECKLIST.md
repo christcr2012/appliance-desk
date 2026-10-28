@@ -17,12 +17,13 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
   worked: the EIN box on Business facts is enabled and saving an EIN shows "ending" plus its last 4 digits.
   Until then the EIN box stays off on purpose, so a tax ID is never stored unprotected.
-- [ ] **GitHub: let pull requests merge themselves (2 settings, about 3 minutes).** Agents are blocked from editing the
-  repository's merge rules, so this one needs your hands. Steps: GitHub → christcr2012/appliance-desk → Settings → Rules →
-  Rulesets → "Ci and deploy" → under "Require status checks to pass" (a) turn OFF "Require branches to be up to date
-  before merging" and (b) add the check named `review-gate` (it is already running on every open pull request). Save.
-  Ready when: now (the check is on main). You'll know it worked: a pull request with auto-merge turned on merges by
-  itself once `ci` and `review-gate` are green, even if main moved. Until then agents re-sync and merge by hand.
+- [ ] **GitHub: require Reviewgate before auto-merging (one setting).** Chris confirmed on October 27
+  that "Require branches to be up to date" is OFF and the `review-gate` Action has been added. What remains to
+  **verify in GitHub Rulesets** is that `review-gate` is a **required status check** alongside `ci` (creating the
+  Action alone does not enforce it). GitHub → christcr2012/appliance-desk → Settings → Rules → Rulesets →
+  "Ci and deploy" → "Require status checks to pass" → add `review-gate` if absent → Save. Ready now.
+  You'll know it worked when a PR whose `ci` is green cannot auto-merge while `review-gate` is red.
+  Until confirmed, agents only arm auto-merge **after Reviewgate itself passes**.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
@@ -57,6 +58,13 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   credential in chat or source control. Ready when: the checked nightly release has installed MCP-2.
   You'll know it worked when a daily backup has a checked date and the last complete recovery set shows a date;
   do not tick this for a local test or until that hosted evidence appears.
+- [ ] **Connect your preferred AI assistant to Appliance Desk (MCP-3).** After the checked release makes the
+  System health → Connect an AI assistant card available, open your assistant's Settings → Connectors → Add custom
+  connector. Copy the address from that card, sign in to Appliance Desk with your usual second step, read the
+  requested permissions, and tap Allow only for an assistant you trust. Ready when MCP-3/4 are released and the
+  app displays its MCP address. You'll know it worked when the app lists the assistant as Connected and the assistant
+  can report its own connected identity. To test instant disconnect, use the app's Disconnect button and confirm the
+  next assistant request is refused. Do not check this row from local developer tests alone.
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 

@@ -1,3 +1,11 @@
+## October 27 — MCP-3 safe reconnect generation (additive)
+
+Migration `20261129000000_mcp_reconnect_generation` adds `McpConnection.grantVersion`. Each new owner approval rotates this opaque value; signed MCP access tokens carry its current version, so a disconnected token cannot be resurrected by approving the same client again. Existing connections receive a distinct version during migration; old JWTs cannot regain access. Consent activation and disconnect serialize on user and connection rows. The private backup snapshot continues to omit OAuth grants.
+
+## October 27 — MCP-3 assistant connections (development, not deployed)
+
+The additive OAuth schema adds Better Auth `jwks`, `oauthClient`, `oauthResource`, `oauthClientResource`, `oauthRefreshToken`, `oauthAccessToken`, `oauthConsent`, and `oauthClientAssertion` plus an app-owned `McpConnection` ledger. The OAuth models, private signing keys, client secrets, grants, access and refresh tokens are explicitly excluded from backup snapshots. Connection labels, scopes, last use and revocation status are retained; restore marks each restored connection revoked, requiring reconnection. The OAuth feature remains disabled unless the host explicitly sets `MCP_ISSUER_URL`. Migration and client-generation validation alone do not establish live-provider proof.
+
 ## November 12 — Hiring readiness (CMP-5, additive)
 
 Migration `20261112000000_cmp5_hiring`.
@@ -11,9 +19,11 @@ Migration `20261111000000_cmp4_colorado_local`.
 - `ComplianceProfile` gains the local-filing facts: `tradeName` (the name the business trades under, if any — an LLC's statement of trade name never renews, C.R.S. § 7-71-104, so it carries no dates), `usdotNumber` (digits only; the FMCSA biennial update month and odd/even years are read off its last two digits), `truckRegistrationMonth` (1–12), `greeleyLicenseDate` (the date on the city's license; renewals fall every two years on that date), and the Secretary of State registered-agent block (`registeredAgentName`, `registeredAgentAddress`, `registeredAgentCity`, `registeredAgentState`, `registeredAgentZip`) printed as exact values to type on the SOS periodic report. All nullable: a missing fact means the obligation shows without dates, never an invented deadline.
 - Two dated rules are seeded as RESEARCHED `LegalRuleVersion` rows by the migration: `co.bpp.exemption_threshold` (5,600,000 cents — the $56,000 Weld County total-actual-value exemption for 2026, compared against the fleet's total original cost, the figure the assessor's actual value derives from) and `co.bpp.extension` (the declaration extension fees, $20 for 10 days / $40 for 20 days). The Weld forms DS 056 and DS 060 are vendored as fillable PDFs under `src/domains/compliance/forms/co/` and pinned in the forms manifest; the forms are never pre-filled with the owner's tax ID or a signature.
 
+
 ## November 10 — Income tax helpers (CMP-2, additive)
 
 Migration `20261110000000_cmp2_income_tax`.
+- TAXBEN-1 additions (migration `20261113000000_taxben_benefits`, additive): `Appliance.capDecision`/`capReason`/`capLineCents`/`capRuleKey`/`capRuleValue`/`capDecidedAt`/`capPlacedInServiceOn` — the recorded capital-vs-expense decision per purchased unit, written once and never rewritten by later rule or election changes; `Purchase.boughtFromRelatedParty` (nullable: null = never asked); `ComplianceProfile.businessBeganOn` plus the home-office facts (`homeOfficeSqFt`, `homeSqFt`, `homeHousingCostsCents`, `homeUtilitiesCents`, `homeInsuranceCents`, `homeOfficeAttestedYear`); `BusinessSettings.businessUsePercents` (JSON by account role; missing = unanswered = 0%), `deMinimisElections` (JSON by tax year; missing = the starting value, on) and `enterpriseZone` (`UNKNOWN` | `YES` | `NO`); `TaxYearFacts.seHealthPremiumCents` and `seHealthEmployerPlanMonths` (JSON month numbers). The same migration seeds the TAXBEN rule-book values (`us.de_minimis_per_item`, `us.startup_costs`, `us.qbi`, `us.se_tax`, `us.sep_ira`, `us.solo_401k`, `us.home_office_simplified`, `us.class_life_months`, `us.passenger_auto_caps`, `co.enterprise_zone_credit`, `co.bpp_exemption`) — every TAXBEN number reads from `LegalRuleVersion` through `ruleAsOf`, never a code literal. No new models, so the backup manifest is unchanged. Follow-ups: migration `20261113010000_taxben_capitalization_preference` adds `BusinessSettings.capitalizationPreference` (`BONUS` | `SECTION179`, starting value `BONUS`; DQ-TAXBEN-179-VS-BONUS), and migration `20261113020000_taxben_benefit_rates` seeds two more rule-book values the benefit list reads: `us.se_tax_rates` (the self-employment tax rates and floors) and `us.mid_quarter` (the mid-quarter percentage line).
 - `LedgerAccount.scheduleCLine` — the Schedule C line this account's year totals land on (a line code like `1`, `20b`, `27a`). The migration fills it for every system account from the system chart (`src/domains/books/system-chart.json`, the same values); owner-added accounts stay null, which the accountant packet reads as line 27a (Other expenses), listed by name — an account is never dropped or guessed into a more specific line.
 - `TaxYearFacts` — one row per finished tax year (`year` unique): `federalTaxCents`, `federalAgiCents`, `coloradoTaxCents` (what that year's returns said — the quarterly estimates' safe-harbor basis) and `form1099KGrossCents` (the 1099-K box 1a typed from Stripe's form, for the tie-out). All nullable: a missing figure means the app shows words ("ask your CPA"), never an invented number. Entered by the owner on Business facts; registered in the backup manifest.
 
@@ -25,6 +35,17 @@ Migrations `20261107000000_supplier_tin_w9` and `20261107010000_filing_period_ke
 - `ExpenseCategory.form1099Box` — which 1099 box the category's payments belong in (`NEC_1`, `MISC_1`, `MISC_3`, or null = not classified yet; amounts are never guessed into a box). The migration classifies only the two system categories whose meaning is certain: warehouse rent → `MISC_1`, professional fees (CPA/legal) → `NEC_1`.
 - `ComplianceProfile` gains the payer block printed on information returns: `businessLegalName`, `businessAddress`, `businessCity`, `businessState`, `businessZip`, `businessPhone`.
 - `ComplianceFiling.periodKey` widens from 20 to 40 characters: Form 8300 filings key their period by the triggering receipt (`8300-` + the receipt id).
+
+## November 4 — Accountant sign-in (ACCT-1, additive)
+
+Migration `20261104000000_accountant_role`.
+- `Role` gains `ACCOUNTANT` — a sign-in level for an outside CPA/tax professional: books, sales tax, compliance, money reports, CPA-audience decisions, and owner-shared business records only (deny by default; the exact allowlist is pinned by `tests/accountant-allowlist.test.ts`). Accountants always need a second sign-in step and never get a remembered device.
+- `User.firm` / `User.accessEndsOn` — the accountant's firm (shown next to their name) and the date their access ends; sign-in is refused after it, and the daily `/api/cron/access-expiry` sweep revokes leftover sessions. Null end date = keep until removed.
+- `TeamInvitation.firm` / `TeamInvitation.accessEndsOn` — the same two facts carried on the invite and copied onto the user at accept.
+- `BusinessPaperwork.shareWithAccountant` (default false) — the owner's per-record switch for which business records the accountant may see (still masked; number-bearing records stay owner/admin only).
+- `BusinessSettings.accountantChangesSeenAt` — when the owner last looked at Books home; drives the "changes by your accountant" unseen count.
+- `JournalSourceType` gains `ADJUSTMENT` — manual adjusting entries posted through the books' normal balanced-journal machinery (owner-reversible).
+- `ComplianceFiling.reviewedByUserId` / `reviewedAt` — the "Reviewed by" mark (owner/admin/accountant); preparing fresh figures clears it, and only the owner can approve or file.
 
 ## November 2 — Compliance center (CMP-1, additive)
 
@@ -1503,6 +1524,8 @@ All three tables are in the backup manifest.
 - `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed. `receiptRecordId` (optional, unique link to the `BusinessPaperwork` record that holds the recycler's receipt file; `ON DELETE SET NULL`).
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
+
+- `TeamCertification` — a team member's refrigerant (EPA 608 Type I) certification: person (Restrict), `kind` (starts `EPA_608_TYPE_I`), certification number, optional issue date; one per person per kind. Owner-entered. A `Job` marked `sealedSystem` (repair visits only) can only be assigned to someone with a row here. In the backup manifest.
 
 ## MCP-2 backup-artifact ledger (additive, 2026-10-25)
 

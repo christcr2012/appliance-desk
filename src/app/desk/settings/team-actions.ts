@@ -5,8 +5,9 @@ import { requireRole } from "@/lib/session";
 import { JobRoleError, archiveJobRole, assignJobRole, restoreJobRole, restoreStarterJobRole, saveJobRole } from "@/domains/team/job-roles";
 import {
   TeamError, cancelInvitation, changeAccessLevel, inviteTeamMember, removeTeamMember, resendInvitation,
-  resetTeamSignIn, restoreTeamMember, updateTeamSettings,
+  resetTeamSignIn, restoreTeamMember, setAccountantAccessEndDate, updateTeamSettings,
 } from "@/domains/team";
+import { endOfDenverDayKey } from "@/domains/accountant/rules";
 
 // ACC-2 Team actions. The rules (who may do what) are enforced in src/domains/team, inside the transaction; the role
 // check here is the coarse front door only.
@@ -26,10 +27,15 @@ async function run(fn: () => Promise<{ message: string; warning?: string }>, fal
   }
 }
 
-export async function inviteTeamMemberAction(raw: { name: string; email: string; phone?: string; accessLevel: string; adminCapabilityLimits?: string[]; jobRoleId?: string }): Promise<TeamActionState> {
+export async function inviteTeamMemberAction(raw: { name: string; email: string; phone?: string; accessLevel: string; adminCapabilityLimits?: string[]; jobRoleId?: string; firm?: string; accessEndDate?: string | null }): Promise<TeamActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   return run(async () => {
-    const r = await inviteTeamMember(session.user.id, raw);
+    // ACCT-1: firm + end date ride along only for an accountant invite; the picked date means the
+    // END of that Denver day (access works through it). No date = stays until removed.
+    const input = raw.accessLevel === "ACCOUNTANT"
+      ? { ...raw, firm: raw.firm?.trim() || null, accessEndsOn: raw.accessEndDate ? endOfDenverDayKey(raw.accessEndDate) : null }
+      : raw;
+    const r = await inviteTeamMember(session.user.id, input);
     return r.emailOutcome === "SENT" ? { message: `Invitation emailed to ${raw.email.trim()}. The link works once.` } : { message: "Invitation saved.", warning: NOT_SENT };
   }, "Couldn't create that invitation.");
 }
@@ -52,9 +58,22 @@ export async function removeTeamMemberAction(userId: string): Promise<TeamAction
   return run(async () => { const warning = await removeTeamMember(session.user.id, userId); return { message: "Access removed and signed out everywhere.", warning }; }, "Couldn't remove that person's access.");
 }
 
-export async function restoreTeamMemberAction(userId: string): Promise<TeamActionState> {
+export async function restoreTeamMemberAction(userId: string, accessEndDate?: string | null): Promise<TeamActionState> {
   const session = await requireRole("OWNER", "ADMIN");
-  return run(async () => { const warning = await restoreTeamMember(session.user.id, userId); return { message: "Access restored.", warning }; }, "Couldn't restore that person.");
+  return run(async () => {
+    // ACCT-1: restoring an accountant needs a fresh end date (or an explicit keep-open null).
+    const warning = await restoreTeamMember(session.user.id, userId,
+      accessEndDate === undefined ? {} : { accessEndsOn: accessEndDate ? endOfDenverDayKey(accessEndDate) : null });
+    return { message: "Access restored.", warning };
+  }, "Couldn't restore that person.");
+}
+
+export async function setAccountantAccessEndDateAction(userId: string, accessEndDate: string | null): Promise<TeamActionState> {
+  const session = await requireRole("OWNER");
+  return run(async () => {
+    await setAccountantAccessEndDate(session.user.id, userId, accessEndDate ? endOfDenverDayKey(accessEndDate) : null);
+    return { message: accessEndDate ? "Access end date saved." : "End date removed — their access now stays until you remove it." };
+  }, "Couldn't save that end date.");
 }
 
 export async function changeAccessLevelAction(userId: string, level: string, allowedCapabilities: string[]): Promise<TeamActionState> {

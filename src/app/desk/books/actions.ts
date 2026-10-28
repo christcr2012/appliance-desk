@@ -30,7 +30,7 @@ async function handle(action:string, fn:()=>Promise<unknown>) {
   catch(e) { finish(action,e instanceof Error?e.message:"Unable to save accounting change"); }
   finish(action,"Saved");
 }
-const actor=(user:{id:string;role:string})=>({id:user.id,role:user.role as "OWNER"|"ADMIN"});
+const actor=(user:{id:string;role:string})=>({id:user.id,role:user.role as "OWNER"|"ADMIN"|"ACCOUNTANT"});
 export async function initializeBooksAction(form:FormData) {
   const session=await requireRole("OWNER");
   await handle("Books setup",()=>initializeBooks(actor(session.user),{
@@ -96,7 +96,7 @@ export async function createAccountAction(form:FormData) {
   }));
 }
 export async function mapExportAccountAction(form:FormData) {
-  const session=await requireRole("OWNER");
+  const session=await requireRole("OWNER","ACCOUNTANT");
   await handle("Account mapping",()=>mapExportAccount(actor(session.user),{
     accountId:str(form,"accountId"),target:str(form,"target") as ExportTarget,
     externalName:str(form,"externalName"),externalTaxRate:str(form,"externalTaxRate"),
@@ -108,11 +108,11 @@ export async function postBooksAction() {
   finish("Journal",`${result.posted} entries recorded, ${result.problems.length} need review`);
 }
 export async function closeMonthAction(form:FormData) {
-  const session=await requireRole("OWNER");
+  const session=await requireRole("OWNER","ACCOUNTANT");
   await handle("Close month",()=>closeAccountingMonthWithReview(actor(session.user),str(form,"month")));
 }
 export async function reopenMonthAction(form:FormData) {
-  const session=await requireRole("OWNER");
+  const session=await requireRole("OWNER","ACCOUNTANT");
   await handle("Reopen month",()=>reopenAccountingMonth(actor(session.user),str(form,"month"),str(form,"reason")));
 }
 
@@ -128,7 +128,7 @@ function monthFromForm(form:FormData):string{
  return month;
 }
 export async function lockReviewedMonthAction(form:FormData){
- const session=await requireRole("OWNER");
+ const session=await requireRole("OWNER","ACCOUNTANT");
  const month=monthFromForm(form);
  let message="Reviewed month locked.";
  try{
@@ -157,5 +157,37 @@ export async function sendAccountantMonthAction(form:FormData){
  let message="";
  try{message=(await sendMonthToAccountant(actor(session.user),month)).message;}
  catch(e){message=e instanceof Error?e.message:"No message was sent.";}
+ redirectToReviewedMonth(month,message);
+}
+
+// ACCT-1: adjusting entries. The accountant (and owner/admin) posts a balanced entry from the
+// month view; only the owner reverses one. Lines arrive as repeated form fields.
+export async function createAdjustmentAction(form:FormData){
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
+ const { createAdjustingEntry }=await import("@/domains/books/adjustments");
+ const month=monthFromForm(form);
+ const accounts=form.getAll("lineAccount").map(v=>String(v));
+ const debits=form.getAll("lineDebit").map(v=>String(v));
+ const credits=form.getAll("lineCredit").map(v=>String(v));
+ const cents=(raw:string)=>{ const v=raw.trim(); if(!v)return 0;
+   if(!/^\d{1,9}(?:\.\d{1,2})?$/.test(v))throw new Error("Enter each amount in dollars and cents.");
+   const [w,f=""]=v.split("."); return Number(w)*100+Number(f.padEnd(2,"0")); };
+ const lines=accounts.map((accountId,i)=>({accountId,debitCents:cents(debits[i]??""),creditCents:cents(credits[i]??"")}))
+   .filter(l=>l.accountId&&(l.debitCents>0||l.creditCents>0));
+ let message="Adjusting entry recorded.";
+ try{
+  await createAdjustingEntry({kind:"person",userId:session.user.id},{
+   dateKey:str(form,"dateKey"),memo:str(form,"memo"),lines});
+ }catch(e){message=e instanceof Error?e.message:"The adjusting entry could not be recorded.";}
+ redirectToReviewedMonth(month,message);
+}
+export async function reverseAdjustmentAction(form:FormData){
+ const session=await requireRole("OWNER");
+ const { reverseAdjustingEntry }=await import("@/domains/books/adjustments");
+ const month=monthFromForm(form);
+ let message="Adjusting entry reversed. The original entry was kept; a canceling entry was added.";
+ try{
+  await reverseAdjustingEntry({kind:"person",userId:session.user.id},str(form,"entryId"));
+ }catch(e){message=e instanceof Error?e.message:"The adjusting entry could not be reversed.";}
  redirectToReviewedMonth(month,message);
 }

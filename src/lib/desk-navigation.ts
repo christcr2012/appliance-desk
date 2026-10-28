@@ -98,6 +98,23 @@ export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] |
 
 /** Called on the server: restricted destinations are never serialized to staff. */
 export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null): DeskNavGroup[] {
+  // ACCT-1: the accountant's menu is exactly their allowed areas — nothing else is ever serialized to them.
+  if (role === "ACCOUNTANT") {
+    return [
+      {
+        label: "Books & taxes",
+        links: [
+          { href: "/desk/books", label: "Books" },
+          { href: "/desk/sales-tax", label: "Taxes" },
+          { href: "/desk/compliance", label: "Compliance" },
+          { href: "/desk/reports", label: "Money reports" },
+          { href: "/desk/settings/decisions", label: "Decisions" },
+          { href: "/desk/paperwork", label: "Business records" },
+          { href: "/desk/account", label: "My account" },
+        ],
+      },
+    ];
+  }
   if (!["OWNER", "ADMIN", "STAFF"].includes(role ?? "")) return [];
   const finance = role === "OWNER" || role === "ADMIN";
   return groups
@@ -140,7 +157,14 @@ export function deskBottomTabLinks(
     groups.flatMap((group) => group.links).map((link) => [link.href, link]),
   );
   const preferred =
-    role === "STAFF"
+    role === "ACCOUNTANT"
+      ? [
+          ["/desk/books", "Books"],
+          ["/desk/sales-tax", "Taxes"],
+          ["/desk/compliance", "Compliance"],
+          ["/desk/reports", "Reports"],
+        ]
+      : role === "STAFF"
       ? [
           ["/desk/today", "Today"],
           ["/desk/dispatch", "Schedule"],

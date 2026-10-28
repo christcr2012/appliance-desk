@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import { decisionAttachmentProblem } from "./rules";
+import { decisionSubject } from "./registry";
 
 /**
  * Completed professional forms kept with their answers (DEC-1b). Owner-only uploads: the server reads the file itself
@@ -122,9 +123,22 @@ export async function decisionAttachmentForViewer(
   if (!/^[a-z0-9]{10,40}$/i.test(recordId)) return null;
   const store = getPrivatePhotoStore();
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
+    const actor = await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "ACCOUNTANT"]);
     const record = await tx.decisionRecord.findUnique({ where: { id: recordId }, select: { subjectId: true, attachmentUrl: true } });
     if (!record?.attachmentUrl || !store) return null;
+    // ACCT-1: an accountant may only fetch a form kept with a CPA question — the same audience rule
+    // their decision list follows (the latest send decides, else the question's own audience).
+    if (actor.role === "ACCOUNTANT") {
+      const subject = decisionSubject(record.subjectId);
+      if (!subject) return null;
+      const last = await tx.decisionRecord.findFirst({
+        where: { subjectId: record.subjectId }, select: { kind: true, audience: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      const audience = last?.kind === "SENT_TO_PROFESSIONAL" && ["OWNER", "CPA", "ATTORNEY", "TRANSLATOR"].includes(last.audience)
+        ? last.audience : subject.audience;
+      if (audience !== "CPA") return null;
+    }
     let pathname: string;
     try {
       pathname = decodeURIComponent(new URL(record.attachmentUrl).pathname.replace(/^\/+/, ""));
