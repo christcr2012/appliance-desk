@@ -93,3 +93,29 @@ describe("a signed agreement keeps its own frozen zone", () => {
     expect(await isAgreementPickupInTx(frozenPickup.tx, "g1")).toBe(true);
   });
 });
+
+describe("customer pickup: no retail delivery fee, no delivery-license gate (Codex findings on PR #604)", () => {
+  it("allocates no retail delivery fee to a pickup address and refuses to put the event on one", async () => {
+    const { allocateReviewedRdfForLocation } = await import("@/domains/billing/mandatory-charge-assessment");
+    const rdf = { status: "APPLIES", amountCents: 29, rateId: "r", ruleVersionId: "v", handling: "COLLECT_FROM_CUSTOMER",
+      reason: "evidence" } as unknown as Parameters<typeof allocateReviewedRdfForLocation>[0];
+    for (const policy of ["REQUIRED", "EXEMPT"] as const)
+      expect(allocateReviewedRdfForLocation(rdf, policy, false, true)).toMatchObject({ event: false, status: "EXEMPT", amountCents: 0 });
+    expect(() => allocateReviewedRdfForLocation(rdf, "REQUIRED", true, true)).toThrow(/customer pickup has no delivery/);
+    // An undecided owner policy still needs deciding; a delivery is unchanged.
+    expect(allocateReviewedRdfForLocation(rdf, "UNDECIDED", false, true).status).toBe("UNDECIDED");
+    expect(allocateReviewedRdfForLocation(rdf, "REQUIRED", true)).toMatchObject({ status: "APPLIES", amountCents: 29 });
+  });
+  it("drops only delivery-license problems for a hand-over; every other problem still stops it", async () => {
+    const { withoutDeliveryLicenseProblems } = await import("@/domains/tax/delivery-readiness");
+    const license = { jurisdictionId: "city", name: "City", problem: { code: "LICENSE_REQUIRED" as const, message: "license" } };
+    expect(withoutDeliveryLicenseProblems({ ready: false, overrideable: false, places: [license] }))
+      .toEqual({ ready: true, overrideable: false, places: [{ jurisdictionId: "city", name: "City" }] });
+    const located = { jurisdictionId: "co", name: "Colorado", problem: { code: "ADDRESS_NOT_LOCATED" as const, message: "x" } };
+    expect(withoutDeliveryLicenseProblems({ ready: false, overrideable: false, places: [license, located] }))
+      .toMatchObject({ ready: false, overrideable: false });
+    const undecided = { jurisdictionId: "co", name: "Colorado", problem: { code: "RULES_UNDECIDED" as const, message: "x" } };
+    expect(withoutDeliveryLicenseProblems({ ready: false, overrideable: false, places: [license, undecided] }))
+      .toMatchObject({ ready: false, overrideable: true });
+  });
+});

@@ -320,6 +320,7 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
           {
             serviceAddressId: readinessAddressId,
             agreementId: input.agreementId ?? null,
+            ...(handoff ? { customerPickup: true } : {}),
           },
           input.scheduledAt ?? new Date(),
         );
@@ -422,8 +423,8 @@ export async function updateJobStatus(
         await assertDeliveryReadyInTx(tx, {
           serviceAddressId: readinessAddressId,
           agreementId: before.agreementId,
-          // ZONE-1: a customer pickup hand-over sends no truck, so it doesn't take a delivery-count slot.
-          ...(before.customerPickupHandoff ? {} : { countDispatchedForJobId: jobId }),
+          // ZONE-1: a customer pickup hand-over sends no truck: no delivery-count slot and no delivery-license rule.
+          ...(before.customerPickupHandoff ? { customerPickup: true } : { countDispatchedForJobId: jobId }),
         });
       }
     }

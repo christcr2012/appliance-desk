@@ -10,7 +10,8 @@ customer estimate pages show that same price (an exception says so in plain word
 **Pickup hand-over (new):** signing a pickup rental creates one "Customer pickup: hand over {items} to {name}" job (on
 To do, never "Schedule delivery"); marking it **Handed over** runs the normal delivered steps — rental start date,
 Rented, custody, monthly billing — but it is never a driver-route stop, trip-log stop, day-of reminder, delivery count
-or retail delivery fee (CDOR: no fee when the customer picks up).
+or retail delivery fee (CDOR: no fee when the customer picks up). The fee review puts no retail delivery fee on a
+pickup address (an all-pickup order needs no fee event), and a city's delivery-license rule doesn't stop a hand-over.
 **Signed stays signed (new):** signing freezes the zone and delivery/pickup choice onto the agreement; a still-open
 estimate can't change a signed agreement's delivery or pickup (refused with a plain message).
 Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.

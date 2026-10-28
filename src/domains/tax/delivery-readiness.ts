@@ -299,6 +299,16 @@ export async function deliveryTaxReadiness(
   return deliveryTaxReadinessWith(prisma, serviceAddressId, now);
 }
 
+/** ZONE-1: the readiness of a customer pickup hand-over — delivery-license problems removed, everything else kept. */
+export function withoutDeliveryLicenseProblems(readiness: DeliveryReadiness): DeliveryReadiness {
+  const places = readiness.places.map((place) =>
+    place.problem?.code === "LICENSE_REQUIRED" ? { jurisdictionId: place.jurisdictionId, name: place.name } : place);
+  const problems = places.flatMap((place) => (place.problem ? [place.problem] : []));
+  if (problems.length === readiness.places.filter((place) => place.problem).length) return readiness;
+  return { ready: problems.length === 0, overrideable: problems.length > 0 && problems.every((p) => p.code === "RULES_UNDECIDED"),
+    places };
+}
+
 /**
  * Gate for order saves and scheduling. An agreement carrying the
  * owner's override passes only when every problem is the overrideable
@@ -311,10 +321,16 @@ export async function assertDeliveryReadyInTx(
     serviceAddressId: string;
     agreementId?: string | null;
     countDispatchedForJobId?: string;
+    /**
+     * ZONE-1: a customer pickup hand-over sends no truck into the place, so a city's delivery license rule
+     * (LICENSE_REQUIRED) doesn't apply to it. Every other problem (address not located, out of state, place not set
+     * up, rules not decided) still stops it.
+     */
+    customerPickup?: boolean;
   },
   now = new Date(),
 ): Promise<void> {
-  if (input.countDispatchedForJobId) {
+  if (input.countDispatchedForJobId && !input.customerPickup) {
     // Dispatch consumes a delivery-count slot, so two dispatches to the
     // same taxing place must not both read the counts before either
     // lands. Lock the place rows (in id order, so competing dispatches
@@ -338,9 +354,10 @@ export async function assertDeliveryReadyInTx(
       await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${jurisdictionId} FOR UPDATE`;
     }
   }
-  const readiness = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, {
-    countDispatchedForJobId: input.countDispatchedForJobId,
+  const computed = await deliveryTaxReadinessWith(tx, input.serviceAddressId, now, {
+    countDispatchedForJobId: input.customerPickup ? undefined : input.countDispatchedForJobId,
   });
+  const readiness = input.customerPickup ? withoutDeliveryLicenseProblems(computed) : computed;
   if (readiness.ready) return;
 
   if (input.agreementId) {
