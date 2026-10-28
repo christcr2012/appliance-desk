@@ -25,6 +25,8 @@ describe("COM-L6A job-day reminders cutover", () => {
     expect(await sendJobDayOfReminders()).toEqual({ sent: 0, failed: 0, heldForReview: 2 });
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ dayOfReminderSentAt: null,
+        // ZONE-1: a customer pickup hand-over is not a visit, so it never gets a "we're coming today" reminder.
+        customerPickupHandoff: false,
         customer: { smsOptInAt: { not: null }, phone: { not: null } } }),
       take: 100,
     }));

@@ -6,6 +6,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { locateServiceAddresses, saveLookedUpPositionsInTx, type AddressPosition } from "./address-zone";
 import type { GeocodeResult } from "./geocode";
 import { getZoneSettingsInTx } from "./settings";
+import { agreementFollowsEstimateZone, UNSIGNED_AGREEMENT_STATUSES } from "./pickup-guard";
 import {
   buildZoneLocation, choiceAllowed, confirmZoneByMiles, readZoneSnapshot,
   type DeliveryChoice, type EstimateZoneSnapshot, type ZoneSnapshotLocation,
@@ -217,6 +218,13 @@ export async function applyZoneChangeInTx(tx: Prisma.TransactionClient,
   const quoteChanged = !before || before.choice !== after.choice || before.zone !== after.zone ||
     before.priceCents !== after.priceCents || before.pickupPriceCents !== after.pickupPriceCents;
   if (!quoteChanged) return after;
+  // ZONE-1 (Codex finding on PR #604): a signed agreement keeps the delivery or pickup it was signed with. Lock this
+  // address's agreements (estimate first, then agreements — the same order as below) and refuse when one is signed.
+  await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "sourceEstimateId" = ${estimate.id}
+    AND "serviceAddressId" = ${serviceAddressId} ORDER BY "id" FOR UPDATE`;
+  const signed = await tx.rentalAgreement.findFirst({ where: { sourceEstimateId: estimate.id, serviceAddressId,
+    status: { in: [...SIGNED_AGREEMENT_STATUSES] } }, select: { id: true } });
+  if (signed) throw new Error(SIGNED_AGREEMENT_ZONE_MESSAGE);
   const becamePickup = after.choice === "CUSTOMER_PICKUP" && before?.choice !== "CUSTOMER_PICKUP";
   const data: Prisma.EstimateUpdateInput = {};
   if (estimate.reviewedQuoteFingerprint) {
@@ -236,14 +244,18 @@ export async function applyZoneChangeInTx(tx: Prisma.TransactionClient,
   await tx.estimate.update({ where: { id: estimate.id }, data: {
     ...data, deliveryZoneSnapshot: snapshot as unknown as Prisma.InputJsonObject } });
   if (becamePickup) {
-    // Lock this address's agreements before clearing their retained delivery request.
-    await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "sourceEstimateId" = ${estimate.id}
-      AND "serviceAddressId" = ${serviceAddressId} ORDER BY "id" FOR UPDATE`;
-    await tx.rentalAgreement.updateMany({ where: { sourceEstimateId: estimate.id, serviceAddressId },
+    // This address's agreements are locked above; only ones not signed yet can still change (never signed history).
+    await tx.rentalAgreement.updateMany({ where: { sourceEstimateId: estimate.id, serviceAddressId,
+      status: { in: [...UNSIGNED_AGREEMENT_STATUSES] } },
       data: { deliveryRequested: Prisma.DbNull, deliveryRequestedAt: null } });
   }
   return after;
 }
+
+/** Agreements past signing: their delivery or pickup is frozen (cancelled ones are history and are left alone). */
+const SIGNED_AGREEMENT_STATUSES = ["SCHEDULED", "ACTIVE", "ENDED"] as const;
+export const SIGNED_AGREEMENT_ZONE_MESSAGE =
+  "The rental agreement for this address is already signed, so its delivery or pickup can't change from this estimate. Change it on the signed rental instead (or make a new quote).";
 
 export const DELIVERY_REQUOTE_MESSAGE =
   "I'd like it delivered instead of picking it up. Please send a new quote with delivery.";
@@ -321,11 +333,13 @@ export async function copyEstimateZoneToAgreements(actorId: string, estimateId: 
     await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
     const agreements = await tx.rentalAgreement.findMany({
       where: { id: { in: ids }, sourceEstimateId: estimateId },
-      select: { id: true, serviceAddressId: true, deliveryZoneSnapshot: true },
+      select: { id: true, serviceAddressId: true, deliveryZoneSnapshot: true, status: true },
     });
     let copied = 0;
     for (const agreement of agreements) {
       if (agreement.deliveryZoneSnapshot !== null) continue;
+      // A signed agreement keeps what it was signed with (signing froze its zone, or it had none to freeze).
+      if (!agreementFollowsEstimateZone(agreement.status)) continue;
       const location = snapshot.locations.find((row) => row.serviceAddressId === agreement.serviceAddressId);
       if (!location) continue;
       await tx.rentalAgreement.update({ where: { id: agreement.id },

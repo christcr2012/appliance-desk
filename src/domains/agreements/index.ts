@@ -788,6 +788,12 @@ export async function signAgreement(
     });
 
     const scheduledRenewal = Boolean(agreement.renewedFromAgreementId && agreement.startDate);
+    // ZONE-1 (Codex finding on PR #604): the zone and delivery/pickup choice this signature was checked against are
+    // frozen onto the agreement in the same write, so later edits of a still-open source estimate can never change a
+    // signed agreement's delivery or pickup (pickup checks read this copy first; estimate-side changes refuse).
+    const frozenZone = agreement.deliveryZoneSnapshot === null && ownZone
+      ? { deliveryZoneSnapshot: { ...ownZone, estimateId: agreement.sourceEstimateId } as unknown as Prisma.InputJsonObject }
+      : {};
     await tx.rentalAgreement.update({
       where: { id: agreement.id },
       // A renewal keeps the start date it was agreed with and is only
@@ -795,10 +801,12 @@ export async function signAgreement(
       // ends) in one step at its start date; see renewal-start.ts.
       data: scheduledRenewal
         ? {
+            ...frozenZone,
             status: "SCHEDULED",
             endDate: agreement.termMonths ? fixedTermEndDate(agreement.startDate!, agreement.termMonths) : null,
           }
         : {
+            ...frozenZone,
             status: "ACTIVE",
             startDate: signedAt,
             // A new month-to-month rental starts on the newest published terms.

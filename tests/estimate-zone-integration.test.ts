@@ -221,7 +221,10 @@ describe("ZONE-1 every path to pickup (real database)", () => {
       if (choice === "CUSTOMER_PICKUP") await setEstimateDeliveryChoiceByStaff(ownerId, id, lovelandId, "CUSTOMER_PICKUP");
       // A request kept from before (e.g. written by an older code path) must still be ignored for pickup.
       await prisma.estimate.update({ where: { id }, data: { status: "CONVERTED", ...requested } });
-      const agreement = await prisma.rentalAgreement.create({ data: { customerId, serviceAddressId: lovelandId, sourceEstimateId: id, status: "ACTIVE" } });
+      // Signed (ACTIVE): its zone was frozen onto it at signing/conversion, so that copy is what settlement reads.
+      const frozen = readZoneSnapshot((await prisma.estimate.findUniqueOrThrow({ where: { id } })).deliveryZoneSnapshot)!.locations[0]!;
+      const agreement = await prisma.rentalAgreement.create({ data: { customerId, serviceAddressId: lovelandId, sourceEstimateId: id,
+        status: "ACTIVE", deliveryZoneSnapshot: { ...frozen, estimateId: id } as unknown as Prisma.InputJsonObject } });
       const receipt = await prisma.receipt.create({ data: { customerId, source: "MANUAL", amountCents: 10500, method: "check",
         receivedOn: new Date(), recordedByUserId: ownerId } });
       await prisma.agreementSigningPayment.create({ data: { agreementId: agreement.id, orderFingerprint: "e".repeat(64),
@@ -239,17 +242,41 @@ describe("ZONE-1 every path to pickup (real database)", () => {
     expect(await prisma.$transaction((tx) => requestPaidDeliveryInTx(tx, delivered.agreement.id))).toBe(delivered.job.id);
   });
 
-  it("signing creates no delivery visit (or 'Schedule delivery' To do) for a pickup address, and still does for delivery", async () => {
+  it("a signed agreement never follows a later pickup change on its source estimate (Codex finding on PR #604)", async () => {
+    const id = await estimateWith([lovelandId], "Signed keeps delivery");
+    await checkEstimateDeliveryZones(ownerId, id, { geocode });
+    const agreement = await prisma.rentalAgreement.create({ data: { customerId, serviceAddressId: lovelandId, sourceEstimateId: id,
+      status: "ACTIVE", deliveryRequested: request, deliveryRequestedAt: new Date() } });
+    // Changing the estimate's choice is refused while this address's agreement is signed, and nothing changes.
+    await expect(setEstimateDeliveryChoiceByStaff(ownerId, id, lovelandId, "CUSTOMER_PICKUP")).rejects.toThrow(/already signed/);
+    expect(readZoneSnapshot((await prisma.estimate.findUniqueOrThrow({ where: { id } })).deliveryZoneSnapshot)!.locations[0])
+      .toMatchObject({ choice: "DELIVER" });
+    expect(await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id } })).toMatchObject({ deliveryRequested: request });
+    // Even if the estimate's copy were changed some other way, the signed agreement keeps its delivery and is not
+    // given a zone copy at conversion.
+    const snapshot = readZoneSnapshot((await prisma.estimate.findUniqueOrThrow({ where: { id } })).deliveryZoneSnapshot)!;
+    await prisma.estimate.update({ where: { id }, data: { deliveryZoneSnapshot: { version: 1,
+      locations: snapshot.locations.map((row) => ({ ...row, choice: "CUSTOMER_PICKUP" })) } as unknown as Prisma.InputJsonObject } });
+    const { isAgreementPickupInTx } = await import("@/domains/delivery/pickup-guard");
+    expect(await prisma.$transaction((tx) => isAgreementPickupInTx(tx, agreement.id))).toBe(false);
+    const { copyEstimateZoneToAgreements } = await import("@/domains/delivery/estimate-zone");
+    expect(await copyEstimateZoneToAgreements(ownerId, id, [agreement.id])).toBe(0);
+  });
+
+  it("signing creates the customer pickup hand-over (never a delivery visit) for a pickup address, and a delivery visit for delivery", async () => {
     const make = async (choice: "DELIVER" | "CUSTOMER_PICKUP") => prisma.rentalAgreement.create({ data: {
       customerId, serviceAddressId: lovelandId, status: "ACTIVE",
       deliveryZoneSnapshot: { serviceAddressId: lovelandId, zone: 2, name: "Nearby", miles: 19.3, method: "STRAIGHT_LINE",
         center: { lat: 40.4233, lon: -104.7091 }, priceCents: 7500, pickupPriceCents: 7500, choice, checkedAt: new Date().toISOString() } } });
     const pickup = await make("CUSTOMER_PICKUP");
-    expect(await prisma.$transaction((tx) => ensureSignedDeliveryDraftInTx(tx, { ...pickup, renewedFromAgreementId: null }))).toBeNull();
-    expect(await prisma.job.count({ where: { agreementId: pickup.id, type: "DELIVERY" } })).toBe(0);
+    const handoffId = await prisma.$transaction((tx) => ensureSignedDeliveryDraftInTx(tx, { ...pickup, renewedFromAgreementId: null }));
+    expect(await prisma.job.findMany({ where: { agreementId: pickup.id } })).toEqual([expect.objectContaining({ id: handoffId,
+      type: "DELIVERY", customerPickupHandoff: true, scheduledAt: null })]);
+    // A retry finds the same hand-over.
+    expect(await prisma.$transaction((tx) => ensureSignedDeliveryDraftInTx(tx, { ...pickup, renewedFromAgreementId: null }))).toBe(handoffId);
     const delivered = await make("DELIVER");
     expect(await prisma.$transaction((tx) => ensureSignedDeliveryDraftInTx(tx, { ...delivered, renewedFromAgreementId: null }))).toEqual(expect.any(String));
-    expect(await prisma.job.count({ where: { agreementId: delivered.id, type: "DELIVERY" } })).toBe(1);
+    expect(await prisma.job.count({ where: { agreementId: delivered.id, type: "DELIVERY", customerPickupHandoff: false } })).toBe(1);
   });
 
   it("a looked-up position is saved only by a re-checked active owner/admin, inside the transaction", async () => {

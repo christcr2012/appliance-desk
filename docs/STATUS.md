@@ -1,4 +1,4 @@
-## October 26 — ZONE-1: delivery zones from the address, zone map (in review)
+## October 27 — ZONE-1: delivery zones from the address, zone map (in review, PR #604)
 
 Zones are owner settings (Settings › Delivery zones; starting values IN-06, straight line). An address is looked up
 with the U.S. Census Bureau (server only, 5 s, saved per address in its own table) → zone and price on the estimate;
@@ -6,14 +6,15 @@ lookup trouble → "We'll confirm" + a To do. Delivery or "I'll pick it up" ($0)
 frozen once sent, copied to the agreement. `/service-area` is our own SVG map + town list + checker; `/rent/{town}`
 from the town list. One rule sets each address's delivery charge for the fee review, quote, approval and signing:
 pickup $0, else an owner-recorded driving-route exception's frozen price, else the zone price — and the desk and
-customer estimate pages show that same price (an exception says so in plain words). Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
-Proof: unit tests and the zone DB tests run here on a throwaway Postgres; browser tests in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
-
-||||||| fa71334d
-
-## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (PR #696)
-||||||| bbc3f78f
-## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (PR #696)
+customer estimate pages show that same price (an exception says so in plain words).
+**Pickup hand-over (new):** signing a pickup rental creates one "Customer pickup: hand over {items} to {name}" job (on
+To do, never "Schedule delivery"); marking it **Handed over** runs the normal delivered steps — rental start date,
+Rented, custody, monthly billing — but it is never a driver-route stop, trip-log stop, day-of reminder, delivery count
+or retail delivery fee (CDOR: no fee when the customer picks up).
+**Signed stays signed (new):** signing freezes the zone and delivery/pickup choice onto the agreement; a still-open
+estimate can't change a signed agreement's delivery or pickup (refused with a plain message).
+Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
+Proof: unit tests here; database and browser tests run in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
 
 ## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (MERGED — PR #705, squash bbc3f78f)
 

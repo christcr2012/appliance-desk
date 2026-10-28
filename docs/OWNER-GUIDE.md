@@ -205,6 +205,8 @@ Ending: ending a month-to-month rental, early return ("Returned early — choose
 
 **Complete job** asks what happened to each machine (the usual result is pre-chosen) and the date the work was done; billing counts from that date. An item not delivered stays on a list; the customer keeps being billed and is credited for missing days, you can send a different unit, or take it off the agreement and refund it. Taking one machine of a set off bills the remaining machine at its single price from the next day. Marking a machine out for repair with no replacement credits the customer for each day without it. Recording that a late pickup was the company's delay waives the late days.
 
+**Customer pickup ("I'll pick it up").** When a pickup rental is signed, To do shows **Customer pickup: hand over {items} to {name}** (never "Schedule delivery"). When the customer comes for it, open the hand-over, press Start, mark each item **Handed over**, check the **Hand-over date** and press **Record hand-over**: the machines become Rented and the rental and its monthly billing start from that date, exactly as after a delivery. A hand-over is never a stop on the driver's route or trip log, sends no "we're coming today" text, and records no delivery fee. Once a rental is signed, its estimate can no longer switch it between delivery and pickup.
+
 **Change without code.** Settings → Visits and scheduling (usual length, whether staff may work unassigned jobs) and Pickups and deliveries.
 
 **If it fails.** A completion that cannot be saved keeps every answer on screen. Anything not delivered or not picked up creates a follow-up task for each item so it is never lost.

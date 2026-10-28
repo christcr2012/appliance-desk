@@ -125,6 +125,7 @@ export async function getDeskJobById(id: string) {
       completionNotes: true,
       checklist: true,
       agreementId: true,
+      customerPickupHandoff: true,
       customer: { select: customerName },
       serviceAddress: { select: address },
       maintenanceRequest: { select: { id: true } },

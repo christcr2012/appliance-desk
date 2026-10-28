@@ -11,6 +11,8 @@ import { recordSigningBusinessReview } from "@/domains/billing/signing-business-
 import { sendForSignature, signAgreement } from "@/domains/agreements";
 import { customerDeliveryChargesForEstimate, recordDeliveryRouteEvidence, setVerifiedDrivingOrigin } from "@/domains/orders/route-evidence";
 import { currentLocations } from "@/domains/delivery/snapshot";
+import { setEstimateDeliveryChoiceByStaff } from "@/domains/delivery/estimate-zone";
+import { isAgreementPickupInTx } from "@/domains/delivery/pickup-guard";
 import { buildZoneLocation } from "@/domains/delivery/snapshot";
 import { startingZoneSettings, STARTING_CENTER } from "@/domains/delivery/zone";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -138,6 +140,37 @@ describe.skipIf(!enabled)("ZONE-1 12 straight-line miles / 20 road miles, end to
     await expect(signAgreement(signature.id, { signerName: "Synthetic Customer", signerEmail: "zone-route@test.invalid", ipAddress: null }))
       .rejects.toThrow(/doesn't match its delivery zone/);
     expect((await prisma.signatureRecord.findUniqueOrThrow({ where: { id: signature.id } })).signedAt).toBeNull();
+  });
+
+  it("signing before conversion freezes the zone onto the agreement; later estimate changes can't change it (Codex finding on PR #604)", async () => {
+    const fixture = await createSyntheticW22V2Order({ firstDeliveryCents: 0 });
+    cleanups.push(fixture.cleanup);
+    owner = fixture.owner;
+    await freezeLocalZones(fixture);
+    await recordSigningBusinessReview(fixture.owner, review(fixture));
+    const first = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: fixture.ids[0] }, select: { serviceAddressId: true } });
+    const signature = await sendForSignature(fixture.owner, fixture.ids[0]);
+    await signAgreement(signature.id, { signerName: "Synthetic Customer", signerEmail: "zone-route@test.invalid", ipAddress: null });
+    const signed = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: fixture.ids[0] } });
+    expect(signed.status).toBe("ACTIVE");
+    expect(signed.deliveryZoneSnapshot).toMatchObject({ serviceAddressId: first.serviceAddressId, zone: 1, priceCents: 0,
+      choice: "DELIVER", estimateId: fixture.estimateId });
+    expect(await prisma.job.count({ where: { agreementId: signed.id, type: "DELIVERY", customerPickupHandoff: false } })).toBe(1);
+    // The estimate is still a draft: changing this address to pickup is refused, and the agreement is unchanged.
+    await expect(setEstimateDeliveryChoiceByStaff(fixture.owner, fixture.estimateId, first.serviceAddressId, "CUSTOMER_PICKUP"))
+      .rejects.toThrow(/already signed/);
+    expect((await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: signed.id } })).deliveryZoneSnapshot)
+      .toEqual(signed.deliveryZoneSnapshot);
+    // The other address's agreement isn't signed, so its choice can still change.
+    const second = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: fixture.ids[1] }, select: { serviceAddressId: true } });
+    await expect(setEstimateDeliveryChoiceByStaff(fixture.owner, fixture.estimateId, second.serviceAddressId, "CUSTOMER_PICKUP"))
+      .resolves.toMatchObject({ choice: "CUSTOMER_PICKUP" });
+    // Even an estimate copy changed some other way never makes the signed agreement pickup.
+    const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id: fixture.estimateId }, select: { deliveryZoneSnapshot: true } });
+    const snapshot = estimate.deliveryZoneSnapshot as unknown as { version: 1; locations: Array<Record<string, unknown>> };
+    await prisma.estimate.update({ where: { id: fixture.estimateId }, data: { deliveryZoneSnapshot: { version: 1,
+      locations: snapshot.locations.map((row) => ({ ...row, choice: "CUSTOMER_PICKUP" })) } as unknown as Prisma.InputJsonObject } });
+    expect(await prisma.$transaction((tx) => isAgreementPickupInTx(tx, signed.id))).toBe(false);
   });
 
   it("with an owner-recorded driving-route exception its frozen road price is the accepted charge, through approval and signing", async () => {

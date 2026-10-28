@@ -1469,7 +1469,14 @@ keeping numbers, states and dates.
   (1..n | "OUTSIDE" | "UNKNOWN"), name, miles, method, center, priceCents, pickupPriceCents, choice ("DELIVER" |
   "CUSTOMER_PICKUP"), unknownReason?, confirmed?, pickupArranged?, checkedAt }] }`. Rechecked only while DRAFT /
   CHANGES_REQUESTED; frozen once sent. `RentalAgreement.deliveryZoneSnapshot` is that address's entry, copied once at
-  conversion.
+  conversion — or frozen at signing when an agreement is signed before conversion. Only an agreement not signed yet
+  (DRAFT / AWAITING_SIGNATURE) may still follow its estimate; estimate-side zone or choice changes are refused for an
+  address whose agreement is signed (SCHEDULED / ACTIVE / ENDED).
+- `Job.customerPickupHandoff` (Boolean, default false; additive migration `20261130000001_job_customer_pickup_handoff`):
+  marks the DELIVERY job that is a customer pickup hand-over at our place. Created at signing for a pickup rental
+  (the only DELIVERY job such a rental may have). Completing it runs the normal delivered path (`firstDeliveredOn`,
+  continuity, Rented, custody, `START_RECURRING_BILLING` hand-off) but it is excluded from the driver's route, the
+  vehicle trip log, day-of reminders, delivery counts, the retail delivery fee record and trip/relocation fees.
 
 ### BA-1: books autopilot (implementation branch)
 

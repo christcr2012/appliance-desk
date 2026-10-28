@@ -68,7 +68,7 @@ function JobRow({
         <div>
           <p className="font-medium text-ink">
             {job.scheduledAt && `${formatTime(new Date(job.scheduledAt))} — `}
-            {jobTypeLabel(job.type)} — {customerLabel(job)}
+            {job.customerPickupHandoff ? "customer pickup (hand-over, no truck)" : jobTypeLabel(job.type)} — {customerLabel(job)}
           </p>
           <p className="text-ink-soft">
             {job.serviceAddress

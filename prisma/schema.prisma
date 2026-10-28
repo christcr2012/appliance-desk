@@ -1966,6 +1966,10 @@ model Job {
   @@index([assignedToUserId, scheduledAt])
   /// OPS-2: a repair on a sealed refrigerant system. Only someone with a refrigerant certification on file may be assigned.
   sealedSystem     Boolean   @default(false)
+  // ZONE-1: "I'll pick it up". A DELIVERY-type job that is the hand-over at our place, not a truck trip: completing
+  // it runs the normal delivered path (first delivered date, rented status, custody, billing start) but it never
+  // appears on the driver's route, the vehicle trip log, day-of reminders, the delivery fee or delivery counts.
+  customerPickupHandoff Boolean @default(false)
 }
 
 // An agreement item that was NOT delivered on the delivery visit that started

@@ -110,6 +110,23 @@ it("ZONE-1: never creates a delivery visit for a rental the customer picks up (i
   await createJob("owner", { type: "INSTALLATION", customerId: "c1", serviceAddressId: "a1", agreementId: "g1" });
   expect(m.create).toHaveBeenCalledTimes(1);
 });
+it("ZONE-1: a DELIVERY job for a pickup rental only as its customer pickup hand-over, and a hand-over only for pickup", async () => {
+  m.agreement.mockResolvedValue({ customerId: "c1", serviceAddressId: "a1", deliveryZoneSnapshot: { choice: "CUSTOMER_PICKUP" } });
+  await createJob("owner", { type: "DELIVERY", customerId: "c1", serviceAddressId: "a1", agreementId: "g1", customerPickupHandoff: true });
+  expect(m.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ type: "DELIVERY", customerPickupHandoff: true }) }));
+  expect(m.audit).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+    newValue: expect.objectContaining({ customerPickupHandoff: true }) }) }));
+  m.create.mockClear();
+  await expect(createJob("owner", { type: "REMOVAL", customerId: "c1", agreementId: "g1", customerPickupHandoff: true }))
+    .rejects.toThrow(/hand-over must be for a rental agreement/);
+  await expect(createJob("owner", { type: "DELIVERY", customerId: "c1", customerPickupHandoff: true }))
+    .rejects.toThrow(/hand-over must be for a rental agreement/);
+  // A delivery rental keeps its delivery visit; it can't be turned into a pickup hand-over.
+  m.agreement.mockResolvedValue({ customerId: "c1", serviceAddressId: "a1", deliveryZoneSnapshot: { choice: "DELIVER" } });
+  await expect(createJob("owner", { type: "DELIVERY", customerId: "c1", serviceAddressId: "a1", agreementId: "g1", customerPickupHandoff: true }))
+    .rejects.toThrow(/set to delivery/);
+  expect(m.create).not.toHaveBeenCalled();
+});
 it("preserves a valid property visit and generic jobs with no customer links", async () => {
   await createJob("owner", {
     type: "DELIVERY",

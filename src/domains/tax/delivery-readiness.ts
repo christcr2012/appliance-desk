@@ -90,6 +90,8 @@ async function deliveryCounts(
       // Completion counts DELIVERY and INSTALLATION jobs alike (both
       // put appliances in the home), so the in-flight count does too.
       type: { in: ["DELIVERY", "INSTALLATION"] },
+      // ZONE-1: a customer pickup hand-over is not a delivery into the place.
+      customerPickupHandoff: false,
       status: "IN_PROGRESS",
       id: { not: countDispatchedForJobId },
       OR: [

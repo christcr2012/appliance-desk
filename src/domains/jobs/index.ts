@@ -72,6 +72,7 @@ const JOB_OPERATIONAL_SELECT = {
   customerId: true,
   serviceAddressId: true,
   agreementId: true,
+  customerPickupHandoff: true,
   customer: {
     select: {
       phone: true,
@@ -132,6 +133,8 @@ export async function getDriverJobsForToday() {
     where: {
       status: { in: ["SCHEDULED", "IN_PROGRESS"] },
       scheduledAt: { gte: startOfDay, lt: startOfTomorrow },
+      // ZONE-1: a customer pickup hand-over happens at our place; it is never a stop on the driver's route.
+      customerPickupHandoff: false,
     },
     select: JOB_OPERATIONAL_SELECT,
     orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
@@ -172,6 +175,8 @@ export type NewJobInput = {
   durationMinutes?: number | null;
   /** Visits the person has already agreed to overlap; anything else that conflicts is refused. */
   confirmedConflictJobIds?: readonly string[];
+  /** ZONE-1: a DELIVERY job that is the customer pickup hand-over (only for a pickup rental; no truck trip). */
+  customerPickupHandoff?: boolean;
 };
 
 export async function createJob(userId: string, input: NewJobInput) {
@@ -186,10 +191,17 @@ export async function createJob(userId: string, input: NewJobInput) {
 /** Everything after the actor check, for callers that already hold the user locks in a transaction. */
 export async function createJobInTx(tx: Prisma.TransactionClient, userId: string, input: NewJobInput) {
     const durationMinutes = validateDurationMinutes(input.durationMinutes);
-    // ZONE-1: never a delivery visit for a rental the customer picks up (same check as signing and settlement).
+    // ZONE-1: never a delivery visit for a rental the customer picks up (same check as signing and settlement); its
+    // only DELIVERY-type job is the customer pickup hand-over, and a hand-over is only for a pickup rental.
+    const handoff = input.customerPickupHandoff === true;
+    if (handoff && (input.type !== "DELIVERY" || !input.agreementId))
+      throw new Error("A customer pickup hand-over must be for a rental agreement.");
     if (input.type === "DELIVERY" && input.agreementId) {
-      const { isAgreementPickupInTx, PICKUP_NO_DELIVERY_MESSAGE } = await import("@/domains/delivery/pickup-guard");
-      if (await isAgreementPickupInTx(tx, input.agreementId)) throw new Error(PICKUP_NO_DELIVERY_MESSAGE);
+      const { isAgreementPickupInTx, PICKUP_NO_DELIVERY_MESSAGE, PICKUP_HANDOFF_NEEDS_PICKUP_MESSAGE } =
+        await import("@/domains/delivery/pickup-guard");
+      const pickup = await isAgreementPickupInTx(tx, input.agreementId);
+      if (pickup && !handoff) throw new Error(PICKUP_NO_DELIVERY_MESSAGE);
+      if (!pickup && handoff) throw new Error(PICKUP_HANDOFF_NEEDS_PICKUP_MESSAGE);
     }
     if (input.sealedSystem) {
       if (input.type !== "MAINTENANCE_VISIT") throw new Error("Only a repair visit can be marked as a sealed-system repair.");
@@ -326,6 +338,7 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
         agreementId: input.agreementId || null,
         maintenanceRequestId: input.maintenanceRequestId || null,
         notes: input.notes || null,
+        ...(handoff ? { customerPickupHandoff: true } : {}),
         appliances: input.applianceIds?.length
           ? {
               create: input.applianceIds.map((applianceId) => ({ applianceId })),
@@ -343,6 +356,7 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
         newValue: {
           type: input.type,
           customerId: input.customerId,
+          ...(handoff ? { customerPickupHandoff: true } : {}),
           ...(input.assignedToUserId ? { assignedToUserId: input.assignedToUserId } : {}),
           ...(overriddenConflictJobIds.length > 0 ? { overriddenConflictJobIds } : {}),
         },
@@ -408,7 +422,8 @@ export async function updateJobStatus(
         await assertDeliveryReadyInTx(tx, {
           serviceAddressId: readinessAddressId,
           agreementId: before.agreementId,
-          countDispatchedForJobId: jobId,
+          // ZONE-1: a customer pickup hand-over sends no truck, so it doesn't take a delivery-count slot.
+          ...(before.customerPickupHandoff ? {} : { countDispatchedForJobId: jobId }),
         });
       }
     }
