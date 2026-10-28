@@ -27,14 +27,14 @@ buttons fit the bill's status.
    STATUS; card Progress.
 
 ## Acceptance
-- [ ] Overview numbers match the existing revenue dashboard where they overlap (integration test).
-- [ ] Payments lists received, failed and held payments correctly for both stored spellings; deposits and waiting
+- [x] Overview numbers match the existing revenue dashboard where they overlap (integration test).
+- [x] Payments lists received, failed and held payments correctly for both stored spellings; deposits and waiting
       views render the existing components; old billing view links redirect.
-- [ ] The bill record shows the right primary action for each status (unit table) and every money action is the
+- [x] The bill record shows the right primary action for each status (unit table) and every money action is the
       existing component/action with its own confirmation (diff review + spies).
-- [ ] Take payment and Record cash or check open in place from the Bills list, customer record and bill record.
-- [ ] OWNER/ADMIN only everywhere; staff refused (browser spec).
-- [ ] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
+- [x] Take payment and Record cash or check open in place from the Bills list, customer record and bill record.
+- [x] OWNER/ADMIN only everywhere; staff refused (browser spec).
+- [x] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
 
 ## Not in this card
 The "Being confirmed" tabs on Bills and Payments (BILL-1 adds them); Expenses, Books and
@@ -49,4 +49,4 @@ the Money overview and Payments pages, the in-place payment sheets, the rebuilt 
 browser spec. Opened as PR #725 on 2026-10-28, closed unmerged the same day and replaced by PR #730 with the identical tree (git-data pushes carry no merge ancestry, so #725 computed as permanently conflicted after main advanced; the replacement branch was recreated from current main per the AUD-E playbook). Head tree verified file by file against the local
 tree). Unit (20) and database (10) tests, typecheck and lint pass locally; the browser suite's
 re-run on the final head runs in CI — the shared box repeatedly killed the local production build
-while other lanes were building. Next: CI, review, merge, close-out.
+while other lanes were building. Merged 2026-10-28 via PR #730 (squash a3726e8c) at head 5000ca07: CI fully green at the exact head, Codex reviewed and its two findings were fixed (card-payment tab reserved inside the click; bill section prints from either tab), review gate green, zero unresolved threads.
