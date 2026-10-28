@@ -98,6 +98,29 @@ export async function saveApprovalLimits(ownerId: string, input: { limitsCents: 
   });
 }
 
+/**
+ * AR-8: the approval-expiry half of saveApprovalLimits on its own, so the
+ * Settings row can save expiry without resubmitting the money limits.
+ * Same lock, same audit action, same 1–30 day rule.
+ */
+export async function setApprovalExpiryDays(ownerId: string, expiryDays: number) {
+  if (!Number.isSafeInteger(expiryDays) || expiryDays < 1 || expiryDays > 30)
+    throw new ApprovalInputError("Requests can wait between 1 and 30 days.");
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+    const before = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" }, select: { approvalThresholds: true, approvalExpiryDays: true } });
+    await tx.businessSettings.update({ where: { id: "singleton" }, data: { approvalExpiryDays: expiryDays } });
+    await tx.auditLog.create({
+      data: {
+        userId: ownerId, action: "settings.approval_limits", entityType: "BusinessSettings", entityId: "singleton",
+        oldValue: { thresholds: parseApprovalThresholds(before.approvalThresholds), expiryDays: before.approvalExpiryDays },
+        newValue: { thresholds: parseApprovalThresholds(before.approvalThresholds), expiryDays },
+      },
+    });
+  });
+}
+
 export type SubmitResult = { status: "DONE"; providerOpId?: string | null; heldRefundOutcome?: "SUCCEEDED" | "FAILED" | "UNKNOWN" } | { status: "SENT_FOR_APPROVAL" | "ALREADY_WAITING"; message: string; requestId: string };
 
 const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;

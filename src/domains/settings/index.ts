@@ -6,7 +6,8 @@ import { assertCapability } from "@/domains/capabilities";
 import { assetIdFromPublicPath } from "@/domains/site-content/asset-paths";
 import { checkExternalUrl } from "@/domains/site-content/links";
 import { SettingsConflictError } from "./effects";
-import { sectionRevision } from "./preview";
+import { fieldsRevision, sectionRevision } from "./preview";
+import { validateSettingsCrossFields } from "./cross-fields";
 import type { EditableSettingsSection } from "./section-config";
 
 // The single BusinessSettings row's defaults, matching prisma/schema.prisma
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS = {
   publicPhone: "[Phone Number]",
   publicEmail: "[Email Address]",
   publicAddress: "[Business Address]",
+  drivingOriginAddress: "UNVERIFIED: owner must choose central Greeley origin",
   serviceAreaCities: [] as unknown,
   serviceAreaZips: [] as unknown,
   hours: {} as unknown,
@@ -196,6 +198,16 @@ export type BusinessSettingsUpdate = Partial<{
   // Visits and scheduling (Batch C P1-A).
   defaultJobDurationMinutes: number;
   staffMayWorkUnassignedJobs: boolean;
+  // AR-8: the catalog's scalar rows save through this same locked, audited path.
+  relocationFeeCents: number;
+  missedTripFeeCents: number;
+  deliveryMorningStartHour: number;
+  deliveryMorningEndHour: number;
+  deliveryAfternoonStartHour: number;
+  deliveryAfternoonEndHour: number;
+  tenantContactRetentionMonths: number;
+  lemonRepairPercent: number;
+  exportPayoutLines: Prisma.InputJsonValue;
 }>;
 
 /**
@@ -209,8 +221,11 @@ export async function updateBusinessSettings(
   userId: string,
   update: BusinessSettingsUpdate,
   opts?: {
-    /** Fingerprint of the fields this save covers, taken when the page was opened (see `sectionRevision`). */
-    expectedRevision?: { section: EditableSettingsSection; value: string };
+    /** Fingerprint of the fields this save covers, taken when the page was opened (see `sectionRevision`).
+     * AR-8 adds the per-row form: { keys, value } is compared with fieldsRevision(before, keys). */
+    expectedRevision?:
+      | { section: EditableSettingsSection; value: string }
+      | { keys: string[]; value: string };
   },
 ) {
   return prisma.$transaction((tx) => updateBusinessSettingsInTx(tx, userId, update, opts));
@@ -226,7 +241,9 @@ export async function updateBusinessSettingsInTx(
   userId: string,
   update: BusinessSettingsUpdate,
   opts?: {
-    expectedRevision?: { section: EditableSettingsSection; value: string };
+    expectedRevision?:
+      | { section: EditableSettingsSection; value: string }
+      | { keys: string[]; value: string };
   },
 ) {
     // Re-check the person inside the transaction (a deactivated owner/admin
@@ -238,11 +255,19 @@ export async function updateBusinessSettingsInTx(
       (await tx.businessSettings.findUnique({ where: { id: "singleton" } })) ??
       DEFAULT_SETTINGS;
     // A page opened before somebody else saved these same fields must not overwrite their decision.
-    if (
-      opts?.expectedRevision &&
-      sectionRevision(before, opts.expectedRevision.section) !== opts.expectedRevision.value
-    )
-      throw new SettingsConflictError();
+    if (opts?.expectedRevision) {
+      const current =
+        "keys" in opts.expectedRevision
+          ? fieldsRevision(before, opts.expectedRevision.keys)
+          : sectionRevision(before, opts.expectedRevision.section);
+      if (current !== opts.expectedRevision.value) throw new SettingsConflictError();
+    }
+    // AR-8: cross-field rules run on the locked row, inside this transaction, so racing saves cannot
+    // combine into a state neither save would have allowed alone.
+    validateSettingsCrossFields(
+      before as unknown as Record<string, unknown>,
+      update as unknown as Record<string, unknown>,
+    );
     // FEE-1: one rule for every rental. A late fee needs the bill to be more than 10 days late and is never over $15.
     if (update.lateFeeGraceDays !== undefined && update.lateFeeGraceDays < 10)
       throw new Error("Colorado's rule: a bill must be at least 10 days late before a late fee. Choose 10 or more days.");
@@ -267,7 +292,7 @@ export async function updateBusinessSettingsInTx(
       });
     }
 
-    await tx.auditLog.create({
+    const audit = await tx.auditLog.create({
       data: {
         userId,
         action: "settings.update",
@@ -278,7 +303,9 @@ export async function updateBusinessSettingsInTx(
       },
     });
 
-    return after;
+    // AR-8: callers that offer Undo (the row save's toast) need the audit row id; existing callers ignored
+    // the old bare-row return, so the shape change is safe.
+    return { after, auditId: audit.id };
 }
 
 /**
