@@ -323,18 +323,27 @@ export async function extendReservationAction(
 }
 
 /** The owner or an admin ends a month-to-month rental for a customer, optionally on an earlier billing date. */
-/** AR-4a: the kit's form-action shape for Send for signature (record header/next-step card). */
-export async function sendForSignatureFormAction(formData: FormData): Promise<void> {
+/**
+ * AR-4a: the kit's form-action shape for Send for signature (record
+ * header/next-step card). The kit runner surfaces a returned { error } as a
+ * toast with the full message; throwing would reach the browser as a
+ * redacted digest and the owner would never see why (PR #722, w22 spec).
+ */
+export async function sendForSignatureFormAction(formData: FormData) {
   const agreementId = String(formData.get("agreementId") ?? "");
   const result = await sendForSignatureAction(agreementId);
-  if (result.status === "error") throw new Error(result.message);
+  return result.status === "error"
+    ? { error: result.message }
+    : { success: "Sent for signature" };
 }
 
 /** AR-4a: the kit's form-action shape for Extend the hold (record ⋯ menu). */
-export async function extendReservationFormAction(formData: FormData): Promise<void> {
+export async function extendReservationFormAction(formData: FormData) {
   const agreementId = String(formData.get("agreementId") ?? "");
   const result = await extendReservationAction(agreementId);
-  if (result.status === "error") throw new Error(result.message);
+  return result.status === "error"
+    ? { error: result.message }
+    : { success: "Hold extended" };
 }
 
 /** AR-4a: the Details-tab editor — set or clear why a rental ended (owner/admin, audited). */
