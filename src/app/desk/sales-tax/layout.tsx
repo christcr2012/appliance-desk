@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/session";
 import { TaxesTabs } from "./taxes-tabs";
 export const metadata = { title: "Taxes", robots: { index: false, follow: false } };
 export default async function TaxesLayout({ children }: { children: React.ReactNode }) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   return <section className="mx-auto max-w-6xl space-y-5 pb-10">
     <header className="space-y-2 print:hidden">
       <h1 className="text-2xl font-bold text-foreground">Taxes</h1>

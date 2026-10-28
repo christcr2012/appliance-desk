@@ -5,10 +5,23 @@ import { auth } from "./auth";
 import { twoFactorEnrollmentRequired } from "@/domains/security/two-factor";
 import { enforceJobRoleScreen } from "./job-role-guard";
 
-export type Role = "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER";
+export type Role = "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER" | "ACCOUNTANT";
 
 function isRole(value: unknown): value is Role {
-  return value === "OWNER" || value === "ADMIN" || value === "STAFF" || value === "CUSTOMER";
+  return value === "OWNER" || value === "ADMIN" || value === "STAFF" || value === "CUSTOMER" || value === "ACCOUNTANT";
+}
+
+/**
+ * ACCT-1: an accountant's access ends on the date the owner set (null = "keep
+ * until I remove it"). The date rides along on the session like archivedAt.
+ * A session that predates the field (accessEndsOn missing entirely) cannot be
+ * trusted for an accountant — the caller treats that as no session.
+ */
+export function accountantAccessEnded(user: { role: Role; accessEndsOn?: unknown }): boolean {
+  if (user.role !== "ACCOUNTANT") return false;
+  if (user.accessEndsOn == null) return false;
+  const end = user.accessEndsOn instanceof Date ? user.accessEndsOn : new Date(user.accessEndsOn as string);
+  return !Number.isNaN(end.getTime()) && end.getTime() <= Date.now();
 }
 
 /**
@@ -25,6 +38,7 @@ const readValidatedSession = cache(async () => {
   // Null means active. Missing state must not be interpreted as active if
   // the auth provider's payload changes or loses this additional field.
   if (user.archivedAt === undefined) return null;
+  if (user.role === "ACCOUNTANT" && user.accessEndsOn === undefined) return null;
   return { ...session, user: { ...user, role: user.role } };
 });
 
@@ -33,7 +47,8 @@ const readValidatedSession = cache(async () => {
  * having run requireSession first. */
 export const getServerSession = cache(async () => {
   const session = await readValidatedSession();
-  return session?.user.archivedAt === null ? session : null;
+  if (!session || session.user.archivedAt !== null) return null;
+  return accountantAccessEnded(session.user) ? null : session;
 });
 
 /** Redirects to /login if nobody is signed in, or if the account has
@@ -51,6 +66,9 @@ export async function requireSession() {
   }
   if (session.user.archivedAt !== null) {
     redirect("/login?deactivated=1");
+  }
+  if (accountantAccessEnded(session.user)) {
+    redirect("/login?accessEnded=1");
   }
   return session;
 }

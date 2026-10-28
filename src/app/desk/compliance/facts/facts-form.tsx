@@ -12,6 +12,15 @@ type Props = {
   employees: number;
   firstHireDate: string;
   hasHomeOffice: boolean;
+  taxben: {
+    businessBeganOn: string;
+    homeOfficeSqFt: string;
+    homeSqFt: string;
+    homeHousingCosts: string;
+    homeUtilities: string;
+    homeInsurance: string;
+    homeOfficeAttestedYear: string;
+  };
   payer: {
     businessLegalName: string;
     businessAddress: string;
@@ -212,6 +221,45 @@ export function FactsForm(props: Props) {
         <input type="checkbox" name="hasHomeOffice" defaultChecked={props.hasHomeOffice} />
         I run the business from a home office
       </label>
+
+      <fieldset className="space-y-4 border-t border-border pt-5">
+        <legend className="text-sm font-semibold text-ink">Write-offs: when the business began, and the home office</legend>
+        <p className={helpCls}>
+          The day the business began decides which early expenses count as start-up costs. Leave it blank and
+          the app uses the earlier of the first appliance available and the first lead from the public site —
+          your CPA confirms the real date. The home-office figures feed both methods on Taxes › Tax benefits.
+        </p>
+        <div>
+          <label className={labelCls} htmlFor="businessBeganOn">The day the business began</label>
+          <input id="businessBeganOn" name="businessBeganOn" type="date" defaultValue={props.taxben.businessBeganOn} className={inputCls} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls} htmlFor="homeOfficeSqFt">Office size (square feet)</label>
+            <input id="homeOfficeSqFt" name="homeOfficeSqFt" inputMode="numeric" defaultValue={props.taxben.homeOfficeSqFt} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="homeSqFt">Whole home (square feet)</label>
+            <input id="homeSqFt" name="homeSqFt" inputMode="numeric" defaultValue={props.taxben.homeSqFt} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="homeHousingCosts">A year of rent or mortgage interest ($)</label>
+            <input id="homeHousingCosts" name="homeHousingCosts" inputMode="decimal" defaultValue={props.taxben.homeHousingCosts} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="homeUtilities">A year of home utilities ($)</label>
+            <input id="homeUtilities" name="homeUtilities" inputMode="decimal" defaultValue={props.taxben.homeUtilities} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="homeInsurance">A year of home insurance ($)</label>
+            <input id="homeInsurance" name="homeInsurance" inputMode="decimal" defaultValue={props.taxben.homeInsurance} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="homeOfficeAttestedYear">Year I attest the office is used only for the business</label>
+            <input id="homeOfficeAttestedYear" name="homeOfficeAttestedYear" inputMode="numeric" placeholder="e.g. 2026" defaultValue={props.taxben.homeOfficeAttestedYear} className={inputCls} />
+          </div>
+        </div>
+      </fieldset>
 
       <fieldset className="space-y-4 border-t border-border pt-5">
         <legend className="text-sm font-semibold text-ink">Name and address on 1099s (the payer block)</legend>

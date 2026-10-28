@@ -20,7 +20,7 @@ const control = "w-full rounded-lg border border-border bg-background p-2 text-f
 export default async function ReturnDetailPage({
   params,
 }: { params: Promise<{ periodId: string }> }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const owner = session.user.role === "OWNER";
   const { periodId } = await params;
   const { period, result } = await getPrivateReturn(periodId);

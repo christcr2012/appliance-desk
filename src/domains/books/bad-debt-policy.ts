@@ -15,10 +15,12 @@ export function badDebtTaxRecoveryProblem(value: unknown): string | null {
 /** Owner only, settings row locked, audited. Runs inside the caller's transaction (Decisions & reviews). */
 export async function saveBadDebtTaxRecoveryInTx(
   tx: Prisma.TransactionClient, actorId: string, value: string,
+  professionalAnswer = false,
 ): Promise<void> {
   const problem = badDebtTaxRecoveryProblem(value);
   if (problem || value === "UNDECIDED") throw new Error(problem ?? "Choose yes or no.");
-  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  // ACCT-1: accountant only as a CPA professional answer through Decisions & reviews.
+  await assertActiveTeamActor(tx, actorId, professionalAnswer ? ["ACCOUNTANT"] : ["OWNER"]);
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   const before = await tx.businessSettings.findUniqueOrThrow({
     where: { id: "singleton" }, select: { badDebtTaxRecovery: true },

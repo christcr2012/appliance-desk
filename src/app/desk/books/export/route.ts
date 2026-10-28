@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/session";
 import { exportMonthReview } from "@/domains/books/management";
 export async function GET(request:Request) {
-  const session=await requireRole("OWNER","ADMIN");
+  const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
   const month=new URL(request.url).searchParams.get("month")??"";
   if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
     return Response.json({error:"Choose a valid month."},{status:400});

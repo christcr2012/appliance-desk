@@ -90,7 +90,9 @@ export async function getCashReadiness(userId:string,asOfKey=businessDateKey(new
   throw new CashEvidenceError("Cash readiness needs a valid current/past Colorado day.");
  const asOf=new Date(Math.min(Date.now(),businessDateEnd(asOfKey).getTime()));
  return prisma.$transaction(async tx=>{
-  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  // ACCT-1: the bank checks page (match/unmatch is the accountant's) reads this too — counts and
+  // differences only, no credentials; the funding writers below stay owner-only.
+  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
   return readCashReadinessInTx(tx,asOfKey,asOf);
  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
 }

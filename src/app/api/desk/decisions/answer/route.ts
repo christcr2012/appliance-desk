@@ -21,7 +21,9 @@ export const runtime = "nodejs";
  * is refused, the file just stored is removed again.
  */
 export async function POST(request: Request): Promise<Response> {
-  const guard = await guardDecisionRequest(request, ["OWNER"], { write: true });
+  // ACCT-1: an accountant may answer for themselves here; the domain restricts them to CPA questions and
+  // stamps their own name/firm on the record.
+  const guard = await guardDecisionRequest(request, ["OWNER", "ACCOUNTANT"], { write: true });
   if (!guard.ok) return guard.response;
   if (Number(request.headers.get("content-length") ?? 0) > MAX_DECISION_FILE_BYTES + 64_000) {
     return jsonError("Choose a file of 4 MB or less.", 413);

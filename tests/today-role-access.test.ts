@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   job: vi.fn(),
   request: vi.fn(),
   appliance: vi.fn(),
+  bookAsset: vi.fn(),
+  businessPaperwork: vi.fn(),
   notice: vi.fn(),
   pendingDelivery: vi.fn(),
   providerOp: vi.fn(),
@@ -82,6 +84,9 @@ vi.mock("@/domains/exceptions/setup-attention", () => ({
 vi.mock("@/domains/vault/attention", () => ({
   listVaultRotationAttention: vi.fn(async () => []), // covered by tests/vault-integration.test.ts
 }));
+vi.mock("@/domains/accountant/attention", () => ({
+  listAccountantAttention: vi.fn(async () => []), // covered by tests/accountant-access-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
@@ -131,6 +136,8 @@ vi.mock("@/lib/prisma", () => ({
     businessSettings: { findUnique: mocks.settings },
     maintenanceRequest: { findMany: mocks.request },
     appliance: { findMany: mocks.appliance },
+    bookAsset: { findMany: mocks.bookAsset },
+    businessPaperwork: { findUnique: mocks.businessPaperwork },
     customerNotice: { findMany: mocks.notice },
     pendingDelivery: { findMany: mocks.pendingDelivery },
     earlyReturnResolution: { findMany: mocks.earlyResolution },
@@ -176,6 +183,7 @@ beforeEach(() => {
     mocks.job,
     mocks.request,
     mocks.appliance,
+    mocks.bookAsset,
     mocks.notice,
     mocks.pendingDelivery,
     mocks.providerOp,
@@ -198,6 +206,7 @@ beforeEach(() => {
   ]) {
     fn.mockResolvedValue([]);
   }
+  mocks.businessPaperwork.mockResolvedValue(null);
   mocks.systemIssueCount.mockResolvedValue(0);
   mocks.signingPaymentCount.mockResolvedValue(0);
   mocks.cancellationRefundCount.mockResolvedValue(0);

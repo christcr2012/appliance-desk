@@ -13,11 +13,11 @@ MCP-3 is the sign-in, consent and disconnect machinery (auth risk, reviewed on i
 MCP-3 ships `appliance_whoami` only, so the full sign-in → call → disconnect path is proven in this PR.
 
 ## Acceptance
-- [ ] An SDK client completes authorize → consent → token → refresh → whoami against a local issuer (test).
-- [ ] Disconnect stops the next call at once; role downgrade or archive stops it (tests).
-- [ ] Wrong audience, other issuer, tampered or expired token, bad redirect, missing PKCE → refused (tests).
-- [ ] Issuer comes only from `MCP_ISSUER_URL`; unset → every route 404.
-- [ ] OAuth tables are left out of backups; restored connections come back disconnected.
+- [x] An SDK client completes authorize → consent → token → refresh → whoami against a local issuer (test).
+- [x] Disconnect stops the next call at once; role downgrade or archive stops it (tests).
+- [x] Wrong audience, other issuer, tampered or expired token, bad redirect, missing PKCE → refused (tests).
+- [x] Issuer comes only from `MCP_ISSUER_URL`; unset → every route 404.
+- [x] OAuth tables are left out of backups; restored connections come back disconnected.
 - [ ] Public sign-up still disabled; existing login, second step and password reset suites unchanged and green.
 - [ ] Consent page and the AI assistants card pass axe, phone/desktop, light/dark, keyboard.
 - [ ] `ci` green at the exact head; every review comment read.
@@ -25,5 +25,54 @@ MCP-3 ships `appliance_whoami` only, so the full sign-in → call → disconnect
 ## Owner checklist
 "Connect Claude to Appliance Desk" (spec section 9). Never blocks merging.
 
+## October 27 backup restore compatibility proof
+
+Follow-up fixes backup order introspection to skip excluded mapped OAuth models without allowing mapped business tables into restore; the backup-test independent exclusion list now enumerates all eight OAuth secret/token models. `tests/backup-table-order.test.ts` and `tests/backup.test.ts` passed 15/15, and `tests/backup-restore-integration.test.ts` passed 1/1 against migrated disposable PostgreSQL. Three Codex review findings were replied to and marked resolved after corresponding regression tests. Final merged-head CI and browser proof still pending.
+
+## October 27 review regression evidence (PR #692)
+
+The locally tested security patch rotates a signed-token connection generation on re-approval and rejects all old JWTs. Disposable-PostgreSQL `tests/mcp-oauth-roundtrip-integration.test.ts` now exercises approval → PKCE → token/refresh → MCP SDK → concurrent Disconnect → refused stale Allow → re-approval → old JWT still refused (1/1 passed); `tests/mcp-revocation-integration.test.ts` passed 3/3 with real database and concurrent revocation. `tests/mcp-oauth-security.test.ts` plus `tests/mcp-assistant-connections.test.tsx` passed 11/11 (including hidden active connection beyond 30 old history items); changed-file ESLint and migration-safety checker passed. The first owner-dispatched CI run on pre-review head failed typechecking because a `vitest it.each` callback inferred an incompatible tuple type; that test definition is corrected in this patch. Full final-head CI, browser/axe, and Reviewgate still pending; no live provider/owner acceptance claimed.
+
 ## Progress
-Not started.
+
+**Engineering acceptance plan — 2026-10-26 (before code).** Ship an independent OAuth
+connection/consent/revoke PR (auth boundary), after first reading the installed SDK
+type definitions and the repo's identity/2FA rules. Acceptance requires:
+- Issuer and redirect/PKCE/registration validate fail-closed in every environment.
+- Additive OAuth tables and connection ledger with **no OAuth secrets in backups**;
+  restored connections are revoked.
+- A real SDK client completes sign-in → token → refresh → whoami on disposable
+  Postgres. Role downgrade/archiving/revocation, token replay, spoofing and
+  concurrency reject; no previous sign-in pathway changes.
+- Owner/admin can approve and revoke on a working phone/desktop connection UI,
+  with keyboard and axe coverage. Staff/customer cannot.
+- CI green and every PR review thread addressed before merge; no real credentials,
+  live-provider operation or manual deployment.
+
+This card and plan commit are not proof of implementation. Nothing is released yet.
+
+
+### Verified incremental work, October 27 (still unshipped)
+
+The current branch incorporates merged MCP-2 (#611) and main through bc204189.
+Four issuer/redirect/scope checks, nine MCP request-authority tests and four streamed
+size-cap tests passed locally (17/17). A disposable PostgreSQL instance applied the
+OAuth migration and passed three real-database revocation tests, including concurrent
+submissions, cross-account access and a role downgraded after sign-in. Disconnect now
+atomically revokes the connection, OAuth access/refresh grants and consent.
+Owner connection inventory includes admins' connections. The resource-client import
+uses the SDK's actual resource-client export, not the obsolete build-spec spelling.
+
+NOT COMPLETE: real OAuth SDK authorize/consent/token/refresh/whoami roundtrip,
+registration and metadata SSRF adversarial coverage, owner phone/keyboard/axe proof,
+full TypeScript/quick check, CI and review. The 4 GB sandbox exhausted TypeScript
+heap in a full project run; this is not a compiler pass. Do not enable a real issuer
+or publish the draft connection to production as tested.
+
+### Working checkpoint, 2026-10-27
+
+Branch `ai/chatgpt/mcp-3-oauth-connect` contains the saved acceptance plan, correctly pinned OAuth/MCP SDKs, conditional issuer and read-only scope definitions, initial OAuth metadata/MCP bearer route, generated eight OAuth models and additive `McpConnection` migration, backup exclusions, restore-to-revoked treatment, and draft consent/disconnect screens. Four issuer/scope/redirect tests passed; Prisma schema validation and client generation passed with **synthetic local connection strings**. This is **not shipped** and must not be treated as working OAuth until the SDK end-to-end roundtrip, real disposable database tests, quick checks, screen/accessibility acceptance, and exact-head CI/review are all verified. In particular, registration abuse limits, audit on approval, and token/consent edge cases still require verification and repair.
+
+### Verified local OAuth round trip — October 27 (not shipped)
+
+`tests/mcp-oauth-roundtrip-integration.test.ts` passed with a disposable PostgreSQL cluster on the current MCP-3 branch: dynamic client registration, PKCE, real sign-in/explicit consent, scoped resource JWT, refresh-token renewal, official MCP SDK `appliance_whoami`, and immediate rejection of a token after user Disconnect. The installed Better Auth provider requires its canonical resource in both the registration allowlist and authorization request. The app has a canonical-only resource grant; unknown audiences are not enabled. The test-only Next cache mock does not alter application code. Seventeen local pure security/request-size/issuer tests and focused ESLint also passed. **Not a merge gate:** full `npm run check:quick`, browser/axe, exact-head CI/review, and provider setup remain unverified.

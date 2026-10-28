@@ -18,10 +18,12 @@ export function setupTaxPlanningProblem(value: unknown): string | null {
 /** Owner only, settings row locked, audited like the Signing charges save. Runs inside the caller's transaction. */
 export async function saveSetupTaxPlanningInTx(
   tx: Prisma.TransactionClient, actorId: string, value: string,
+  professionalAnswer = false,
 ): Promise<void> {
   const problem = setupTaxPlanningProblem(value);
   if (problem) throw new Error(problem);
-  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  // ACCT-1: accountant only as a CPA professional answer through Decisions & reviews.
+  await assertActiveTeamActor(tx, actorId, professionalAnswer ? ["ACCOUNTANT"] : ["OWNER"]);
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   const before = await tx.businessSettings.findUniqueOrThrow({
     where: { id: "singleton" }, select: { setupFeeTaxPlanningTreatment: true },

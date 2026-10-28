@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { jobRoleAllowsPath } from "@/domains/team/job-role-rules";
+import { accountantAllowsPath, jobRoleAllowsPath, ACCOUNTANT_SCREENS } from "@/domains/team/job-role-rules";
 
 // ACC-5: the server-side screen check for job roles. A job role only narrows an access level: people without one
 // (and every owner) are unaffected. Pages and server actions both pass through here (layout + requireRole), so hiding
@@ -20,20 +20,27 @@ const screensFor = cache(async (userId: string) => {
   return screensForUser(userId);
 });
 
-/** null = no limit (owner, customer, or no job role). */
+/** null = no limit (owner, customer, or no job role). An accountant's limit is the level itself (ACCT-1). */
 export async function jobRoleScreens(userId: string, role: string): Promise<string[] | null> {
+  if (role === "ACCOUNTANT") return [...ACCOUNTANT_SCREENS];
   if (role !== "STAFF" && role !== "ADMIN") return null;
   return screensFor(userId);
 }
 
 /** Redirects a page request (or throws for a server action) when the person's job role does not include the screen. */
 export async function enforceJobRoleScreen(userId: string, role: string) {
-  const screens = await jobRoleScreens(userId, role);
-  if (screens === null) return;
   const requestHeaders = await headers();
   const pathname = requestHeaders.get("x-appliance-pathname");
   // Only desk screens are screens (account pages and the like are not narrowed by a job role).
   if (!pathname || !pathname.startsWith("/desk")) return;
+  // ACCT-1: the accountant's wall is the level itself — its own path rule, applied here like a job role's.
+  if (role === "ACCOUNTANT") {
+    if (accountantAllowsPath(pathname)) return;
+    if (requestHeaders.get("next-action")) throw new JobRoleScreenError();
+    redirect("/desk/books?screen=not-for-accountant");
+  }
+  const screens = await jobRoleScreens(userId, role);
+  if (screens === null) return;
   if (jobRoleAllowsPath(screens, pathname)) return;
   if (requestHeaders.get("next-action")) throw new JobRoleScreenError();
   redirect("/desk/today?screen=not-in-job-role");

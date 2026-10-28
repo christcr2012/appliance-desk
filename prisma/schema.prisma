@@ -30,9 +30,19 @@ enum Role {
   // to a new hire today.
   STAFF
   CUSTOMER
+  // ACCT-1: an outside accountant (CPA or tax professional) the owner invites.
+  // Sees only books, taxes, compliance, CPA decisions and shared records —
+  // deny by default everywhere else (docs/build-specs/engines/ACCOUNTANT-ACCESS.md).
+  ACCOUNTANT
 }
 
 model User {
+  // MCP-3: connections are separate from sign-in sessions and OAuth credentials.
+  McpConnections McpConnection[] @relation("McpConnections")
+  oauthclients OauthClient[]
+  oauthrefreshtokens OauthRefreshToken[]
+  oauthaccesstokens OauthAccessToken[]
+  oauthconsents OauthConsent[]
   workspacePreference OwnerWorkspacePreference?
   budgetPublishedPlans BudgetPlanVersion[] @relation("BudgetPlanPublisher")
   budgetReviewSnapshots BudgetReviewSnapshot[] @relation("BudgetReviewCreator")
@@ -59,6 +69,10 @@ model User {
   signInPausedUntil           DateTime?
   // ACC-5: the person's job role (a plain id, no database link, so backups restore in any order). Null = access level alone.
   jobRoleId                   String?
+  // ACCT-1: for ACCOUNTANT users — the firm they work for (shown on the team list and beside their audited
+  // changes) and the date their access ends. Null end date = "keep until the owner removes it".
+  firm                        String?
+  accessEndsOn                DateTime?
 
   // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
   sessions  Session[]
@@ -99,9 +113,12 @@ model User {
   // MCP-10a app feedback (reports about the app, never appliance repairs).
   feedbackReports FeedbackReport[] @relation("FeedbackReporter")
   feedbackEntries FeedbackEntry[]  @relation("FeedbackEntryAuthor")
+  teamCertifications TeamCertification[] @relation("TeamCertificationUser")
 }
 
 model Session {
+  oauthrefreshtokens OauthRefreshToken[]
+  oauthaccesstokens OauthAccessToken[]
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -667,6 +684,16 @@ model Appliance {
   acquisitionTaxChoice String?
   acquisitionTaxRecordedAt DateTime?
   acquisitionTaxRecordedByUserId String?
+  // TAXBEN-1: the recorded capital-vs-expense decision for this unit, written once by the
+  // classification pass. Later rule or election changes never rewrite it; the decision
+  // keeps the line amount and the rule value it was made with.
+  capDecision String?
+  capReason String?
+  capLineCents Int?
+  capRuleKey String?
+  capRuleValue String?
+  capDecidedAt DateTime?
+  capPlacedInServiceOn DateTime?
   // W-14: the purchase (one receipt, many appliances) this machine came from. Older machines have none.
   purchaseId String?
   purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
@@ -1188,6 +1215,9 @@ model TeamInvitation {
   accessLevel          Role      @default(STAFF)
   adminCapabilityLimits Json     @default("[]")
   jobRoleId            String?
+  // ACCT-1: for accountant invitations — the firm name and the access end date, copied onto the user at acceptance.
+  firm                 String?
+  accessEndsOn         DateTime?
   codeHash             String    @unique
   expiresAt            DateTime
   status               String    @default("INVITED")
@@ -1940,6 +1970,8 @@ model Job {
   @@index([agreementId])
   @@index([maintenanceRequestId])
   @@index([assignedToUserId, scheduledAt])
+  /// OPS-2: a repair on a sealed refrigerant system. Only someone with a refrigerant certification on file may be assigned.
+  sealedSystem     Boolean   @default(false)
 }
 
 // An agreement item that was NOT delivered on the delivery visit that started
@@ -3448,6 +3480,10 @@ model Purchase {
   createdByUserId   String
   // Monotonic revision of the tax answer so two people never overwrite each other silently.
   taxRevisionAt     DateTime
+  // TAXBEN-1: was this bought from a relative or the owner's other business? Null = the
+  // question was never asked (purchases recorded before it existed); bonus depreciation
+  // is not available for a related-party purchase.
+  boughtFromRelatedParty Boolean?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -3529,6 +3565,9 @@ model BusinessSettings {
   budgetReminderLeadDays Int @default(7)
   booksStartDate DateTime?
   booksLastBroughtUpToDateAt DateTime?
+  // ACCT-1: when the owner last looked at the "Changes by your accountant" feed (Books home). The Today
+  // card shows while accountant changes newer than this exist.
+  accountantChangesSeenAt DateTime?
   booksLastProblemCount Int @default(0)
   booksConsecutiveFailedNights Int @default(0)
   booksReviewReminderDay Int @default(15)
@@ -3536,6 +3575,18 @@ model BusinessSettings {
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
   badDebtTaxRecovery String @default("UNDECIDED")
+  // TAXBEN-1: business-use percent by expense account role for mixed-use accounts
+  // ({} = not answered yet; an unanswered account deducts 0%).
+  businessUsePercents Json @default("{}")
+  // TAXBEN-1: the de minimis safe-harbor election by tax year ({} = the starting
+  // value, on — DQ-TAXBEN-DE-MINIMIS, CPA).
+  deMinimisElections Json @default("{}")
+  // TAXBEN-1: is the business (or its storage) inside a Colorado enterprise zone?
+  // UNKNOWN | YES | NO — starting value UNKNOWN (DQ-TAXBEN-EZ-FLEET, CPA).
+  enterpriseZone String @default("UNKNOWN")
+  // TAXBEN-1: how capitalized equipment is written off first: BONUS | SECTION179.
+  // Starting value BONUS (DQ-TAXBEN-179-VS-BONUS, CPA).
+  capitalizationPreference String @default("BONUS")
   lemonRepairPercent Int @default(30)
   vendor1099ThresholdCents Int @default(200000)
   exportPayoutLines Json @default("{\"QBO_JOURNAL_CSV\":true,\"XERO_JOURNAL_CSV\":false,\"GENERIC_JOURNAL_CSV\":true,\"CASH_MOVEMENTS_CSV\":true}")
@@ -3820,6 +3871,18 @@ model ComplianceProfile {
   truckGvwrLbs   Int?
   employees      Int      @default(0)
   hasHomeOffice  Boolean  @default(false)
+  // TAXBEN-1: the day the business began (starting value: the earlier of the first
+  // appliance becoming AVAILABLE and the first public lead — DQ-TAXBEN-BEGAN, CPA).
+  // Expenses dated before it are tagged start-up.
+  businessBeganOn DateTime?
+  // TAXBEN-1: home-office facts, entered once. Sizes in square feet; costs are the
+  // whole-home amounts for a year, in cents.
+  homeOfficeSqFt            Int?
+  homeSqFt                  Int?
+  homeHousingCostsCents     Int?
+  homeUtilitiesCents        Int?
+  homeInsuranceCents        Int?
+  homeOfficeAttestedYear    Int?
   // CMP-3: the payer identity printed on information returns (1099s) and
   // Form 8300 — the business's legal name and mailing address, entered
   // once on the business-facts screen.
@@ -3866,6 +3929,8 @@ model TaxYearFacts {
   federalAgiCents      Int? // that year's federal adjusted gross income
   coloradoTaxCents     Int? // that year's total Colorado tax (DR 0104)
   form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
+  seHealthPremiumCents Int? // TAXBEN-1: that year's self-employed health insurance premiums, as typed
+  seHealthEmployerPlanMonths Json? // TAXBEN-1: month numbers (1-12) the owner was eligible for an employer health plan (own or spouse's)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -3883,6 +3948,10 @@ model ComplianceFiling {
   preparedData     Json?
   preparedHash     String?   @db.Char(64)
   outputFileUrl    String?
+  // ACCT-1: the "Reviewed" mark — the accountant (or owner/admin) has checked the prepared figures.
+  // Preparing new figures clears it; it never approves or submits anything.
+  reviewedByUserId String?
+  reviewedAt       DateTime?
   approvedByUserId String?
   approvedAt       DateTime?
   submittedAt      DateTime?
@@ -5168,6 +5237,8 @@ enum LedgerAccountType {
 
 enum JournalSourceType {
   OPENING
+  // ACCT-1: a hand-written adjusting entry (the accountant's adjustments and the owner's own).
+  ADJUSTMENT
   SCRAP_PAYMENT
   INVOICE
   RECEIPT
@@ -5919,6 +5990,9 @@ model BusinessPaperwork {
   repeatEveryMonths Int?
   notes            String?
   sortOrder        Int             @default(0)
+  // ACCT-1: the owner marks a record "Share with my accountant" (off by default); only shared records are
+  // visible to the ACCOUNTANT level, and any saved number stays masked for them.
+  shareWithAccountant Boolean      @default(false)
   lastDoneOn       DateTime?
   createdByUserId  String?
   updatedByUserId  String?
@@ -5947,6 +6021,7 @@ model BusinessPaperwork {
   recordFiles     BusinessRecordFile[]
   readinessLicenses JurisdictionReadiness[] @relation("ReadinessLicenseRecord")
   insurancePolicy OwnerInsurancePolicy? @relation("InsurancePolicyRecord")
+  refrigerantReceipt RefrigerantRecord? @relation("RefrigerantReceiptRecord")
 
   @@index([status, dueOn])
 }
@@ -6545,6 +6620,21 @@ enum RefrigerantOutcome {
 
 // OPS-2: what happened to the refrigerant in a retired appliance before it was scrapped or thrown away (40 CFR 82.155:
 // the scrap yard must get a signed statement). Kept for the rule-book number of years (records.refrigerant_keep_years).
+/// OPS-2: a team member's refrigerant (EPA Section 608 Type I) certification, entered by the owner. One per person per kind.
+model TeamCertification {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation("TeamCertificationUser", fields: [userId], references: [id], onDelete: Restrict)
+  kind                String   @default("EPA_608_TYPE_I")
+  certificationNumber String
+  issuedOn            DateTime?
+  createdByUserId     String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, kind])
+}
+
 model RefrigerantRecord {
   applianceId      String   @id
   appliance        Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
@@ -6564,6 +6654,9 @@ model RefrigerantRecord {
   assetNumberSnapshot String
   applianceDescriptionSnapshot String
   serialNumberSnapshot String?
+  /// OPS-2 + VAULT-1: the business record that holds the recycler's receipt photo or PDF (cleared if that record is ever deleted).
+  receiptRecordId  String?  @unique
+  receiptRecord    BusinessPaperwork? @relation("RefrigerantReceiptRecord", fields: [receiptRecordId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -6632,4 +6725,207 @@ model AccessibilityComplaint {
   createdAt   DateTime @default(now())
 
   @@index([resolvedAt, receivedAt])
+}
+
+// MCP-3: Better Auth OAuth 1.7.12 generated models (schema-only, no live DB changes).
+model Jwks {
+  id         String    @id
+  publicKey  String
+  privateKey String
+  createdAt  DateTime
+  expiresAt  DateTime?
+  alg        String?
+  crv        String?
+
+  @@map("jwks")
+}
+
+model OauthClient {
+  id                               String                @id
+  clientId                         String
+  clientSecret                     String?
+  clientDiscoveryId                String?
+  disabled                         Boolean?              @default(false)
+  skipConsent                      Boolean?
+  enableEndSession                 Boolean?
+  subjectType                      String?
+  scopes                           String[]
+  clientCredentialsScopes          String[]              @default([])
+  userId                           String?
+  user                             User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime?
+  updatedAt                        DateTime?
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         String[]
+  tos                              String?
+  policy                           String?
+  softwareId                       String?
+  softwareVersion                  String?
+  softwareStatement                String?
+  redirectUris                     String[]
+  postLogoutRedirectUris           String[]
+  backchannelLogoutUri             String?
+  backchannelLogoutSessionRequired Boolean?
+  tokenEndpointAuthMethod          String?
+  applicationType                  String?
+  jwks                             String?
+  jwksUri                          String?
+  grantTypes                       String[]
+  responseTypes                    String[]
+  requirePKCE                      Boolean?
+  dpopBoundAccessTokens            Boolean?              @default(false)
+  referenceId                      String?
+  metadata                         Json?
+  oauthclientresources             OauthClientResource[]
+  oauthrefreshtokens               OauthRefreshToken[]
+  oauthaccesstokens                OauthAccessToken[]
+  oauthconsents                    OauthConsent[]
+
+  @@unique([clientId])
+  @@index([userId])
+  @@map("oauthClient")
+}
+
+model OauthResource {
+  id                            String                @id
+  identifier                    String
+  name                          String
+  accessTokenTtl                Int?
+  refreshTokenTtl               Int?
+  signingAlgorithm              String?
+  signingKeyId                  String?
+  allowedScopes                 String[]
+  customClaims                  Json?
+  dpopBoundAccessTokensRequired Boolean?              @default(false)
+  disabled                      Boolean?              @default(false)
+  createdAt                     DateTime?
+  updatedAt                     DateTime?
+  policyVersion                 Int?                  @default(1)
+  metadata                      Json?
+  oauthclientresources          OauthClientResource[]
+
+  @@unique([identifier])
+  @@map("oauthResource")
+}
+
+model OauthClientResource {
+  id            String        @id
+  clientId      String
+  oauthclient   OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId    String
+  oauthresource OauthResource @relation(fields: [resourceId], references: [identifier], onDelete: Cascade)
+  metadata      Json?
+  createdAt     DateTime?
+
+  @@index([clientId])
+  @@index([resourceId])
+  @@map("oauthClientResource")
+}
+
+model OauthRefreshToken {
+  id                      String             @id
+  token                   String
+  clientId                String
+  oauthclient             OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  expiresAt               DateTime?
+  createdAt               DateTime?
+  revoked                 DateTime?
+  rotatedAt               DateTime?
+  rotationReplayResponse  String?
+  rotationReplayExpiresAt DateTime?
+  authTime                DateTime?
+  confirmation            Json?
+  scopes                  String[]
+  oauthaccesstokens       OauthAccessToken[]
+
+  @@unique([token])
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@map("oauthRefreshToken")
+}
+
+model OauthAccessToken {
+  id                      String             @id
+  token                   String?
+  clientId                String
+  oauthclient             OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  refreshId               String?
+  oauthrefreshtoken       OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
+  expiresAt               DateTime?
+  createdAt               DateTime?
+  revoked                 DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  @@unique([token])
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@index([refreshId])
+  @@map("oauthAccessToken")
+}
+
+model OauthConsent {
+  id                      String      @id
+  clientId                String
+  oauthclient             OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?
+  user                    User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  scopes                  String[]
+  createdAt               DateTime?
+  updatedAt               DateTime?
+
+  @@index([clientId])
+  @@index([userId])
+  @@map("oauthConsent")
+}
+
+model OauthClientAssertion {
+  id        String   @id
+  expiresAt DateTime
+
+  @@map("oauthClientAssertion")
+}
+
+
+model McpConnection {
+  id String @id @default(cuid())
+  userId String
+  user User @relation("McpConnections", fields: [userId], references: [id], onDelete: Cascade)
+  oauthClientId String
+  label String @db.VarChar(80)
+  scopes String[]
+  // Changes on each new Allow. A disconnected JWT must never revive after reconnect.
+  grantVersion String @default(uuid())
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime?
+  lastToolName String? @db.VarChar(80)
+  revokedAt DateTime?
+  revokedReason String? @db.VarChar(200)
+  @@unique([userId, oauthClientId])
+  @@index([userId, revokedAt])
 }

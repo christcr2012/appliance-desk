@@ -13,6 +13,7 @@ import {
   archiveRecordAction,
   clearRecordNumberAction,
   removeRecordFileAction,
+  setRecordSharedAction,
 } from "../record-actions";
 import { PaperworkForm } from "../paperwork-form";
 import { RecordFileUpload } from "../record-file-upload";
@@ -38,8 +39,9 @@ const HISTORY_LABEL: Record<string, string> = {
 
 
 export default async function PaperworkItemPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const isOwner = session.user.role === "OWNER";
+  const isAccountant = session.user.role === "ACCOUNTANT";
   const { id } = await params;
   const record = await getRecord(session.user.role, id);
   if (!record) notFound();
@@ -123,7 +125,9 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
           {!isOwner && (
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Access</dt>
-              <dd className="text-sm">You&apos;re seeing this record because the owner shares its kind with admins. It&apos;s read-only.</dd>
+              <dd className="text-sm">{isAccountant
+                ? "You're seeing this record because the owner shared it with you. You can read it and add files; editing stays with the owner."
+                : "You're seeing this record because the owner shares its kind with admins. It's read-only."}</dd>
             </div>
           )}
         </dl>
@@ -148,6 +152,19 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
               and link it to this record there.
             </p>
           )}
+        </Card>
+      )}
+
+      {isOwner && (
+        <Card
+          title="Share with your accountant"
+          description={record.shareWithAccountant
+            ? "Your accountant can open this record, read it (stored numbers stay masked, always) and add files to it."
+            : "Only you and your admins (by kind, above) can see this record. Sharing lets your accountant open it, read it with stored numbers masked, and add files."}
+        >
+          <form action={setRecordSharedAction.bind(null, record.id, !record.shareWithAccountant)}>
+            <Button type="submit" variant="secondary">{record.shareWithAccountant ? "Stop sharing with my accountant" : "Share with my accountant"}</Button>
+          </form>
         </Card>
       )}
 
@@ -179,7 +196,7 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
             ))}
           </ul>
         )}
-        {isOwner && (
+        {(isOwner || isAccountant) && (
           <div className="mt-4 border-t border-line pt-4">
             <RecordFileUpload recordId={record.id} />
           </div>
