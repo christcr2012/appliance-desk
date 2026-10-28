@@ -1,3 +1,15 @@
+## October 28 — AR-9 Insights in progress (branch ai/vivienne/ar-9)
+
+One PR per the card: Customers › Insights and Equipment › Insights tabs
+(LD-4/CU-3 and the fleet report, rebuilt as kit pages over a new
+OWNER/ADMIN-only insights domain), Money Overview gains rent health,
+goals and under-paying rentals, the Revenue ledger becomes Money › Income
+details, and Growth/Fleet/Revenue/Reports/Dashboard are redirects (AR-10
+retires them later). Additive migration: `Lead.closedAt` (backfilled from
+audit history) plus the two goal-pace settings. Steps 1–5 are committed
+locally; step 6 (browser spec, docs, packet drift) and the single push +
+PR remain.
+
 ## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
 
 Slices 1 and 2 merged (PRs #727, #728). Slice 3 finishes AR-2: a due task's

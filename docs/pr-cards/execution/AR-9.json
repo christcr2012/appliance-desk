@@ -43,11 +43,14 @@
     "docs/DATABASE.md",
     "docs/STATUS.md",
     "docs/build-specs/migrated-pages.json",
-    "docs/pr-cards/AR-9.md",
     "docs/pr-cards/execution/AR-9.json",
     "docs/pr-cards/work-index.json",
     "e2e/ar9-insights.spec.ts",
+    "e2e/communication-launch.spec.ts",
+    "e2e/fleet-report.spec.ts",
+    "e2e/revenue-records.spec.ts",
     "e2e/shards.json",
+    "e2e/telecom-reports.spec.ts",
     "prisma/migrations/20261030000000_lead_closed_at/migration.sql",
     "prisma/schema.prisma",
     "src/app/desk/customers/insights/page.tsx",
@@ -58,11 +61,13 @@
     "src/app/desk/money/income/page.tsx",
     "src/app/desk/money/page.tsx",
     "src/app/desk/reports/page.tsx",
-    "src/app/desk/reports/telecom-report.tsx",
     "src/app/desk/revenue/page.tsx",
+    "src/app/desk/settings/goals/page.tsx",
     "src/app/desk/settings/telecom/page.tsx",
+    "src/app/desk/settings/telecom/telecom-report.tsx",
     "src/components/kit/index.ts",
     "src/components/kit/mini-bars.tsx",
+    "src/domains/goals/index.ts",
     "src/domains/goals/pace.ts",
     "src/domains/insights/customers.ts",
     "src/domains/insights/equipment.ts",
@@ -70,7 +75,6 @@
     "src/domains/insights/thresholds.ts",
     "src/domains/leads/index.ts",
     "src/domains/leads/merge.ts",
-    "src/domains/settings/index.ts",
     "src/domains/team/job-role-rules.ts",
     "src/lib/business-hours.ts",
     "src/lib/desk-areas.ts",
@@ -78,10 +82,14 @@
     "tests/acc5-job-role-rules.test.ts",
     "tests/business-hours.test.ts",
     "tests/customer-insights-integration.test.ts",
+    "tests/desk-areas.test.ts",
+    "tests/earnings-not-cash.test.ts",
+    "tests/goals.test.ts",
     "tests/insights-roles.test.ts",
     "tests/lead-closed-at-integration.test.ts",
     "tests/lead-insights-integration.test.ts",
-    "tests/lead-source-breakdown.test.ts"
+    "tests/lead-source-breakdown.test.ts",
+    "tests/revenue-invoice-links.test.tsx"
   ],
   "references": [
     {
@@ -90,7 +98,7 @@
       "purpose": "The AR-9 card: one PR, six steps in order, acceptance and the LD-4/CU-3 absorption."
     },
     {
-      "anchor": "# Screen spec \u2014 Insights: Customers \u203a Insights, Equipment \u203a Insights, Money \u203a Overview additions (AR-9)",
+      "anchor": "# Screen spec — Insights: Customers › Insights, Equipment › Insights, Money › Overview additions (AR-9)",
       "path": "docs/build-specs/screens/INSIGHTS.md",
       "purpose": "The build spec: the section-1 fixes, routes and redirects, every figure and its definition, glossary keys, MiniBars, and the named tests."
     },
