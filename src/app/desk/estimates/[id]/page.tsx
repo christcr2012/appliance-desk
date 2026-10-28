@@ -7,6 +7,7 @@ import { customerDeliveryChargesForEstimate } from "@/domains/orders/route-evide
 import { currentLocations } from "@/domains/delivery/snapshot";
 import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
 import { getPhoneOrder } from "@/domains/orders/phone-orders";
+import { serviceChoiceOfferInputsForEstimate } from "@/domains/orders/service-choice-offers";
 import { PhoneOrderPanel } from "./phone-order-panel";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
@@ -126,6 +127,7 @@ export default async function EstimateDetailPage({
         recipient={phoneOrder.recipient} slots={phoneOrder.slots}
         offerVersion={phoneOrder.offerVersion} initial={phoneOrder.preferred}
         siteReady={preparedQuote.status==="READY"}
+        serviceChoiceInputs={await serviceChoiceOfferInputsForEstimate(estimate.id)}
         customerId={phoneOrder.customerId} leadId={phoneOrder.leadId}/>}
       <DeliveryOfferPanel estimateId={estimate.id}
         options={readOfferedSlots(estimate.deliveryOffer)}

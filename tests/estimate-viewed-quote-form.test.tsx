@@ -16,6 +16,9 @@ it("submits the rendered viewed revision and retains a stale-offer denial",async
   fireEvent.click(screen.getByRole("button",{name:"Approve estimate"}));
   await waitFor(()=>expect(calls.approve).toHaveBeenCalledWith("estimate",{
     approverName:"Quote viewer",approverEmail:"viewer@example.test",expectedQuoteFingerprint:viewed,
+    // FEETAX-1 (S4): the approval payload also carries the service
+    // choices (none offered in this render) and the dryer answer.
+    serviceChoices:[],serviceDryerOutlet:"UNKNOWN",
   }));
   await waitFor(()=>expect(screen.getByRole("alert").textContent).toMatch(/offer changed/));
   expect(screen.queryByText(/you approved/i)).toBeNull();

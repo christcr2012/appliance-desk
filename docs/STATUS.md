@@ -1,9 +1,44 @@
+## October 28 — MCP-4 merge reconciliation (PR #704)
+
+GitHub reported a real STATUS-only conflict while ci and review-gate were green. Retained current main's Lane 1/Lane 7 updates alongside the existing MCP-4 diagnosis; the final integration commit needs exact-head checks before merge.
+
 ## October 27 — MCP-4 read-only assistant diagnostics (PR #704; merge conflict resolved locally)
 
 Nine read-only diagnostic tools, scoped permission checks and pagination passed focused tests.
 Previous exact-head GitHub `ci` and `review-gate` were green. GitHub later reported a real
 `docs/STATUS.md` conflict with newer main; this integration reconciles both status notes.
 Re-run exact-head checks and review before squash merging; MCP-5 execution is still unfinished.
+
+## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
+
+AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
+gains status tabs with counts (Active, Waiting for signature, Starting,
+Drafts, Ended, Cancelled), search by name/address/appliance number, starts/
+ends filters, four sorts and the kit's growing cursor window; the old
+?status=ACTIVE links land on the right tab, and staff rows carry no money.
+The record is a kit record page: header with the status pill and the one
+primary action for its state, stat strip, a read-only progress stepper,
+the next-step card, and Details / Signing / Visits / Activity tabs. Visits
+now read in plain words (the old panel printed raw job codes). "Mark ended"
+is gone: every ending goes through the "End this rental" sheet, which steps
+Choose · Decide · Done into the existing ending pages, the month-to-month
+form, or "End it today" behind the danger confirmation. Every end path can
+record one optional "Why is it ending?" answer (owner-kept list, starting
+values on Settings › Rental endings; never required, never shown to the
+customer) — AR-9's "why customers left" will read it. Staff keep the
+operational view.
+
+## October 28 — AR-1 five-area navigation: tested and reviewed (PR #720)
+
+Mobile five-area bar and area tabs, desktop collapsible remembered sidebar, profile/workspace
+controls, Help and Ctrl/⌘ K command search, staff/accountant job-role filtering, Today
+count without cross-page queries, existing deep URLs and safe redirects are implemented.
+Exact code head `5e5a1553c57c7903c6ad09bd2942f05754f737c6` passed CI run
+`40681386667` (all unit/database and browser shards, lint, typecheck, accessibility,
+security); all three Codex review findings were addressed and review-gate passed after
+self-review. PR #720 is the approved merge target; recheck the final docs-only head before
+squash merge. No production or live-provider changes; real-phone installation remains an
+unchecked owner task. Per owner request, pause after AR-1; do not start AR-2.
 
 ## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
 The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.

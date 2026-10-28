@@ -443,6 +443,11 @@ jobs:
       - name: Production build
         run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run build
 
+      - name: Guard desk JavaScript size using measured gzip baseline
+        run: |
+          node --test scripts/check-desk-bundle.test.mjs
+          node scripts/check-desk-bundle.mjs
+
       - name: Wait for browser system libraries
         shell: bash
         run: |

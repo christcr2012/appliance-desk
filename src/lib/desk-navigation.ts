@@ -1,184 +1,62 @@
-import { jobRoleAllowsPath } from "@/domains/team/job-role-rules";
+import { DESK_AREAS, visibleAreas, visibleProfileLinks } from "./desk-areas";
+import type { FeatureKey } from "@/domains/features/registry";
 
-export type DeskNavGroup = {
-  label: string;
-  links: { href: string; label: string }[];
-};
-/**
- * W-8 (D-W6): the desk menu has 14 entries. Screens that used to be separate entries (Dispatch, Jobs, Driver view;
- * Parts and Purchase orders; Revenue, Reports, Fleet, Business overview) are reached as tabs inside Schedule,
- * Equipment and Money (see desk-sections.ts), and the rarely used screens live on the More page. Every old address
- * still works; the aliases below only keep the right menu entry highlighted on those screens.
- */
-const groups = [
-  {
-    label: "Today",
-    links: [
-      ["today", "Today"],
-      ["tasks", "Tasks"],
-    ],
-  },
-  {
-    label: "Customers",
-    links: [
-      ["leads", "Leads"],
-      ["customers", "Customers"],
-      ["estimates", "Quotes", "finance"],
-      ["communications", "Communications"],
-      ["agreements", "Rentals"],
-    ],
-  },
-  {
-    label: "Work",
-    links: [
-      ["dispatch", "Schedule"],
-      ["maintenance", "Repairs"],
-      ["inventory", "Equipment"],
-    ],
-  },
-  {
-    label: "Money & taxes",
-    links: [
-      ["billing", "Money", "finance"],
-      ["sales-tax", "Taxes", "finance"],
-    ],
-  },
-  {
-    label: "Settings & more",
-    links: [
-      ["settings", "Settings", "finance"],
-      ["more", "More"],
-    ],
-  },
-];
-
-/** Screens that belong to a menu entry without being in the menu themselves (highlight only). */
-export const DESK_NAV_ALIASES: Record<string, string[]> = {
-  "/desk/dispatch": ["/desk/jobs", "/desk/driver"],
-  "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders", "/desk/recalls"],
-  "/desk/billing": ["/desk/disputes", "/desk/collections", "/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
-  // CMP-1: Compliance belongs to the Taxes area (next to sales tax).
-  "/desk/sales-tax": ["/desk/compliance"],
-  "/desk/more": [
-    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/setup-guide", "/desk/vault", "/desk/vehicle", "/desk/continuity", "/desk/insurance", "/desk/account", "/desk/feedback", "/desk/help",
-  ],
-};
-
+export type DeskNavGroup = { label: string; links: { href: string; label: string }[] };
 export type DeskMoreLink = { href: string; label: string; detail: string };
-const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined]> = [
-  ["expenses", "Expenses", "Submit costs, attach receipts or approve recurring drafts.", undefined],
-  ["suppliers", "Suppliers", "Who you buy appliances and parts from.", "finance"],
-  ["growth", "Growth signals", "Early signs of where demand is heading.", "finance"],
-  ["launch", "Launch list", "What is left before you open to real customers.", "finance"],
-  ["automations", "System health", "Whether the background jobs and connections are running.", "finance"],
-  ["control-center", "Manage my business", "Everything you can do, grouped by what you want to get done, with a search box.", "finance"],
-  ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
-  ["paperwork", "Business records", "Your LLC, EIN, licenses, insurance and accounts, with reminders before anything needs renewing.", "owner"],
-  ["setup-guide", "Set up your business", "Guided walkthroughs for your LLC, tax accounts, bank, licenses, insurance and backups, with automatic checks.", "owner"],
-  ["vault", "Logins vault", "Your business logins, kept encrypted and shown only after a fresh sign-in code, plus emergency access for someone you trust.", "owner"],
-  ["continuity", "If something happens to me", "Who to call, a live snapshot of the business, the pause-charges switch and your yearly check-up.", "owner"],
-  ["vehicle", "Vehicle and mileage", "The delivery vehicle, its license rules, the mileage log and the yearly mileage deduction.", "finance"],
-  ["insurance", "Insurance", "Your policies, when each one ends, workers' compensation and certificate requests.", "owner"],
-  ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
-  ["privacy-security", "Privacy and security", "A possible data leak, how long to keep things, service providers, legal holds and accessibility complaints.", "finance"],
-  ["feedback", "App feedback", "Problems with the app and ideas sent by customers and your team.", "finance"],
-  ["activity", "Activity", "Who changed what, and when.", undefined],
-  ["account", "My account", "Your name, phone, password, sign-in email, devices and two-step sign-in.", undefined],
-  ["help", "How do I…?", "Short three-step answers for common desk tasks.", undefined],
-];
-/** The rarely used screens, filtered for the role on the server like the menu itself. */
-export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] | null = null): DeskMoreLink[] {
-  if (!["OWNER", "ADMIN", "STAFF"].includes(role ?? "")) return [];
-  const finance = role === "OWNER" || role === "ADMIN";
-  return MORE_LINKS
-    .filter(([, , , restriction]) => !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER"))
-    .map(([path, label, detail]) => ({ href: `/desk/${path}`, label, detail }))
-    .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href));
-}
 
-/** Called on the server: restricted destinations are never serialized to staff. */
-export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null): DeskNavGroup[] {
-  // ACCT-1: the accountant's menu is exactly their allowed areas — nothing else is ever serialized to them.
-  if (role === "ACCOUNTANT") {
-    return [
-      {
-        label: "Books & taxes",
-        links: [
-          { href: "/desk/books", label: "Books" },
-          { href: "/desk/sales-tax", label: "Taxes" },
-          { href: "/desk/compliance", label: "Compliance" },
-          { href: "/desk/reports", label: "Money reports" },
-          { href: "/desk/settings/decisions", label: "Decisions" },
-          { href: "/desk/paperwork", label: "Business records" },
-          { href: "/desk/account", label: "My account" },
-        ],
-      },
-    ];
-  }
-  if (!["OWNER", "ADMIN", "STAFF"].includes(role ?? "")) return [];
-  const finance = role === "OWNER" || role === "ADMIN";
-  return groups
-    .map((group) => ({
-      label: group.label,
-      links: group.links
-        .filter((link) => {
-          const restriction = link[2];
-          return !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER");
-        })
-        .map(([path, label]) => ({ href: `/desk/${path}`, label }))
-        .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href)),
-    }))
-    .filter((group) => group.links.length > 0);
-}
-
-export function activeDeskHref(
-  pathname: string,
-  groups: DeskNavGroup[],
-): string | undefined {
-  const within = (base: string) => pathname === base || pathname.startsWith(`${base}/`);
-  return groups
-    .flatMap((group) => group.links)
-    .flatMap((link) => [link.href, ...(DESK_NAV_ALIASES[link.href] ?? [])]
-      .filter(within)
-      .map((matched) => ({ href: link.href, length: matched.length })))
-    .sort((a, b) => b.length - a.length)[0]?.href;
-}
-
+const pathOf = (href: string) => href.split(/[?#]/)[0] ?? href;
+const within = (path: string, root: string) => path === root || path.startsWith(root + "/");
 
 /**
- * Phone tabs are derived from the already role-filtered desk navigation.
- * Restricted destinations are never introduced here.
+ * @deprecated AR-1: use DESK_AREAS/visibleAreas directly.
+ * Kept temporarily for older widgets and tests until AR-10.
+ * Aliases are derived from the same source as activeArea and do not create access.
  */
-export function deskBottomTabLinks(
-  role: string,
-  groups: DeskNavGroup[],
-): { href: string; label: string }[] {
-  const allowed = new Map(
-    groups.flatMap((group) => group.links).map((link) => [link.href, link]),
-  );
-  const preferred =
-    role === "ACCOUNTANT"
-      ? [
-          ["/desk/books", "Books"],
-          ["/desk/sales-tax", "Taxes"],
-          ["/desk/compliance", "Compliance"],
-          ["/desk/reports", "Reports"],
-        ]
-      : role === "STAFF"
-      ? [
-          ["/desk/today", "Today"],
-          ["/desk/dispatch", "Schedule"],
-          ["/desk/inventory", "Equipment"],
-          ["/desk/customers", "Customers"],
-        ]
-      : [
-          ["/desk/today", "Today"],
-          ["/desk/dispatch", "Schedule"],
-          ["/desk/customers", "Customers"],
-          ["/desk/billing", "Money"],
-        ];
+export const DESK_NAV_ALIASES: Record<string, string[]> = (() => {
+  const out: Record<string, string[]> = {};
+  for (const area of DESK_AREAS) for (const tab of area.tabs) {
+    if (tab.matches?.length) {
+      const path = pathOf(tab.href);
+      out[path] = [...new Set([...(out[path] ?? []), ...tab.matches])];
+    }
+  }
+  // Existing accountant Compliance screen remains under Taxes without being a new area tab.
+  out["/desk/sales-tax"] = [...new Set([...(out["/desk/sales-tax"] ?? []), "/desk/compliance"])];
+  return out;
+})();
 
-  return preferred.flatMap(([href, label]) =>
-    allowed.has(href) ? [{ href, label }] : [],
-  );
+/** @deprecated Use visibleProfileLinks. Still filters role and job role before serialization. */
+export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] | null = null,
+  _shown?: ReadonlySet<FeatureKey>): DeskMoreLink[] {
+  return visibleProfileLinks(role, jobRoleScreens).map(link => ({
+    ...link, detail: "Open " + link.label.toLocaleLowerCase() + ".",
+  }));
+}
+
+/** @deprecated Use visibleAreas. The five area groups are now the only primary navigation. */
+export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null,
+  shown?: ReadonlySet<FeatureKey>): DeskNavGroup[] {
+  return visibleAreas(role, jobRoleScreens, shown).map(area => ({
+    label: area.label,
+    links: area.tabs.map(tab => ({ href: tab.href, label: tab.label })),
+  }));
+}
+
+/** @deprecated Use activeArea(pathname, searchParams, visibleAreas). */
+export function activeDeskHref(pathname: string, groups: DeskNavGroup[]): string | undefined {
+  return groups.flatMap(group => group.links)
+    .flatMap(link => {
+      const root = pathOf(link.href);
+      return [root, ...(DESK_NAV_ALIASES[root] ?? [])]
+        .filter(match => within(pathname, match))
+        .map(match => ({ href: link.href, length: match.length }));
+    }).sort((a, b) => b.length - a.length)[0]?.href;
+}
+
+/** @deprecated Use visibleAreas().map(area => ({label:area.label,href:areaHome(area)})). */
+export function deskBottomTabLinks(
+  _role: string, groups: DeskNavGroup[],
+): { href: string; label: string }[] {
+  return groups.flatMap(group => group.links[0]
+    ? [{ href: group.links[0].href, label: group.label }] : []);
 }

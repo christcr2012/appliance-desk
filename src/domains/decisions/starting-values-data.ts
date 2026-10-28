@@ -76,6 +76,7 @@ export const STARTING_VALUES: Record<string, StartingValue | NoSource> = {
   "IN-34-DELIVERY-STATE": stateCell(true, OPTIONAL_SEPARATE),
   "IN-34-INSTALLATION-STATE": stateCell(true, OPTIONAL_SEPARATE),
   "IN-34-REMOVAL-STATE": stateCell(true, OPTIONAL_SEPARATE),
+  "IN-34-HAUL-AWAY-STATE": stateCell(true, OPTIONAL_SEPARATE),
   "IN-34-DAMAGE-WAIVER-STATE": stateCell(true,
     "The state counts charges that come with a lease as part of the lease payment, so the damage waiver is taxed " +
     "until your CPA says otherwise."),
@@ -93,6 +94,7 @@ export const STARTING_VALUES: Record<string, StartingValue | NoSource> = {
   "IN-34-DELIVERY-GREELEY": greeleyCell(),
   "IN-34-INSTALLATION-GREELEY": greeleyCell(),
   "IN-34-REMOVAL-GREELEY": greeleyCell(),
+  "IN-34-HAUL-AWAY-GREELEY": greeleyCell(),
   "IN-34-DAMAGE-WAIVER-GREELEY": greeleyCell(),
   "IN-34-EARLY-TERMINATION-GREELEY": greeleyCell(),
   "IN-34-LATE-PAYMENT-FEE-GREELEY": greeleyCell(),

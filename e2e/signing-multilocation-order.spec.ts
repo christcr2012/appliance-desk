@@ -95,7 +95,7 @@ test("signing link shows complete verified two-address order without collecting 
     await expect(page.getByRole("link",{name:"View customer estimate and final reviewed order"})).toBeVisible();
     expect((await prisma.signatureRecord.findUniqueOrThrow({where:{id:sigId}})).signedAt).toBeNull();
     expect(await prisma.agreementSigningPayment.count({where:{agreementId:{in:ids}}})).toBe(0);
-    await page.goto("/desk/agreements/"+ids[0]);
+    await page.goto("/desk/agreements/"+ids[0]+"?tab=signing");
     await expect(page.getByRole("heading",{name:"Complete reviewed signing order"})).toBeVisible();
     await expect(page.getByText("Combined signing amount across addresses")).toBeVisible();
   } finally {

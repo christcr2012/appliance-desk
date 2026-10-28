@@ -1,4 +1,5 @@
 import { Prisma, RdfHandling, ShortTermLeaseElection, TaxFilingAccountKind, TaxFilingFrequency, TaxReportingBasis, Taxability, TaxChargeCategory } from "@prisma/client";
+import { SERVICE_LINE_CATEGORIES } from "@/domains/tax/categories";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
@@ -378,7 +379,12 @@ export async function markLicenseRenewed(
 }
 
 export type TaxabilityCellInput = { jurisdictionId: string | null; category: TaxChargeCategory; taxability: Taxability;
-  cpaConfirmedOn: Date; reason: string };
+  cpaConfirmedOn: Date; reason: string;
+  /** FEETAX-1: the answer for a service the customer can decline when it is listed separately.
+   * Omit it and a confirmed save settles a service cell with the confirmed answer itself — a
+   * CPA-confirmed "taxed" must never leave a researched "not taxed when separate" running
+   * underneath it. Pass it when the CPA answered the separate question differently. */
+  optionalSeparatedTreatment?: Taxability | null };
 /** When a decision's change starts (Decisions & reviews): the history version starts then. Default: today. */
 export type TaxabilityCellOptions = { effectiveFrom?: Date;
   /** ACCT-1: accountant only as a CPA professional answer through Decisions & reviews. */
@@ -388,6 +394,11 @@ function checkConfirmedCell(input: TaxabilityCellInput) {
   enumValue(input.category, TaxChargeCategory, "tax category");
   enumValue(input.taxability, Taxability, "taxability");
   if (input.taxability === "UNDECIDED") throw new Error("The confirmed cell must be taxable or exempt.");
+  if (input.optionalSeparatedTreatment != null) {
+    enumValue(input.optionalSeparatedTreatment, Taxability, "taxability");
+    if (input.optionalSeparatedTreatment === "UNDECIDED")
+      throw new Error("The optional-and-separate answer must be taxable or exempt when it is given.");
+  }
   date(input.cpaConfirmedOn, "CPA confirmation date");
   if (!input.cpaConfirmedOn) throw new Error("Taxability confirmation needs a CPA date.");
   const reason = textField(input.reason, 500, "CPA decision") ?? "";
@@ -433,10 +444,11 @@ function businessDayStart(at: Date): Date {
  */
 async function appendTaxabilityVersion(
   tx: Prisma.TransactionClient,
-  existing: { taxability: Taxability; provisional: boolean; cpaConfirmedOn: Date | null; reason: string | null } | null,
+  existing: { taxability: Taxability; provisional: boolean; cpaConfirmedOn: Date | null; reason: string | null;
+    optionalSeparatedTreatment?: Taxability | null } | null,
   row: { jurisdictionId: string | null; category: TaxChargeCategory; taxability: Taxability; provisional: boolean;
     cpaConfirmedOn: Date | null; reason: string | null; sources: Prisma.InputJsonValue | null; actorId: string;
-    effectiveFrom: Date },
+    effectiveFrom: Date; optionalSeparatedTreatment?: Taxability | null },
 ) {
   const earlier = await tx.taxabilityRuleVersion.count({
     where: { jurisdictionId: row.jurisdictionId, category: row.category },
@@ -445,12 +457,15 @@ async function appendTaxabilityVersion(
     // Before this cell had a stored rule it was "not decided": a rule saved today never reaches back to old dates.
     await tx.taxabilityRuleVersion.create({ data: {
       jurisdictionId: row.jurisdictionId, category: row.category, taxability: existing?.taxability ?? "UNDECIDED",
+      optionalSeparatedTreatment: existing?.optionalSeparatedTreatment ?? null,
       effectiveFrom: new Date(Date.UTC(1970, 0, 1)), provisional: existing?.provisional ?? false,
       cpaConfirmedOn: existing?.cpaConfirmedOn ?? null, reason: existing?.reason ?? null,
     } });
   }
   await tx.taxabilityRuleVersion.create({ data: {
     jurisdictionId: row.jurisdictionId, category: row.category, taxability: row.taxability,
+    optionalSeparatedTreatment: row.optionalSeparatedTreatment !== undefined
+      ? row.optionalSeparatedTreatment : existing?.optionalSeparatedTreatment ?? null,
     effectiveFrom: row.effectiveFrom, provisional: row.provisional, cpaConfirmedOn: row.cpaConfirmedOn,
     reason: row.reason, sources: row.sources ?? Prisma.DbNull, createdByUserId: row.actorId,
   } });
@@ -469,9 +484,17 @@ export async function saveTaxabilityCellInTx(
   const existing = await tx.taxabilityRule.findFirst({
     where: { jurisdictionId: input.jurisdictionId, category: input.category },
   });
+  // FEETAX-1: a confirmed answer settles the whole cell. For a service charge the
+  // optional-and-separate answer follows the confirmed answer unless the CPA gave
+  // that answer separately — otherwise a seeded "not taxed when separate" starting
+  // value would keep deciding real bills after the cell was confirmed, unflagged.
+  const separateAnswer = input.optionalSeparatedTreatment !== undefined
+    ? input.optionalSeparatedTreatment
+    : (SERVICE_LINE_CATEGORIES as readonly string[]).includes(input.category) ? input.taxability : undefined;
   const data = { taxability: input.taxability, cpaConfirmedOn: input.cpaConfirmedOn,
     reason, updatedByUserId: actorId,
-    provisional: false, provisionalReason: null, provisionalSources: Prisma.DbNull };
+    provisional: false, provisionalReason: null, provisionalSources: Prisma.DbNull,
+    ...(separateAnswer !== undefined ? { optionalSeparatedTreatment: separateAnswer } : {}) };
   const rule = existing
     ? await tx.taxabilityRule.update({ where: { id: existing.id }, data })
     : await tx.taxabilityRule.create({
@@ -481,19 +504,24 @@ export async function saveTaxabilityCellInTx(
     jurisdictionId: input.jurisdictionId, category: input.category, taxability: input.taxability,
     provisional: false, cpaConfirmedOn: input.cpaConfirmedOn, reason, sources: null, actorId,
     effectiveFrom: opts.effectiveFrom ?? businessDayStart(new Date()),
+    ...(separateAnswer !== undefined ? { optionalSeparatedTreatment: separateAnswer } : {}),
   });
   await tx.auditLog.create({
     data: { userId: actorId, action: "tax.setup.taxability_confirmed",
       entityType: "TaxabilityRule", entityId: rule.id,
       oldValue: existing ? { taxability: existing.taxability, provisional: existing.provisional } : Prisma.JsonNull,
       newValue: { category: rule.category, jurisdictionId: input.jurisdictionId,
-        taxability: rule.taxability, cpaConfirmedOn: input.cpaConfirmedOn.toISOString() } },
+        taxability: rule.taxability, cpaConfirmedOn: input.cpaConfirmedOn.toISOString(),
+        optionalSeparatedTreatment: rule.optionalSeparatedTreatment } },
   });
 }
 
 export type DecisionSource = { title: string; url: string; checkedOn: string };
 export type ProvisionalTaxabilityInput = { jurisdictionId: string | null; category: TaxChargeCategory;
-  taxability: Taxability; reason: string; sources: DecisionSource[] };
+  taxability: Taxability; reason: string; sources: DecisionSource[];
+  /** FEETAX-1: a researched answer for the optional-and-separate question, when the
+   * research speaks to it. Omitted: the cell's existing separate answer is left alone. */
+  optionalSeparatedTreatment?: Taxability | null };
 
 function checkSources(sources: DecisionSource[]): DecisionSource[] {
   if (!Array.isArray(sources) || sources.length > 20) throw new Error("Invalid source list.");
@@ -530,7 +558,9 @@ export async function saveProvisionalTaxabilityCellInTx(
     where: { jurisdictionId: input.jurisdictionId, category: input.category },
   });
   const data = { taxability: input.taxability, cpaConfirmedOn: null, reason, updatedByUserId: actorId,
-    provisional: true, provisionalReason: reason, provisionalSources: sources };
+    provisional: true, provisionalReason: reason, provisionalSources: sources,
+    ...(input.optionalSeparatedTreatment !== undefined
+      ? { optionalSeparatedTreatment: input.optionalSeparatedTreatment } : {}) };
   const rule = existing
     ? await tx.taxabilityRule.update({ where: { id: existing.id }, data })
     : await tx.taxabilityRule.create({
@@ -540,6 +570,8 @@ export async function saveProvisionalTaxabilityCellInTx(
     jurisdictionId: input.jurisdictionId, category: input.category, taxability: input.taxability,
     provisional: true, cpaConfirmedOn: null, reason, sources, actorId,
     effectiveFrom: opts.effectiveFrom ?? businessDayStart(new Date()),
+    ...(input.optionalSeparatedTreatment !== undefined
+      ? { optionalSeparatedTreatment: input.optionalSeparatedTreatment } : {}),
   });
   await tx.auditLog.create({
     data: { userId: actorId, action: "tax.setup.taxability_starting_value",

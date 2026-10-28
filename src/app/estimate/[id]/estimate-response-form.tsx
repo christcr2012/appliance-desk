@@ -5,13 +5,21 @@ import { useEffect, useState, useTransition } from "react";
 import { approveEstimateAction, requestEstimateChangesAction, declineEstimateAction, type EstimateResponseState } from "./actions";
 import { estimateFormText, type FormCopyKey } from "@/domains/language/estimate-form-copy";
 import type { CustomerLanguage } from "@/domains/language/copy";
+import { formatCents } from "@/domains/pricing/money";
+import {
+  computeServiceChoiceOffers, defaultServiceChoice, serviceCategoriesForOrder,
+  type ServiceChoiceService, type ServiceChoiceValue,
+} from "@/domains/orders/service-choices";
+import type { ServiceChoiceOfferInputs } from "@/domains/orders/service-choice-offers";
 
 export function EstimateResponseForm({ estimateId, allowApproval = false,
   expectedQuoteFingerprint, deliveryOptions = [], offerVersion = 0,
+  serviceChoiceInputs = null,
   phonePrefill = null, language = "en" }: {
   estimateId: string; language?: CustomerLanguage; allowApproval?: boolean; expectedQuoteFingerprint?: string | null;
   deliveryOptions?: Array<{id:string;date:string;window:"AM"|"PM"}>;
   offerVersion?:number;
+  serviceChoiceInputs?: ServiceChoiceOfferInputs | null;
   phonePrefill?:import("@/domains/orders/delivery").DeliverySelection|null;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -25,7 +33,23 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
   const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">(phonePrefill?.questions.washerHookups??"UNKNOWN");
   const [stairs,setStairs]=useState(phonePrefill?.questions.stairs??false);
   const [crewNotes,setCrewNotes]=useState(phonePrefill?.questions.crewNotes??"");
+  // FEETAX-1 (S5): a phone order's recorded picks prefill the choices;
+  // the customer can change any of them before approving.
+  const [servicePicks, setServicePicks] = useState<Partial<Record<ServiceChoiceService, ServiceChoiceValue>>>(
+    () => Object.fromEntries((phonePrefill?.serviceChoices ?? []).map((pick) => [pick.service, pick.choice])));
   const [result, setResult] = useState<EstimateResponseState>({ status: "idle" });
+
+  // FEETAX-1 (S4): the service choices shown at ordering. The offers are
+  // recomputed here from the server's inputs so the installation
+  // alternative appears or hides with the dryer answer above; the
+  // approval transaction recomputes them again before saving, so what
+  // is recorded never depends on this screen's math.
+  const serviceOffers = serviceChoiceInputs ? computeServiceChoiceOffers({
+    ...serviceChoiceInputs,
+    categories: serviceCategoriesForOrder({
+      applianceTypeSlugs: serviceChoiceInputs.applianceTypeSlugs, dryerOutlet }),
+  }) : [];
+  const priceText = (cents: number) => cents > 0 ? formatCents(cents) : portalLabel(language, "Free");
 
   // Send the browser on to Stripe Checkout for the deposit — an effect,
   // not a render-time assignment, since navigating away is a side
@@ -71,6 +95,11 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
           optionId:chosen,expectedOfferVersion:offerVersion,
           questions:{dryerOutlet,stairs,washerHookups,crewNotes},
         }} : {}),
+        serviceDryerOutlet: dryerOutlet,
+        serviceChoices: serviceOffers.map((offer) => ({
+          service: offer.service,
+          choice: servicePicks[offer.service] ?? defaultServiceChoice(offer, !!serviceChoiceInputs?.pickupOnly),
+        })),
       }));
     });
   }
@@ -146,6 +175,52 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
               className="mt-1 block w-full rounded border border-line p-2"/>
           </label>
           <p className="text-xs text-ink-soft">{t("requestNotBooked")}</p>
+        </fieldset>}
+        {serviceOffers.length > 0 && <fieldset className="space-y-4 rounded border border-line p-3">
+          <legend className="font-semibold">{portalLabel(language,"Your service choices")}</legend>
+          {serviceOffers.map((offer) => {
+            const pick = servicePicks[offer.service] ?? defaultServiceChoice(offer, !!serviceChoiceInputs?.pickupOnly);
+            const setPick = (choice: ServiceChoiceValue) =>
+              setServicePicks((prev) => ({ ...prev, [offer.service]: choice }));
+            const radio = (choice: ServiceChoiceValue, label: string) => (
+              <label className="flex gap-2 text-sm" key={choice}>
+                <input type="radio" name={`service-${offer.service}`} checked={pick === choice}
+                  onChange={() => setPick(choice)} /> {label}
+              </label>
+            );
+            return (
+              <div key={offer.service} className="space-y-1">
+                <p className="text-sm font-medium">{
+                  offer.service === "DELIVERY" ? t("delivery")
+                  : offer.service === "INSTALLATION" ? portalLabel(language,"Installation")
+                  : offer.service === "REMOVAL" ? portalLabel(language,"Pickup at the end")
+                  : portalLabel(language,"Haul away my old appliance")
+                }</p>
+                {offer.service === "DELIVERY" && serviceChoiceInputs?.pickupOnly ? (
+                  <p className="text-sm">{portalLabel(language,"You'll pick it up")} — {portalLabel(language,"Free")}</p>
+                ) : (<>
+                  {radio("BY_BUSINESS", `${
+                    offer.service === "DELIVERY" ? portalLabel(language,"We deliver")
+                    : offer.service === "INSTALLATION" ? portalLabel(language,"We install")
+                    : offer.service === "REMOVAL" ? portalLabel(language,"We pick it up at the end")
+                    : portalLabel(language,"We haul it away")
+                  } — ${priceText(offer.priceCents)}`)}
+                  {offer.service === "HAUL_AWAY"
+                    ? radio("NOT_NEEDED", portalLabel(language,"No thanks"))
+                    : offer.alternativeShown && radio("CUSTOMER_DOES_IT", `${
+                        offer.service === "DELIVERY" ? portalLabel(language,"I'll pick it up")
+                        : offer.service === "INSTALLATION" ? portalLabel(language,"I'll install it myself")
+                        : portalLabel(language,"I'll return it myself")
+                      } — ${portalLabel(language,"Free")}`)}
+                  {offer.service === "INSTALLATION" && !offer.alternativeShown && (
+                    <p className="text-xs text-ink-soft">
+                      {portalLabel(language,"Our crew installs this order — some appliances need a professional hookup, so self-install isn't offered here.")}
+                    </p>
+                  )}
+                </>)}
+              </div>
+            );
+          })}
         </fieldset>}
         <div className="flex gap-3">
           <button

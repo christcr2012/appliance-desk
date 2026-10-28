@@ -42,7 +42,7 @@ describe("Decisions & reviews registry", () => {
       expect(legacy.has(code), code).toBe(true);
     }
     // One subject per charge category for the state defaults (rent follows the lease choice) and for Greeley.
-    expect(allTaxCellSubjectIds()).toHaveLength(10 + 12);
+    expect(allTaxCellSubjectIds()).toHaveLength(11 + 13);
     for (const id of allTaxCellSubjectIds()) expect(decisionSubject(id), id).not.toBeNull();
   });
 

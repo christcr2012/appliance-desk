@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InboxCountBeacon } from "@/components/kit/inbox-count-beacon";
 import { revalidatePath } from "next/cache";
 import { getExceptionOverview, getTodaysJobs, type ExceptionItem } from "@/domains/exceptions";
 import { syncComplianceFilings } from "@/domains/compliance/filings";
@@ -461,6 +462,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
     <PullToRefresh><div className="w-full min-w-0 max-w-full px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
       <div className="flex w-full min-w-0 max-w-full flex-1 flex-col gap-4 lg:max-w-[760px]">
         <AutoRefresh />
+        <InboxCountBeacon count={total} />
         {notInJobRole ? (
           <p role="status" className="rounded-card border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink">
             You don&apos;t have access to that screen.
@@ -535,10 +537,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
             Snoozed ({snoozed.length})
           </Link>
         ) : null}
+        {canManage ? <Link href="/desk/settings/workspace#my-workspace" className="inline-flex min-h-11 items-center self-start text-[15px] font-bold text-primary hover:underline">Manage my workspace</Link> : null}
         {hiddenNoteCount > 0 ? (
           <p className="text-sm text-ink-soft">
             {hiddenNoteCount} optional note{hiddenNoteCount === 1 ? " is" : "s are"} hidden.{" "}
-            <Link href="/desk/control-center#my-workspace" className="font-semibold text-primary underline">
+            <Link href="/desk/settings/workspace#my-workspace" className="font-semibold text-primary underline">
               Show again
             </Link>
           </p>

@@ -30,7 +30,7 @@ const EFFECT_FOR: Record<string, keyof typeof EFFECTS> = {
   publicBusinessName: "site", publicPhone: "site", publicEmail: "site", publicAddress: "site",
   hours: "site", holidayClosures: "site", socialLinks: "site", logoUrl: "site",
   serviceAreaCities: "area", serviceAreaZips: "area",
-  oneTimeDeliveryFeeCents: "fees", oneTimeInstallationFeeCents: "fees", oneTimeRemovalFeeCents: "fees",
+  oneTimeDeliveryFeeCents: "fees", oneTimeInstallationFeeCents: "fees", oneTimeRemovalFeeCents: "fees", oneTimeHaulAwayFeeCents: "fees",
   lateFeeGraceDays: "late", lateFeeFlatCents: "late", lateFeePercent: "late",
   sixMonthPrepayDiscountSetCents: "prepay", sixMonthPrepayDiscountSingleCents: "prepay",
   twelveMonthPrepayDiscountSetCents: "prepay", twelveMonthPrepayDiscountSingleCents: "prepay",
