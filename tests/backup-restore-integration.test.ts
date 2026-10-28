@@ -60,6 +60,11 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
   };
   const numberAddress = "+13035550189";
   const backupLedger = { database: "restore-db-" + tag, media: "restore-media-" + tag };
+  const mcpFixture = {
+    connection: "restore-mcp-conn-" + tag,
+    running: "restore-mcp-running-" + tag,
+    finished: "restore-mcp-finished-" + tag,
+  };
 
 
 
@@ -75,6 +80,29 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     }
     target = new PrismaClient({ adapter: new PrismaPg({ connectionString: restoreUrl }) });
     await prisma.user.create({ data: { id: rdfFixture.user, email: tag + "@example.test", role: "OWNER" } });
+    await prisma.mcpConnection.create({ data: {
+      id: mcpFixture.connection, userId: rdfFixture.user,
+      oauthClientId: mcpFixture.connection, label: "Restore fixture assistant",
+      scopes: ["ops:maintain"], grantVersion: "synthetic-revoked-on-restore",
+    } });
+    await prisma.agentOperation.createMany({ data: [
+      {
+        id: mcpFixture.running, connectionId: mcpFixture.connection,
+        actorUserId: rdfFixture.user, tool: "appliance_action_execute",
+        action: "RETRY_DATABASE_BACKUP", targetRef: "backup",
+        requestKeyDigest: "a".repeat(64), argsHash: "b".repeat(64), args: { job: "backup" },
+        state: "RUNNING", leaseToken: "c".repeat(32),
+        leaseExpiresAt: new Date(Date.now() + 300_000),
+        expiresAt: new Date(Date.now() + 300_000),
+      }, {
+        id: mcpFixture.finished, connectionId: mcpFixture.connection,
+        actorUserId: rdfFixture.user, tool: "appliance_action_execute",
+        action: "RETRY_DATABASE_BACKUP", targetRef: "backup",
+        requestKeyDigest: "d".repeat(64), argsHash: "e".repeat(64), args: { job: "backup" },
+        state: "SUCCEEDED", expiresAt: new Date(),
+      },
+    ] });
+
     await prisma.customer.create({ data: { id: rdfFixture.customer, userId: rdfFixture.user, preferredLanguage:"es", referralCode: "RESTORE-" + tag } });
     await prisma.serviceAddress.create({data:{id:"w26-address-"+tag,customerId:rdfFixture.customer,line1:"Synthetic restore",city:"Greeley",zip:"80631"}});
     await prisma.rentalAgreement.create({data:{id:"w26-agreement-"+tag,customerId:rdfFixture.customer,serviceAddressId:"w26-address-"+tag,
@@ -220,6 +248,10 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
   });
 
   afterAll(async () => {
+    await prisma.agentOperation.deleteMany({
+      where: { id: { in: [mcpFixture.running, mcpFixture.finished] } },
+    });
+    await prisma.mcpConnection.deleteMany({ where: { id: mcpFixture.connection } });
     await prisma.backupArtifact.deleteMany({ where: { id: backupLedger.media } });
     await prisma.backupArtifact.deleteMany({ where: { id: backupLedger.database } });
     await prisma.communicationCostFact.deleteMany({
@@ -285,6 +317,13 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       expect(count, table).toBe(snapshot.payload.tables[table]!.length);
     }
 
+    expect(await target.mcpConnection.findUniqueOrThrow({ where: { id: mcpFixture.connection } }))
+      .toMatchObject({ revokedReason: "Restored from backup — connect again" });
+    expect(await target.agentOperation.findUniqueOrThrow({ where: { id: mcpFixture.running } }))
+      .toMatchObject({ state: "CANCELLED", failureCode: "RESTORED",
+        leaseToken: null, leaseExpiresAt: null });
+    expect(await target.agentOperation.findUniqueOrThrow({ where: { id: mcpFixture.finished } }))
+      .toMatchObject({ state: "SUCCEEDED" });
     expect(await target.backupArtifact.findUniqueOrThrow({where:{id:backupLedger.database}}))
       .toMatchObject({state:"VERIFIED",kind:"DATABASE",sha256:"a".repeat(64)});
     expect(await target.backupArtifact.findUniqueOrThrow({where:{id:backupLedger.media}}))

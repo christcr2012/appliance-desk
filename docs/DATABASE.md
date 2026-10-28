@@ -1,3 +1,48 @@
+## MCP-5 review safety guards — additive migration 20261202000000_mcp5_review_guards
+
+AgentOperation.connectionGrantVersion captures the original MCP connection
+grant. A disconnected/re-authorized grant cannot reuse an older preview or
+approval, even when McpConnection.id is reused. Old operations without a
+stored grant version fail closed. AgentOperation.lastReconciledAt rotates the
+limited nightly UNKNOWN readback batch so older irrecoverable records never
+starve newer effects; it never causes an automatic replay.
+DecisionRecord.agentOperationId ties each MCP-applied native DEC-1 answer
+to exactly one assistant operation, while retaining its append-only audit
+history. Readback also compares the actual normalized choice to the persisted
+expected answer. All three columns are nullable and the migration is additive.
+
+## MCP-5 typed uncertain-operation issue — additive migration 20261201000000_mcp5_uncertain_issue
+
+The existing `SystemIssue_kind_known` check now also allows
+`ASSISTANT_ACTION_UNCERTAIN`. All prior issue kinds remain allowed. This
+expands the database constraint only; it neither modifies issue rows nor
+starts any assistant effect. Without it, UNKNOWN reconciliation could fail to
+record the owner's required follow-up issue.
+
+## MCP-5 execution and recovery notes (pending code review)
+
+The operation ledger keeps an immutable request-key digest and canonical
+arguments. Under connection and operation row locks, execution consumes one
+authorized preview and records a random lease token, its expiry and the
+expected verification target **before** calling a domain command.
+A finished command can set SUCCEEDED only after real target readback.
+An error after dispatch stays UNKNOWN; the nightly system-health pass fences
+stale leases and checks stored target evidence, without repeating commands.
+If a target cannot be confirmed, an ASSISTANT_ACTION_UNCERTAIN issue stays
+open for the owner. Backups preserve completed attempts; isolated restore
+cancels unfinished records and clears leases. No live provider/production
+migration was run by this implementation.
+
+## MCP-5 agent action journal — additive migration 20261130000000_agent_operations
+
+The new AgentOperation table is append-safe, references an existing McpConnection,
+and uses a unique connection/tool/request digest to prevent duplicate operation
+creation. It records sanitized previews, owner approvals, lease ownership, a
+post-effect verification record and a final/uncertain state. No action runs merely
+because the migration is installed. Assistant action records are included in
+backups; restore turns all non-final operations into CANCELLED with the RESTORED
+reason and clears in-flight leases. Restored MCP connections remain revoked.
+
 ## October 27 — AR-12 feature visibility (additive, in CI review)
 
 Migration `20261026000000_shown_features` adds `BusinessSettings.shownFeatures` (text list, default empty). The owner's choices change only which menu entries appear; existing pages and authorization do not change. Team (2+ active members), property-manager records and active cash budgeting also enable their corresponding feature indicators automatically. Owner-only changes lock the singleton row and record `settings.features` audit entries, once per actual change. No new model, no backup inventory change, and no production settings changed by this work.

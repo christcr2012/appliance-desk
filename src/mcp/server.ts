@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import type { McpScope } from "@/mcp/scopes";
+import { previewAgentOperation, executeAgentOperation, getAgentOperation } from "@/domains/agent-control/operations";
 import {
   checkMcpActor, healthOverview, issuesList, issueGet, automationRuns,
   configurationReadiness, backupStatus, decisionsList, decisionGet,
@@ -210,6 +211,76 @@ export function buildMcpServer(context: AgentContext): McpServer {
       truncated: z.boolean().optional(),
     }), annotations: readOnly,
   }, async ({ id }) => read("decisions:read", () => decisionGet(context, id)));
+
+  const writePolicy = {
+    readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false,
+  } as const;
+  const actionName = z.enum([
+    "RUN_DIAGNOSTIC_SWEEP", "RETRY_DATABASE_BACKUP", "RETRY_MEDIA_COPY",
+    "PAUSE_AUTOMATION", "RESUME_AUTOMATION", "VERIFY_RECOVERY_ARTIFACT", "APPLY_DECISION_ANSWERS",
+  ]);
+  const operationResult = z.object({
+    id: z.string(), state: z.string(), action: z.string(), targetRef: z.string().nullable(),
+    failureCode: z.string().nullable(), safeResult: z.unknown().nullable(),
+    verification: z.unknown().nullable(), expiresAt: z.string(),
+  });
+  async function actionCall(scope: McpScope | null, fn: () => Promise<Record<string, unknown>>) {
+    if (scope && !context.scopes.includes(scope)) return toolError("FORBIDDEN_SCOPE");
+    try {
+      await checkMcpActor(context);
+      const data = boundMcpOutput(await fn());
+      return { content: [{ type: "text" as const, text: JSON.stringify(data) }], structuredContent: data };
+    } catch (error) {
+      const safe = [
+        "FORBIDDEN_SCOPE", "OWNER_REQUIRED", "CONFLICT", "OWNER_APPROVAL_REQUIRED",
+        "OPERATION_NOT_FOUND", "REQUEST_KEY_MISMATCH", "PREVIEW_CHANGED",
+        "BACKUP_NOT_ELIGIBLE_FOR_RETRY", "UNKNOWN_AUTOMATION_RULE",
+        "INVALID_ACTION_INPUT", "OPERATION_ARGUMENT_TAMPERED",
+      ];
+      const code = error instanceof Error && safe.includes(error.message) ? error.message : "ACTION_UNAVAILABLE";
+      return toolError(code);
+    }
+  }
+
+  server.registerTool("appliance_action_preview", {
+    title: "Preview a safe assistant action",
+    description: "Show what would change, then request the owner's approval before doing anything.",
+    inputSchema: z.strictObject({
+      action: actionName, args: z.record(z.string(), z.unknown()),
+      requestKey: z.string().min(12).max(128).regex(/^[a-zA-Z0-9_-]+$/),
+    }),
+    outputSchema: z.object({
+      previewId: z.string(), state: z.string(), summary: z.string(),
+      changes: z.array(z.object({ label: z.string(), now: z.string(), after: z.string() })),
+      costNote: z.string().nullable(), approval: z.string(), expiresAt: z.string(),
+    }),
+    annotations: writePolicy,
+  }, async ({ action, args, requestKey }) => actionCall(
+    action === "APPLY_DECISION_ANSWERS" ? "decisions:apply" : "ops:maintain",
+    () => previewAgentOperation(context, { action, args, requestKey }),
+  ));
+
+  server.registerTool("appliance_action_execute", {
+    title: "Execute a previously approved action",
+    description: "Use only a fresh preview ID and its original request key; never repeat a completed effect.",
+    inputSchema: z.strictObject({
+      previewId: z.string().min(12).max(100),
+      requestKey: z.string().min(12).max(128).regex(/^[a-zA-Z0-9_-]+$/),
+    }),
+    outputSchema: operationResult,
+    annotations: writePolicy,
+  }, async ({ previewId, requestKey }) => actionCall(
+    null, () => executeAgentOperation(context, { previewId, requestKey }),
+  ));
+
+  server.registerTool("appliance_operation_get", {
+    title: "Read the status of a past assistant action",
+    description: "Read the verified outcome for one action owned by this connection.",
+    inputSchema: z.strictObject({ operationId: z.string().min(12).max(100) }),
+    outputSchema: operationResult, annotations: readOnly,
+  }, async ({ operationId }) => actionCall(null,
+    () => getAgentOperation(context, operationId)));
+
 
   return server;
 }
