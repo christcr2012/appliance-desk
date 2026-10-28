@@ -118,6 +118,9 @@ test.describe("owner daily work", () => {
     await expect(row).toContainText("Due today");
     await row.getByRole("button", { name: "Done", exact: true }).click();
     await expect(row).toHaveCount(0);
+    // The card disappears optimistically; wait for the server-confirmed save
+    // before navigating away, or navigation can interrupt the pending action.
+    await expect(page.getByText("Task done", { exact: true })).toBeVisible();
     await page.goto("/desk/tasks?due=today");
     await expect(
       page.getByRole("listitem").filter({ hasText: note }),
