@@ -1,6 +1,8 @@
 import { getLaunchSettings } from "@/domains/launch";
 import type { MetadataRoute } from "next";
-import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
+import { getBusinessSettings } from "@/domains/settings";
+import { townsWithZones } from "@/domains/delivery/towns";
+import { readZoneSettings } from "@/domains/delivery/zone";
 import {
   isLegalPageApproved,
   LEGAL_PAGE_VERSIONS,
@@ -18,10 +20,6 @@ const PUBLIC_ROUTES = [
   "/launch",
   "/accessibility",
 ];
-
-function slugifyCity(city: string): string {
-  return city.trim().toLowerCase().replace(/\s+/g, "-");
-}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -44,11 +42,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === "" ? 1 : 0.7,
   }));
 
-  // One entry per real service-area city (Settings' service area) — see
+  // One entry per town in a delivery zone (ZONE-1 town list) — see
   // /rent/[city] ("Simple local-search landing pages," Task #46).
-  const { cities } = parseServiceArea(settings);
-  const cityRoutes = (launch.prelaunchMode ? [] : cities).map((city) => ({
-    url: `${baseUrl}/rent/${slugifyCity(city)}`,
+  const towns = townsWithZones(readZoneSettings(settings)).filter((town) => town.zone.kind === "ZONE");
+  const cityRoutes = (launch.prelaunchMode ? [] : towns).map((town) => ({
+    url: `${baseUrl}/rent/${town.slug}`,
     lastModified: new Date(),
     changeFrequency: "monthly" as const,
     priority: 0.6,

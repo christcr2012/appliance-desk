@@ -20,6 +20,7 @@ import {
   type CustomerSummary,
 } from "@/domains/customers/record";
 import { getBills, type BillRow } from "@/domains/billing/bills-list";
+import { STATUS_NEXT } from "@/lib/status-next";
 import { inboxActions } from "@/domains/exceptions/inbox";
 import { rentForNextBill } from "@/domains/portal/next-bill";
 import { describeRentalLine } from "@/domains/portal/line-display";
@@ -33,6 +34,7 @@ import {
   ActionBar,
   ActionButton,
   AreaTabs,
+  AutomationLine,
   EmptyState,
   Icon,
   NextStepCard,
@@ -337,7 +339,7 @@ export default async function CustomerDetailPage({
                       {titleText}
                     </Link>
                   </h3>
-                  <StatusPill label={pill.label} tone={pill.tone} />
+                  <StatusPill label={pill.label} tone={pill.tone} next={STATUS_NEXT.rental[agreement.status]} />
                 </div>
                 <p className="text-sm text-ink-soft">{detail}</p>
                 {chips.length > 0 ? (
@@ -361,10 +363,8 @@ export default async function CustomerDetailPage({
                       <ActionButton spec={{ kind: "link", label: "See why", href: billing.href }} variant="secondary" />
                     </div>
                   ) : (
-                    <p className="flex items-start gap-1.5 text-sm text-ink-soft">
-                      {billing.kind === "automatic" ? <Icon name="gear" className="mt-0.5 h-4 w-4 shrink-0" /> : null}
-                      <span>{billing.text}</span>
-                    </p>
+                    billing.kind === "automatic" ? <AutomationLine text={billing.text} /> :
+                      <p className="text-sm text-ink-soft">{billing.text}</p>
                   )
                 ) : null}
               </li>
@@ -439,7 +439,7 @@ export default async function CustomerDetailPage({
                           {jobTypeLabel(job.type)} · {job.scheduledAt ? formatShortDate(job.scheduledAt, now) : "Not scheduled"}
                         </Link>
                       </h4>
-                      <StatusPill label={jobStatusLabel(job.status)} tone="neutral" />
+                      <StatusPill label={jobStatusLabel(job.status)} tone="neutral" next={STATUS_NEXT.visit[job.status]} />
                     </div>
                     {job.serviceAddress ? (
                       <p className="text-sm text-ink-soft">

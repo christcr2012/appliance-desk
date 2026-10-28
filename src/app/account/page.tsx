@@ -6,7 +6,7 @@ import { portalLabel, rentalCountLabel, portalStatement, visitCountLabel, reques
 import { getPortalHome } from "@/domains/portal/workspace";
 import { formatCents } from "@/domains/pricing/money";
 import { formatBusinessDate as originalBusinessDate, formatBusinessTime as originalBusinessTime } from "@/lib/business-date";
-import { jobTypeLabel } from "@/lib/status-labels";
+import { jobKindLabel } from "@/lib/status-labels";
 import {
   ButtonLink,
   Card,
@@ -153,7 +153,7 @@ export default async function AccountHomePage({
           {data.nextVisit ? (
             <div>
               <p className="font-semibold text-ink">
-                {jobTypeLabel(data.nextVisit.type, locale)}
+                {jobKindLabel(data.nextVisit, locale)}
               </p>
               <p className="mt-1 text-ink">
                 {formatBusinessDate(data.nextVisit.scheduledAt!)} ·{" "}

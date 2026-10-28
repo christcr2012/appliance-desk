@@ -57,8 +57,9 @@ const goodSettings: SetupFacts["settings"] = {
   publicPhone: "(970) 555-0100",
   publicEmail: "hello@robinson.example.test",
   publicAddress: "1 Main St, Greeley, CO",
-  serviceAreaCities: ["Greeley"],
-  serviceAreaZips: ["80631"],
+  deliveryZones: [{ name: "Local — free delivery", outerMiles: 15, deliveryCents: 0, pickupCents: 0, color: "GREEN" },
+    { name: "Nearby", outerMiles: 30, deliveryCents: 7500, pickupCents: 7500, color: "BLUE" }],
+  deliveryMaxMiles: 50,
   customerEmailEnabled: true,
 };
 const goodEnv: SetupEnv = {
@@ -89,16 +90,14 @@ describe("business details step", () => {
 });
 
 describe("service area step", () => {
-  it("needs at least one real city or ZIP code", () => {
-    expect(serviceAreaStep(null)).toEqual({ done: false, detail: "Add the cities or ZIP codes you serve." });
-    expect(serviceAreaStep({ serviceAreaCities: [], serviceAreaZips: [] }).done).toBe(false);
-    expect(serviceAreaStep({ serviceAreaCities: [" ", ""], serviceAreaZips: [] }).done).toBe(false);
-    expect(serviceAreaStep({ serviceAreaCities: "Greeley", serviceAreaZips: {} }).done).toBe(false);
+  it("needs saved delivery zones", () => {
+    expect(serviceAreaStep(null)).toEqual({ done: false, detail: "Set up your delivery zones." });
+    expect(serviceAreaStep({ deliveryZones: [] }).done).toBe(false);
+    expect(serviceAreaStep({ deliveryZones: "Greeley" }).done).toBe(false);
   });
-  it("says what is saved", () => {
-    expect(serviceAreaStep({ serviceAreaCities: ["Greeley"], serviceAreaZips: [] })).toEqual({ done: true, detail: "You serve 1 city." });
-    expect(serviceAreaStep({ serviceAreaCities: ["Greeley", "Evans"], serviceAreaZips: ["80631", "80634", "80620"] }))
-      .toEqual({ done: true, detail: "You serve 2 cities and 3 ZIP codes." });
+  it("says what is saved (ZONE-1 starting zones)", () => {
+    expect(serviceAreaStep({ deliveryZones: goodSettings!.deliveryZones, deliveryMaxMiles: 50 }))
+      .toEqual({ done: true, detail: "2 delivery zones up to 30 miles; beyond that, pickup only." });
   });
 });
 
@@ -229,7 +228,7 @@ describe("the assembled checklist", () => {
     // Breaking any single step un-completes the whole list.
     const breakers: Array<Partial<SetupFacts>> = [
       { settings: { ...goodSettings!, publicPhone: "[Phone Number]" } },
-      { settings: { ...goodSettings!, serviceAreaCities: [], serviceAreaZips: [] } },
+      { settings: { ...goodSettings!, deliveryZones: [] } },
       { pricedAppliances: 0, pricedSets: 0 },
       { tax: { ...goodTax, businessLocation: null } },
       { env: { ...goodEnv, STRIPE_WEBHOOK_SECRET: undefined } },

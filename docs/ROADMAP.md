@@ -723,3 +723,53 @@ consumables price can be checked against what the parts really cost. Not in W-22
 - **Job roles on /api download/upload routes**: today those routes use the access level only.
 
 - 2026-10-25 (AR-13): more notification kinds — "your approval request was decided" (to the person who asked) and "a visit was assigned to you" (to staff). Not in AR-13's approved five; needs Chris's go-ahead.
+
+## Lane 7 (back-office operations, OPS-1 to OPS-8) — left unbuilt on purpose (2026-10-27)
+
+Everything in the OPS cards that could be built was built and merged. These items were left out for a concrete reason.
+An agent who later finds the **trigger** true should build the item (the cards in `docs/pr-cards/OPS-*.md` hold the
+details). None of them waits on Chris.
+
+| Item | Why it is not built | Build it when (trigger) |
+|---|---|---|
+| **7-day customer notice before a debit date changes** (OPS-5) | No screen or job lets anyone change a customer's debit date. Only the nightly cycle advance moves `nextBillingDate`, so there is nothing to attach the notice to. A notice with no action behind it would be a placeholder. | A card adds a "change my billing day" action (customer or staff). Build the notice in the same PR, as a real customer message that stays off until live customer email is turned on (hard limit, AGENTS.md section 1). |
+| **The court form itself inside the app** (OPS-6) | The build machine cannot reach the court's website, and a copied form goes stale. The small-claims packet tells Chris to fill in the current JDF 250 instead. | Never as a copy. Only if the court publishes a stable, linkable form and an agent with network access can verify it. Link to it; do not vendor it. |
+| **Bad-debt tax treatment and write-off** (OPS-6) | Already owned by the existing approval path (DEC-2). Building a second path would split the rule. | If DEC-2 changes. |
+| **ID-image purge** (OPS-7) | The app stores no ID images, so there is nothing to purge. | The app starts storing ID images (identity checks, signatures with ID). Add the purge and its retention setting in that same PR. |
+| **Message purge** (OPS-7) | Messages are tied to signed agreements and billing events (legal records), so purging them by age could destroy records the app must keep. | Chris or his attorney confirms which messages may be purged (file a new DQ question in `docs/OWNER-INPUTS.md` with the most careful starting value: purge nothing; retention years are DQ-OPS7-1). Never purge anything tied to a signed or billed record. |
+| **Written biometric policy** (OPS-7) | The setting stays off. The page explains what turning it on requires, and writing a legal policy is not an agent's job. | Chris wants biometrics (face or fingerprint sign-in or ID matching) and his attorney supplies the policy text. |
+| **Refund-after-dispute override button** (OPS-5) | Small and buildable, just not done: the warning blocks the refund, and the acknowledged override exists in code (`acknowledgeDispute` in `src/domains/billing/refunds-base.ts`) but has no button. | Any agent may build it now. Owner-only, with the dispute facts on screen and an audit entry. It moves money, so keep its tests on throwaway Postgres. |
+| **Odometer prompt at the first and last stop of a route day** (OPS-3) | Built as a card on the Driver view instead of a prompt on the route screen, to avoid touching the route screen mid-day. | Any agent may build it now if Chris wants it on the route screen. |
+| **Actual-cost comparison and mileage into Schedule C line 9** (OPS-3) | Was waiting on CMP-2, which merged 2026-10-27 (PR #660). Now free to build. | Now. Pick which books accounts count as vehicle costs, file it as a question "Starting value — not confirmed" for the CPA. |
+
+Rule of thumb for the next agent: if the item is in this table, read its **trigger** first. If the trigger is not true,
+do not build a stand-in. If it is true, build the whole item with its tests and update the OPS card and this table.
+
+## Parked from Lane 7 (back-office operations, OPS-1 to OPS-8) — 2026-10-27
+
+Everything on the OPS cards that can be built today has been built and merged. These four items are **not built on
+purpose**; each says why and what would make it buildable, so a later agent can pick it up when the trigger happens.
+None of them is waiting on Chris for a decision.
+
+- **7-day customer notice before a debit date changes (OPS-5).** Why parked: no screen, job or action lets anyone change
+  a customer's debit date today (only the nightly cycle advance moves it), so there is nothing to attach the notice to.
+  Trigger: whichever card adds a "change my billing day" action (customer portal or desk). Build then: send the notice
+  from that action, record it on the agreement, and refuse the change inside the notice window. It is a customer message,
+  so it stays behind the live-email hard limit in AGENTS.md section 1.
+- **Court form for small-claims filings (OPS-6).** Why parked: the form (JDF 250) is deliberately not copied into the
+  app, because a copy goes stale and the build machine cannot reach the court site. The packet tells Chris to fill in the
+  current form. Trigger: a reachable, stable source for the current form (or Chris asks for a copy anyway). Bad-debt tax
+  treatment and write-off stay on the existing approval path (DEC-2).
+- **ID-image purge, message purge and the written biometric policy (OPS-7).** Why parked: the app stores no ID images, so
+  there is nothing to purge; messages are tied to legal records, so purging them would destroy evidence; the biometric
+  setting stays off and its page already explains what turning it on needs (a written policy, reviewed by an attorney).
+  Trigger: the app starts storing ID images, or an attorney approves a message-retention rule, or Chris wants biometric
+  features. Until then the retention dates in the privacy settings are starting values, not confirmed (DQ-OPS7-1 to 3).
+- **Refund-on-dispute override button (OPS-5).** Why parked: money-moving; the acknowledged override already exists in code
+  (`acknowledgeDispute` in `src/domains/billing/refunds-base.ts`) but no screen offers it, so a refund on a disputed
+  charge is simply blocked, which is the safe state. Trigger: Chris asks for the override. Build then: an owner-only
+  confirm step that shows the dispute, states the risk in plain words, and records who acknowledged it.
+
+Also open on other cards but **not Lane 7 work**: the Stripe-live, SMS-live and customer-email-live switches, and every
+row on `docs/OWNER-CHECKLIST.md` (those need Chris's hands).
+

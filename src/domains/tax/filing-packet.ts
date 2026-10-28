@@ -249,7 +249,9 @@ function aggregate(
  * the period lock so the packet and filing evidence commit together.
  */
 export async function loadFilingPacket(periodId: string, now = new Date()): Promise<FilingPacketLoad> {
-  const session = await requireRole("OWNER", "ADMIN");
+  // ACCT-1: the accountant reads live returns too (the return page and its CSV go through here);
+  // assigning due use-tax rows to the period stays owner-only via the flag below.
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   return prisma.$transaction(tx => loadFilingPacketInTx(tx, periodId, now, {
     assignUseTaxRows: session.user.role === "OWNER",
   }));

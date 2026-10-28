@@ -143,7 +143,7 @@ async function checkCode(userId: string, purpose: string, code: string): Promise
 
 async function activeMember(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, email: true, name: true, phone: true, phoneConfirmedAt: true, twoFactorEnabled: true, secondStepMethod: true, archivedAt: true } });
-  if (!user || user.archivedAt || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF")) throw new SecondStepError("This account no longer has access to make that change.");
+  if (!user || user.archivedAt || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF" && user.role !== "ACCOUNTANT")) throw new SecondStepError("This account no longer has access to make that change.");
   return user;
 }
 
@@ -205,7 +205,7 @@ export async function chooseSecondStepMethod(userId: string, method: string): Pr
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const fresh = await tx.user.findUnique({ where: { id: userId }, select: { role: true, archivedAt: true, twoFactorEnabled: true, phone: true, phoneConfirmedAt: true } });
-    if (!fresh || fresh.archivedAt || (fresh.role !== "OWNER" && fresh.role !== "ADMIN" && fresh.role !== "STAFF")) throw new SecondStepError("This account no longer has access to make that change.");
+    if (!fresh || fresh.archivedAt || (fresh.role !== "OWNER" && fresh.role !== "ADMIN" && fresh.role !== "STAFF" && fresh.role !== "ACCOUNTANT")) throw new SecondStepError("This account no longer has access to make that change.");
     if (fresh.twoFactorEnabled) throw new SecondStepError("Two-step sign-in is already on. Use \"Switch method\" on My account.");
     if (method === "SMS" && (!fresh.phone || !fresh.phoneConfirmedAt)) throw new SecondStepError("Check your phone number first.");
     await tx.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
@@ -242,7 +242,7 @@ export async function confirmMethodSwitch(userId: string, method: string, code: 
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const fresh = await tx.user.findUnique({ where: { id: userId }, select: { role: true, archivedAt: true, twoFactorEnabled: true } });
-    if (!fresh || fresh.archivedAt || (fresh.role !== "OWNER" && fresh.role !== "ADMIN" && fresh.role !== "STAFF") || !fresh.twoFactorEnabled) throw new SecondStepError("This account no longer has access to make that change.");
+    if (!fresh || fresh.archivedAt || (fresh.role !== "OWNER" && fresh.role !== "ADMIN" && fresh.role !== "STAFF" && fresh.role !== "ACCOUNTANT") || !fresh.twoFactorEnabled) throw new SecondStepError("This account no longer has access to make that change.");
     await tx.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
     // ACC-6: switching the second step forgets remembered devices, so the next sign-in asks for a code again.
     await forgetTrustedDevicesInTx(tx, userId);
@@ -275,7 +275,7 @@ export async function savePhoneDuringSetup(userId: string, rawPhone: string): Pr
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, archivedAt: true, twoFactorEnabled: true, phone: true } });
-    if (!user || user.archivedAt || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF")) throw new SecondStepError("This account no longer has access to make that change.");
+    if (!user || user.archivedAt || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF" && user.role !== "ACCOUNTANT")) throw new SecondStepError("This account no longer has access to make that change.");
     if (user.twoFactorEnabled) throw new SecondStepError("Two-step sign-in is already on. Change your number on My account.");
     if (user.phone === phone) return;
     await tx.user.update({ where: { id: userId }, data: { phone, phoneConfirmedAt: null } });

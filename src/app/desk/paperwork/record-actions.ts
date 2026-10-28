@@ -11,6 +11,7 @@ import {
   registerUploadedRecordFile,
   removeRecordFile,
   renewRecord,
+  setRecordSharedWithAccountant,
   updatePaperworkAdminKinds,
 } from "@/domains/paperwork/records";
 import { PAPERWORK_STALE_MESSAGE } from "@/domains/paperwork";
@@ -33,7 +34,8 @@ export async function uploadRecordFileAction(
   _previous: RecordActionState,
   formData: FormData,
 ): Promise<RecordActionState> {
-  const session = await requireRole("OWNER");
+  // ACCT-1: an accountant may add a file to a shared record (the domain re-checks the share).
+  const session = await requireRole("OWNER", "ACCOUNTANT");
   const file = formData.get("file");
   const label = formData.get("label");
   if (!(file instanceof File) || file.size === 0) {
@@ -65,7 +67,7 @@ export async function registerRecordFileAction(
   recordId: string,
   input: { pathname: string; fileName: string; label?: string | null },
 ): Promise<RecordActionState> {
-  const session = await requireRole("OWNER");
+  const session = await requireRole("OWNER", "ACCOUNTANT");
   try {
     await registerUploadedRecordFile(session.user.id, recordId, input);
   } catch (error) {
@@ -73,6 +75,13 @@ export async function registerRecordFileAction(
   }
   refresh(recordId);
   return { status: "idle" };
+}
+
+/** ACCT-1: the owner's "Share with my accountant" switch on a record (owner only). */
+export async function setRecordSharedAction(recordId: string, shared: boolean): Promise<void> {
+  const session = await requireRole("OWNER");
+  await setRecordSharedWithAccountant(session.user.id, recordId, shared);
+  refresh(recordId);
 }
 
 export async function removeRecordFileAction(recordId: string, fileId: string): Promise<void> {

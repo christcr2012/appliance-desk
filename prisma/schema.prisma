@@ -30,6 +30,10 @@ enum Role {
   // to a new hire today.
   STAFF
   CUSTOMER
+  // ACCT-1: an outside accountant (CPA or tax professional) the owner invites.
+  // Sees only books, taxes, compliance, CPA decisions and shared records —
+  // deny by default everywhere else (docs/build-specs/engines/ACCOUNTANT-ACCESS.md).
+  ACCOUNTANT
 }
 
 model User {
@@ -65,6 +69,10 @@ model User {
   signInPausedUntil           DateTime?
   // ACC-5: the person's job role (a plain id, no database link, so backups restore in any order). Null = access level alone.
   jobRoleId                   String?
+  // ACCT-1: for ACCOUNTANT users — the firm they work for (shown on the team list and beside their audited
+  // changes) and the date their access ends. Null end date = "keep until the owner removes it".
+  firm                        String?
+  accessEndsOn                DateTime?
 
   // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
   sessions  Session[]
@@ -349,6 +357,8 @@ model ServiceAddress {
   estimateLineItems EstimateLineItem[]
   custodyEpisodes ApplianceCustodyEpisode[]
   taxLocations AddressTaxLocation[]
+  // ZONE-1: map position, kept in its own table so no ordinary address read can carry it to a customer.
+  geocode ServiceAddressGeocode?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -676,6 +686,16 @@ model Appliance {
   acquisitionTaxChoice String?
   acquisitionTaxRecordedAt DateTime?
   acquisitionTaxRecordedByUserId String?
+  // TAXBEN-1: the recorded capital-vs-expense decision for this unit, written once by the
+  // classification pass. Later rule or election changes never rewrite it; the decision
+  // keeps the line amount and the rule value it was made with.
+  capDecision String?
+  capReason String?
+  capLineCents Int?
+  capRuleKey String?
+  capRuleValue String?
+  capDecidedAt DateTime?
+  capPlacedInServiceOn DateTime?
   // W-14: the purchase (one receipt, many appliances) this machine came from. Older machines have none.
   purchaseId String?
   purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
@@ -1197,6 +1217,9 @@ model TeamInvitation {
   accessLevel          Role      @default(STAFF)
   adminCapabilityLimits Json     @default("[]")
   jobRoleId            String?
+  // ACCT-1: for accountant invitations — the firm name and the access end date, copied onto the user at acceptance.
+  firm                 String?
+  accessEndsOn         DateTime?
   codeHash             String    @unique
   expiresAt            DateTime
   status               String    @default("INVITED")
@@ -1285,6 +1308,9 @@ model RentalAgreement {
   deliveryRequested Json?
   deliveryRequestedAt DateTime?
   deliveryRouteProof Json?
+  // ZONE-1: this address's delivery zone, miles, method, prices and delivery/pickup choice, copied from the estimate
+  // when it was converted. Never recalculated: later zone changes don't touch it.
+  deliveryZoneSnapshot Json?
 
 
   termMonths Int? // null = month-to-month
@@ -1951,6 +1977,10 @@ model Job {
   @@index([assignedToUserId, scheduledAt])
   /// OPS-2: a repair on a sealed refrigerant system. Only someone with a refrigerant certification on file may be assigned.
   sealedSystem     Boolean   @default(false)
+  // ZONE-1: "I'll pick it up". A DELIVERY-type job that is the hand-over at our place, not a truck trip: completing
+  // it runs the normal delivered path (first delivered date, rented status, custody, billing start) but it never
+  // appears on the driver's route, the vehicle trip log, day-of reminders, the delivery fee or delivery counts.
+  customerPickupHandoff Boolean @default(false)
 }
 
 // An agreement item that was NOT delivered on the delivery visit that started
@@ -2287,6 +2317,10 @@ model Estimate {
   phonePreferredAt DateTime?
   // Explicit owner decision for already-prepared single-site self completion.
   customerAutoFinishEnabled Boolean @default(false)
+  // ZONE-1: per delivery address, the zone found from the address (or confirmed by staff), its prices and the
+  // deliver / "I'll pick it up" choice. Frozen once the estimate is sent (src/domains/delivery/estimate-zone.ts).
+  deliveryZoneSnapshot   Json?
+  deliveryZoneSnapshotAt DateTime?
 
   // The OWNER/ADMIN who created this — every Estimate is staff-created,
   // never self-service.
@@ -3459,6 +3493,10 @@ model Purchase {
   createdByUserId   String
   // Monotonic revision of the tax answer so two people never overwrite each other silently.
   taxRevisionAt     DateTime
+  // TAXBEN-1: was this bought from a relative or the owner's other business? Null = the
+  // question was never asked (purchases recorded before it existed); bonus depreciation
+  // is not available for a related-party purchase.
+  boughtFromRelatedParty Boolean?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -3540,6 +3578,9 @@ model BusinessSettings {
   budgetReminderLeadDays Int @default(7)
   booksStartDate DateTime?
   booksLastBroughtUpToDateAt DateTime?
+  // ACCT-1: when the owner last looked at the "Changes by your accountant" feed (Books home). The Today
+  // card shows while accountant changes newer than this exist.
+  accountantChangesSeenAt DateTime?
   booksLastProblemCount Int @default(0)
   booksConsecutiveFailedNights Int @default(0)
   booksReviewReminderDay Int @default(15)
@@ -3547,6 +3588,18 @@ model BusinessSettings {
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
   badDebtTaxRecovery String @default("UNDECIDED")
+  // TAXBEN-1: business-use percent by expense account role for mixed-use accounts
+  // ({} = not answered yet; an unanswered account deducts 0%).
+  businessUsePercents Json @default("{}")
+  // TAXBEN-1: the de minimis safe-harbor election by tax year ({} = the starting
+  // value, on — DQ-TAXBEN-DE-MINIMIS, CPA).
+  deMinimisElections Json @default("{}")
+  // TAXBEN-1: is the business (or its storage) inside a Colorado enterprise zone?
+  // UNKNOWN | YES | NO — starting value UNKNOWN (DQ-TAXBEN-EZ-FLEET, CPA).
+  enterpriseZone String @default("UNKNOWN")
+  // TAXBEN-1: how capitalized equipment is written off first: BONUS | SECTION179.
+  // Starting value BONUS (DQ-TAXBEN-179-VS-BONUS, CPA).
+  capitalizationPreference String @default("BONUS")
   lemonRepairPercent Int @default(30)
   vendor1099ThresholdCents Int @default(200000)
   exportPayoutLines Json @default("{\"QBO_JOURNAL_CSV\":true,\"XERO_JOURNAL_CSV\":false,\"GENERIC_JOURNAL_CSV\":true,\"CASH_MOVEMENTS_CSV\":true}")
@@ -3815,6 +3868,27 @@ model BusinessSettings {
   marketingTextEndHour Int @default(21)
   // OPS-7: how many months before a service provider's security terms are due for a re-read.
   vendorReviewMonths Int @default(12)
+
+  // ZONE-1 delivery zones (Settings › Delivery zones; src/domains/delivery/zone.ts). Starting values are IN-06's.
+  deliveryZones               Json    @default("[{\"name\":\"Local — free delivery\",\"outerMiles\":15,\"deliveryCents\":0,\"pickupCents\":0,\"color\":\"GREEN\"},{\"name\":\"Nearby\",\"outerMiles\":30,\"deliveryCents\":7500,\"pickupCents\":7500,\"color\":\"BLUE\"},{\"name\":\"Extended\",\"outerMiles\":50,\"deliveryCents\":12500,\"pickupCents\":12500,\"color\":\"AMBER\"}]")
+  deliveryMaxMiles            Float   @default(50)
+  zoneCenter                  Json    @default("{\"lat\":40.4233,\"lon\":-104.7091}")
+  zoneDistanceMethod          String  @default("STRAIGHT_LINE")
+  showDeliveryPricesOnWebsite Boolean @default(false)
+}
+
+// ZONE-1: a customer address's map position (U.S. Census Bureau lookup or a staff pin). Internal only: never shown to
+// customers, never logged. Deleted with the customer's other address details on a privacy erasure.
+model ServiceAddressGeocode {
+  serviceAddressId String         @id
+  serviceAddress   ServiceAddress @relation(fields: [serviceAddressId], references: [id], onDelete: Cascade)
+  latitude         Float
+  longitude        Float
+  // SHA-256 of the one-line address that was looked up; a different street means look it up again.
+  addressHash      String
+  source           String // CENSUS | STAFF_PIN
+  geocodedAt       DateTime
+  geocodedByUserId String?
 }
 
 model ComplianceProfile {
@@ -3831,6 +3905,18 @@ model ComplianceProfile {
   truckGvwrLbs   Int?
   employees      Int      @default(0)
   hasHomeOffice  Boolean  @default(false)
+  // TAXBEN-1: the day the business began (starting value: the earlier of the first
+  // appliance becoming AVAILABLE and the first public lead — DQ-TAXBEN-BEGAN, CPA).
+  // Expenses dated before it are tagged start-up.
+  businessBeganOn DateTime?
+  // TAXBEN-1: home-office facts, entered once. Sizes in square feet; costs are the
+  // whole-home amounts for a year, in cents.
+  homeOfficeSqFt            Int?
+  homeSqFt                  Int?
+  homeHousingCostsCents     Int?
+  homeUtilitiesCents        Int?
+  homeInsuranceCents        Int?
+  homeOfficeAttestedYear    Int?
   // CMP-3: the payer identity printed on information returns (1099s) and
   // Form 8300 — the business's legal name and mailing address, entered
   // once on the business-facts screen.
@@ -3877,6 +3963,9 @@ model TaxYearFacts {
   federalAgiCents      Int? // that year's federal adjusted gross income
   coloradoTaxCents     Int? // that year's total Colorado tax (DR 0104)
   form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
+  seHealthPremiumCents Int? // TAXBEN-1: that year's self-employed health insurance premiums, as typed
+  seHealthEmployerPlanMonths Json? // TAXBEN-1: month numbers (1-12) the owner was eligible for an employer health plan (own or spouse's)
+  bonusElectOutClasses Json? // TAXBEN-2: property class keys (from us.class_life_months) the business elects out of bonus depreciation for, this year
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -3894,6 +3983,10 @@ model ComplianceFiling {
   preparedData     Json?
   preparedHash     String?   @db.Char(64)
   outputFileUrl    String?
+  // ACCT-1: the "Reviewed" mark — the accountant (or owner/admin) has checked the prepared figures.
+  // Preparing new figures clears it; it never approves or submits anything.
+  reviewedByUserId String?
+  reviewedAt       DateTime?
   approvedByUserId String?
   approvedAt       DateTime?
   submittedAt      DateTime?
@@ -5179,6 +5272,8 @@ enum LedgerAccountType {
 
 enum JournalSourceType {
   OPENING
+  // ACCT-1: a hand-written adjusting entry (the accountant's adjustments and the owner's own).
+  ADJUSTMENT
   SCRAP_PAYMENT
   INVOICE
   RECEIPT
@@ -5930,6 +6025,9 @@ model BusinessPaperwork {
   repeatEveryMonths Int?
   notes            String?
   sortOrder        Int             @default(0)
+  // ACCT-1: the owner marks a record "Share with my accountant" (off by default); only shared records are
+  // visible to the ACCOUNTANT level, and any saved number stays masked for them.
+  shareWithAccountant Boolean      @default(false)
   lastDoneOn       DateTime?
   createdByUserId  String?
   updatedByUserId  String?

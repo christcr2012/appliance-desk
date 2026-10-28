@@ -7,6 +7,9 @@ import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-appl
 import { listPendingRdfSwitches } from "@/domains/tax/rdf-switches";
 import { listRuleChangeAttention } from "@/domains/rules/observations";
 import { listDeliveryReadinessAttention } from "@/domains/tax/delivery-readiness";
+import { listPolicyAttention } from "@/domains/taxben/policy";
+import { listBenefitsAttention } from "@/domains/taxben/benefits";
+import { listYearEndPlanningAttention } from "@/domains/taxben/elections";
 import { ruleDef } from "@/domains/rules/registry";
 import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
@@ -24,6 +27,7 @@ import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listFeedbackWaiting } from "./feedback-attention";
+import { listDeliveryZoneAttention } from "./delivery-zone-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listComplianceDue } from "./compliance-attention";
 import { listSupplierW9Needed } from "./supplier-w9-attention";
@@ -37,6 +41,7 @@ import { listCollectionAttention } from "./collection-attention";
 import { listContinuityAttention } from "./continuity-attention";
 import { listSetupGuideAttention } from "./setup-attention";
 import { listVaultRotationAttention } from "@/domains/vault/attention";
+import { listAccountantAttention } from "@/domains/accountant/attention";
 import { listPrivacyAttention } from "@/domains/security/reads";
 import { listLateFeeReview } from "./late-fee-attention";
 import { listStartingValuesAttention } from "@/domains/decisions/attention";
@@ -64,6 +69,12 @@ import {
   officialRateScheduledException,
   ruleChangeReviewException,
   deliveryReadinessException,
+  capitalizationPolicyException,
+  midQuarterWarningException,
+  yearEndPlanningException,
+  retirementComparisonException,
+  enterpriseZonePrecertifyException,
+  businessUsePercentException,
   rdfSwitchException,
   taxSourceChangedException,
   taxSourceUnreachableException,
@@ -292,8 +303,12 @@ const utc = (date: Date) => date.toISOString();
  * dedicated timestamp column for a secondary sort key.
  */
 export async function getExceptionOverview(): Promise<ExceptionOverview> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const role = (session.user as { role?: string }).role ?? "";
+  // ACCT-1: the accountant is admitted for the tax-group attention below, but
+  // canViewFinance stays owner/admin: several finance-gated listers behind it
+  // (cancellation refunds, signed deliveries, feedback) requireRole(OWNER,
+  // ADMIN) themselves and are customer/operations scope, not the accountant's.
   const canViewFinance = ["OWNER", "ADMIN"].includes(role);
   const now = new Date();
   const customerSelect = { customer: { select: { user: { select: { name: true, email: true } } } } } as const;
@@ -403,6 +418,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     rdfSwitchesPending,
     ruleChangeAttention,
     deliveryReadinessAttention,
+    taxbenPolicyAttention,
+    taxbenBenefitsAttention,
+    taxbenYearEndAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -562,6 +580,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     canViewFinance ? listPendingRdfSwitches(now) : Promise.resolve([]),
     canViewFinance ? listRuleChangeAttention(now) : Promise.resolve([]),
     canViewFinance ? listDeliveryReadinessAttention(now) : Promise.resolve([]),
+    canViewFinance ? listPolicyAttention(now) : Promise.resolve([]),
+    canViewFinance ? listBenefitsAttention(now) : Promise.resolve([]),
+    canViewFinance ? listYearEndPlanningAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -1020,6 +1041,37 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         since: item.since,
       }),
     ),
+    ...taxbenYearEndAttention.map((item) =>
+      yearEndPlanningException({
+        year: item.year,
+        profitCents: item.profitCents,
+        sepCents: item.sepCents,
+        soloCents: item.soloCents,
+        midQuarterNote: item.midQuarterNote,
+        deMinimisExpensedCents: item.deMinimisExpensedCents,
+        since: item.since,
+      }),
+    ),
+    ...taxbenPolicyAttention.map((item) =>
+      capitalizationPolicyException({
+        year: item.year,
+        renewal: item.renewal,
+        since: item.since,
+      }),
+    ),
+    ...taxbenBenefitsAttention.map((item) =>
+      item.kind === "MID_QUARTER"
+        ? midQuarterWarningException({
+            year: item.year,
+            sharePercent: item.sharePercent ?? 0,
+            since: item.since,
+          })
+        : item.kind === "RETIREMENT"
+          ? retirementComparisonException({ year: item.year, since: item.since })
+          : item.kind === "BUSINESS_USE"
+            ? businessUsePercentException({ year: item.year, since: item.since })
+            : enterpriseZonePrecertifyException({ year: item.year, since: item.since }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -1152,6 +1204,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const continuityAttention = (session.user as { role?: string }).role === "OWNER" ? await listContinuityAttention(now) : [];
   const setupGuideAttention = (session.user as { role?: string }).role === "OWNER" ? await listSetupGuideAttention(now) : [];
   const vaultAttention = (session.user as { role?: string }).role === "OWNER" ? await listVaultRotationAttention(now) : [];
+  const accountantAttention = (session.user as { role?: string }).role === "OWNER" ? await listAccountantAttention(session.user.id, now) : [];
   const goalAttention = canViewFinance ? await listGoalAttention(now) : [];
   const signingPaymentAttention = canViewFinance
     ? await listSigningPaymentAttention(EXCEPTION_CATEGORY_CAP)
@@ -1180,6 +1233,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   // MCP-10a: app feedback waiting for the team (owner and admins only).
   const feedbackWaiting = canViewFinance ? await listFeedbackWaiting(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
+  // ZONE-1: unknown delivery zones and customer pickups to arrange (owner and admins only).
+  const deliveryZoneAttention = canViewFinance ? await listDeliveryZoneAttention(EXCEPTION_CATEGORY_CAP)
+    : { unknown: noTurningPoints, pickups: noTurningPoints, requotes: noTurningPoints };
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -1220,6 +1276,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...visitNeedsAssignment.rows,
     ...cleaningNeeded.rows,
     ...feedbackWaiting.rows,
+    ...deliveryZoneAttention.unknown.rows,
+    ...deliveryZoneAttention.pickups.rows,
+    ...deliveryZoneAttention.requotes.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1246,6 +1305,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...continuityAttention,
     ...setupGuideAttention,
     ...vaultAttention,
+    ...accountantAttention,
     ...goalAttention,
   ];
 
@@ -1266,6 +1326,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           rdfSwitchesPending.length +
           ruleChangeAttention.length +
           deliveryReadinessAttention.length +
+          taxbenPolicyAttention.length +
+          taxbenBenefitsAttention.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))
@@ -1301,6 +1363,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],
       ["CLEANING_NEEDED", cleaningNeeded],
       ["FEEDBACK_WAITING", feedbackWaiting],
+      ["DELIVERY_ZONE_UNKNOWN", deliveryZoneAttention.unknown],
+      ["PICKUP_TO_ARRANGE", deliveryZoneAttention.pickups],
+      ["PICKUP_REQUOTE", deliveryZoneAttention.requotes],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],

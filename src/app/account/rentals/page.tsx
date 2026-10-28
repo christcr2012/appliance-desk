@@ -23,7 +23,7 @@ import {
   rentalAgreementStatusLabel,
   rentalAgreementStatusTone,
   jobStatusLabel,
-  jobTypeLabel,
+  jobKindLabel,
 } from "@/lib/status-labels";
 import {
   ButtonLink,
@@ -166,8 +166,10 @@ export default async function AccountRentalsPage({
                   <p className="text-sm font-medium text-ink">{t("Next visit")}</p>
                   {nextVisit?.scheduledAt ? (
                     <p className="mt-1 text-sm text-ink-soft">
-                      {jobTypeLabel(nextVisit.type, locale)} · {formatBusinessDate(nextVisit.scheduledAt)} · {formatBusinessTime(nextVisit.scheduledAt)}
+                      {jobKindLabel(nextVisit, locale)} · {formatBusinessDate(nextVisit.scheduledAt)} · {formatBusinessTime(nextVisit.scheduledAt)}
                     </p>
+                  ) : nextVisit?.type === "DELIVERY" && nextVisit.customerPickupHandoff ? (
+                    <p className="mt-1 text-sm text-ink-soft">{t("You're picking this rental up. We'll contact you to arrange when to collect it; the rental starts the day you collect it.")}</p>
                   ) : nextVisit?.type === "DELIVERY" ? (
                     <p className="mt-1 text-sm text-ink-soft">{t("Delivery is being arranged. The business has not confirmed a date or time yet. This is a request in progress, not a booked appointment.")}</p>
                   ) : (
@@ -327,7 +329,7 @@ export default async function AccountRentalsPage({
           <ul className="mt-2 divide-y divide-line rounded-card border border-line bg-surface">
             {visitPage.items.map((job) => (
               <li key={job.id} className="px-4 py-3 text-sm">
-                <p className="font-medium text-ink">{jobTypeLabel(job.type, locale)}</p>
+                <p className="font-medium text-ink">{jobKindLabel(job, locale)}</p>
                 <p className="text-ink-soft">
                   {jobStatusLabel(job.status, locale)}
                   {job.scheduledAt && ` · ${formatBusinessDate(job.scheduledAt)} · ${formatBusinessTime(job.scheduledAt)}`}

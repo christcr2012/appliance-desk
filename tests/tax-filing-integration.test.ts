@@ -255,7 +255,8 @@ describe.skipIf(!enabled)("T-6b1 filing load (real Postgres)", () => {
       mocks.role = "ADMIN";
       const admin = await loadFilingPacket(periodId);
       expect(admin.status).toBe("BLOCKED");
-      expect(mocks.requireRole).toHaveBeenCalledWith("OWNER", "ADMIN");
+      // ACCT-1: the loader's read now also admits ACCOUNTANT (use-tax assignment stays owner-only).
+      expect(mocks.requireRole).toHaveBeenCalledWith("OWNER", "ADMIN", "ACCOUNTANT");
       await prisma.invoiceTaxLine.delete({ where: { id: line.id } });
     } finally {
       await prisma.payment.deleteMany({ where: { invoiceId } });

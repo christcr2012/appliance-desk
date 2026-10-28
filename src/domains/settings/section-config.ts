@@ -1,6 +1,6 @@
 export const SETTINGS_SECTIONS = [
   { id: "profile", label: "Business profile" },
-  { id: "service-area", label: "Service area" },
+  { id: "service-area", label: "Delivery zones" },
   { id: "products", label: "Products and pricing" },
   { id: "policies", label: "Rental policies" },
   { id: "terms", label: "Ending and renewing rentals" },

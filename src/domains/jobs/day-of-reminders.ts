@@ -20,6 +20,8 @@ export async function sendJobDayOfReminders():
       status: { in: ["SCHEDULED", "IN_PROGRESS"] },
       scheduledAt: { gte: start, lt: end },
       dayOfReminderSentAt: null,
+      // ZONE-1: a customer pickup hand-over is not a visit to the customer, so no "we're coming today" reminder.
+      customerPickupHandoff: false,
       customer: { smsOptInAt: { not: null }, phone: { not: null } },
     },
     select: { id: true, type: true },

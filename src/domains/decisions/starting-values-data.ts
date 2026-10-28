@@ -40,6 +40,7 @@ const RDF_RATES = src("Colorado Department of Revenue — Retail Delivery Fee Ra
 const GREELEY_TAX = src("City of Greeley — Sales Tax", "https://greeleyco.gov/Business/Business-Operations/Sales-Tax");
 const GREELEY_UNREAD = src("Greeley's city code could not be opened on 2026-10-25; careful choice used",
   "docs/research/2026-10-25-open-decisions.md");
+const ZONE_SPEC = src("Delivery zones design (service area map)", "docs/build-specs/screens/SERVICE-AREA-MAP.md");
 const CHRIS_DEC = src("Chris approved this value (DECISIONS.md, 2026-10-25)", "docs/DECISIONS.md");
 
 const chrisAnswer = (id: string): DecisionSourceRef => ({
@@ -171,6 +172,16 @@ export const STARTING_VALUES: Record<string, StartingValue | NoSource> = {
   "IN-52": answered("IN-52", "The voicemail greeting can be edited, recordings are kept 90 days, and transcription is off."),
   "IN-78": answered("IN-78", "The property-manager rules Chris answered."),
   "IN-83": answered("IN-83", "Spanish wording is reviewed by fluent people Chris knows before it is used."),
+  // ZONE-1 (docs/build-specs/screens/SERVICE-AREA-MAP.md).
+  "ZONE-NAMES": asBuilt("Plain names that say what each zone means to a customer: the first one says delivery is free, " +
+    "and the other two say how far out the address is. They can be renamed any time without changing any price.",
+    [ZONE_SPEC]),
+  "ZONE-PICKUP-PRICE": asBuilt("Picking the machines up at the end is the same trip as bringing them, so it starts at the " +
+    "same price in each zone (free, $75, $125). It is charged only when the rental ends, and only for later rentals.",
+    [ZONE_SPEC, chrisAnswer("IN-06")]),
+  "ZONE-DISTANCE": { value: "AS_BUILT", why: "Chris chose a straight line from the center of Greeley on 2026-10-25, at " +
+    "least for now: it needs no paid route service and every customer at the same distance pays the same.",
+    sources: [CHRIS_DEC, ZONE_SPEC], kind: "CONFIRMED" },
 };
 
 function asBuilt(why: string, sources: DecisionSourceRef[]): StartingValue {

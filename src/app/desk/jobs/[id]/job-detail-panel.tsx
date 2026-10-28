@@ -38,6 +38,14 @@ const AUTOMATIC_ON_COMPLETE: Partial<Record<JobType, string>> = {
     "When the new unit is Delivered it becomes Rented and takes over the agreement; the old unit, if Returned, moves to Awaiting inspection. If neither moved, the new unit goes back on the shelf and you get a task to reschedule. If the old unit was left behind, you get a task to collect it.",
 };
 
+// ZONE-1: the customer collects it at our place, so the words are "Handed over", never "Delivered".
+const HANDOFF_RESULT_LABELS: Partial<Record<JobApplianceResult, string>> = {
+  DELIVERED: "Handed over",
+  NOT_DELIVERED: "Not handed over",
+};
+const HANDOFF_ON_COMPLETE =
+  "Each item you mark Handed over becomes Rented, and the rental and its monthly billing start from the hand-over date below. An item you mark Not handed over stays set aside and gets a follow-up task. No delivery trip or delivery fee is recorded.";
+
 const RESULT_LABELS: Record<JobApplianceResult, string> = {
   DELIVERED: "Delivered",
   NOT_DELIVERED: "Not delivered",
@@ -98,6 +106,8 @@ type JobRow = {
   }[];
   photos: { id: string; url: string; altText: string | null }[];
   swapReplacementIds?: string[];
+  /** ZONE-1: a customer pickup hand-over at our place (a DELIVERY job; no truck trip). */
+  customerPickupHandoff?: boolean;
 };
 
 function revokePreview(url: string): void {
@@ -229,6 +239,10 @@ export function JobDetailPanel({
 
   const nextStatuses = ALLOWED_NEXT[job.status];
   const suggestedStatus = SUGGESTED_STATUS_FOR_TYPE[job.type];
+  const handoff = job.type === "DELIVERY" && job.customerPickupHandoff === true;
+  const resultLabel = (value: JobApplianceResult) => (handoff ? HANDOFF_RESULT_LABELS[value] : undefined) ?? RESULT_LABELS[value];
+  // A truck delivery or installation records new hookup items; a customer pickup has none to record.
+  const recordsHookups = (job.type === "DELIVERY" || job.type === "INSTALLATION") && !handoff;
   const appliancesNeedingUpdate =
     job.status === "COMPLETED" && suggestedStatus
       ? job.appliances
@@ -295,7 +309,7 @@ export function JobDetailPanel({
         results: completionScope.map((row) => ({
           applianceId: row.applianceId,
           result: results[row.applianceId] ?? row.defaultResult,
-          newHookupItemsInstalled: (job.type === "DELIVERY" || job.type === "INSTALLATION") &&
+          newHookupItemsInstalled: recordsHookups &&
             (results[row.applianceId] ?? row.defaultResult) === "DELIVERED"
               ? newHookups[row.applianceId] === "yes" ? true
                 : newHookups[row.applianceId] === "no" ? false : null
@@ -373,7 +387,7 @@ export function JobDetailPanel({
               <fieldset>
                 <legend className="text-sm font-medium text-ink-soft">What happened with each item?</legend>
                 <p className="text-xs text-ink-soft">
-                  Every item on this visit needs a result before the job can be completed. The usual result is already chosen; change it for anything that did not go as planned. {job.type === "DELIVERY" || job.type === "INSTALLATION" ? " The customer is still billed for the whole agreement; an item that did not arrive earns a credit for the missing days once it is delivered." : ""}
+                  Every item on this visit needs a result before the job can be completed. The usual result is already chosen; change it for anything that did not go as planned. {recordsHookups ? " The customer is still billed for the whole agreement; an item that did not arrive earns a credit for the missing days once it is delivered." : ""}
                 </p>
                 <ul className="mt-2 space-y-2">
                   {completionScope.map((row) => (
@@ -390,11 +404,11 @@ export function JobDetailPanel({
                       >
                         {row.allowed.map((value) => (
                           <option key={value} value={value}>
-                            {RESULT_LABELS[value]}
+                            {resultLabel(value)}
                           </option>
                         ))}
                       </select>
-                      {(job.type === "DELIVERY" || job.type === "INSTALLATION") &&
+                      {recordsHookups &&
                         (results[row.applianceId] ?? row.defaultResult) === "DELIVERED" && (
                           <div className="mt-2 space-y-2">
                             <label className="block text-sm text-ink-soft">
@@ -448,7 +462,7 @@ export function JobDetailPanel({
               className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
             />
             <label htmlFor="performedOn" className="mt-3 block text-sm font-medium text-ink-soft">
-              Date the work was done
+              {handoff ? "Hand-over date" : "Date the work was done"}
             </label>
             <input
               id="performedOn"
@@ -461,13 +475,14 @@ export function JobDetailPanel({
             <p id="performedOn-help" className="mt-1 text-xs text-ink-soft">
               Billing counts days from this date (a late return, or an item delivered late), not from the moment you press the button. Change it if you are recording the visit a day or two later.
             </p>
-            {AUTOMATIC_ON_COMPLETE[job.type] && <p className="mt-2 text-sm text-ink-soft">{AUTOMATIC_ON_COMPLETE[job.type]}</p>}
+            {(handoff ? HANDOFF_ON_COMPLETE : AUTOMATIC_ON_COMPLETE[job.type]) &&
+              <p className="mt-2 text-sm text-ink-soft">{handoff ? HANDOFF_ON_COMPLETE : AUTOMATIC_ON_COMPLETE[job.type]}</p>}
             <button
               type="submit"
               disabled={isPending}
               className="mt-3 rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
             >
-              {isPending ? "Completing…" : "Complete job"}
+              {isPending ? "Completing…" : handoff ? "Record hand-over" : "Complete job"}
             </button>
           </form>
         )}
@@ -479,8 +494,8 @@ export function JobDetailPanel({
               <ul className="mt-2 space-y-1">
                 {job.appliances.map((a) => (
                   <li key={a.appliance.id}>
-                    {a.appliance.applianceType.name} ({a.appliance.assetNumber}): {a.result ? RESULT_LABELS[a.result] : "no result recorded"}
-                    {(job.type === "DELIVERY" || job.type === "INSTALLATION") && a.result === "DELIVERED" && (
+                    {a.appliance.applianceType.name} ({a.appliance.assetNumber}): {a.result ? resultLabel(a.result) : "no result recorded"}
+                    {recordsHookups && a.result === "DELIVERED" && (
                       <span className="ml-1">
                         — New hookups: {a.newHookupItemsInstalled === true ? "installed (recorded)"
                           : a.newHookupItemsInstalled === false ? "NOT installed — follow-up required"

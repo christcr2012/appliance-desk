@@ -9,7 +9,7 @@ export const INVITATION_LINK_DAYS_MIN = 1;
 export const INVITATION_LINK_DAYS_MAX = 30;
 export const MIN_PASSWORD_LENGTH = 10; // must match src/lib/auth.ts emailAndPassword.minPasswordLength
 
-export type InvitableLevel = "STAFF" | "ADMIN";
+export type InvitableLevel = "STAFF" | "ADMIN" | "ACCOUNTANT";
 export type InvitationState = "INVITED" | "EXPIRED" | "CANCELLED" | "ACCEPTED";
 
 export const INVALID_LINK_MESSAGE = "This link no longer works. Ask the owner for a new one.";
@@ -42,14 +42,15 @@ export function effectiveInvitationState(status: string, expiresAt: Date, now: D
 }
 
 export function parseInvitableLevel(value: unknown): InvitableLevel {
-  if (value === "STAFF" || value === "ADMIN") return value;
-  throw new TeamError("Choose Staff or Admin.");
+  if (value === "STAFF" || value === "ADMIN" || value === "ACCOUNTANT") return value;
+  throw new TeamError("Choose Staff, Admin or Accountant.");
 }
 
-/** Who may invite whom. Owners: either level. Admins: staff only, and only if the owner turned that on. */
+/** Who may invite whom. Owners: any level. Admins: staff only, and only if the owner turned that on. An accountant is always the owner's invite (ACCT-1). */
 export function assertMayInvite(actorRole: string, level: InvitableLevel, adminsMayInviteStaff: boolean): void {
   if (actorRole === "OWNER") return;
   if (actorRole === "ADMIN") {
+    if (level === "ACCOUNTANT") throw new TeamError("Only the owner can invite an accountant.");
     if (level !== "STAFF") throw new TeamError("Only the owner can invite an admin.");
     if (!adminsMayInviteStaff) throw new TeamError("The owner has not allowed admins to invite staff. Ask the owner.");
     return;
@@ -61,10 +62,10 @@ export function assertMayInvite(actorRole: string, level: InvitableLevel, admins
 export function assertMayRemoveOrRestore(actorRole: string, actorId: string, targetRole: string, targetId: string): void {
   if (actorId === targetId) throw new TeamError("You cannot remove or restore your own account.");
   if (targetRole === "OWNER") throw new TeamError("The owner account cannot be removed.");
-  if (targetRole !== "STAFF" && targetRole !== "ADMIN") throw new TeamError("That account is not a team login.");
+  if (targetRole !== "STAFF" && targetRole !== "ADMIN" && targetRole !== "ACCOUNTANT") throw new TeamError("That account is not a team login.");
   if (actorRole === "OWNER") return;
   if (actorRole === "ADMIN" && targetRole === "STAFF") return;
-  throw new TeamError("Only the owner can remove or restore an admin.");
+  throw new TeamError("Only the owner can remove or restore an admin or an accountant.");
 }
 
 export function validateNewPassword(password: string, confirm: string): void {
@@ -72,4 +73,4 @@ export function validateNewPassword(password: string, confirm: string): void {
   if (password !== confirm) throw new TeamError("Those passwords don't match.");
 }
 
-export const ACCESS_LEVEL_LABEL: Record<string, string> = { OWNER: "Owner", ADMIN: "Admin", STAFF: "Staff" };
+export const ACCESS_LEVEL_LABEL: Record<string, string> = { OWNER: "Owner", ADMIN: "Admin", STAFF: "Staff", ACCOUNTANT: "Accountant (CPA or tax professional)" };

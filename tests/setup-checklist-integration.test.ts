@@ -43,7 +43,7 @@ describe.skipIf(!enabled)("W-7 first-time setup checklist on real PostgreSQL", (
       where: { id: "singleton" },
       select: {
         publicBusinessName: true, publicPhone: true, publicEmail: true, publicAddress: true,
-        serviceAreaCities: true, serviceAreaZips: true, customerEmailEnabled: true,
+        deliveryZones: true, customerEmailEnabled: true,
       },
     });
     old = {
@@ -60,7 +60,7 @@ describe.skipIf(!enabled)("W-7 first-time setup checklist on real PostgreSQL", (
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: old.locations } }, data: { isCurrent: false } });
     await saveSettings({
       publicBusinessName: "[Company Name]", publicPhone: "[Phone Number]", publicEmail: "[Email Address]",
-      publicAddress: "[Business Address]", serviceAreaCities: [], serviceAreaZips: [], customerEmailEnabled: false,
+      publicAddress: "[Business Address]", deliveryZones: [], customerEmailEnabled: false,
     });
     await prisma.user.createMany({ data: [
       { id: ownerId, email: tag + "-o@example.test", name: "W7 Owner", role: "OWNER", emailVerified: true },
@@ -97,7 +97,7 @@ describe.skipIf(!enabled)("W-7 first-time setup checklist on real PostgreSQL", (
     expect(result.steps.map(step => step.key)).toEqual(["business", "service-area", "prices", "tax", "payments", "email"]);
     expect(result).toMatchObject({ doneCount: 0, total: 6, complete: false });
     expect(byKey.business.detail).toBe("Add your business name, phone number, email address and business address.");
-    expect(byKey["service-area"].detail).toBe("Add the cities or ZIP codes you serve.");
+    expect(byKey["service-area"].detail).toBe("Set up your delivery zones.");
     expect(byKey.prices.detail).toBe("Set a monthly price for at least one appliance or set.");
     expect(byKey.tax.detail).toBe("Add your Colorado sales tax account. 2 more after that.");
     expect(byKey.payments.detail).toContain("Payments aren't connected yet");
@@ -113,11 +113,15 @@ describe.skipIf(!enabled)("W-7 first-time setup checklist on real PostgreSQL", (
     expect((await steps()).byKey.business).toMatchObject({ done: true });
   });
 
-  it("service area is done once a real city or ZIP code is saved", async () => {
-    await saveSettings({ serviceAreaCities: [" "], serviceAreaZips: [] });
+  it("service area (delivery zones) is done once zones are saved", async () => {
+    await saveSettings({ deliveryZones: [] });
     expect((await steps()).byKey["service-area"].done).toBe(false);
-    await saveSettings({ serviceAreaCities: ["Greeley"], serviceAreaZips: ["80631", "80634"] });
-    expect((await steps()).byKey["service-area"]).toMatchObject({ done: true, detail: "You serve 1 city and 2 ZIP codes." });
+    await saveSettings({ deliveryZones: [
+      { name: "Local — free delivery", outerMiles: 15, deliveryCents: 0, pickupCents: 0, color: "GREEN" },
+      { name: "Nearby", outerMiles: 30, deliveryCents: 7500, pickupCents: 7500, color: "BLUE" },
+      { name: "Extended", outerMiles: 50, deliveryCents: 12500, pickupCents: 12500, color: "AMBER" },
+    ] });
+    expect((await steps()).byKey["service-area"]).toMatchObject({ done: true, detail: "3 delivery zones up to 50 miles; beyond that, pickup only." });
   });
 
   it("prices count only active appliances and sets with a monthly price above $0", async () => {

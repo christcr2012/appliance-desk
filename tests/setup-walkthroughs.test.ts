@@ -17,7 +17,7 @@ import { PAPERWORK_TEMPLATES } from "@/domains/paperwork/templates";
 const TEMPLATE_KEYS = new Set(PAPERWORK_TEMPLATES.map((t) => t.key));
 
 describe("walkthrough data", () => {
-  it("has all 15 spec walkthroughs, in order", () => {
+  it("has all 16 spec walkthroughs, in order", () => {
     expect(WALKTHROUGHS.map((w) => w.key)).toEqual([
       "business-basics",
       "ein",
@@ -33,6 +33,7 @@ describe("walkthrough data", () => {
       "texting",
       "encryption-keys",
       "your-cpa",
+      "write-offs",
       "backups",
     ]);
   });

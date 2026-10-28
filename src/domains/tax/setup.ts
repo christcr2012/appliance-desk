@@ -380,7 +380,9 @@ export async function markLicenseRenewed(
 export type TaxabilityCellInput = { jurisdictionId: string | null; category: TaxChargeCategory; taxability: Taxability;
   cpaConfirmedOn: Date; reason: string };
 /** When a decision's change starts (Decisions & reviews): the history version starts then. Default: today. */
-export type TaxabilityCellOptions = { effectiveFrom?: Date };
+export type TaxabilityCellOptions = { effectiveFrom?: Date;
+  /** ACCT-1: accountant only as a CPA professional answer through Decisions & reviews. */
+  professionalAnswer?: boolean };
 
 function checkConfirmedCell(input: TaxabilityCellInput) {
   enumValue(input.category, TaxChargeCategory, "tax category");
@@ -462,7 +464,7 @@ export async function saveTaxabilityCellInTx(
   tx: Prisma.TransactionClient, actorId: string, input: TaxabilityCellInput, opts: TaxabilityCellOptions = {},
 ): Promise<void> {
   const reason = checkConfirmedCell(input);
-  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  await assertActiveTeamActor(tx, actorId, opts.professionalAnswer ? ["ACCOUNTANT"] : ["OWNER"]);
   await lockTaxabilityCell(tx, actorId, input.jurisdictionId, input.category);
   const existing = await tx.taxabilityRule.findFirst({
     where: { jurisdictionId: input.jurisdictionId, category: input.category },

@@ -7,7 +7,9 @@ import { nextCommercialReserveRevision } from "@/domains/estimates/commercial-re
 import { nextMandatoryChargeReview } from "@/domains/billing/mandatory-charge-review";
 import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
 import { getDraftSigningTaxReviewInTx } from "@/domains/billing/signing-charge-tax-review";
-export async function createSyntheticW22V2Order(options:{customerId?:string}={}) {
+// firstDeliveryCents: the reviewed delivery charge for the first address (7500 by default; 0 = no delivery charge).
+export async function createSyntheticW22V2Order(options:{customerId?:string;firstDeliveryCents?:7500|0}={}) {
+ const firstDelivery=options.firstDeliveryCents??7500;
  const url=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
  if(process.env.CI!=="true"||url.pathname!=="/appliance_desk_test"||!["localhost","127.0.0.1"].includes(url.hostname))
    throw new Error("Synthetic V2 fixtures require the isolated disposable test database.");
@@ -39,7 +41,7 @@ export async function createSyntheticW22V2Order(options:{customerId?:string}={})
     depositCents:i===0?10000:5000}});ids.push(agreement.id);
    const reserve=nextCommercialReserveRevision({previous:[],estimateId:estimate.id,agreementId:agreement.id,amountCents:agreement.depositCents,
     replenishment:"QUARTERLY",termsReference:"Synthetic negotiated reserve terms",actorUserId:owner,reason:"Synthetic reserve terms for isolated proof",recordedAt:now});
-   const rent=i===0?6000:9500;const setup=i===0?4500:2250;const delivery=i===0?7500:0;
+   const rent=i===0?6000:9500;const setup=i===0?4500:2250;const delivery=i===0?firstDelivery:0;
    const type=await prisma.applianceType.findFirstOrThrow();
    const pack=await prisma.rentalPackage.create({data:{name:`Synthetic pair ${tag}-${i}`,slug:`synthetic-pair-${tag}-${i}`,monthlyPriceCents:6000,
     components:{create:{applianceTypeId:type.id,quantity:2}}}});
@@ -63,7 +65,7 @@ export async function createSyntheticW22V2Order(options:{customerId?:string}={})
     charges:[{kind:"delivery",amountCents:x.delivery,decision:x.delivery?"REQUIRED":"NOT_APPLICABLE",reason:null},
      {kind:"installation",amountCents:0,decision:"NOT_APPLICABLE",reason:null},{kind:"removal",amountCents:0,decision:"NOT_APPLICABLE",reason:null},
      {kind:"damageWaiver",amountCents:0,decision:"NOT_APPLICABLE",reason:null}],
-    tax:{status:"VERIFIED",taxCents:i===0?375:0,reasons:[],lines:i===0?[{lineKey:"mandatory:delivery",jurisdictionId:x.tax.jurisdictionId,
+    tax:{status:"VERIFIED",taxCents:x.delivery?375:0,reasons:[],lines:x.delivery?[{lineKey:"mandatory:delivery",jurisdictionId:x.tax.jurisdictionId,
      rateVersionId:x.tax.rateVersionId,category:"DELIVERY",taxableCents:7500,exemptCents:0,taxCents:375}]:[]},
     retailDelivery:{event:i===0,status:i===0?"APPLIES":"EXEMPT",amountCents:i===0?31:0,rateId:i===0?"synthetic-rdf":null,
      handling:"COLLECT_FROM_CUSTOMER",reason:"Synthetic single event allocation only"},reserveCents:x.agreement.depositCents,reserveRevision:1,
