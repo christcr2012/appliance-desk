@@ -8,6 +8,7 @@ export type InboxGroup = "money" | "sales" | "rentals" | "equipment" | "taxes" |
 
 /** Every category in exactly one group. A category added later fails the build here until it is placed. */
 export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
+  ACCOUNTANT: "taxes",
   BOOKS_NOT_UP_TO_DATE: "taxes",
   BOOKS_NEEDS_FIX: "taxes",
   BOOKS_SETUP: "taxes",

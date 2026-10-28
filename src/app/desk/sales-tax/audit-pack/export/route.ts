@@ -3,7 +3,7 @@ import { auditPackCsv, buildAuditPack, parseAuditRange } from "@/domains/tax/tax
 
 /** Spreadsheet of the audit pack for a date range. OWNER and ADMIN only; the same rows as the printable page. */
 export async function GET(request: Request) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const { searchParams } = new URL(request.url);
   const range = parseAuditRange(searchParams.get("from") ?? undefined, searchParams.get("to") ?? undefined);
   if ("error" in range) return new Response(range.error, { status: 400 });

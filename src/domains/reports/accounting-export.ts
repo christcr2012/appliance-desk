@@ -25,16 +25,23 @@ export type AccountingTransactionRow = {
   notes: string;
 };
 
-function customerDisplayName(customer: {
-  user: { name: string | null; email: string };
-  companyName: string | null;
-}) {
-  return customer.user.name ?? customer.user.email;
+function customerDisplayName(
+  customer: {
+    user: { name: string | null; email: string };
+    companyName: string | null;
+  },
+  forAccountant: boolean,
+) {
+  // ACCT-1: an accountant never sees customer contact details — when a customer has no
+  // stored name, the owner/admin fallback is their email, so the accountant's export
+  // shows a plain placeholder instead (shaped here, at the DTO boundary).
+  return customer.user.name ?? (forAccountant ? "Customer" : customer.user.email);
 }
 
-export async function getAccountingTransactions(): Promise<
-  AccountingTransactionRow[]
-> {
+export async function getAccountingTransactions(
+  options: { forAccountant?: boolean } = {},
+): Promise<AccountingTransactionRow[]> {
+  const forAccountant = options.forAccountant === true;
   const [receipts, refunds, deposits, creditRefunds] = await prisma.$transaction(
     async (tx) =>
       Promise.all([
@@ -117,7 +124,7 @@ export async function getAccountingTransactions(): Promise<
       source: receipt.source,
       date: receipt.receivedOn,
       type: "Payment",
-      customerName: customerDisplayName(receipt.customer),
+      customerName: customerDisplayName(receipt.customer, forAccountant),
       companyName: receipt.customer.companyName ?? "",
       // One receipt can span several invoices. Leave the single-invoice
       // reference blank rather than falsely assigning the whole cash event to
@@ -135,7 +142,7 @@ export async function getAccountingTransactions(): Promise<
       source: "",
       date: refund.createdAt,
       type: creditRefundIds.has(refund.id) ? "Refund to account credit" : "Refund",
-      customerName: customerDisplayName(refund.invoice.customer),
+      customerName: customerDisplayName(refund.invoice.customer, forAccountant),
       companyName: refund.invoice.customer.companyName ?? "",
       invoiceNumber: refund.invoice.invoiceNumber,
       amountCents: -refund.amountCents,
@@ -151,7 +158,7 @@ export async function getAccountingTransactions(): Promise<
       source: "",
       date: deposit.refundedAt,
       type: "Deposit refunded",
-      customerName: customerDisplayName(deposit.agreement.customer),
+      customerName: customerDisplayName(deposit.agreement.customer, forAccountant),
       companyName: deposit.agreement.customer.companyName ?? "",
       invoiceNumber: null,
       amountCents: -(deposit.refundedAmountCents ?? 0),

@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { buildTaxFilingIcs } from "@/domains/tax/calendar-file";
 
 export async function GET() {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const [periods, accounts] = await Promise.all([
     prisma.taxFilingPeriod.findMany({
       select: { id: true, dueOn: true, filingAccount: { select: { name: true } } },

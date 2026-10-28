@@ -40,6 +40,7 @@ import { listCollectionAttention } from "./collection-attention";
 import { listContinuityAttention } from "./continuity-attention";
 import { listSetupGuideAttention } from "./setup-attention";
 import { listVaultRotationAttention } from "@/domains/vault/attention";
+import { listAccountantAttention } from "@/domains/accountant/attention";
 import { listPrivacyAttention } from "@/domains/security/reads";
 import { listLateFeeReview } from "./late-fee-attention";
 import { listStartingValuesAttention } from "@/domains/decisions/attention";
@@ -300,8 +301,12 @@ const utc = (date: Date) => date.toISOString();
  * dedicated timestamp column for a secondary sort key.
  */
 export async function getExceptionOverview(): Promise<ExceptionOverview> {
-  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const role = (session.user as { role?: string }).role ?? "";
+  // ACCT-1: the accountant is admitted for the tax-group attention below, but
+  // canViewFinance stays owner/admin: several finance-gated listers behind it
+  // (cancellation refunds, signed deliveries, feedback) requireRole(OWNER,
+  // ADMIN) themselves and are customer/operations scope, not the accountant's.
   const canViewFinance = ["OWNER", "ADMIN"].includes(role);
   const now = new Date();
   const customerSelect = { customer: { select: { user: { select: { name: true, email: true } } } } } as const;
@@ -1184,6 +1189,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const continuityAttention = (session.user as { role?: string }).role === "OWNER" ? await listContinuityAttention(now) : [];
   const setupGuideAttention = (session.user as { role?: string }).role === "OWNER" ? await listSetupGuideAttention(now) : [];
   const vaultAttention = (session.user as { role?: string }).role === "OWNER" ? await listVaultRotationAttention(now) : [];
+  const accountantAttention = (session.user as { role?: string }).role === "OWNER" ? await listAccountantAttention(session.user.id, now) : [];
   const goalAttention = canViewFinance ? await listGoalAttention(now) : [];
   const signingPaymentAttention = canViewFinance
     ? await listSigningPaymentAttention(EXCEPTION_CATEGORY_CAP)
@@ -1284,6 +1290,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...continuityAttention,
     ...setupGuideAttention,
     ...vaultAttention,
+    ...accountantAttention,
     ...goalAttention,
   ];
 

@@ -36,6 +36,17 @@ Migrations `20261107000000_supplier_tin_w9` and `20261107010000_filing_period_ke
 - `ComplianceProfile` gains the payer block printed on information returns: `businessLegalName`, `businessAddress`, `businessCity`, `businessState`, `businessZip`, `businessPhone`.
 - `ComplianceFiling.periodKey` widens from 20 to 40 characters: Form 8300 filings key their period by the triggering receipt (`8300-` + the receipt id).
 
+## November 4 — Accountant sign-in (ACCT-1, additive)
+
+Migration `20261104000000_accountant_role`.
+- `Role` gains `ACCOUNTANT` — a sign-in level for an outside CPA/tax professional: books, sales tax, compliance, money reports, CPA-audience decisions, and owner-shared business records only (deny by default; the exact allowlist is pinned by `tests/accountant-allowlist.test.ts`). Accountants always need a second sign-in step and never get a remembered device.
+- `User.firm` / `User.accessEndsOn` — the accountant's firm (shown next to their name) and the date their access ends; sign-in is refused after it, and the daily `/api/cron/access-expiry` sweep revokes leftover sessions. Null end date = keep until removed.
+- `TeamInvitation.firm` / `TeamInvitation.accessEndsOn` — the same two facts carried on the invite and copied onto the user at accept.
+- `BusinessPaperwork.shareWithAccountant` (default false) — the owner's per-record switch for which business records the accountant may see (still masked; number-bearing records stay owner/admin only).
+- `BusinessSettings.accountantChangesSeenAt` — when the owner last looked at Books home; drives the "changes by your accountant" unseen count.
+- `JournalSourceType` gains `ADJUSTMENT` — manual adjusting entries posted through the books' normal balanced-journal machinery (owner-reversible).
+- `ComplianceFiling.reviewedByUserId` / `reviewedAt` — the "Reviewed by" mark (owner/admin/accountant); preparing fresh figures clears it, and only the owner can approve or file.
+
 ## November 2 — Compliance center (CMP-1, additive)
 
 Migration `20261102000000_compliance`.

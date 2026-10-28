@@ -11,10 +11,13 @@ import { assertRdfHandlingChangeable } from "./rdf-handling-lock";
  */
 export async function saveTaxPolicyChoiceInTx(
   tx: Prisma.TransactionClient, actorId: string, field: TaxPolicyField, value: string,
+  professionalAnswer = false,
 ): Promise<void> {
   const problem = taxPolicyValueProblem(field, value);
   if (problem) throw new Error(problem);
-  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  // ACCT-1: professionalAnswer is set only by Decisions & reviews for an accountant's answer to a
+  // CPA question (checked in that transaction); every other caller stays owner-only.
+  await assertActiveTeamActor(tx, actorId, professionalAnswer ? ["ACCOUNTANT"] : ["OWNER"]);
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   const before = await tx.businessSettings.findUniqueOrThrow({
     where: { id: "singleton" },
@@ -49,10 +52,12 @@ export async function afterTaxPolicyChange(field: TaxPolicyField): Promise<void>
  */
 export async function saveFilingBasisForAllAccountsInTx(
   tx: Prisma.TransactionClient, actorId: string, basis: string,
+  professionalAnswer = false,
 ): Promise<number> {
   const problem = reportingBasisProblem(basis);
   if (problem || basis === "UNDECIDED") throw new Error(problem ?? "Choose accrual or cash.");
-  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  // ACCT-1: see saveTaxPolicyChoiceInTx — accountant only as a CPA professional answer.
+  await assertActiveTeamActor(tx, actorId, professionalAnswer ? ["ACCOUNTANT"] : ["OWNER"]);
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   const accounts = await tx.$queryRaw<Array<{ id: string; basis: string }>>`
     SELECT "id", "basis"::text AS "basis" FROM "TaxFilingAccount" ORDER BY "id" FOR UPDATE`;

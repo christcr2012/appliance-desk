@@ -16,7 +16,7 @@ export type MonthPacket={journalCsv:string;profitCsv:string;month:string};
 export async function buildMonthPacket(actor:BooksActor,key:string):Promise<MonthPacket>{
  monthKey(key);
  if(key>lastCompletedMonth())throw new Error("Choose a completed month.");
- await prisma.$transaction(tx=>assertActiveTeamActor(tx,actor.id,["OWNER","ADMIN"]));
+ await prisma.$transaction(tx=>assertActiveTeamActor(tx,actor.id,["OWNER","ADMIN","ACCOUNTANT"]));
  const first=businessDateFromKey(key+"-01")!,end=businessDateFromKey(nextMonth(key)+"-01")!;
  const settings=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{booksStartDate:true}});
  if(!settings.booksStartDate)throw new Error("Start your books before exporting a report.");

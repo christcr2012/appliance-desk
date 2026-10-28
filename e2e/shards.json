@@ -63,6 +63,7 @@
       "books-month-review.spec.ts",
       "business-records.spec.ts",
       "setup-guide.spec.ts",
+      "accountant-access.spec.ts",
       "delivery-area.spec.ts",
       "tax-benefits.spec.ts"
     ],

@@ -6,7 +6,7 @@ import { openingBalance, balancedPlan, type PostingLine } from "./posting-rules"
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { writeJournal } from "./post";
 
-export type BooksActor = { id: string; role: "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER" };
+export type BooksActor = { id: string; role: "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER" | "ACCOUNTANT" };
 export class BooksPermissionError extends Error {}
 export class BooksInputError extends Error {}
 function allow(actor: BooksActor, ...roles: BooksActor["role"][]) {
@@ -158,13 +158,16 @@ export async function addCustomAccount(actor:BooksActor,input:{
 export async function mapExportAccount(actor:BooksActor,input:{
   accountId:string; target:ExportTarget; externalName:string; externalTaxRate?:string;
 }) {
-  allow(actor,"OWNER");
+  // ACCT-1: account mapping is one of the accountant's allowed changes.
+  allow(actor,"OWNER","ACCOUNTANT");
   const name=safeText(input.externalName,160);
   const taxName=input.externalTaxRate?.trim()||"Tax Exempt";
   if(taxName.length>120)throw new BooksInputError("Xero tax rate name is too long.");
   if (input.externalTaxRate?.trim() && input.target!=="XERO_JOURNAL_CSV")
     throw new BooksInputError("Only Xero export mappings accept a tax rate.");
   return prisma.$transaction(async tx=>{
+    await tx.$queryRaw`SELECT "id" FROM "LedgerAccount" WHERE "id"=${input.accountId} FOR UPDATE`;
+    await assertActiveTeamActor(tx,actor.id,["OWNER","ACCOUNTANT"]);
     const account=await tx.ledgerAccount.findUnique({where:{id:input.accountId}});
     if(!account)throw new BooksInputError("Account not found.");
     const current=await tx.accountExportMapping.findUnique({where:{ledgerAccountId_target:{
@@ -177,9 +180,9 @@ export async function mapExportAccount(actor:BooksActor,input:{
       entityId:input.accountId,oldValue:current?{name:current.externalName}:{},newValue:{target:input.target,name}}});
   });
 }
-/** Journal browser only reveals internal ledger records to owner/admin; never full customer PII. */
+/** Journal browser only reveals internal ledger records to owner/admin (and the accountant, ACCT-1); never full customer PII. */
 export async function getBooksWorkspace(actor:BooksActor, options?:{month?:string;page?:number}) {
-  allow(actor,"OWNER","ADMIN");
+  allow(actor,"OWNER","ADMIN","ACCOUNTANT");
   const month=options?.month?periodKey(options.month):undefined;
   const page=Math.min(200,Math.max(1,Math.floor(options?.page??1)));
   const [settings,accounts,entries,periods,total,issues]=await Promise.all([
@@ -201,9 +204,11 @@ export async function getBooksWorkspace(actor:BooksActor, options?:{month?:strin
 }
 
 export async function closeAccountingMonth(actor:BooksActor, key:string) {
-  allow(actor,"OWNER");periodKey(key);
+  // ACCT-1: closing a month is one of the accountant's allowed changes.
+  allow(actor,"OWNER","ACCOUNTANT");periodKey(key);
   return prisma.$transaction(async tx=>{
     await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(${"books-period:"+key}))) AS guard`;
+    await assertActiveTeamActor(tx,actor.id,["OWNER","ACCOUNTANT"]);
     const settings=await tx.businessSettings.findUnique({where:{id:"singleton"}});
     if(!settings?.booksStartDate)throw new BooksInputError("Initialize your books first.");
     if(key>businessDateKey(new Date()).slice(0,7))throw new BooksInputError("Cannot close a future month.");
@@ -223,9 +228,11 @@ export async function closeAccountingMonth(actor:BooksActor, key:string) {
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
 export async function reopenAccountingMonth(actor:BooksActor,key:string,reason:string) {
-  allow(actor,"OWNER");periodKey(key);const why=safeText(reason,300);
+  // ACCT-1: reopening a month is one of the accountant's allowed changes.
+  allow(actor,"OWNER","ACCOUNTANT");periodKey(key);const why=safeText(reason,300);
   return prisma.$transaction(async tx=>{
     await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(${"books-period:"+key}))) AS guard`;
+    await assertActiveTeamActor(tx,actor.id,["OWNER","ACCOUNTANT"]);
     const period=await tx.accountingPeriod.findUnique({where:{periodKey:key}});
     if(period?.status!=="CLOSED")throw new BooksInputError("This month is already open.");
     await tx.accountingPeriod.update({where:{periodKey:key},
@@ -256,14 +263,15 @@ async function exportMonthReviewInTx(tx:Prisma.TransactionClient,actor:BooksActo
     return {batchId:batch.id,csv,fileName:batch.fileName};
 }
 export async function exportMonthReview(actor:BooksActor,key:string){
- allow(actor,"OWNER","ADMIN");periodKey(key);
+ allow(actor,"OWNER","ADMIN","ACCOUNTANT");periodKey(key);
  return prisma.$transaction(tx=>exportMonthReviewInTx(tx,actor,key));
 }
 
 /** Month lock and its audit/export are one transaction, not separate button clicks. */
 export async function closeAccountingMonthWithReview(actor:BooksActor,key:string,
  notes:{expenses?:string;payments?:string}={}){
- allow(actor,"OWNER");periodKey(key);
+ // ACCT-1: the reviewed-month lock is the "Reviewed by accountant" mark when an accountant makes it.
+ allow(actor,"OWNER","ACCOUNTANT");periodKey(key);
  const clean=(value:string|undefined)=>{
   const text=(value??"").trim();
   if(text.length>300)throw new BooksInputError("Review explanation must be 300 characters or fewer.");
@@ -271,7 +279,7 @@ export async function closeAccountingMonthWithReview(actor:BooksActor,key:string
  };
  const expenses=clean(notes.expenses),payments=clean(notes.payments);
  return prisma.$transaction(async tx=>{
-  await assertActiveTeamActor(tx,actor.id,["OWNER"]);
+  await assertActiveTeamActor(tx,actor.id,["OWNER","ACCOUNTANT"]);
   await tx.$queryRaw`SELECT "revision" FROM "BooksPostingRevision"
    WHERE "id"=${"singleton"} FOR UPDATE`;
   await tx.$queryRaw`SELECT 1 AS locked FROM

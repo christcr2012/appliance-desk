@@ -18,7 +18,7 @@ const hash=(json:unknown)=>json&&typeof json==="object"&&!Array.isArray(json)&&
  "sourceHash" in json?String(json.sourceHash):"Not completed";
 export default async function BankChecksPage({searchParams}:{
  searchParams:Promise<{accountId?:string;notice?:string}>}){
- const user=await requireRole("OWNER","ADMIN"),owner=user.user.role==="OWNER";
+ const user=await requireRole("OWNER","ADMIN","ACCOUNTANT"),owner=user.user.role==="OWNER";
  const params=await searchParams,accounts=await getCashAccounts(user.user.id);
  const selected=accounts.find(x=>x.id===params.accountId)??accounts[0];
  const [model,readiness,holds]=await Promise.all([

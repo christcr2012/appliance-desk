@@ -72,6 +72,14 @@ export type DecisionWriteMeta = {
   effectiveFrom: Date;
   /** The value the setting had when the decision screen was read (compare-and-set saves need it). */
   previousValue: Prisma.JsonValue;
+  /**
+   * ACCT-1: true ONLY when this write is an accountant's professional answer to a CPA question,
+   * recorded through Decisions & reviews on screen. recordProfessionalAnswer sets it after checking,
+   * inside the same transaction, that the actor is an active accountant and the question's audience
+   * is CPA. The setting saves below accept an ACCOUNTANT actor only when this flag is set; every
+   * other caller leaves it unset and stays owner-only.
+   */
+  professionalAnswer?: boolean;
 };
 
 export type DecisionSubject = {
@@ -187,7 +195,7 @@ function taxCellSubject(scope: TaxCellScope, category: TaxChargeCategory): Decis
       if (!taxability) throw new Error("Choose taxable or not taxable.");
       const jurisdictionId = scope === "STATE" ? null : await greeleyId(tx);
       const setup = await import("@/domains/tax/setup");
-      const opts = { effectiveFrom: meta.effectiveFrom };
+      const opts = { effectiveFrom: meta.effectiveFrom, professionalAnswer: meta.professionalAnswer === true };
       // The tax setup save keeps reasons to one plain line.
       const reason = meta.reason.replace(/[\r\n<>]+/g, " ").trim().slice(0, 500) || "Decided in Decisions & reviews";
       if (meta.kind === "STARTING_VALUE_APPLIED") {
@@ -259,9 +267,9 @@ const ELECTION_SUBJECT: DecisionSubject = {
   allowOther: true,
   covers: ["BusinessSettings.shortTermLeaseElection"],
   read: async (ctx) => ctx.settings.shortTermLeaseElection,
-  write: async (tx, actorId, value) => {
+  write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveTaxPolicyChoiceInTx } = await import("@/domains/tax/policy-choices");
-    await saveTaxPolicyChoiceInTx(tx, actorId, "shortTermLeaseElection", String(value));
+    await saveTaxPolicyChoiceInTx(tx, actorId, "shortTermLeaseElection", String(value), meta.professionalAnswer);
   },
   validate: (value) => taxPolicyValueProblem("shortTermLeaseElection", value),
   describe: (value) => value === "UNDECIDED" ? "Not decided yet — rent can't be billed with tax until it is"
@@ -289,9 +297,9 @@ const RDF_HANDLING_SUBJECT: DecisionSubject = {
   allowOther: true,
   covers: ["BusinessSettings.rdfHandling"],
   read: async (ctx) => ctx.settings.rdfHandling,
-  write: async (tx, actorId, value) => {
+  write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveTaxPolicyChoiceInTx } = await import("@/domains/tax/policy-choices");
-    await saveTaxPolicyChoiceInTx(tx, actorId, "rdfHandling", String(value));
+    await saveTaxPolicyChoiceInTx(tx, actorId, "rdfHandling", String(value), meta.professionalAnswer);
   },
   validate: (value) => taxPolicyValueProblem("rdfHandling", value),
   describe: (value) => value === "UNDECIDED" ? "Not decided yet" : label(RDF_HANDLING_OPTIONS, value, "Unknown"),
@@ -311,9 +319,9 @@ const RDF_DECISION_SUBJECT: DecisionSubject = {
   allowOther: true,
   covers: ["BusinessSettings.retailDeliveryFeeDecision"],
   read: async (ctx) => ctx.settings.retailDeliveryFeeDecision,
-  write: async (tx, actorId, value) => {
+  write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveTaxPolicyChoiceInTx } = await import("@/domains/tax/policy-choices");
-    await saveTaxPolicyChoiceInTx(tx, actorId, "retailDeliveryFeeDecision", String(value));
+    await saveTaxPolicyChoiceInTx(tx, actorId, "retailDeliveryFeeDecision", String(value), meta.professionalAnswer);
   },
   validate: (value) => taxPolicyValueProblem("retailDeliveryFeeDecision", value),
   describe: (value) => value === "UNDECIDED" ? "Not decided yet" : label(RDF_DECISION_OPTIONS, value, "Unknown"),
@@ -337,9 +345,9 @@ const BASIS_SUBJECT: DecisionSubject = {
     if (bases.length === 0) return "UNDECIDED";
     return bases.length === 1 ? bases[0]! : "MIXED";
   },
-  write: async (tx, actorId, value) => {
+  write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveFilingBasisForAllAccountsInTx } = await import("@/domains/tax/policy-choices");
-    await saveFilingBasisForAllAccountsInTx(tx, actorId, String(value));
+    await saveFilingBasisForAllAccountsInTx(tx, actorId, String(value), meta.professionalAnswer);
   },
   validate: (value) => reportingBasisProblem(value),
   describe: (value) => value === "UNDECIDED" ? "Not decided yet (or no tax filing account yet)"
@@ -363,9 +371,9 @@ const BAD_DEBT_SUBJECT: DecisionSubject = {
   allowOther: true,
   covers: ["BusinessSettings.badDebtTaxRecovery"],
   read: async (ctx) => ctx.settings.badDebtTaxRecovery,
-  write: async (tx, actorId, value) => {
+  write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveBadDebtTaxRecoveryInTx } = await import("@/domains/books/bad-debt-policy");
-    await saveBadDebtTaxRecoveryInTx(tx, actorId, String(value));
+    await saveBadDebtTaxRecoveryInTx(tx, actorId, String(value), meta.professionalAnswer);
   },
   validate: (value) => badDebtTaxRecoveryProblem(value),
   describe: (value) => value === "UNDECIDED" ? "Not decided yet — write-offs with tax wait in Books until it is"
@@ -386,9 +394,9 @@ const SETUP_FEE_SUBJECT: DecisionSubject = {
   allowOther: true,
   covers: ["BusinessSettings.setupFeeTaxPlanningTreatment", "BusinessSettings.setupFeeTaxTreatment"],
   read: async (ctx) => ctx.settings.setupFeeTaxPlanningTreatment,
-  write: async (tx, actorId, value) => {
+  write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveSetupTaxPlanningInTx } = await import("@/domains/billing/setup-tax-planning");
-    await saveSetupTaxPlanningInTx(tx, actorId, String(value));
+    await saveSetupTaxPlanningInTx(tx, actorId, String(value), meta.professionalAnswer);
   },
   validate: (value) => setupTaxPlanningProblem(value),
   describe: (value) => label(SETUP_PLANNING_OPTIONS, value, "Unknown"),
@@ -411,7 +419,7 @@ const RETENTION_SUBJECT: DecisionSubject = {
   read: async (ctx) => ctx.settings.recordRetentionYears,
   write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveRecordRetentionYearsInTx } = await import("@/domains/tax/retention");
-    await saveRecordRetentionYearsInTx(tx, actorId, Number(value), Number(meta.previousValue));
+    await saveRecordRetentionYearsInTx(tx, actorId, Number(value), Number(meta.previousValue), meta.professionalAnswer);
   },
   validate: (value) => retentionYearsProblem(value),
   describe: (value) => typeof value === "number" ? `${value} years after the appliance leaves the fleet` : "Unknown",

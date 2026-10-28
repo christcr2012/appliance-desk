@@ -19,7 +19,7 @@ const deliveryNames:Record<string,string>={
 export default async function BooksExportsPage({searchParams}:{
  searchParams:Promise<{notice?:string;created?:string;imported?:string}>
 }){
- const session=await requireRole("OWNER","ADMIN");
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
  const params=await searchParams;
  const history=await getBookExportHistory(session.user.id);
  const today=businessDateKey(new Date());
