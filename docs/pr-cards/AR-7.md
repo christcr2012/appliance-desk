@@ -23,3 +23,9 @@ functions the spec names are all on main (`profitAndLoss`, `getBookAssets`, `get
 `getTaxWorkspaceOverview`, BOOKS_* attention in the taxes group). Two build notes: the kit has no
 TaskCard yet — AR-7a adds one (the AR-3 ActionMenu precedent) — and the work index names the browser
 spec `e2e/ar7-books-taxes.spec.ts`, which wins over the spec text's file name.
+AR-7a built and opened as PR #733 (2026-10-28): Overview + `getBooksHome`, Month by month, Reports
+views (legacy `?kind=` mapped, closing redirects in), Equipment value, For your accountant, kit
+TaskCard, registration and the retargeted books specs. Local proof before the push: typecheck,
+lint on the new files, kit guards 25/25, packet check, production build, bundle budgets measured
+for the two new routes. CI at the exact head is the deciding run. AR-7b (Taxes) follows under this
+same packet.

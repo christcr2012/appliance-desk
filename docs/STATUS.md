@@ -1,4 +1,4 @@
-## October 28 — AR-7a Books on the kit: building (Lane 4)
+## October 28 — AR-7a Books on the kit: PR #733 open (Lane 4)
 
 AR-7 splits into Books (AR-7a, this build) and Taxes (AR-7b, next) under one execution packet.
 Books gets a sub-tab strip (Overview, Month by month, Reports, Equipment value, For your
@@ -6,7 +6,7 @@ accountant, plus Money set aside when budgets are on), a new Overview home with 
 numbers and what needs attention, a Month by month list, Reports regrouped into four views (the
 old closing page moves in), an Equipment value page without the manual forms, and a For your
 accountant page holding the full journal and account forms unchanged. No accounting rules change.
-PR number lands here the moment it opens.
+PR #733 is open; CI at the exact head decides, then auto-merge.
 
 ## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
 
