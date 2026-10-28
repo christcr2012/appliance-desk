@@ -8,6 +8,7 @@ import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status-labels";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { StatusBadge } from "@/components/status-badge";
 import { StatementReconciliationCard } from "@/components/billing/statement-reconciliation";
+import { Toaster } from "@/components/kit";
 import { RecordPaymentSheet } from "../../record-payment-sheet";
 import { WriteOffButton } from "./write-off-button";
 
@@ -41,6 +42,9 @@ export default async function CustomerStatementPage({
 
   return (
     <div className="max-w-3xl">
+      {/* The record-payment sheet reports its result with a toast; the Toaster mounts per page,
+          first, so its live region does not shadow the page's own status messages. */}
+      <Toaster />
       <Link
         href={`/desk/customers/${statement.customerId}`}
         className="text-sm text-ink-soft hover:underline"
