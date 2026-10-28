@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InboxCountBeacon } from "@/components/kit/inbox-count-beacon";
 import { revalidatePath } from "next/cache";
 import { getExceptionOverview, getTodaysJobs, type ExceptionItem } from "@/domains/exceptions";
 import { syncComplianceFilings } from "@/domains/compliance/filings";
@@ -461,6 +462,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
     <PullToRefresh><div className="w-full min-w-0 max-w-full px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
       <div className="flex w-full min-w-0 max-w-full flex-1 flex-col gap-4 lg:max-w-[760px]">
         <AutoRefresh />
+        <InboxCountBeacon count={total} />
         {notInJobRole ? (
           <p role="status" className="rounded-card border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink">
             You don&apos;t have access to that screen.
