@@ -112,6 +112,10 @@ describe.skipIf(!enabled)("ZONE-1 customer pickup hand-over", () => {
     expect(JSON.stringify(todo)).not.toMatch(/Schedule delivery/);
     await expect(createJob(ownerId, { type: "DELIVERY", customerId, serviceAddressId: addressId, agreementId: rental.agreementId }))
       .rejects.toThrow(/customer pickup/);
+    // A follow-up hand-over (e.g. for an item not handed over the first time) can be added from New visit.
+    const followUp = await createJob(ownerId, { type: "DELIVERY", customerId, serviceAddressId: addressId,
+      agreementId: rental.agreementId, customerPickupHandoff: true });
+    expect(followUp).toMatchObject({ type: "DELIVERY", customerPickupHandoff: true });
   });
 
   it("completing the hand-over starts the rental exactly like a delivery, with no truck trip recorded", async () => {
