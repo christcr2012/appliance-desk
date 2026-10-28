@@ -1623,4 +1623,4 @@ Routes: `/desk/vault` and `/desk/vault/[id]` (OWNER only); the public `/emergenc
 
 ## MCP-6 repair case evidence
 
-Additive `RepairCase` and `RepairEvidence` records retain the originating issue or feedback version and the running revision. Case stages are only advanced by server-side GitHub, deployment and runtime checks; evidence includes verifier, timestamp and result. Nothing here alters the real issue until an independent check passes.
+Additive `RepairCase` and `RepairEvidence` records retain the originating issue or feedback version and the running revision. Case stages are only advanced by server-side GitHub, deployment and runtime checks; evidence includes verifier, timestamp and result. Nothing here alters the real issue until an independent check passes. A PostgreSQL partial unique index on `(sourceKind, sourceId)` for non-final stages guarantees at most one active repair per source, including differently worded simultaneous requests; creation also locks the source row first.

@@ -36,6 +36,17 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
     howToCheck: "automation:backup",
   });
 
+  it("keeps exactly one active case under differently worded concurrent requests", async () => {
+    const records = await Promise.all(Array.from({ length: 12 }, (_, i) =>
+      createRepairCase({ ...input(), expectedBehavior:
+        `The scheduled inspection should complete successfully, request ${i}.` })));
+    expect(new Set(records.map(record => record.id)).size).toBe(1);
+    expect(await prisma.repairCase.count({ where: {
+      sourceKind: "SYSTEM_ISSUE", sourceId: issueId,
+      stage: { notIn: ["VERIFIED", "REJECTED", "SUPERSEDED"] },
+    } })).toBe(1);
+  });
+
   it("rejects invented sources and personal information", async () => {
     await expect(createRepairCase({ ...input(), sourceId: "unknown" })).rejects
       .toMatchObject({ code: "REPAIR_SOURCE_NOT_FOUND" });

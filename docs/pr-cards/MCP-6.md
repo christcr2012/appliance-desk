@@ -44,11 +44,14 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
   durable stages, owner rejection, and System health > Repairs presentation.
 - Unit/security proof: `tests/mcp-repair-evidence.test.ts`, 4/4 passed.
   Disposable PostgreSQL proof: `tests/mcp-repair-cases-integration.test.ts`,
-  4/4 passed; no skips. Prisma validation and changed-file lint passed.
+  5/5 passed; no skips. The fifth real-database test sends twelve parallel
+  differently worded requests and proves one active case; a source-row lock
+  and partial unique index enforce that invariant. Prisma validation and
+  changed-file lint passed.
 - Browser proof is **not** complete: `e2e/mcp-repair-cases.spec.ts` is registered
   but the local 4 GB sandbox's Next.js build was killed (exit 137). GitHub CI
   must run it on a published, fully implemented head.
 - Still to build before publishing: MCP scope/transport and journaled tools,
-  stronger one-active-case concurrency guard, automated issue/feedback workflow,
+  automated issue/feedback workflow,
   owner reminders, exhaustive runtime stage tests and final browser/accessibility
   acceptance. No PR is opened and this card is not ready to merge.

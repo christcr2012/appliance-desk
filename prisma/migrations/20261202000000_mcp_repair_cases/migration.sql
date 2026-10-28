@@ -26,6 +26,9 @@ CREATE TABLE "RepairCase" (
 
 CREATE UNIQUE INDEX "RepairCase_number_key" ON "RepairCase"("number");
 CREATE UNIQUE INDEX "RepairCase_fingerprint_key" ON "RepairCase"("fingerprint");
+-- One unfinished case per problem, regardless of wording or source version.
+CREATE UNIQUE INDEX "RepairCase_one_active_source_idx" ON "RepairCase"("sourceKind", "sourceId")
+  WHERE "stage" NOT IN ('VERIFIED', 'REJECTED', 'SUPERSEDED');
 CREATE INDEX "RepairCase_stage_updatedAt_idx" ON "RepairCase"("stage", "updatedAt");
 CREATE INDEX "RepairCase_sourceKind_sourceId_sourceVersion_idx" ON "RepairCase"("sourceKind", "sourceId", "sourceVersion");
 

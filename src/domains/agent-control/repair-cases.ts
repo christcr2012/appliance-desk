@@ -41,6 +41,13 @@ export async function createRepairCase(input: RepairCaseInput) {
     throw new RepairEvidenceError("REPAIR_REQUIRES_NAMED_AUTOMATION_CHECK");
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, input.actorId, ["OWNER", "ADMIN"]);
+    // Serialize on the real source row before checking active repairs.
+    // The partial unique index remains the final concurrency safeguard.
+    if (input.sourceKind === "SYSTEM_ISSUE") {
+      await tx.$queryRaw`SELECT "id" FROM "SystemIssue" WHERE "id" = ${input.sourceId} FOR UPDATE`;
+    } else {
+      await tx.$queryRaw`SELECT "id" FROM "FeedbackReport" WHERE "id" = ${input.sourceId} FOR UPDATE`;
+    }
     const issue = input.sourceKind === "SYSTEM_ISSUE"
       ? await tx.systemIssue.findUnique({ where: { id: input.sourceId } }) : null;
     const report = input.sourceKind === "FEEDBACK"
@@ -52,6 +59,11 @@ export async function createRepairCase(input: RepairCaseInput) {
     await assertNoKnownPersonNames(tx, [title, expectedBehavior, howToCheck].join(" "));
     const version = (issue?.version ?? report?.version) as number;
     const fingerprint = hash([input.sourceKind, input.sourceId, version, expectedBehavior].join(":"));
+    const active = await tx.repairCase.findFirst({
+      where: { sourceKind: input.sourceKind, sourceId: input.sourceId,
+        stage: { notIn: ["VERIFIED", "REJECTED", "SUPERSEDED"] } },
+    });
+    if (active) return active;
     const existing = await tx.repairCase.findUnique({ where: { fingerprint } });
     if (existing) return existing;
     const baselineRevision = process.env.VERCEL_GIT_COMMIT_SHA;

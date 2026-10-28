@@ -3693,3 +3693,8 @@ Repairs UI and 8 passing focused tests (four bounded-evidence unit tests, four
 disposable-PostgreSQL integration tests). Browser build ran out of the sandbox's
 4 GB memory; this is not accepted proof. MCP tools, consent/journaling, remaining
 workflow tests and CI are still unfinished. See `docs/pr-cards/MCP-6.md`.
+
+MCP-6 safety checkpoint (Oct 28): an active source-row lock and PostgreSQL
+partial unique index now prevent two live repairs for one issue. Five
+disposable-PostgreSQL tests passed, including twelve competing creates;
+full MCP write tools and hosted CI are still pending.
