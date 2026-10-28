@@ -24,6 +24,7 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
  const [data,settings]=await Promise.all([getCashDesk(session.user.id),
   prisma.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}})]);
  const notice=(await searchParams).notice?.slice(0,300),today=businessDateKey(new Date());
+ const shown=await getShownFeatures();
  return <div className="space-y-6">
   <header className="space-y-2">
    <nav aria-label="Books bank workspaces" className="flex flex-wrap gap-2">
