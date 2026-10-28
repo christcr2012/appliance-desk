@@ -30,7 +30,7 @@ describe("AR-1 five-area navigation compatibility and security", () => {
       "/desk/today", "/desk/customers", "/desk/communications", "/desk/dispatch",
       "/desk/inventory", "/desk/expenses",
     ]));
-    expect(deskMoreLinks("STAFF").map(l => l.href)).toEqual(["/desk/account", "/desk/activity", "/desk/help"]);
+    expect(deskMoreLinks("STAFF").map(l => l.href)).toEqual(["/desk/account", "/desk/activity", "/desk/help", "/desk/feedback/new"]);
   });
   it.each([undefined, "CUSTOMER", "anonymous"] as const)("fails closed for %s", role => {
     expect(deskNavigation(role)).toEqual([]);

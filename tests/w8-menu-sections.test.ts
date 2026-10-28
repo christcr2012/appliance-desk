@@ -81,13 +81,13 @@ describe("AR-1 five areas (W-8 backward-compatible tab helpers)", () => {
   });
   it("profile lists owner-only destinations and cannot expose internal tools to staff", () => {
     expect(deskMoreLinks("OWNER").map(l => l.label)).toEqual([
-      "Settings", "Your account", "Website", "Business paperwork", "Privacy requests",
-      "System health", "Activity log", "Help",
+      "Settings", "Your account", "Website", "Business paperwork", "Set up your business", "Privacy requests",
+      "System health", "Activity log", "Help", "App feedback",
     ]);
     expect(deskMoreLinks("ADMIN").map(l => l.label)).toEqual([
-      "Settings", "Your account", "Website", "System health", "Activity log", "Help",
+      "Settings", "Your account", "Website", "System health", "Activity log", "Help", "App feedback",
     ]);
-    expect(deskMoreLinks("STAFF").map(l => l.label)).toEqual(["Your account", "Activity log", "Help"]);
+    expect(deskMoreLinks("STAFF").map(l => l.label)).toEqual(["Your account", "Activity log", "Help", "App feedback"]);
     expect(deskMoreLinks("CUSTOMER")).toEqual([]);
     const all = JSON.stringify([deskNavigation("OWNER"), deskMoreLinks("OWNER"), DESK_SECTIONS]);
     expect(all).not.toMatch(/preview-storage|\/desk\/more/);

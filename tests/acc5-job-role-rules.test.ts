@@ -41,7 +41,7 @@ describe("job role screens", () => {
     expect(hrefs).toContain("/desk/dispatch");
     expect(hrefs).not.toContain("/desk/customers");
     expect(hrefs).not.toContain("/desk/more");
-    expect(deskMoreLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/account", "/desk/activity", "/desk/help"]);
+    expect(deskMoreLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/account", "/desk/activity", "/desk/help", "/desk/feedback/new"]);
     // No job role: exactly what the access level gave before.
     expect(deskNavigation("STAFF", null)).toEqual(deskNavigation("STAFF"));
   });
