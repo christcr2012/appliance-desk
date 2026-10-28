@@ -133,7 +133,12 @@ describe.skipIf(!enabled)("ZONE-1 12 straight-line miles / 20 road miles, end to
     const shown = await shownCharges(fixture);
     expect(shown.charges[firstAddress]).toEqual({ deliverCents: NEARBY_CENTS, routeException: true });
     expect(shown.html).toContain("but because of the driving route to your address, delivery is $75");
-    expect(shown.html).not.toContain("You chose delivery (Free)");
+    // Only the first address has the exception: it shows $75, the other address keeps its zone's free delivery.
+    const items = shown.html.split("<li>").slice(1);
+    const exceptionItem = items.find((item) => item.includes(`value="${firstAddress}"`));
+    expect(exceptionItem).toContain("You chose delivery ($75)");
+    expect(exceptionItem).not.toContain("(Free)");
+    expect(items.filter((item) => item !== exceptionItem).every((item) => item.includes("You chose delivery (Free)"))).toBe(true);
     expect(NEARBY_CENTS).toBe(7500); // the fixture's reviewed delivery charge for the first address
     // An estimate-level exception can't say which of two addresses it is for.
     await expect(recordDeliveryRouteEvidence(fixture.owner, { estimateId: fixture.estimateId }, {
