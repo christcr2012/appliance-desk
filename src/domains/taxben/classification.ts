@@ -125,6 +125,8 @@ export type CapitalizationFacts = {
   /** "YYYY-MM-DD": bonus applies to property acquired after this date. */
   bonusAcquiredAfter: string | null;
   preferSection179: boolean;
+  /** TAXBEN-2: the year's saved elect-out covers this unit's property class. */
+  bonusElectedOut?: boolean;
   section179: { limitCents: number; phaseoutCents: number } | null;
   classLifeMonths: number | null;
   boughtFromRelatedParty: boolean | null;
@@ -174,6 +176,15 @@ export function decideCapitalization(facts: CapitalizationFacts): Capitalization
       reason: `${why} Bonus depreciation is not available: this was bought from a relative or your own other business, so it is written off over its class life.`,
       ruleKey: "us.bonus_depreciation",
       ruleValue: JSON.stringify({ percent: facts.bonusPercent, acquiredAfter: facts.bonusAcquiredAfter }),
+    };
+  }
+  if (facts.bonusElectedOut) {
+    const life = facts.classLifeMonths !== null ? ` over ${facts.classLifeMonths} months` : "";
+    return {
+      decision: "CAPITALIZED",
+      reason: `${why} Bonus depreciation is not claimed for this property class in ${facts.taxYear}: the business elected out of bonus depreciation for the class, so it is written off over its class life${life}.`,
+      ruleKey: "us.bonus_depreciation",
+      ruleValue: JSON.stringify({ electedOut: true, percent: facts.bonusPercent, acquiredAfter: facts.bonusAcquiredAfter }),
     };
   }
   if (facts.bonusPercent !== null && facts.bonusPercent > 0 && acquiredAfter(facts.purchasedOn, facts.bonusAcquiredAfter)) {
@@ -281,6 +292,17 @@ export async function classifyPurchaseInTx(
   });
   const taxYear = Number(businessDateKey(purchase.purchasedOn).slice(0, 4));
   const electionOn = deMinimisElectionFor(settings?.deMinimisElections, taxYear);
+  // TAXBEN-2: the year's saved elect-out choice governs new decisions for
+  // the class (units here are rental appliances — the class whose life is
+  // read below). Decisions already recorded are never revisited.
+  const yearFacts = await tx.taxYearFacts.findUnique({
+    where: { year: taxYear },
+    select: { bonusElectOutClasses: true },
+  });
+  const electedOutClasses = Array.isArray(yearFacts?.bonusElectOutClasses)
+    ? yearFacts.bonusElectOutClasses.filter((c): c is string => typeof c === "string")
+    : [];
+  const bonusElectedOut = electedOutClasses.includes("rentalAppliances");
   const preferSection179 = settings?.capitalizationPreference === "SECTION179";
 
   const deMinimisLimitCents = await ruleOrNull<number>(tx, "us.de_minimis_per_item", purchase.purchasedOn);
@@ -305,6 +327,7 @@ export async function classifyPurchaseInTx(
       bonusPercent: bonus?.percent ?? null,
       bonusAcquiredAfter: bonus?.acquiredAfter ?? null,
       preferSection179,
+      bonusElectedOut,
       section179,
       classLifeMonths: classLives?.rentalAppliances ?? null,
       boughtFromRelatedParty: purchase.boughtFromRelatedParty,

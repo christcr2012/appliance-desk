@@ -223,6 +223,8 @@ export interface PacketData {
   worksheet4562: import("./worksheets").Worksheet4562;
   worksheet4797: import("./worksheets").Worksheet4797;
   homeOffice: boolean;
+  /** TAXBEN-2: the year's election statements. Optional — packets prepared before TAXBEN-2 have none. */
+  elections?: import("@/domains/taxben/elections").ElectionStatements | null;
 }
 
 /** The accountant packet as a CSV: Schedule C, the 1099-K tie-out, and both worksheets. */
@@ -301,10 +303,44 @@ export function packetCsv(packet: PacketData): string {
   if (packet.homeOffice) {
     sections.push(csvSection("Home office", ["Note"], [["The business facts say a home office is used. The simplified or regular method, and the amount, are worked out with the CPA — no amount is claimed here."]]));
   }
+  if (packet.elections) {
+    const e = packet.elections;
+    const eRows: Array<Array<string | number>> = [
+      ["Return due date", e.dueOnKey],
+      ["Extension date", e.extensionKey],
+      ["De minimis safe harbor", e.deMinimisText],
+    ];
+    if (e.electOutText) eRows.push(["Election out of bonus depreciation", e.electOutText]);
+    if (e.startupNoteText) eRows.push(["Start-up costs", e.startupNoteText]);
+    sections.push(
+      csvSection(`Elections and statements — ${packet.year}`, ["Item", "Text"], eRows),
+    );
+  }
   return sections.join("\r\n\r\n") + "\r\n";
 }
 
 /** The same packet as a simple, printable PDF (pdf-lib, text pages). */
+/**
+ * Word-wrap a long paragraph for the packet PDF, whose renderer draws one
+ * fixed-width line at a time and truncates at 110 characters. Legal
+ * statement text must never be silently cut (TAXBEN-2 review).
+ */
+export function wrapPdfLine(text: string, width = 100): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current && current.length + 1 + word.length > width) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? `${current} ${word}` : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+}
+
 export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
   const { PDFDocument, StandardFonts } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
@@ -363,6 +399,27 @@ export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
     push("");
     push("Home office", true);
     push("The business facts say a home office is used. The method and amount are worked out with the CPA.");
+  }
+  if (packet.elections) {
+    const e = packet.elections;
+    push("");
+    push("Elections and statements", true);
+    push(`Return due date: ${e.dueOnKey}. With an extension: ${e.extensionKey}.`);
+    const pushStatement = (statement: string) => {
+      for (const paragraph of statement.split("\n")) {
+        if (!paragraph.trim()) push("");
+        else for (const line of wrapPdfLine(paragraph)) push(line);
+      }
+    };
+    pushStatement(e.deMinimisText);
+    if (e.electOutText) {
+      push("");
+      pushStatement(e.electOutText);
+    }
+    if (e.startupNoteText) {
+      push("");
+      pushStatement(e.startupNoteText);
+    }
   }
   push("");
   push(`Prepared ${businessDateKey(new Date())}. Amounts tie to the approved filing numbers.`);

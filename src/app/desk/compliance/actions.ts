@@ -225,6 +225,8 @@ export async function prepareGuidedAction(filingId: string): Promise<ComplianceA
       const year = yearOfPeriodKey(filing.periodKey);
       if (year === null) return { error: "That filing's year could not be read." };
       const profile = await getComplianceProfile();
+      const { buildElectionStatements } = await import("@/domains/taxben/elections");
+      const { prisma } = await import("@/lib/prisma");
       await prepareFiling(user.id, filingId, {
         year,
         scheduleC: await computeScheduleCYear(year),
@@ -232,6 +234,7 @@ export async function prepareGuidedAction(filingId: string): Promise<ComplianceA
         worksheet4562: await build4562Worksheet(year),
         worksheet4797: await build4797Worksheet(year),
         homeOffice: profile.hasHomeOffice,
+        elections: await buildElectionStatements(prisma, year, businessDateKey(filing.dueOn)),
       } as unknown as Record<string, unknown>);
       revalidatePath(`/desk/compliance/${filingId}`);
       revalidatePath("/desk/compliance");
