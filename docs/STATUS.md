@@ -1,3 +1,6 @@
+## October 27 — AR-11 page-budget update after concurrent tax delivery
+Five CI browser builds on PR #691 independently measured new `/desk/sales-tax/benefits` at 303.09 KB gzip. Added 310 KB to the committed route inventory without changing the growth threshold or disabling checks. Exact-head CI and Reviewgate must pass on the updated commit before merge.
+
 ## October 27 — Lane 1 measured JavaScript size guard (PR #691)
 Production builds verified 150 desk page budgets including new tax and vault routes; the checker and exact-head CI passed at `5b0faf88`. Reconciled the branch with current main after a real merge conflict while preserving concurrent work. Recheck new-head CI and Reviewgate before merge. AR-11 real-phone proof remains on the owner checklist.
 
