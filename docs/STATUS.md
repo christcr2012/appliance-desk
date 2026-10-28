@@ -1,3 +1,17 @@
+## October 27 — OPS-3 finished + Lane 7 parked list (branch `ai/claude/ops3-mileage-feed`)
+
+Tax packet line 9 (car and truck) now follows your mileage choice: logged business miles x the dated IRS rate under the
+standard rate, or the books' vehicle costs under actual costs, never both, with the other way shown for comparison (also on
+the Vehicle page). The driver view prompts for the odometer before the first stop and after the last. Tests on real Postgres
+pass. The few Lane 7 items that are deliberately not built, with why and what would unblock them, are listed in
+docs/ROADMAP.md ("Parked from Lane 7"); nothing in them waits on Chris. Lane 7 build work is otherwise complete.
+
+## October 27 — Lane 7 leftovers written down (branch `ai/claude/lane7-deferred`)
+
+Docs only: ROADMAP.md now lists every OPS item left unbuilt on purpose, with the reason and the trigger that makes it
+buildable, so a later agent knows what to pick up and what not to fake. Next: mileage into Schedule C line 9 (unblocked
+by CMP-2 #660).
+
 ## October 27 — ZONE-1: delivery zones from the address, zone map (in review, PR #604)
 
 Zones are owner settings (Settings › Delivery zones; starting values IN-06, straight line). An address is looked up

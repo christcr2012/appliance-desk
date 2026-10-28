@@ -26,7 +26,7 @@ export default async function DriverViewPage() {
         description="All scheduled visits for the team today."
       />
 
-      <MileageCard vehicles={mileage} />
+      <MileageCard vehicles={mileage} stops={{ total: jobs.length, finished: jobs.filter((j) => j.status === "COMPLETED" || j.status === "CANCELLED").length }} />
 
       {jobs.length === 0 ? (
         <EmptyState

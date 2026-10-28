@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { mileagePrompt } from "@/domains/vehicle/driver-prompt";
 import { finishDayAction, startDayAction, type VehicleActionState } from "../vehicle/actions";
 
 type Vehicle = { id: string; nickname: string; lastOdometer: number; trip: { id: string; startOdometer: number; endOdometer: number | null; miles: number | null } | null };
@@ -20,8 +21,8 @@ function OdometerForm({ action, label, submit, defaultValue }: { action: (prev: 
   );
 }
 
-/** Driver view: start-of-day and end-of-day odometer for the delivery vehicle. */
-export function MileageCard({ vehicles }: { vehicles: Vehicle[] }) {
+/** Driver view: start-of-day and end-of-day odometer for the delivery vehicle. `stops` says how far along the route is. */
+export function MileageCard({ vehicles, stops }: { vehicles: Vehicle[]; stops: { total: number; finished: number } }) {
   if (vehicles.length === 0) return null;
   return (
     <section aria-labelledby="mileage-heading" className="mb-4 space-y-4 rounded-lg border border-line bg-white p-4 shadow-sm">
@@ -29,6 +30,8 @@ export function MileageCard({ vehicles }: { vehicles: Vehicle[] }) {
       {vehicles.map((v) => (
         <div key={v.id} className="space-y-2">
           {vehicles.length > 1 ? <p className="text-sm font-medium">{v.nickname}</p> : null}
+          {mileagePrompt(stops, v.trip) === "FIRST_STOP" ? <p role="status" className="rounded-control border border-line bg-surface p-2 text-sm font-semibold">Before your first stop: enter the odometer reading below so today&apos;s miles are counted.</p> : null}
+          {mileagePrompt(stops, v.trip) === "LAST_STOP" ? <p role="status" className="rounded-control border border-line bg-surface p-2 text-sm font-semibold">That was your last stop: enter the odometer reading now to finish today&apos;s miles.</p> : null}
           {!v.trip ? <OdometerForm action={startDayAction.bind(null, v.id)} label="Odometer reading when you start" submit="Start the day" defaultValue={v.lastOdometer} />
             : v.trip.endOdometer == null ? <OdometerForm action={finishDayAction.bind(null, v.trip.id)} label={`Odometer reading now (you started at ${v.trip.startOdometer.toLocaleString("en-US")})`} submit="Finish the day" defaultValue={v.trip.startOdometer} />
             : <p className="text-sm">Done: {(v.trip.miles ?? 0).toLocaleString("en-US")} miles today.</p>}
