@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, Button, StatusPill } from "@/components/ui";
 import { formatBusinessDate } from "@/lib/business-date";
 import type { RepairStage } from "@prisma/client";
-import { checkRepairCaseAction, stopRepairCaseAction } from "./actions";
+import { checkRepairCaseAction, confirmFeedbackRepairAction, stopRepairCaseAction } from "./actions";
 
 const WORDS: Record<RepairStage, string> = {
   PROPOSED: "Waiting to start",
@@ -48,6 +48,12 @@ export function RepairCasesSection({ rows, canManage }: { rows: RepairRow[]; can
                   <input type="hidden" name="caseId" value={row.id} />
                   <Button type="submit" variant="secondary">Check evidence again</Button>
                 </form>
+                {canManage && row.sourceKind === "FEEDBACK" && row.stage === "DEPLOYED" && (
+                  <form action={confirmFeedbackRepairAction}>
+                    <input type="hidden" name="caseId" value={row.id} />
+                    <Button type="submit" variant="secondary">Confirm reported fix works</Button>
+                  </form>
+                )}
                 {canManage && (
                   <form action={stopRepairCaseAction} className="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="caseId" value={row.id} />

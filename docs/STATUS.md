@@ -3779,3 +3779,8 @@ MCP-6 feedback consent correction (Oct 28): fixed the actual `ALLOWED`
 consent state, plus fresh consent checks before candidate PR linking or
 external evidence reads. Seven real PostgreSQL case tests passed, including
 withdrawal/deletion refusal; no feedback case is auto-marked verified.
+
+MCP-6 feedback verification (Oct 28): added owner-only confirmation after
+verified deployment and resolved, consented feedback. Eight disposable-DB
+tests passed with repeat-submit and role checks. Full CI and automatic
+discovery/reminders are not yet complete.

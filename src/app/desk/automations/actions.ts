@@ -103,6 +103,13 @@ export async function checkRepairCaseAction(formData: FormData): Promise<void> {
   revalidatePath("/desk/automations");
 }
 
+export async function confirmFeedbackRepairAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const { confirmFeedbackRepair } = await import("@/domains/agent-control/repair-cases");
+  await confirmFeedbackRepair(session.user.id, String(formData.get("caseId") ?? ""));
+  revalidatePath("/desk/automations");
+}
+
 export async function stopRepairCaseAction(formData: FormData): Promise<void> {
   const session = await requireRole("OWNER");
   if (formData.get("stage") !== "REJECTED") throw new Error("Invalid repair decision.");

@@ -81,3 +81,10 @@ Three new SDK transport tests passed (scope denial, field isolation, unknown
 input); the existing read/consent/evidence suite passed 14 tests and lint
 passed. Journaled repair writes, connection consent, browser/full CI and
 source workflow remain pending.
+
+Owner feedback verification checkpoint (Oct 28): owner-only server action
+requires already-verified deployment evidence, an opted-in nondeleted feedback
+report in RESOLVED state, and a fresh owner confirmation. Six simultaneous
+confirmations produce one final RUNTIME_CHECK evidence row. Eight
+disposable-PostgreSQL cases passed, including staff denial and premature
+confirmation refusal. Changed-file lint passed. Hosted CI remains pending.

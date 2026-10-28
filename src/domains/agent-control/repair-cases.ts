@@ -269,6 +269,40 @@ export async function checkRepairCase(
   });
 }
 
+/** A human-checked feedback fix needs a verified deployment, a later explicit
+ * owner confirmation, and a resolved opted-in report. No agent can call this. */
+export async function confirmFeedbackRepair(actorId: string, caseId: string) {
+  return prisma.$transaction(async tx => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "RepairCase" WHERE "id" = ${caseId} FOR UPDATE`;
+    const record = await tx.repairCase.findUnique({ where: { id: caseId } });
+    if (!record || record.sourceKind !== "FEEDBACK")
+      throw new RepairEvidenceError("FEEDBACK_REPAIR_NOT_FOUND");
+    if (record.stage === "VERIFIED") return record;
+    if (record.stage !== "DEPLOYED" || !record.deployedRevision || !record.mergeSha)
+      throw new RepairEvidenceError("REPAIR_DEPLOYMENT_NOT_VERIFIED");
+    const report = await tx.feedbackReport.findUnique({ where: { id: record.sourceId },
+      select: { state: true, aiReview: true, contentRemovedAt: true } });
+    if (!report || report.aiReview !== "ALLOWED" || report.contentRemovedAt)
+      throw new RepairEvidenceError("REPORT_HAS_NO_AGENT_PERMISSION");
+    if (report.state !== "RESOLVED")
+      throw new RepairEvidenceError("FEEDBACK_FIX_NOT_CONFIRMED");
+    const deployment = await tx.repairEvidence.findFirst({ where: {
+      caseId, kind: "DEPLOYMENT", ref: record.deployedRevision, status: "VERIFIED",
+    }, orderBy: { checkedAt: "desc" } });
+    if (!deployment?.checkedAt || deployment.checkedAt >= new Date())
+      throw new RepairEvidenceError("REPAIR_DEPLOYMENT_NOT_VERIFIED");
+    const updated = await tx.repairCase.update({ where: { id: caseId }, data: {
+      stage: "VERIFIED", blocker: null, verifiedAt: new Date(), version: { increment: 1 },
+    } });
+    await tx.repairEvidence.create({ data: { caseId, kind: "RUNTIME_CHECK",
+      ref: "feedback:" + record.sourceId, status: "VERIFIED",
+      verifier: "owner-in-app", checkedAt: new Date(),
+      detail: { reportState: "RESOLVED", deployedRevision: record.deployedRevision } } });
+    return updated;
+  });
+}
+
 export async function stopRepairCase(actorId: string, caseId: string,
   state: "REJECTED" | "SUPERSEDED", reason: string) {
   const blocker = safe(reason, 500);

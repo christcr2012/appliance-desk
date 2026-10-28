@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   createRepairCase, linkRepairPullRequest, checkRepairCase, stopRepairCase, listRepairCases,
+  confirmFeedbackRepair,
 } from "@/domains/agent-control/repair-cases";
 
 const actorId = "mcp-repair-user-" + randomUUID();
@@ -105,6 +106,42 @@ describe("MCP-6 disposable PostgreSQL repair cases", () => {
       data: { aiReview: "ALLOWED", contentRemovedAt: new Date() } });
     await expect(createRepairCase(reportInput)).rejects
       .toMatchObject({ code: "REPORT_HAS_NO_AGENT_PERMISSION" });
+  });
+
+  it("requires verified deployment and a resolved report before owner confirms feedback, idempotently", async () => {
+    const record = await prisma.repairCase.findFirstOrThrow({ where: {
+      sourceKind: "FEEDBACK", sourceId: feedbackReportId,
+    } });
+    await expect(confirmFeedbackRepair(actorId, record.id)).rejects
+      .toMatchObject({ code: "REPAIR_DEPLOYMENT_NOT_VERIFIED" });
+    const mergedSha = "b".repeat(40);
+    const runningSha = "c".repeat(40);
+    await prisma.repairCase.update({ where: { id: record.id }, data: {
+      stage: "DEPLOYED", mergeSha: mergedSha, deployedRevision: runningSha,
+    } });
+    await prisma.repairEvidence.create({ data: { caseId: record.id,
+      kind: "DEPLOYMENT", ref: runningSha, status: "VERIFIED", verifier: "running-app",
+      checkedAt: new Date(Date.now() - 60_000),
+    } });
+    await prisma.feedbackReport.update({ where: { id: feedbackReportId }, data: {
+      aiReview: "ALLOWED", contentRemovedAt: null, state: "AWAITING_VERIFICATION",
+    } });
+    await expect(confirmFeedbackRepair(actorId, record.id)).rejects
+      .toMatchObject({ code: "FEEDBACK_FIX_NOT_CONFIRMED" });
+    await prisma.feedbackReport.update({ where: { id: feedbackReportId }, data: {
+      state: "RESOLVED",
+    } });
+    await prisma.user.update({ where: { id: actorId }, data: { role: "STAFF" } });
+    await expect(confirmFeedbackRepair(actorId, record.id)).rejects.toThrow();
+    await prisma.user.update({ where: { id: actorId }, data: { role: "OWNER" } });
+    const results = await Promise.all(Array.from({ length: 6 }, () =>
+      confirmFeedbackRepair(actorId, record.id)));
+    expect(new Set(results.map(r => r.id)).size).toBe(1);
+    expect(results[0].stage).toBe("VERIFIED");
+    expect(results[0].verifiedAt).not.toBeNull();
+    expect(await prisma.repairEvidence.count({ where: { caseId: record.id,
+      kind: "RUNTIME_CHECK", status: "VERIFIED", verifier: "owner-in-app",
+    } })).toBe(1);
   });
 
   it("rejects invented sources and personal information", async () => {
