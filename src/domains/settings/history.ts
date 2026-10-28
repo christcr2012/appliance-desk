@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { assertCapability } from "@/domains/capabilities";
 import type { Prisma } from "@prisma/client";
 import { SettingsConflictError, settingEffect } from "./effects";
+import { settingRowByKey } from "./catalog";
+import { SettingsValidationError, validateSettingsCrossFields } from "./cross-fields";
+import { requireRole } from "@/lib/session";
 
 /**
  * Settings history (Batch O, O-1 / design D-O1).
@@ -14,7 +17,7 @@ import { SettingsConflictError, settingEffect } from "./effects";
  * Undo only ever writes the BusinessSettings row (stop rule S-O3) and writes its own "Undo of …" audit row.
  */
 
-type Kind = "money" | "text" | "yesno" | "number" | "list" | "days" | "choice";
+type Kind = "money" | "text" | "yesno" | "number" | "list" | "days" | "choice" | "hours" | "percent";
 type Spec = { label: string; kind: Kind };
 
 /** The everyday settings that can be undone from the history screen. */
@@ -33,13 +36,25 @@ export const UNDOABLE_SETTINGS: Record<string, Spec> = {
   depositEnabled: { label: "Deposits", kind: "yesno" },
   lateFeeGraceDays: { label: "Late fee grace days", kind: "days" },
   lateFeeFlatCents: { label: "Flat late fee", kind: "money" },
-  lateFeePercent: { label: "Late fee percent", kind: "number" },
+  lateFeePercent: { label: "Late fee percent", kind: "percent" },
   sixMonthPrepayDiscountSetCents: { label: "6-month prepay discount (washer and dryer set)", kind: "money" },
   sixMonthPrepayDiscountSingleCents: { label: "6-month prepay discount (single appliance)", kind: "money" },
   twelveMonthPrepayDiscountSetCents: { label: "12-month prepay discount (washer and dryer set)", kind: "money" },
   twelveMonthPrepayDiscountSingleCents: { label: "12-month prepay discount (single appliance)", kind: "money" },
   twelveMonthPrepayFreeMonthEnabled: { label: "Free month with 12-month prepay", kind: "yesno" },
   referralRewardCents: { label: "Referral reward", kind: "money" },
+  // AR-8: the rows the settings catalog added — plain everyday settings, undoable like the rest.
+  relocationFeeCents: { label: "Moving an appliance to a new address", kind: "money" },
+  missedTripFeeCents: { label: "Trip fee when nobody is home", kind: "money" },
+  deliveryMorningStartHour: { label: "Morning window starts", kind: "hours" },
+  deliveryMorningEndHour: { label: "Morning window ends", kind: "hours" },
+  deliveryAfternoonStartHour: { label: "Afternoon window starts", kind: "hours" },
+  deliveryAfternoonEndHour: { label: "Afternoon window ends", kind: "hours" },
+  lemonRepairPercent: { label: "Repair cost flag (share of rent)", kind: "percent" },
+  bankPaymentSlowBusinessDays: { label: "Days a bank payment may take", kind: "days" },
+  lateFeeNoticeDaysBefore: { label: "Late fee warning days", kind: "days" },
+  exportPayoutLines: { label: "Include payouts in accounting exports", kind: "choice" },
+  tenantContactRetentionMonths: { label: "Months to keep a former tenant's contact details", kind: "number" },
   draftReservationHoldDays: { label: "Days to hold a draft reservation", kind: "days" },
   receiptFileKeepDays: { label: "Days to keep a removed receipt file", kind: "days" },
   unsentPhotoKeepDays: { label: "Days to keep a photo removed before sending", kind: "days" },
@@ -60,6 +75,12 @@ function words(key: string): string {
 export function formatSettingValue(kind: Kind | undefined, value: unknown): string {
   if (value === null || value === undefined || value === "") return "not set";
   if (kind === "money" && typeof value === "number") return `$${(value / 100).toFixed(2)}`;
+  // AR-8 (spec section 6): hours read as a clock time, percents carry their sign.
+  if (kind === "hours" && typeof value === "number") {
+    const h = ((value % 24) + 24) % 24;
+    return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "am" : "pm"}`;
+  }
+  if (kind === "percent" && typeof value === "number") return `${value}%`;
   if (kind === "yesno" || typeof value === "boolean") return value ? "On" : "Off";
   if (Array.isArray(value)) {
     if (value.some((v) => v !== null && typeof v === "object")) return value.length ? "changed (see the settings screen)" : "none";
@@ -112,6 +133,8 @@ export type SettingsHistoryRow = {
 };
 
 export async function listSettingsHistory(limit = 50): Promise<SettingsHistoryRow[]> {
+  // AR-8 (spec section 1): the read guards itself, not just its page (same reason as PR #594).
+  await requireRole("OWNER", "ADMIN");
   const [rows, current] = await Promise.all([
     prisma.auditLog.findMany({
       where: { action: { in: ["settings.update", "settings.undo"] } },
@@ -153,6 +176,7 @@ export class SettingsUndoError extends Error {}
 /** The reasons an undo can be refused or conflict, in the words shown to the owner. */
 const MSG = {
   notUndoable: "That setting cannot be undone from here.",
+  ownerOnly: "Only the owner can undo this change.",
   gone: "That change is no longer in the history.",
   untouched: "That change did not touch this setting.",
   noSettings: "Settings were not found.",
@@ -178,10 +202,15 @@ async function checkUndo(db: DbClient, auditId: string, key: string): Promise<Un
   const now = current as unknown as Record<string, unknown>;
   if (!same(now[key], after[key])) return { ok: false, reason: MSG.again };
   // A newer change that put the same value back still counts as "changed again": it was a newer decision.
+  // AR-8 (spec section 1): the newer-rows scan is bounded. If 500 newer rows exist the change is too old to
+  // verify safely here, so the undo is refused rather than checked against a partial picture.
   const newer = await db.auditLog.findMany({
     where: { action: { in: ["settings.update", "settings.undo"] }, createdAt: { gt: row.createdAt }, id: { not: row.id } },
     select: { oldValue: true, newValue: true },
+    orderBy: { createdAt: "asc" },
+    take: 500,
   });
+  if (newer.length >= 500) return { ok: false, reason: "This change is too old to undo here." };
   if (newer.some((n) => !same(((n.oldValue ?? {}) as Record<string, unknown>)[key], ((n.newValue ?? {}) as Record<string, unknown>)[key])))
     return { ok: false, reason: MSG.again };
   return { ok: true, before, after, now, rowId: row.id };
@@ -235,9 +264,25 @@ export async function undoSettingsChange(userId: string, auditId: string, key: s
       const held = (now as unknown as Record<string, unknown> | null)?.[key];
       if (expectedCurrent !== JSON.stringify(held ?? null)) throw new SettingsConflictError();
     }
+    // AR-8 review (P1): the catalog's owner-only settings stay owner-only on
+    // the undo path too — an admin who may edit settings cannot undo the
+    // owner's change to one of them, from either undo entry point.
+    if (settingRowByKey(key)?.who === "owner") {
+      const actor = await tx.user.findUnique({ where: { id: userId }, select: { role: true } });
+      if (actor?.role !== "OWNER") throw new SettingsUndoError(MSG.ownerOnly);
+    }
     const checked = await checkUndo(tx, auditId, key);
     if (!checked.ok) throw new SettingsUndoError(checked.reason);
     const restored = (checked.before[key] ?? null) as Prisma.InputJsonValue | null;
+    // AR-8 review (P2): the restored combination must be one the save path
+    // would accept — undoing one delivery-window field must not recreate a
+    // window whose start is not before its end.
+    try {
+      validateSettingsCrossFields(checked.now, { [key]: restored });
+    } catch (error) {
+      if (error instanceof SettingsValidationError) throw new SettingsUndoError(error.message);
+      throw error;
+    }
     const data = { [key]: restored } as Prisma.BusinessSettingsUpdateInput;
     const updated = await tx.businessSettings.update({ where: { id: "singleton" }, data });
     await tx.auditLog.create({

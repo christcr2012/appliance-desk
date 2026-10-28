@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
+import { fieldsRevision } from "@/domains/settings/preview";
+import { SettingsConflictError } from "@/domains/settings/effects";
 import { writeOffInvoice, writeOffInvoiceInTx } from "@/domains/billing/manual-payments";
 import { postExpense, postExpenseInTx, POST_EXPENSE_TX_OPTIONS } from "@/domains/books/expenses";
 import { postBookSourceAfterCommit } from "@/domains/books/immediate";
@@ -93,6 +95,33 @@ export async function saveApprovalLimits(ownerId: string, input: { limitsCents: 
         userId: ownerId, action: "settings.approval_limits", entityType: "BusinessSettings", entityId: "singleton",
         oldValue: { thresholds: parseApprovalThresholds(before.approvalThresholds), expiryDays: before.approvalExpiryDays },
         newValue: { thresholds: next, expiryDays: input.expiryDays },
+      },
+    });
+  });
+}
+
+/**
+ * AR-8: the approval-expiry half of saveApprovalLimits on its own, so the
+ * Settings row can save expiry without resubmitting the money limits.
+ * Same lock, same audit action, same 1–30 day rule.
+ */
+export async function setApprovalExpiryDays(ownerId: string, expiryDays: number, expectedRevision?: string) {
+  if (!Number.isSafeInteger(expiryDays) || expiryDays < 1 || expiryDays > 30)
+    throw new ApprovalInputError("Requests can wait between 1 and 30 days.");
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+    const before = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" }, select: { approvalThresholds: true, approvalExpiryDays: true } });
+    // AR-8 review (P2): a settings-row save carries the revision the page was
+    // drawn from; refuse inside the same locked transaction when it is stale.
+    if (expectedRevision !== undefined && fieldsRevision(before, ["approvalExpiryDays"]) !== expectedRevision)
+      throw new SettingsConflictError();
+    await tx.businessSettings.update({ where: { id: "singleton" }, data: { approvalExpiryDays: expiryDays } });
+    await tx.auditLog.create({
+      data: {
+        userId: ownerId, action: "settings.approval_limits", entityType: "BusinessSettings", entityId: "singleton",
+        oldValue: { thresholds: parseApprovalThresholds(before.approvalThresholds), expiryDays: before.approvalExpiryDays },
+        newValue: { thresholds: parseApprovalThresholds(before.approvalThresholds), expiryDays },
       },
     });
   });
