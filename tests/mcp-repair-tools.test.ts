@@ -4,10 +4,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { buildMcpServer } from "@/mcp/server";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 
-const fakes = vi.hoisted(() => ({ actor: vi.fn(), list: vi.fn(), get: vi.fn() }));
+const fakes = vi.hoisted(() => ({ actor: vi.fn(), list: vi.fn(), get: vi.fn(), preview: vi.fn() }));
 vi.mock("@/mcp/tools/diagnostics", () => ({ checkMcpActor: fakes.actor }));
 vi.mock("@/domains/agent-control/repair-cases", () => ({
   listRepairCases: fakes.list, getRepairCase: fakes.get,
+}));
+vi.mock("@/domains/agent-control/operations", () => ({
+  previewAgentOperation: fakes.preview,
 }));
 
 async function connect(scopes: AgentContext["scopes"]) {
@@ -64,6 +67,41 @@ describe("MCP-6 repair reads", () => {
       expect(fakes.list).toHaveBeenCalledWith("owner-fixture", 5);
       expect(fakes.get).toHaveBeenCalledWith("owner-fixture", fixture.id);
       expect((listing.structuredContent as { cases: unknown[] }).cases).toHaveLength(1);
+    } finally { await close(); }
+  });
+
+  it("denies repair writes when the connection lacks repairs:write", async () => {
+    const { client, close } = await connect(["ops:read"]);
+    try {
+      const result = await client.callTool({ name: "appliance_repair_create_case", arguments: {
+        sourceKind: "SYSTEM_ISSUE", sourceId: "c123456789012345",
+        expectedBehavior: "The backup finishes", howToCheck: "automation:backup",
+        requestKey: "request_0123456789",
+      } });
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result)).toContain("FORBIDDEN_SCOPE");
+      expect(fakes.preview).not.toHaveBeenCalled();
+    } finally { await close(); }
+  });
+
+  it("only previews a repair write, binding the owner-approved journal action", async () => {
+    fakes.preview.mockResolvedValue({ previewId: "operation-test-123456", state: "PREVIEWED",
+      summary: "Open repair", changes: [], costNote: null,
+      approval: "OWNER_IN_APP", expiresAt: "2026-10-28T23:00:00Z" });
+    const { client, close } = await connect(["repairs:write"]);
+    try {
+      const args = { sourceKind: "SYSTEM_ISSUE", sourceId: "c123456789012345",
+        expectedBehavior: "The backup finishes", howToCheck: "automation:backup",
+        requestKey: "request_0123456789" };
+      const result = await client.callTool({ name: "appliance_repair_create_case", arguments: args });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({ approval: "OWNER_IN_APP", state: "PREVIEWED" });
+      expect(fakes.preview).toHaveBeenCalledWith(expect.objectContaining({ userId: "owner-fixture" }), {
+        action: "REPAIR_CREATE_CASE",
+        args: { sourceKind: args.sourceKind, sourceId: args.sourceId,
+          expectedBehavior: args.expectedBehavior, howToCheck: args.howToCheck },
+        requestKey: args.requestKey,
+      });
     } finally { await close(); }
   });
 

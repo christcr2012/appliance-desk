@@ -30,6 +30,7 @@ function safe(value: string, max: number): string {
 }
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+export const safeRepairInstruction = (value: string) => safe(value, 2000);
 
 /** Idempotent create. Actor authority, source existence and prohibited personal data are all checked in one TX. */
 export async function createRepairCase(input: RepairCaseInput) {

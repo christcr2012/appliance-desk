@@ -261,7 +261,14 @@ export function buildMcpServer(context: AgentContext): McpServer {
   const actionName = z.enum([
     "RUN_DIAGNOSTIC_SWEEP", "RETRY_DATABASE_BACKUP", "RETRY_MEDIA_COPY",
     "PAUSE_AUTOMATION", "RESUME_AUTOMATION", "VERIFY_RECOVERY_ARTIFACT", "APPLY_DECISION_ANSWERS",
+    "REPAIR_CREATE_CASE", "REPAIR_LINK_EVIDENCE", "REPAIR_CHECK_CASE",
   ]);
+  const previewResult = z.object({
+    previewId: z.string(), state: z.string(), summary: z.string(),
+    changes: z.array(z.object({ label: z.string(), now: z.string(), after: z.string() })),
+    costNote: z.string().nullable(), approval: z.string(), expiresAt: z.string(),
+  });
+  const requestKeySchema = z.string().min(12).max(128).regex(/^[a-zA-Z0-9_-]+$/);
   const operationResult = z.object({
     id: z.string(), state: z.string(), action: z.string(), targetRef: z.string().nullable(),
     failureCode: z.string().nullable(), safeResult: z.unknown().nullable(),
@@ -292,15 +299,48 @@ export function buildMcpServer(context: AgentContext): McpServer {
       action: actionName, args: z.record(z.string(), z.unknown()),
       requestKey: z.string().min(12).max(128).regex(/^[a-zA-Z0-9_-]+$/),
     }),
-    outputSchema: z.object({
-      previewId: z.string(), state: z.string(), summary: z.string(),
-      changes: z.array(z.object({ label: z.string(), now: z.string(), after: z.string() })),
-      costNote: z.string().nullable(), approval: z.string(), expiresAt: z.string(),
-    }),
+    outputSchema: previewResult,
     annotations: writePolicy,
   }, async ({ action, args, requestKey }) => actionCall(
-    action === "APPLY_DECISION_ANSWERS" ? "decisions:apply" : "ops:maintain",
+    action.startsWith("REPAIR_") ? "repairs:write" :
+      action === "APPLY_DECISION_ANSWERS" ? "decisions:apply" : "ops:maintain",
     () => previewAgentOperation(context, { action, args, requestKey }),
+  ));
+
+  // Every repair mutation is an MCP-5 journal PREVIEW, never a direct write.
+  // Only the owner can approve the durable operation in the Assistant Activity
+  // screen. Execute requires the original preview ID and request key.
+  server.registerTool("appliance_repair_create_case", {
+    title: "Propose a repair case", description: "Prepare a source-linked repair for owner approval. Does not create the case yet.",
+    inputSchema: z.strictObject({
+      sourceKind: z.enum(["SYSTEM_ISSUE", "FEEDBACK"]),
+      sourceId: z.string().min(10).max(128).regex(/^[a-zA-Z0-9_-]+$/),
+      expectedBehavior: z.string().min(1).max(2000), howToCheck: z.string().min(1).max(2000),
+      requestKey: requestKeySchema,
+    }), outputSchema: previewResult, annotations: writePolicy,
+  }, async ({ sourceKind, sourceId, expectedBehavior, howToCheck, requestKey }) => actionCall(
+    "repairs:write", () => previewAgentOperation(context, { action: "REPAIR_CREATE_CASE",
+      args: { sourceKind, sourceId, expectedBehavior, howToCheck }, requestKey }),
+  ));
+
+  server.registerTool("appliance_repair_link_evidence", {
+    title: "Propose pull request evidence", description: "Record a candidate PR only after owner approval. GitHub verification is separate.",
+    inputSchema: z.strictObject({
+      caseId: z.string().min(12).max(100), kind: z.literal("PR"),
+      ref: z.string().regex(/^[1-9]\d{0,9}$/), requestKey: requestKeySchema,
+    }), outputSchema: previewResult, annotations: writePolicy,
+  }, async ({ caseId, kind, ref, requestKey }) => actionCall(
+    "repairs:write", () => previewAgentOperation(context, { action: "REPAIR_LINK_EVIDENCE",
+      args: { caseId, kind, ref }, requestKey }),
+  ));
+
+  server.registerTool("appliance_repair_check", {
+    title: "Propose a fresh repair check", description: "Verify public GitHub, live revision and a later health run only after owner approval.",
+    inputSchema: z.strictObject({ caseId: z.string().min(12).max(100), requestKey: requestKeySchema }),
+    outputSchema: previewResult, annotations: writePolicy,
+  }, async ({ caseId, requestKey }) => actionCall(
+    "repairs:write", () => previewAgentOperation(context, { action: "REPAIR_CHECK_CASE",
+      args: { caseId }, requestKey }),
   ));
 
   server.registerTool("appliance_action_execute", {

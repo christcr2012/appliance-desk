@@ -35,7 +35,7 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
    unverified/failed source and private-text rejection. Build/lint, exact-head
    GitHub CI and review-gate must pass before merge.
 
-**Implementation status:** plan committed; no MCP-6 feature code built yet.
+**Implementation status:** in progress on the dedicated MCP-6 branch; no PR published or merged yet.
 
 ## Implementation checkpoint — October 28 (NOT COMPLETE)
 
@@ -55,10 +55,18 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
 - Browser proof is **not** complete: `e2e/mcp-repair-cases.spec.ts` is registered
   but the local 4 GB sandbox's Next.js build was killed (exit 137). GitHub CI
   must run it on a published, fully implemented head.
-- Still to build before publishing: MCP scope/transport and journaled tools,
-  automated issue/feedback workflow,
-  owner reminders, exhaustive runtime stage tests and final browser/accessibility
-  acceptance. No PR is opened and this card is not ready to merge.
+- Journal and MCP tool checkpoint: added `repairs:write` consent scope;
+  journal-backed owner-approved create, link-candidate and check actions; and
+  bounded read-only case list/details. `tests/mcp-repair-tools.test.ts` and the
+  existing MCP catalog/security suites passed all 19 focused tests without
+  skips. `tests/mcp-repair-journal-integration.test.ts` passed 3/3 real
+  PostgreSQL tests on the MCP-5 reconciled database: refused execution before
+  approval, replay did not repeat the write, rejected a revoked scope, and
+  preserved the open system issue when public GitHub evidence could not verify
+  a proposed PR. Changed-file lint passed.
+- Still to build: the opted-in feedback human check flow, automatic issue
+  discovery, owner follow-up/reminders, complete runtime stage tests and hosted
+  browser accessibility CI. No PR is opened and this card is not ready to merge.
 
 Read tool checkpoint (October 28): the MCP catalog now offers bounded,
 strict-schema `appliance_repair_list_cases` and `appliance_repair_get_case`

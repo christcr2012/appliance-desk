@@ -3763,3 +3763,9 @@ full MCP write tools and hosted CI are still pending.
 MCP-6 read-only transport checkpoint (Oct 28): bounded scoped repair list
 and detail tools have 3 passing SDK tests; secure write/approval support
 and final CI remain unfinished.
+
+MCP-6 journal checkpoint (October 28): MCP-5 reconciled branch; new
+`repairs:write` OAuth consent, 3 owner-approved journal action previews, and
+17+2 passing transport/unit tests. Three real-database tests verified owner
+approval, replay idempotency, revoked grants, and unverified PR preservation.
+Feedback human check, automated source workflow, and full CI are pending.

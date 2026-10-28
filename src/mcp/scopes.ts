@@ -1,5 +1,5 @@
 /** MCP-3 read-only assistant grants; later cards add explicit action scopes. */
-export const MCP_SCOPES = ["ops:read", "decisions:read", "ops:maintain", "decisions:apply"] as const;
+export const MCP_SCOPES = ["ops:read", "decisions:read", "ops:maintain", "decisions:apply", "repairs:write"] as const;
 export type McpScope = (typeof MCP_SCOPES)[number];
 /** Standard OAuth refresh permission; not a business-data or tool scope. */
 export const OAUTH_SCOPES = [...MCP_SCOPES, "offline_access"] as const;
@@ -10,6 +10,7 @@ export const SCOPE_WORDS: Record<OAuthScope, string> = {
   "decisions:read": "See open business questions and their starting values",
   "ops:maintain": "Run approved health and backup maintenance actions",
   "decisions:apply": "Apply business answers after explicit approval",
+  "repairs:write": "Open and track repair cases with owner approval",
   "offline_access": "Stay connected with renewable access until you disconnect the assistant",
 };
 

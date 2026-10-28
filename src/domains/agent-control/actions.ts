@@ -11,6 +11,9 @@ import { verifyBackupReadback } from "@/domains/backup/artifacts";
 import { applyAnswers, getDecision, previewAnswers, type ParsedAnswer } from "@/domains/decisions";
 import { decisionSubject } from "@/domains/decisions/registry";
 import { matchOption } from "@/domains/decisions/rules";
+import { createRepairCase, linkRepairPullRequest, checkRepairCase,
+  safeRepairInstruction } from "@/domains/agent-control/repair-cases";
+import { assertNoKnownPersonNames } from "@/domains/system-issues/ops-redaction";
 import type { AgentContext } from "./authorization";
 import { canonicalAgentArgs, type JournalAction, type JournalPreview } from "./journal";
 
@@ -30,6 +33,19 @@ const answerArgs = z.object({
     answeredOn: z.string().max(24).nullish(),
   }).strict()).min(1).max(200),
 }).strict();
+
+const repairCreateArgs = z.object({
+  sourceKind: z.enum(["SYSTEM_ISSUE", "FEEDBACK"]),
+  sourceId: z.string().min(10).max(128).regex(/^[a-zA-Z0-9_-]+$/),
+  expectedBehavior: z.string().min(1).max(2000),
+  howToCheck: z.string().min(1).max(2000),
+}).strict();
+const repairLinkArgs = z.object({
+  caseId: z.string().min(12).max(100),
+  kind: z.literal("PR"),
+  ref: z.string().regex(/^[1-9]\d{0,9}$/),
+}).strict();
+const repairCheckArgs = z.object({ caseId: z.string().min(12).max(100) }).strict();
 
 export type PreparedAgentAction = {
   args: Record<string, unknown>;
@@ -57,6 +73,12 @@ export function parseAgentAction(action: JournalAction, raw: unknown): Record<st
       return artifactArgs.parse(raw);
     case "APPLY_DECISION_ANSWERS":
       return answerArgs.parse(raw);
+    case "REPAIR_CREATE_CASE":
+      return repairCreateArgs.parse(raw);
+    case "REPAIR_LINK_EVIDENCE":
+      return repairLinkArgs.parse(raw);
+    case "REPAIR_CHECK_CASE":
+      return repairCheckArgs.parse(raw);
     default:
       throw new Error("UNKNOWN_ACTION");
   }
@@ -189,6 +211,67 @@ export async function prepareAgentAction(
       }) };
       break;
     }
+    case "REPAIR_CREATE_CASE": {
+      const sourceKind = String(args.sourceKind);
+      const sourceId = String(args.sourceId);
+      const expectedBehavior = safeRepairInstruction(String(args.expectedBehavior));
+      const howToCheck = safeRepairInstruction(String(args.howToCheck));
+      if (sourceKind === "SYSTEM_ISSUE" && !/^automation:[a-z0-9-]{2,70}$/.test(howToCheck))
+        throw new Error("REPAIR_REQUIRES_NAMED_AUTOMATION_CHECK");
+      await prisma.$transaction(async tx => {
+        await assertNoKnownPersonNames(tx, [expectedBehavior, howToCheck].join(" "));
+      });
+      const issue = sourceKind === "SYSTEM_ISSUE"
+        ? await prisma.systemIssue.findUnique({ where: { id: sourceId } }) : null;
+      const report = sourceKind === "FEEDBACK"
+        ? await prisma.feedbackReport.findUnique({ where: { id: sourceId } }) : null;
+      if (!issue && !report) throw new Error("REPAIR_SOURCE_NOT_FOUND");
+      if (report && (report.contentRemovedAt || report.aiReview !== "OPTED_IN"))
+        throw new Error("REPORT_HAS_NO_AGENT_PERMISSION");
+      const active = await prisma.repairCase.findFirst({ where: {
+        sourceKind, sourceId, stage: { notIn: ["VERIFIED", "REJECTED", "SUPERSEDED"] },
+      } });
+      targetRef = sourceId;
+      version = { sourceVersion: issue?.version ?? report?.version,
+        activeId: active?.id ?? null, activeVersion: active?.version ?? null,
+        revision: process.env.VERCEL_GIT_COMMIT_SHA ?? null };
+      preview = { summary: active ? "Use the existing repair case" : "Open a repair case for this problem",
+        changes: [
+          { label: "Problem", now: sourceKind, after: expectedBehavior.slice(0, 400) },
+          { label: "How to check", now: "Not yet verified", after: howToCheck.slice(0, 400) },
+        ] };
+      verifyIntent = { sourceKind, sourceId, existingCaseId: active?.id ?? null };
+      break;
+    }
+    case "REPAIR_LINK_EVIDENCE": {
+      const caseId = String(args.caseId);
+      const record = await prisma.repairCase.findUnique({ where: { id: caseId } });
+      if (!record || ["VERIFIED", "REJECTED", "SUPERSEDED"].includes(record.stage))
+        throw new Error("REPAIR_CASE_NOT_OPEN");
+      const prNumber = Number(args.ref);
+      if (record.prNumber && record.prNumber !== prNumber)
+        throw new Error("REPAIR_PR_ALREADY_LINKED");
+      targetRef = caseId;
+      version = { version: record.version, stage: record.stage, prNumber: record.prNumber };
+      preview = { summary: "Attach proposed GitHub pull request to this repair",
+        changes: [{ label: "Candidate PR", now: record.prNumber ? String(record.prNumber) : "None",
+          after: `PR #${prNumber} (unverified until the app checks GitHub)` }] };
+      verifyIntent = { caseId, prNumber };
+      break;
+    }
+    case "REPAIR_CHECK_CASE": {
+      const caseId = String(args.caseId);
+      const record = await prisma.repairCase.findUnique({ where: { id: caseId } });
+      if (!record || !record.prNumber || ["VERIFIED", "REJECTED", "SUPERSEDED"].includes(record.stage))
+        throw new Error("REPAIR_CASE_NOT_READY_TO_CHECK");
+      targetRef = caseId;
+      version = { version: record.version, stage: record.stage, prNumber: record.prNumber };
+      preview = { summary: "Independently check GitHub and live repair evidence",
+        changes: [{ label: "Repair", now: record.stage,
+          after: "Read evidence only; no issue is closed without an independent check" }] };
+      verifyIntent = { caseId, priorVersion: record.version };
+      break;
+    }
     default:
       throw new Error("UNKNOWN_ACTION");
   }
@@ -257,6 +340,23 @@ export async function dispatchAgentAction(
         throw new Error("PREVIEW_CHANGED");
       const applied = await applyAnswers(ctx.userId, answers, confirmToken, { via: "MCP", agentOperationId: operationId });
       return { applied: applied.applied, same: applied.same, other: applied.other, skipped: applied.skipped };
+    }
+    case "REPAIR_CREATE_CASE": {
+      const repair = await createRepairCase({ actorId: ctx.userId,
+        sourceKind: args.sourceKind as "SYSTEM_ISSUE" | "FEEDBACK",
+        sourceId: String(args.sourceId), expectedBehavior: String(args.expectedBehavior),
+        howToCheck: String(args.howToCheck) });
+      return { caseId: repair.id, stage: repair.stage };
+    }
+    case "REPAIR_LINK_EVIDENCE": {
+      const linked = await linkRepairPullRequest({ actorId: ctx.userId,
+        caseId: String(args.caseId), prNumber: Number(args.ref) });
+      return { caseId: linked.caseId, prNumber: linked.prNumber, stage: linked.stage };
+    }
+    case "REPAIR_CHECK_CASE": {
+      const checked = await checkRepairCase(ctx.userId, String(args.caseId));
+      if (!checked) throw new Error("REPAIR_CASE_NOT_FOUND");
+      return { caseId: checked.id, stage: checked.stage, blocker: checked.blocker };
     }
     default:
       throw new Error("UNKNOWN_ACTION");
@@ -346,6 +446,36 @@ export async function verifyAgentAction(
       }
       return { ok: verified === answers.length,
         observed: { verifiedAnswers: verified, expectedAnswers: answers.length } };
+    }
+    case "REPAIR_CREATE_CASE": {
+      const caseId = String(result.caseId ?? intent.existingCaseId ?? "");
+      const record = caseId
+        ? await prisma.repairCase.findUnique({ where: { id: caseId } })
+        : await prisma.repairCase.findFirst({ where: {
+          sourceKind: String(intent.sourceKind), sourceId: String(intent.sourceId),
+          stage: { notIn: ["REJECTED", "SUPERSEDED"] },
+        } });
+      const ok = Boolean(record && record.sourceKind === intent.sourceKind && record.sourceId === intent.sourceId);
+      return { ok, observed: { caseId: record?.id ?? null, present: ok } };
+    }
+    case "REPAIR_LINK_EVIDENCE": {
+      const caseId = String(intent.caseId ?? "");
+      const prNumber = Number(intent.prNumber);
+      const [record, candidate] = await Promise.all([
+        prisma.repairCase.findUnique({ where: { id: caseId } }),
+        prisma.repairEvidence.findFirst({ where: {
+          caseId, kind: "PR", ref: String(prNumber), status: "CANDIDATE",
+        } }),
+      ]);
+      const ok = Boolean(record && candidate && record.prNumber === prNumber);
+      return { ok, observed: { candidateStored: ok, prNumber: record?.prNumber ?? null } };
+    }
+    case "REPAIR_CHECK_CASE": {
+      const caseId = String(intent.caseId ?? "");
+      const record = await prisma.repairCase.findUnique({ where: { id: caseId } });
+      const ok = Boolean(record && record.version > Number(intent.priorVersion));
+      return { ok, observed: { stage: record?.stage ?? "NOT_FOUND",
+        independentlyChecked: ok, blocker: record?.blocker ?? null } };
     }
     default:
       throw new Error("UNKNOWN_ACTION");
