@@ -32,16 +32,18 @@ The real Next 16 production build records the gzip JavaScript actually requested
 ## October 27 — AR-12 Settings → Features, Practice and Help (source merged)
 
 PRs #693/#695/#702/#716 all merged with exact-head CI and review gates. The Features screen's seven owner-controlled visibility choices, automatic rules and private Practice link are shipped in source; hiding navigation never revokes direct page access. Practice requires the owner's separate HTTPS testing-app setting and remains unchecked in OWNER-CHECKLIST. The 15 role-aware Help guides are also merged.
-## October 28 — AR-1: Navigation — five areas, area tabs, profile menu, command bar (in progress)
+## October 28 — AR-1: Navigation — five areas, area tabs, profile menu, command bar (PR #721 open)
 
 Picked up by Lane 4 under Chris's direction (Lane 1's queue reassigned). The existing
 implementation from `ai/chatgpt/ar1-five-area-navigation-20261027` (7 commits) is merged
-onto current main on branch `ai/vivienne/ar-1`: mobile five-area bar, responsive desktop
-sidebar, role- and job-role-filtered tabs, profile menu, Ctrl/⌘ K command search through
-the existing permission-aware record search, Help, remembered navigation, Today count
-without a cross-page query, and /desk/more and /desk/control-center redirects. Existing
-deep page URLs and money rules remain intact. Verification (packet suites, typecheck,
-production build, browser spec, preflight) is running here before the PR opens; the AR-0
+onto current main on branch `ai/vivienne/ar-1` and is open as **PR #721**: mobile
+five-area bar, responsive desktop sidebar, role- and job-role-filtered tabs, profile
+menu, Ctrl/⌘ K command search through the existing permission-aware record search,
+Help, remembered navigation, Today count without a cross-page query, and /desk/more
+and /desk/control-center redirects. Existing deep page URLs and money rules remain
+intact. Verified locally: packet suites 51/51, production build exit 0 (full
+typecheck), lint and docs batteries green; the browser spec's local preflight phase
+timed out in this sandbox, so the browser verdict is CI's at the exact head. The AR-0
 owner phone look-over remains an owner item.
 
 ## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
