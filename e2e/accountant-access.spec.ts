@@ -82,7 +82,7 @@ test.describe("ACCT-1 accountant access", () => {
       await expect(acctPage).toHaveURL(/\/desk\/books$/);
 
       // 3. Only the allowed screens: books yes; customers and the vault no.
-      await expect(acctPage.getByRole("heading", { name: "Your books", exact: true })).toBeVisible();
+      await expect(acctPage.getByRole("heading", { name: "Books", exact: true })).toBeVisible();
       await acctPage.goto("/desk/customers");
       await expect(acctPage).toHaveURL(/not-for-accountant/);
       await acctPage.goto("/desk/vault");
@@ -107,7 +107,7 @@ test.describe("ACCT-1 accountant access", () => {
       const light = await new AxeBuilder({ page: acctPage }).withTags(["wcag2a", "wcag2aa"]).analyze();
       expect(light.violations).toEqual([]);
       await acctPage.setViewportSize({ width: 390, height: 844 });
-      await expect(acctPage.getByRole("heading", { name: "Your books", exact: true })).toBeVisible();
+      await expect(acctPage.getByRole("heading", { name: "Books", exact: true })).toBeVisible();
       await acctPage.setViewportSize({ width: 1280, height: 800 });
 
       // 4. The accountant posts a balanced adjusting entry in the month
@@ -131,8 +131,8 @@ test.describe("ACCT-1 accountant access", () => {
       await acctPage.getByRole("button", { name: "Record adjusting entry" }).click();
       await expect(acctPage.getByText(memo)).toBeVisible();
 
-      // 5. The owner sees the change in the feed on Books home.
-      await ownerPage.goto("/desk/books");
+      // 5. The owner sees the change in the feed on For your accountant.
+      await ownerPage.goto("/desk/books/accountant");
       await expect(ownerPage.getByRole("heading", { name: "Changes by your accountant" })).toBeVisible();
       await expect(ownerPage.getByText(new RegExp(`Casey CPA`)).first()).toBeVisible();
       await expect(ownerPage.getByText(new RegExp(tag)).first()).toBeVisible();

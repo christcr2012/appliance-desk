@@ -87,6 +87,8 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Past due | `/desk/collections`, `/desk/collections/[agreementId]` | Second and final past-due notices waiting for your approval (nothing is sent until you press Send), the day-30 decision, recording that a customer agreed to a pickup or a court order, the pickup visit and "Customer objected", the small-claims packet and recording a filing, and the three day settings (Money tab) |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |
+| Month by month | `/desk/books/months` | Every month from your books start: open, ready to review, or locked |
+| For your accountant | `/desk/books/accountant` | The full journal, your accounts, book-asset tax details and fix-by-hand tools — the pages your accountant may ask for |
 | Start your books | `/desk/books/setup` | Owner's four-step guide to the date, opening cash/card balances and expenses paid personally |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
 | Bank statements and cash records | `/desk/books/cash` | Import settled CSV observations and enter source-backed owner cash events; importing does not prove cleared money |

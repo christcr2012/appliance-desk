@@ -16,4 +16,10 @@ Reason: Books and Taxes are separate page families with separate tests.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Started 2026-10-28 by Lane 4 (AR-7a Books first, branch `ai/vivienne/ar-7a`, baseline main `3c8e9799`).
+Step 0a done: execution packet `docs/pr-cards/execution/AR-7.json` created (one packet for both slices,
+the AR-2 pattern) and registered in the work index. Drift check: BA-1/BA-2/BA-3 pages and the report
+functions the spec names are all on main (`profitAndLoss`, `getBookAssets`, `getBooksWorkspace`,
+`getTaxWorkspaceOverview`, BOOKS_* attention in the taxes group). Two build notes: the kit has no
+TaskCard yet — AR-7a adds one (the AR-3 ActionMenu precedent) — and the work index names the browser
+spec `e2e/ar7-books-taxes.spec.ts`, which wins over the spec text's file name.
