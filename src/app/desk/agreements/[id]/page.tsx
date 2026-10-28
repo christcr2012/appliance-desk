@@ -375,6 +375,7 @@ export default async function AgreementDetailPage({
 
   return (
     <>
+    <Toaster />
     <RentalRecordClient
       agreementId={id}
       endOptions={endOpts}
@@ -719,7 +720,6 @@ export default async function AgreementDetailPage({
       </div>
       <ActionBar actions={recordBarActions(primary, [])} label="Rental actions" />
     </RentalRecordClient>
-    <Toaster />
     </>
   );
 }
