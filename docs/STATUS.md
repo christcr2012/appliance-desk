@@ -1,4 +1,4 @@
-## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR pending)
+## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #722)
 
 AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
 gains status tabs with counts (Active, Waiting for signature, Starting,
@@ -15,7 +15,7 @@ form, or "End it today" behind the danger confirmation. Every end path can
 record one optional "Why is it ending?" answer (owner-kept list, starting
 values on Settings › Rental endings; never required, never shown to the
 customer) — AR-9's "why customers left" will read it. Staff keep the
-operational view. PR number to be added when opened.
+operational view.
 
 ## October 28 — FEETAX-1 merged: Optional, separately stated service lines and per-place fee rules
 
