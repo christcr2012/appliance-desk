@@ -1,0 +1,161 @@
+{
+  "acceptance": [
+    "Every figure in INSIGHTS.md sections 4-6 is computed from recorded data with a plain definition (fixture tests).",
+    "Speed to lead counts only opening hours and skips holidays and estimated first contacts (tests incl. DST).",
+    "Win rate uses when leads closed (Lead.closedAt); leads with no known close date are left out and the definition says so.",
+    "Rates and averages wait for 10 leads/rentals; counts always show.",
+    "Old pages redirect; /desk/customers/insights and /desk/inventory/insights do not hit the [id] pages.",
+    "OWNER/ADMIN only; job roles keep exactly today's access (tests); staff refused by every insights function.",
+    "Axe + 5 sizes and keyboard in the browser spec; ci green at the exact head; every review comment read."
+  ],
+  "baseline": "a3726e8c76c862fd3e207f525d24d3e1646b7266",
+  "card": "docs/pr-cards/AR-9.md",
+  "checks": {
+    "browser": [
+      "e2e/ar9-insights.spec.ts"
+    ],
+    "db": [
+      "tests/lead-insights-integration.test.ts",
+      "tests/customer-insights-integration.test.ts",
+      "tests/lead-closed-at-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/business-hours.test.ts",
+      "tests/lead-source-breakdown.test.ts",
+      "tests/insights-roles.test.ts",
+      "tests/acc5-job-role-rules.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "AR-9",
+  "invariants": [
+    "Numbers only from recorded data; every figure carries its definition (glossary InfoTip). No goal, price or money rule changes.",
+    "Insights functions refuse STAFF themselves (requireRole OWNER/ADMIN first); existing growth/reports/dashboard reads gain no session checks (To do rules and cron call them).",
+    "Job-role access never widens: the two-segment map (customers/insights=management, inventory/insights=billing, money/income=billing) is checked before the first-segment map.",
+    "Lead.closedAt is set in the same transaction wherever a lead becomes CONVERTED or LOST (status change, convert, merge) and cleared on reopen; the backfill uses the newest lead.status/lead.convert audit row.",
+    "Display thresholds (MIN_LEADS/MIN_RENTALS = 10) stay code constants, not business settings."
+  ],
+  "next": "AR-10 retires the redirected old pages (their files stay as redirects until then).",
+  "outcome": "Insights where the owner works: Customers and Equipment gain an Insights tab (lead speed/win rate/sources, customer movement and worth-a-call lists; fleet value, flags, demand and repair gaps), the Money Overview gains rent health and goals, /desk/money/income carries the revenue ledger, and growth/fleet/revenue/reports/dashboard redirect to the new homes.",
+  "parent": "AR-9",
+  "proposedFiles": [
+    "docs/DATABASE.md",
+    "docs/STATUS.md",
+    "docs/build-specs/migrated-pages.json",
+    "docs/pr-cards/AR-9.md",
+    "docs/pr-cards/execution/AR-9.json",
+    "docs/pr-cards/work-index.json",
+    "e2e/ar9-insights.spec.ts",
+    "e2e/shards.json",
+    "prisma/migrations/20261030000000_lead_closed_at/migration.sql",
+    "prisma/schema.prisma",
+    "src/app/desk/customers/insights/page.tsx",
+    "src/app/desk/dashboard/page.tsx",
+    "src/app/desk/fleet/page.tsx",
+    "src/app/desk/growth/page.tsx",
+    "src/app/desk/inventory/insights/page.tsx",
+    "src/app/desk/money/income/page.tsx",
+    "src/app/desk/money/page.tsx",
+    "src/app/desk/reports/page.tsx",
+    "src/app/desk/reports/telecom-report.tsx",
+    "src/app/desk/revenue/page.tsx",
+    "src/app/desk/settings/telecom/page.tsx",
+    "src/components/kit/index.ts",
+    "src/components/kit/mini-bars.tsx",
+    "src/domains/goals/pace.ts",
+    "src/domains/insights/customers.ts",
+    "src/domains/insights/equipment.ts",
+    "src/domains/insights/money.ts",
+    "src/domains/insights/thresholds.ts",
+    "src/domains/leads/index.ts",
+    "src/domains/leads/merge.ts",
+    "src/domains/settings/index.ts",
+    "src/domains/team/job-role-rules.ts",
+    "src/lib/business-hours.ts",
+    "src/lib/desk-areas.ts",
+    "src/lib/glossary.ts",
+    "tests/acc5-job-role-rules.test.ts",
+    "tests/business-hours.test.ts",
+    "tests/customer-insights-integration.test.ts",
+    "tests/insights-roles.test.ts",
+    "tests/lead-closed-at-integration.test.ts",
+    "tests/lead-insights-integration.test.ts",
+    "tests/lead-source-breakdown.test.ts"
+  ],
+  "references": [
+    {
+      "anchor": "## Steps (in order)",
+      "path": "docs/pr-cards/AR-9.md",
+      "purpose": "The AR-9 card: one PR, six steps in order, acceptance and the LD-4/CU-3 absorption."
+    },
+    {
+      "anchor": "# Screen spec \u2014 Insights: Customers \u203a Insights, Equipment \u203a Insights, Money \u203a Overview additions (AR-9)",
+      "path": "docs/build-specs/screens/INSIGHTS.md",
+      "purpose": "The build spec: the section-1 fixes, routes and redirects, every figure and its definition, glossary keys, MiniBars, and the named tests."
+    },
+    {
+      "anchor": "export async function getLeadSourceBreakdown",
+      "path": "src/domains/leads/index.ts",
+      "purpose": "Replaced by one grouped query keeping its return shape (spec section 1); the same file holds updateLeadStatus and the convert path that will set Lead.closedAt."
+    },
+    {
+      "anchor": "export const PACE_QUIET_DAYS = 7;",
+      "path": "src/domains/goals/pace.ts",
+      "purpose": "The hard-coded goal pace thresholds become owner settings passed in as parameters (spec section 1)."
+    },
+    {
+      "anchor": "const PATH_TO_SCREEN",
+      "path": "src/domains/team/job-role-rules.ts",
+      "purpose": "The first-segment screen map; the two-segment insights map is checked before it so access never widens."
+    },
+    {
+      "anchor": "model Lead {",
+      "path": "prisma/schema.prisma",
+      "purpose": "Lead gains closedAt (additive migration with an index on status+closedAt); BusinessSettings gains the two goal pace settings."
+    }
+  ],
+  "risk": "Read-only reports plus one additive migration (Lead.closedAt) and a job-role mapping change that keeps today's access exactly.",
+  "sequence": [
+    "npm run work -- start AR-9",
+    "Step 1 fixes: grouped lead-source query; Lead.closedAt migration + writers + audit backfill; goal pace settings; job-role two-segment map; telecom section moves to Settings",
+    "Step 2: src/lib/business-hours.ts + tests",
+    "Step 3: src/domains/insights/{customers,equipment,money,thresholds}.ts + integration tests",
+    "Step 4: kit MiniBars + glossary entries",
+    "Step 5: the three pages, Money Overview sections, DESK_AREAS tabs, redirects",
+    "Step 6: migrated-pages.json, browser spec in a shard, STATUS, LD-4/CU-3 marked done in the work index"
+  ],
+  "slices": [
+    {
+      "id": "AR-9-S1",
+      "title": "Step 1 fixes: grouped lead-source query, Lead.closedAt + goal pace settings (migration), job-role two-segment map, telecom move",
+      "acceptance": "getLeadSourceBreakdown returns the same shape from one groupBy with unchanged output on the fixture test; closedAt is set on convert/lost/merge and cleared on reopen, backfilled from the newest audit row; pace.ts takes the settings as parameters with its tests passing values; the two-segment map keeps access exactly (acc5 tests); the telecom section renders unchanged under /desk/settings/telecom."
+    },
+    {
+      "id": "AR-9-S2",
+      "title": "Step 2: business-hours library",
+      "acceptance": "src/lib/business-hours.ts businessMinutesBetween counts only opening-hours minutes on non-holiday Denver days; unit tests cover inside hours, overnight, weekend, holiday, DST start/end and no hours set."
+    },
+    {
+      "id": "AR-9-S3",
+      "title": "Step 3: insights domain (customers, equipment, money, thresholds)",
+      "acceptance": "Every INSIGHTS.md section 4-6 figure computed from recorded data; STAFF refused by every function; lead and customer integration fixtures match the definitions, the thresholds render empty states below 10."
+    },
+    {
+      "id": "AR-9-S4",
+      "title": "Step 4: kit MiniBars and glossary",
+      "acceptance": "MiniBars renders up to two series at 120px with tap/hover value labels and a visually hidden table of the same numbers; the 16 glossary keys from spec section 7 exist with the spec definitions."
+    },
+    {
+      "id": "AR-9-S5",
+      "title": "Step 5: pages, tabs and redirects",
+      "acceptance": "/desk/customers/insights, /desk/inventory/insights and /desk/money/income render on the kit with the period toggle and sections; the Money Overview gains rent health, goals and gap rows and the new menu; growth/fleet/revenue/reports/dashboard redirect with their params; the static insights segments win over [id] (test)."
+    },
+    {
+      "id": "AR-9-S6",
+      "title": "Step 6: migrated-pages, browser spec, close-out docs",
+      "acceptance": "migrated-pages.json lists the moved pages; e2e/ar9-insights.spec.ts covers the tabs, seeded numbers, the staff refusal, the old URLs landing, axe at 5 sizes and keyboard; STATUS and the work-index statuses for AR-9, LD-4 and CU-3 reflect reality."
+    }
+  ],
+  "version": 1
+}
