@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/session";
 import { readBookExport } from "@/domains/books/exports";
 
 export async function GET(_request:Request,{params}:{params:Promise<{id:string}>}){
- const session=await requireRole("OWNER","ADMIN");
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
  try{
   const {id}=await params;
   const exportBatch=await readBookExport(session.user.id,id);
