@@ -348,6 +348,7 @@ export const PORTAL_TRANSLATIONS = {
   "That email and password don't match. Please try again.": "El correo y la contraseña no coinciden. Inténtelo de nuevo.",
   "You were signed out after a while with no activity, to help keep your account safe. Log back in to continue.": "Se cerró su sesión por inactividad para proteger su cuenta. Inicie sesión de nuevo para continuar.",
   "This account no longer has access. If you think that’s a mistake, ask the business owner to check your account.": "Esta cuenta ya no tiene acceso. Si cree que es un error, pida al propietario que revise su cuenta.",
+  "Your access to Robinson Appliance Rentals ended. Ask Chris for a new link.": "Su acceso a Robinson Appliance Rentals terminó. Pida a Chris un enlace nuevo.",
   "Forgot your password?": "¿Olvidó su contraseña?",
   "Enter the email you use to log in and we'll send you a link to set a new password.": "Ingrese el correo con el que inicia sesión y le enviaremos un enlace para establecer una contraseña nueva.",
   "Back to log in": "Volver a iniciar sesión",
