@@ -5481,7 +5481,7 @@
         "CMP-1",
         "DEC-1"
       ],
-      "status": "IN PROGRESS \u2014 branch ai/vivienne/acct-1; packet and drift check written 2026-10-27 (docs/pr-cards/execution/ACCT-1.json). VAULT-2 close-out rides this branch.",
+      "status": "MERGED 2026-10-27 \u2014 PR #709, squash dc839ad6 (branch ai/vivienne/acct-1h).",
       "migration": "20261104000000_accountant_role",
       "budget": 500,
       "units": [
