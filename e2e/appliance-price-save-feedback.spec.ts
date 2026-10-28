@@ -17,6 +17,8 @@ test("saved non-placeholder business name composes home and child browser titles
     // The disposable seed intentionally uses a placeholder. Own this temporary
     // value and restore it conditionally; no production settings are touched.
     await page.goto("/desk/settings?section=profile");
+    // AR-8: the profile form opens from a panel row on Business profile.
+    await page.getByRole("button", { name: /Opening hours/ }).click();
     // react-hook-form populates defaults when its client refs mount. Wait for
     // those defaults before editing so hydration cannot overwrite the fill.
     await expect(page.getByLabel("Business name", { exact: true })).toHaveValue(publicBusinessName);
@@ -27,7 +29,7 @@ test("saved non-placeholder business name composes home and child browser titles
     // Save a complete valid profile through the real form.
     await page.getByLabel("Email", { exact: true }).fill(fixtureEmail);
     await page.getByRole("button", { name: "Save this section" }).click();
-    await expect(page.getByRole("status")).toHaveText("Settings saved.");
+    await expect(page.getByRole("status").filter({ hasText: "Settings saved." })).toHaveText("Settings saved.");
     expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).publicBusinessName).toBe(fixtureName);
     for (const [path, title] of [["/", `${fixtureName} — Appliance Rentals in Colorado`], ["/accessibility", `Accessibility Statement — ${fixtureName}`]]) {
       await page.goto(path);
@@ -38,10 +40,11 @@ test("saved non-placeholder business name composes home and child browser titles
     const current = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     if (current.publicBusinessName === fixtureName) {
       await page.goto("/desk/settings?section=profile");
+      await page.getByRole("button", { name: /Opening hours/ }).click();
       await expect(page.getByLabel("Business name", { exact: true })).toHaveValue(fixtureName);
       await page.getByLabel("Business name", { exact: true }).fill(publicBusinessName);
       await page.getByRole("button", { name: "Save this section" }).click();
-      await expect(page.getByRole("status")).toHaveText("Settings saved.");
+      await expect(page.getByRole("status").filter({ hasText: "Settings saved." })).toHaveText("Settings saved.");
     }
     // A placeholder email cannot be restored through the validated form.
     // Restore only our owned email, in this disposable database.
@@ -61,6 +64,8 @@ test("phone price editor reports rejected saves and persists a confirmed correct
     await prisma.applianceType.create({ data: { id, name, slug: id, monthlyPriceCents: 4000 } });
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto("/desk/settings?section=products");
+    // AR-8: the price table opens from its panel row on Prices & fees.
+    await page.getByRole("button", { name: /Appliance prices/ }).click();
     const row = page
       .locator("main tr:visible, main li:visible")
       .filter({ has: page.getByText(name, { exact: true }) })
@@ -80,6 +85,8 @@ test("phone price editor reports rejected saves and persists a confirmed correct
     expect((await prisma.applianceType.findUniqueOrThrow({ where: { id } })).monthlyPriceCents).toBe(4525);
     expect(await prisma.pricingRule.count({ where: { applianceTypeId: id, oldValueCents: 4000, newValueCents: 4525 } })).toBe(1);
     await page.reload();
+    // The reload starts the page fresh, so the panel is closed again.
+    await page.getByRole("button", { name: /Appliance prices/ }).click();
     await expect(input).toHaveValue("45.25");
     expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze()).violations).toEqual([]);
     await info.attach("price-save-confirmed-phone", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });

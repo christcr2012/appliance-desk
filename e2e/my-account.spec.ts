@@ -117,17 +117,15 @@ test.describe("My account", () => {
       test.skip(process.env.CI !== "true" || !process.env.DATABASE_URL, "Uses only CI's disposable local database.");
       test.skip(!fs.existsSync(OWNER_STATE), "Requires the isolated CI owner fixture.");
       // page is signed in as the owner from the shared fixture.
-      await page.goto("/desk/settings?section=security");
-      await page.getByLabel("Remember devices for (days)").fill("0");
-      // The save is a server action: wait for its POST to finish before reloading, or the reload can
-      // cancel the write and the page still shows the old value.
-      const turnedOff = page.waitForResponse(
-        (response) => response.request().method() === "POST" && response.url().includes("/desk/settings"),
-      );
-      await page.getByRole("button", { name: "Save remember-device rules" }).click();
-      await turnedOff;
-      await page.reload();
-      await expect(page.getByLabel("Remember devices for (days)")).toHaveValue("0");
+      // AR-8: the remember-days rule is a settings row on Team & access; its
+      // Change sheet saves through the same domain writer the old form used.
+      await page.goto("/desk/settings?section=team");
+      await page.locator("#row-trustedDeviceDays").getByRole("button", { name: "Change…" }).click();
+      const sheet = page.getByRole("dialog");
+      await sheet.getByLabel("Days").fill("0");
+      await sheet.getByRole("button", { name: "Save" }).click();
+      // The saved toast appears only after the server action has written.
+      await expect(page.getByText("Saved Remember devices for (days)")).toBeVisible();
 
       const tag = `acc6-off-${process.pid}-${Date.now()}`;
       const staffEmail = `${tag}@example.test`;
@@ -154,15 +152,12 @@ test.describe("My account", () => {
       }
 
       // The owner turns remembering back on, so later tests see the starting value.
-      await page.goto("/desk/settings?section=security");
-      await page.getByLabel("Remember devices for (days)").fill("30");
-      const turnedOn = page.waitForResponse(
-        (response) => response.request().method() === "POST" && response.url().includes("/desk/settings"),
-      );
-      await page.getByRole("button", { name: "Save remember-device rules" }).click();
-      await turnedOn;
-      await page.reload();
-      await expect(page.getByLabel("Remember devices for (days)")).toHaveValue("30");
+      await page.goto("/desk/settings?section=team");
+      await page.locator("#row-trustedDeviceDays").getByRole("button", { name: "Change…" }).click();
+      const backOn = page.getByRole("dialog");
+      await backOn.getByLabel("Days").fill("30");
+      await backOn.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Saved Remember devices for (days)")).toBeVisible();
     });
   });
 });

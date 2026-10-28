@@ -9,6 +9,8 @@ test("owner reviews dated mandatory-charge policies without a payable estimate",
   test.skip(!process.env.CI || !fs.existsSync(state), "Disposable authenticated CI fixtures only");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/desk/settings?section=products");
+  // AR-8: the policy form opens from its panel row on Prices & fees.
+  await page.getByRole("button", { name: /Required fees on complete quotes/ }).click();
   const region = page.getByRole("region", { name: "Mandatory quote categories" });
   await expect(region).toBeVisible();
   await expect(region.getByText(/No active owner policy|Effective revision/)).toBeVisible();

@@ -4344,7 +4344,7 @@
       "title": "Application kit, guards and three reference screens (Today, Invoices, Customer record) on the testing app",
       "batch": "AR",
       "dependencies": [],
-      "status": "IN PROGRESS — AR-0a merged PR #601 (2026-10-25); AR-0b building",
+      "status": "MERGED — AR-0a PR #601, AR-0b PR #606 (2026-10-25)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4617,7 +4617,7 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT \u2014 branch ai/vivienne/ar-8, PR opened 2026-10-28, CI pending",
       "migration": "none",
       "budget": 520,
       "units": [
@@ -6121,11 +6121,14 @@
     {
       "id": "ACCT-1",
       "path": "docs/pr-cards/execution/ACCT-1.json"
-    }
-  ,
+    },
     {
       "id": "AR-3",
       "path": "docs/pr-cards/execution/AR-3.json"
+    },
+    {
+      "id": "AR-8",
+      "path": "docs/pr-cards/execution/AR-8.json"
     }
   ]
 }

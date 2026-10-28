@@ -1,6 +1,7 @@
 [
   { "file": "src/app/desk/settings/decisions/page.tsx", "kind": "other" },
   { "file": "src/app/desk/settings/decisions/import/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/settings/page.tsx", "kind": "other" },
   { "file": "src/app/desk/today/page.tsx", "kind": "other" },
   "src/app/desk/billing/page.tsx",
   { "file": "src/app/desk/money/page.tsx", "kind": "other" },

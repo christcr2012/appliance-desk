@@ -58,6 +58,11 @@ tests/approval-actions.test.ts pins the contract (domain spies, both revalidatio
 inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
 adds optimistic task completion with Undo.
 
+## October 28 — AR-8 Settings rebuild: in review (PR #726; successor PR to follow — main moved under it)
+
+Three fix rounds after CI and Codex review, all batched: the catalog also covers AR-4a's rentalEndReasons; the settings frame lives on the catalog page only (settings sub-pages keep their own headings); the driving-origin panel is wired to the verified-origin writer; undo enforces the catalog's owner-only rule and the delivery-window cross-field rule; the three domain-writer row saves check the page revision inside their locked writes; the service-area panel renders its own section editor again (cities/ZIPs); the row save keeps the public email's validation; refused undos are surfaced instead of swallowed; mobile section pages show their section title (the frame header is desktop-only). Specs that drive editors behind panel rows open the panel first — including after a reload, which starts the page fresh — and the settings-history preview/stale-save tests exercise the row Change sheet, where those guarantees now live. Card `docs/pr-cards/AR-8.md`; packet `docs/pr-cards/execution/AR-8.json`.
+
+
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
 AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
