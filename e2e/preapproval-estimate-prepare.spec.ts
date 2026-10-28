@@ -91,8 +91,16 @@ test("W-24 owner chooses future local delivery windows on mobile; guest cannot a
     await expect(header).toBeVisible();
     const after=new Date(Date.now()+15*24*60*60*1000).toISOString().slice(0,10);
     const offerPanel=header.locator('..');
-    await offerPanel.locator('input[type="date"]').first().fill(after);
-    await offerPanel.getByRole("button",{name:"Save offered windows"}).click();
+    const dateInput = offerPanel.locator('input[type="date"]').first();
+    const save = offerPanel.getByRole("button",{name:"Save offered windows"});
+    // Server-rendered fields may be visible before React has attached their onChange handler.
+    // Prove the controlled date has reached React state and that saving is actually enabled.
+    await expect(async () => {
+      await dateInput.fill("");
+      await dateInput.fill(after);
+      await expect(save).toBeEnabled({timeout:1000});
+    }).toPass({timeout:15000});
+    await save.click();
     await expect(offerPanel.getByText(/Saved; old customer choice versions are invalidated/i)).toBeVisible();
     const found=await prisma.estimate.findUniqueOrThrow({
       where:{id:quote.id},select:{deliveryOfferVersion:true,deliveryOffer:true}});
