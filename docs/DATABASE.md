@@ -1620,3 +1620,7 @@ Migration `20261112000000_vault`.
 - `BusinessSettings` gains the emergency settings: `emergencyAccessEnabled` (default false — the feature ships off), `emergencyContactName`, `emergencyContactEmail`, `emergencyContactPhone`, `emergencyWaitDays` (default 7, CHECK 1–30).
 
 Routes: `/desk/vault` and `/desk/vault/[id]` (OWNER only); the public `/emergency/[token]` page and its one-time `/emergency/[token]/download`; the daily reminder sweep at `/api/cron/emergency-access` (registered in `vercel.json` and the automation health registry). The vault lockout is not a column: it is derived from `vault.unlock_failed` audit rows (5 within 15 minutes → locked until 30 minutes after the latest failure).
+
+## MCP-6 repair case evidence
+
+Additive `RepairCase` and `RepairEvidence` records retain the originating issue or feedback version and the running revision. Case stages are only advanced by server-side GitHub, deployment and runtime checks; evidence includes verifier, timestamp and result. Nothing here alters the real issue until an independent check passes.

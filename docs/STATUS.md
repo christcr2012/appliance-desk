@@ -3684,3 +3684,12 @@ payment evidence or approval to collect; all such paths remain disabled.
 **Next: W-22C5 reviewed immutable per-agreement tax-inclusive freeze and
 server send/sign gates**, followed by W-22 checkout/manual payment, credit,
 refund/cancellation and delivery acceptance. IN-79 open; W-23 blocked.
+
+## October 28 — MCP-6 repair-case implementation checkpoint (in progress)
+
+The acceptance plan is committed. Local worktree `ai/chatgpt/mcp-6-repair-cases`
+has additive case/evidence models, fixed-repository verification, System health
+Repairs UI and 8 passing focused tests (four bounded-evidence unit tests, four
+disposable-PostgreSQL integration tests). Browser build ran out of the sandbox's
+4 GB memory; this is not accepted proof. MCP tools, consent/journaling, remaining
+workflow tests and CI are still unfinished. See `docs/pr-cards/MCP-6.md`.

@@ -118,7 +118,8 @@
       "desk-shortcuts.spec.ts",
       "remembered-lists.spec.ts",
       "vault.spec.ts",
-      "service-area-map.spec.ts"
+      "service-area-map.spec.ts",
+      "mcp-repair-cases.spec.ts"
     ]
   }
 }

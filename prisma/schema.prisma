@@ -7010,3 +7010,59 @@ model AgentOperation {
   @@index([state, leaseExpiresAt])
   @@index([actorUserId, createdAt])
 }
+
+// MCP-6: repair progress is evidence-backed, never a caller-supplied success claim.
+enum RepairStage {
+  PROPOSED
+  IN_PROGRESS
+  PR_OPEN
+  MERGED
+  DEPLOYED
+  VERIFIED
+  REJECTED
+  SUPERSEDED
+  FAILED
+  BLOCKED
+}
+
+model RepairCase {
+  id               String           @id @default(cuid())
+  number           Int              @unique @default(autoincrement())
+  sourceKind       String           @db.VarChar(20)
+  sourceId         String
+  sourceVersion    Int
+  fingerprint      String           @unique @db.Char(64)
+  title            String           @db.VarChar(160)
+  expectedBehavior String           @db.VarChar(2000)
+  howToCheck       String           @db.VarChar(2000)
+  baselineRevision String           @db.VarChar(40)
+  stage            RepairStage      @default(PROPOSED)
+  prNumber         Int?
+  mergeSha         String?          @db.VarChar(40)
+  deployedRevision String?          @db.VarChar(40)
+  verifiedAt       DateTime?
+  blocker          String?          @db.VarChar(500)
+  version          Int              @default(1)
+  createdByUserId  String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  evidence         RepairEvidence[]
+
+  @@index([stage, updatedAt])
+  @@index([sourceKind, sourceId, sourceVersion])
+}
+
+model RepairEvidence {
+  id        String     @id @default(cuid())
+  caseId    String
+  case      RepairCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  kind      String     @db.VarChar(20)
+  ref       String     @db.VarChar(200)
+  status    String     @db.VarChar(12)
+  verifier  String?    @db.VarChar(40)
+  checkedAt DateTime?
+  detail    Json?
+  createdAt DateTime   @default(now())
+
+  @@index([caseId, createdAt])
+}

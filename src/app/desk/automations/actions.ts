@@ -93,3 +93,20 @@ export async function retryBackupAction(): Promise<void> {
   revalidatePath("/desk/automations");
   redirect("/desk/automations?backupMessage=" + message + "#backup-settings");
 }
+
+
+import { checkRepairCase, stopRepairCase } from "@/domains/agent-control/repair-cases";
+
+export async function checkRepairCaseAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER", "ADMIN");
+  await checkRepairCase(session.user.id, String(formData.get("caseId") ?? ""));
+  revalidatePath("/desk/automations");
+}
+
+export async function stopRepairCaseAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  if (formData.get("stage") !== "REJECTED") throw new Error("Invalid repair decision.");
+  await stopRepairCase(session.user.id, String(formData.get("caseId") ?? ""), "REJECTED",
+    String(formData.get("reason") ?? ""));
+  revalidatePath("/desk/automations");
+}
