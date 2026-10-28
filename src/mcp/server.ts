@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import type { McpScope } from "@/mcp/scopes";
+import { listRepairCases, getRepairCase } from "@/domains/agent-control/repair-cases";
 import { previewAgentOperation, executeAgentOperation, getAgentOperation } from "@/domains/agent-control/operations";
 import {
   checkMcpActor, healthOverview, issuesList, issueGet, automationRuns,
@@ -211,6 +212,48 @@ export function buildMcpServer(context: AgentContext): McpServer {
       truncated: z.boolean().optional(),
     }), annotations: readOnly,
   }, async ({ id }) => read("decisions:read", () => decisionGet(context, id)));
+
+  // Repairs contain no customer report text, raw GitHub response, or internal
+  // actor ID. Even the detail tool explicitly chooses safe, bounded fields.
+  server.registerTool("appliance_repair_list_cases", {
+    title: "Repair cases", description: "Read safe repair stages and evidence status.",
+    inputSchema: z.strictObject({ limit: z.number().int().min(1).max(10).default(10) }),
+    outputSchema: z.object({ cases: z.array(z.object({
+      id: z.string(), number: z.number(), title: z.string(), sourceKind: z.string(),
+      stage: z.string(), blocker: z.string().nullable(), prNumber: z.number().nullable(),
+      updatedUtc: z.string(), verifiedUtc: utc,
+    })) }), annotations: readOnly,
+  }, async ({ limit }) => read("ops:read", async () => ({ cases:
+    (await listRepairCases(context.userId, limit)).map(record => ({
+      id: record.id, number: record.number, title: record.title,
+      sourceKind: record.sourceKind, stage: record.stage, blocker: record.blocker,
+      prNumber: record.prNumber, updatedUtc: record.updatedAt.toISOString(),
+      verifiedUtc: record.verifiedAt?.toISOString() ?? null,
+    })),
+  })));
+
+  server.registerTool("appliance_repair_get_case", {
+    title: "Repair details", description: "Read one repair and its independently checked stages.",
+    inputSchema: z.strictObject({ id: z.string().regex(/^c[a-z0-9]{10,50}$/i) }),
+    outputSchema: z.object({ found: z.boolean(), repair: z.object({
+      id: z.string(), number: z.number(), title: z.string(), sourceKind: z.string(),
+      stage: z.string(), expectedBehavior: z.string(), howToCheck: z.string(),
+      blocker: z.string().nullable(), prNumber: z.number().nullable(),
+      verifiedUtc: utc, baselineRevision: z.string(), mergeSha: z.string().nullable(),
+      deployedRevision: z.string().nullable(),
+    }).nullable() }), annotations: readOnly,
+  }, async ({ id }) => read("ops:read", async () => {
+    const record = await getRepairCase(context.userId, id);
+    return { found: Boolean(record), repair: record ? {
+      id: record.id, number: record.number, title: record.title,
+      sourceKind: record.sourceKind, stage: record.stage,
+      expectedBehavior: record.expectedBehavior, howToCheck: record.howToCheck,
+      blocker: record.blocker, prNumber: record.prNumber,
+      verifiedUtc: record.verifiedAt?.toISOString() ?? null,
+      baselineRevision: record.baselineRevision, mergeSha: record.mergeSha,
+      deployedRevision: record.deployedRevision,
+    } : null };
+  }));
 
   const writePolicy = {
     readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false,

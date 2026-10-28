@@ -59,3 +59,11 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
   automated issue/feedback workflow,
   owner reminders, exhaustive runtime stage tests and final browser/accessibility
   acceptance. No PR is opened and this card is not ready to merge.
+
+Read tool checkpoint (October 28): the MCP catalog now offers bounded,
+strict-schema `appliance_repair_list_cases` and `appliance_repair_get_case`
+under `ops:read`, rechecking the live actor and returning only safe fields.
+Three new SDK transport tests passed (scope denial, field isolation, unknown
+input); the existing read/consent/evidence suite passed 14 tests and lint
+passed. Journaled repair writes, connection consent, browser/full CI and
+source workflow remain pending.

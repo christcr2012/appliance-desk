@@ -3699,3 +3699,7 @@ partial unique index now prevent two live repairs for one issue. Six
 disposable-PostgreSQL tests passed, including twelve competing creates
 and fake GitHub/health evidence transitions;
 full MCP write tools and hosted CI are still pending.
+
+MCP-6 read-only transport checkpoint (Oct 28): bounded scoped repair list
+and detail tools have 3 passing SDK tests; secure write/approval support
+and final CI remain unfinished.
