@@ -98,7 +98,7 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
     if (!locked) throw new Error("CONNECTION_REVOKED");
     const connection = await tx.mcpConnection.findUnique({
       where: { id: ctx.connectionId },
-      select: { userId: true, scopes: true, revokedAt: true },
+      select: { userId: true, scopes: true, revokedAt: true, grantVersion: true },
     });
     if (!connection || connection.userId !== ctx.userId || connection.revokedAt) throw new Error("CONNECTION_REVOKED");
     await assertActiveTeamActor(tx, ctx.userId, OWNER_ONLY_JOURNAL_ACTIONS.has(input.action) ? ["OWNER"] : ["OWNER", "ADMIN"]);
@@ -108,6 +108,7 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
         tool: input.tool, requestKeyDigest } },
     });
     if (old) {
+      if (old.connectionGrantVersion !== connection.grantVersion) throw new Error("CONNECTION_REVOKED");
       if (old.argsHash !== args.digest || old.action !== input.action || old.targetRef !== (input.targetRef ?? null))
         throw new Error("CONFLICT");
       return old;
@@ -115,7 +116,7 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
     const created = await tx.agentOperation.create({ data: {
       connectionId: ctx.connectionId, actorUserId: ctx.userId,
       tool: input.tool, action: input.action, targetRef: input.targetRef,
-      requestKeyDigest, argsHash: args.digest, args: JSON.parse(args.serialized) as Prisma.InputJsonValue,
+      requestKeyDigest, connectionGrantVersion: connection.grantVersion, argsHash: args.digest, args: JSON.parse(args.serialized) as Prisma.InputJsonValue,
       previewHash: input.previewHash, preview: safe,
       state: policy.approval === "CONVERSATION" ?
         AgentOperationState.PREVIEWED : AgentOperationState.AWAITING_APPROVAL,
@@ -157,7 +158,8 @@ export async function decideJournalApproval(actorId: string, operationId: string
       tx.agentOperation.findUniqueOrThrow({ where: { id: operationId } }),
       tx.mcpConnection.findUniqueOrThrow({ where: { id: locator.connectionId } }),
     ]);
-    if (connection.revokedAt || operation.connectionId !== connection.id) throw new Error("CONNECTION_REVOKED");
+    if (connection.revokedAt || operation.connectionId !== connection.id ||
+        operation.connectionGrantVersion !== connection.grantVersion) throw new Error("CONNECTION_REVOKED");
     await assertActiveTeamActor(tx, connection.userId, ["OWNER", "ADMIN"]);
     const policy = ACTION_PERMISSIONS[operation.action as JournalAction];
     if (!policy || !connection.scopes.includes(policy.scope)) throw new Error("FORBIDDEN_SCOPE");

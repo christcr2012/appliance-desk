@@ -22,7 +22,8 @@
       "desk-workspace.spec.ts",
       "books-reports.spec.ts",
       "money-bills.spec.ts",
-      "staff-security.spec.ts"
+      "staff-security.spec.ts",
+      "features.spec.ts"
     ],
     "browser-b": [
       "owner-controls.spec.ts",

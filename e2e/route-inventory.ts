@@ -383,6 +383,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason: "Uses the same MyReportView as /account/feedback/[id], which e2e/feedback.spec.ts scans; the id is generated per run.",
   },
   { path: "/desk/settings/history", role: "OWNER", fixture: "/desk/settings/history" },
+  { path: "/desk/settings/features", role: "OWNER", fixture: "/desk/settings/features" },
   { path: "/desk/settings/switches", role: "OWNER", fixture: "/desk/settings/switches" },
   { path: "/desk/settings/permissions", role: "OWNER", fixture: "/desk/settings/permissions" },
   { path: "/desk/settings/approvals", role: "OWNER", fixture: "/desk/settings/approvals" },

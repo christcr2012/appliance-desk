@@ -25,6 +25,13 @@ const approveSchema = z.object({
       crewNotes:z.string().trim().max(1500),
     }),
   }).optional(),
+  // FEETAX-1 (S4): who does each service. Prices are never accepted
+  // from the client — the domain recomputes them in the transaction.
+  serviceChoices: z.array(z.object({
+    service: z.enum(["DELIVERY", "INSTALLATION", "REMOVAL", "HAUL_AWAY"]),
+    choice: z.enum(["BY_BUSINESS", "CUSTOMER_DOES_IT", "NOT_NEEDED"]),
+  })).max(4).optional(),
+  serviceDryerOutlet: z.enum(["THREE_PRONG", "FOUR_PRONG", "GAS", "UNKNOWN"]).optional(),
   expectedQuoteFingerprint: z.string().regex(/^[a-f0-9]{64}$/, "Refresh the reviewed all-in offer before approving."),
   approverName: z.string().trim().min(1, "Enter your full name.").max(200),
   approverEmail: z.string().trim().email("Enter a valid email address.").max(200),
@@ -70,6 +77,8 @@ export async function approveEstimateAction(
       approverName: parsed.data.approverName,
       approverEmail: parsed.data.approverEmail,
       deliverySelection: parsed.data.deliverySelection,
+      serviceChoices: parsed.data.serviceChoices,
+      serviceDryerOutlet: parsed.data.serviceDryerOutlet ?? null,
       ipAddress,
     });
     const checkoutUrl = await createDepositCheckoutSessionForEstimate(estimateId);

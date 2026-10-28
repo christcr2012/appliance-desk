@@ -11,7 +11,9 @@ import { listCurrentTranslationDrafts } from "@/domains/language/drafts";
 import { SpanishDraftsEditor } from "./spanish-drafts-editor";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
+import { getShownFeatures } from "@/domains/features";
 import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
+import { servicePriceWarnings } from "@/domains/orders/service-cost-warnings";
 import { getTeam, getTeamSettings } from "@/domains/team";
 import { listJobRoles } from "@/domains/team/job-roles";
 import { requireRole } from "@/lib/session";
@@ -77,6 +79,7 @@ export default async function DeskSettingsPage({
   const session = await requireRole("OWNER", "ADMIN");
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
+  const shownFeatures = await getShownFeatures();
   const spanishReview = section === "notifications" ? await getSpanishReview() : null;
   const spanishDrafts = section === "notifications" ? await listCurrentTranslationDrafts() : [];
   const activeSetupTaxTreatment = section === "policies"
@@ -90,6 +93,8 @@ export default async function DeskSettingsPage({
     }) : [];
 
   const leadScoringPolicy = section === "policies" ? await getLeadScoringPolicy() : null;
+  // FEETAX-1 (S5): warn when a service price is well above its typical cost.
+  const serviceWarnings = section === "policies" ? await servicePriceWarnings() : [];
   let content: React.ReactNode;
   if (section === "products") {
     const [applianceTypes, packages] = await Promise.all([getAllApplianceTypes(), listPackagesForSettings()]);
@@ -521,7 +526,7 @@ export default async function DeskSettingsPage({
             reviewerName={spanishReview.reviewerName} />
         </Card>
       )}
-      {section === "notifications" && <div className="mb-4 flex flex-wrap gap-3"><ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink><ButtonLink href="/desk/settings/payment-links" variant="secondary">Payment link wording</ButtonLink><ButtonLink href="/desk/settings/lead-response" variant="secondary">Lead response time</ButtonLink><ButtonLink href="/desk/settings/unsigned-follow-up" variant="secondary">Unsigned agreement reminder</ButtonLink><ButtonLink href="/desk/settings/feedback" variant="secondary">App feedback</ButtonLink></div>}
+      {section === "notifications" && <div className="mb-4 flex flex-wrap gap-3">{shownFeatures.has("phoneCosts") && <ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink>}<ButtonLink href="/desk/settings/payment-links" variant="secondary">Payment link wording</ButtonLink><ButtonLink href="/desk/settings/lead-response" variant="secondary">Lead response time</ButtonLink><ButtonLink href="/desk/settings/unsigned-follow-up" variant="secondary">Unsigned agreement reminder</ButtonLink><ButtonLink href="/desk/settings/feedback" variant="secondary">App feedback</ButtonLink></div>}
       {section === "notifications" && <SmsTemplatePreview />}
     </>);
   } else {
@@ -532,6 +537,14 @@ export default async function DeskSettingsPage({
       >
         {section === "policies" && leadScoringPolicy && (
           <LeadScoringForm policy={leadScoringPolicy} />
+        )}
+        {section === "policies" && serviceWarnings.length > 0 && (
+          <div className="mb-4 rounded-card border border-amber-300 bg-amber-50 p-4" role="note">
+            <p className="text-sm font-medium text-amber-900">Service prices well above cost</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-amber-900">
+              {serviceWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+            </ul>
+          </div>
         )}
         {section === "policies" && (
           <div className="mb-4 rounded-card border border-line bg-subtle p-4">
@@ -565,6 +578,7 @@ export default async function DeskSettingsPage({
             deliveryFeeDollars: centsAsDollars(settings.oneTimeDeliveryFeeCents),
             installationFeeDollars: centsAsDollars(settings.oneTimeInstallationFeeCents),
             removalFeeDollars: centsAsDollars(settings.oneTimeRemovalFeeCents),
+            haulAwayFeeDollars: centsAsDollars(settings.oneTimeHaulAwayFeeCents),
             damageWaiverEnabled: settings.damageWaiverEnabled,
             depositEnabled: settings.depositEnabled,
             lateFeeGraceDays: settings.lateFeeGraceDays,
@@ -605,6 +619,7 @@ export default async function DeskSettingsPage({
         <ButtonLink href="/desk/settings/decisions" variant="secondary">Decisions &amp; reviews</ButtonLink>
         <ButtonLink href="/desk/settings/history" variant="secondary">Settings history and undo</ButtonLink>
         <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
+        <ButtonLink href="/desk/settings/features" variant="secondary">Features</ButtonLink>
         <ButtonLink href="/desk/settings/price-changes" variant="secondary">Price changes with a start date</ButtonLink>
         {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/permissions" variant="secondary">What each admin may do</ButtonLink>}
         <ButtonLink href="/desk/settings/goals" variant="secondary">Goals and alerts</ButtonLink>

@@ -59,6 +59,7 @@ export async function updateSettingsAction(
     deliveryFeeDollars,
     installationFeeDollars,
     removalFeeDollars,
+    haulAwayFeeDollars,
     lateFeeFlatDollars,
     sixMonthPrepaySetDollars,
     sixMonthPrepaySingleDollars,
@@ -74,6 +75,7 @@ export async function updateSettingsAction(
       oneTimeDeliveryFeeCents: dollarsToCents(deliveryFeeDollars),
       oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
       oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),
+      oneTimeHaulAwayFeeCents: dollarsToCents(haulAwayFeeDollars),
       lateFeeFlatCents: dollarsToCents(lateFeeFlatDollars),
       sixMonthPrepayDiscountSetCents: dollarsToCents(sixMonthPrepaySetDollars),
       sixMonthPrepayDiscountSingleCents: dollarsToCents(

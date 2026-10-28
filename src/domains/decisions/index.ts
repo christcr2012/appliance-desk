@@ -279,6 +279,7 @@ async function insertRecord(
     explanation?: string | null; attachmentUrl?: string | null; sources?: DecisionSourceRef[] | null;
     /** DEC-2: the app's own nightly run records the answer; no person answered, so nobody is named. */
     noAnswerer?: boolean;
+    agentOperationId?: string;
   },
 ) {
   const json = (value: Prisma.JsonValue | null | undefined) =>
@@ -292,6 +293,7 @@ async function insertRecord(
       professionalAnsweredOn: data.professionalAnsweredOn ?? null, explanation: data.explanation ?? null,
       attachmentUrl: data.attachmentUrl ?? null,
       sources: data.sources?.length ? data.sources : Prisma.DbNull, via: data.via,
+      agentOperationId: data.agentOperationId ?? null,
     },
     select: { id: true },
   });
@@ -468,6 +470,7 @@ async function professionalAudience(tx: Prisma.TransactionClient, subject: Decis
 async function recordProfessionalAnswerInTx(
   tx: Prisma.TransactionClient, actorId: string, subject: DecisionSubject, input: ProfessionalAnswerInput,
   via: DecisionVia, now: Date, attachmentUrl: string | null, professionalAnswer = false,
+  agentOperationId?: string,
 ) {
   const professionalName = cleanText(input.professionalName, 120, "name of who answered");
   if (!professionalName) throw new Error("Enter who answered.");
@@ -485,7 +488,7 @@ async function recordProfessionalAnswerInTx(
     if (!subject.allowOther) throw new Error("This question only accepts one of its choices.");
     if (!otherText) throw new Error("Write what they answered.");
     await insertRecord(tx, actorId, {
-      ...professional, subjectId: subject.id, kind: "PROFESSIONAL_ANSWER", value: null, previousValue: previous,
+      ...professional, agentOperationId, subjectId: subject.id, kind: "PROFESSIONAL_ANSWER", value: null, previousValue: previous,
       effectiveFrom: null, explanation: ["Other: " + otherText, explanation].filter(Boolean).join("\n\n").slice(0, 4000),
     });
     return;
@@ -495,7 +498,7 @@ async function recordProfessionalAnswerInTx(
   await applyDecisionInTx(tx, actorId, {
     subject, kind: "PROFESSIONAL_ANSWER", value: chosen, previous, effectiveFrom: input.effectiveFrom,
     confirmedOn: answeredOn, reason: `Answered by ${who}${explanation ? ": " + explanation : ""}`.slice(0, 500),
-    sources: [], record: { ...professional, explanation }, now, ctx, professionalAnswer,
+    sources: [], record: { ...professional, explanation, agentOperationId }, now, ctx, professionalAnswer,
   });
 }
 
@@ -706,7 +709,8 @@ export type ApplyResult = { applied: number; same: number; other: number; skippe
  */
 export async function applyAnswers(
   actorId: string, answers: ParsedAnswer[], confirmToken: string,
-  opts: { via?: "IMPORT" | "MCP" | "SCREEN"; attachmentUrl?: string | null } = {},
+  opts: { via?: "IMPORT" | "MCP" | "SCREEN"; attachmentUrl?: string | null;
+    agentOperationId?: string } = {},
 ): Promise<ApplyResult> {
   const claim = readClaims(confirmToken, actorId);
   const now = new Date();
@@ -735,7 +739,8 @@ export async function applyAnswers(
         professionalFirm: answer.firm ?? null,
         answeredOn: answer.answeredOn ?? now,
         explanation: answer.explanation ?? null,
-      }, opts.via ?? "IMPORT", now, attachmentUrl);
+      }, opts.via ?? "IMPORT", now, attachmentUrl, false,
+      opts.via === "MCP" ? opts.agentOperationId : undefined);
       if (row.status === "CHANGE") { counts.applied += 1; touched.push(subject); }
       else if (row.status === "SAME") counts.same += 1;
       else counts.other += 1;

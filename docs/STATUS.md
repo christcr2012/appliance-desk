@@ -1,3 +1,31 @@
+## October 28 — MCP-5 full-CI regression corrections (PR #717, branch only)
+
+Full CI at head 90f77371 exposed stale test assumptions after adding three
+assistant tools, a DEC-1 shared-settings test omitted from the serial inventory,
+a browser approval fixture missing the exact grant version, and an ambiguous
+Customers heading selector. All are corrected without weakening authorization
+or assertions. The books poster suite also moves to the serial settings
+project because it edits the shared accounting start date. On the combined
+current main + MCP-5 branch, 37 disposable-PostgreSQL integration tests
+passed (including 19 accounting and 18 assistant tests), none skipped; eight
+focused catalog/inventory tests passed. Full GitHub CI and the required
+review gates on this correction are still pending. No customer or production
+data changed.
+
+## October 28 — MCP-5 review fixes verified, merge pending (PR #717)
+
+Fixed three reviewed safety issues: previews and owner approvals now belong to
+the exact assistant grant even across disconnect/reconnect; DEC-1 answer readback
+is tied to the specific operation and expected normalized values; nightly
+uncertain-operation checks rotate through old unresolved work without replaying it.
+The additive migration preserves existing records. Disposable PostgreSQL:
+18/18 focused integration tests passed including grant rotation, operation
+evidence and reconciliation fairness. Focused TypeScript, migration-safety,
+owner wording and route-inventory checks passed. Full GitHub CI, browser and
+review on the new published head remain required. MCP-4 PR #704 remains green
+but GitHub's independent required-review protection blocks merging; never bypass.
+No live payments, texts, email or production data changed.
+
 ## October 27 — Lane 2 MCP-4 / MCP-5 verification checkpoint (local MCP-5 branch)
 
 MCP-4 PR #704 has passed all GitHub CI groups (full browser, unit, static and
@@ -38,8 +66,40 @@ Previous exact-head GitHub `ci` and `review-gate` were green. GitHub later repor
 `docs/STATUS.md` conflict with newer main; this integration reconciles both status notes.
 Re-run exact-head checks and review before squash merging; MCP-5 execution is still unfinished.
 
-## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
-The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
+## October 28 — FEETAX-1 merged: Optional, separately stated service lines and per-place fee rules
+
+Merged 2026-10-28 as PR #718 (squash `e2a1e45e`) — Lane 4's last card; the lane is
+complete. Paired build: Lane 4 built slices 1–3 (data, engine, seeds/decisions/email),
+Lane 5 built slices 4–6 (order capture, desk flow, integration tests) and verified
+slices 1–3 independently; Lane 4 integrated and shipped.
+
+Delivery, installation, pickup at the end and haul-away are separate optional choices
+with prices shown at ordering (gas appliances never offer self-install); every choice is
+saved with the order as `OrderServiceChoice` inside the order's locked transaction, and
+approval now checks the choices against the order's frozen charges — picking the free
+alternative for a service the quote still charges for asks for an updated quote instead
+of silently billing it. The tax engine applies a place's optional-and-separate answer
+only when the order proves the alternative was shown; old orders are treated as not
+optional. Starting rules are seeded "Researched — not confirmed" (state services not
+taxed when optional and separate; delivery taxed even when separate in Fort Collins,
+Thornton, Broomfield, Boulder, Aurora and Westminster; separately listed installation
+not taxed in Fort Collins, Thornton and Broomfield); Greeley's answers stay unset
+(taxed) until Greeley confirms in writing. Confirmed and researched taxability saves
+now carry the optional-and-separate answer, so a CPA answer settles the whole cell.
+The $45 setup fee is unchanged (IN-74) with its home-rule note; Settings warns when a
+service price runs well above its real cost. Nine DQ-FEETAX-* questions are filed in
+OWNER-INPUTS; the "Email Greeley" draft lives on Settings › Taxes (the app drafts it,
+Chris sends it). Customer-isolation, agreement/bill-line matching and the engine proof
+rule are covered by tests; CI was green at the exact head `4dcd14cf` and every review
+comment was read and answered (three P1 findings fixed before merge).
+
+## October 27 — AR-11 measured desk JavaScript guard (PR #691, review/checks pending)
+
+The real Next 16 production build records the gzip JavaScript actually requested by each private desk page and rejects missing route baselines or growth over 10%. PR #691 passed its previous exact-head CI and had a pending review gate; merging AR-12 and Help changed main, so the actual branch conflict is being reconciled without reverting those releases. Fresh exact-head CI and review are required. AR-1 was incorrectly marked merged via #714, which actually shipped tax benefits; work-index correction is included. Real-phone installation remains an owner verification item.
+
+## October 27 — AR-12 Settings → Features, Practice and Help (source merged)
+
+PRs #693/#695/#702/#716 all merged with exact-head CI and review gates. The Features screen's seven owner-controlled visibility choices, automatic rules and private Practice link are shipped in source; hiding navigation never revokes direct page access. Practice requires the owner's separate HTTPS testing-app setting and remains unchecked in OWNER-CHECKLIST. The 15 role-aware Help guides are also merged.
 
 ## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 

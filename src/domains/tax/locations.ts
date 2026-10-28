@@ -737,7 +737,7 @@ export async function getJurisdictionRentalTaxability(
 export async function listTaxabilityRuleCells(tx: Prisma.TransactionClient) {
   return tx.taxabilityRule.findMany({
     select: { id: true, jurisdictionId: true, category: true, taxability: true, cpaConfirmedOn: true,
-      provisional: true },
+      provisional: true, optionalSeparatedTreatment: true },
     orderBy: [{ category: "asc" }, { id: "asc" }],
   });
 }
@@ -753,11 +753,12 @@ export async function getTaxabilityRulesAsOf(
 ): Promise<TaxabilityCell[]> {
   const [current, versions, pending] = await Promise.all([
     tx.taxabilityRule.findMany({
-      select: { jurisdictionId: true, category: true, taxability: true, provisional: true },
+      select: { jurisdictionId: true, category: true, taxability: true, provisional: true,
+        optionalSeparatedTreatment: true },
     }),
     tx.taxabilityRuleVersion.findMany({
       select: { jurisdictionId: true, category: true, taxability: true, provisional: true,
-        effectiveFrom: true, createdAt: true },
+        optionalSeparatedTreatment: true, effectiveFrom: true, createdAt: true },
     }),
     tx.decisionScheduledChange.findMany({
       where: { appliedAt: null, cancelledAt: null, effectiveFrom: { lte: at } },
@@ -810,6 +811,10 @@ async function buildTaxContext(
   const defaultProvisional = Object.fromEntries(
     defaultRows.filter((row) => row.provisional).map((row) => [row.category, true]),
   ) as NonNullable<EngineInput["defaultProvisional"]>;
+  const defaultOptionalSeparatedRules = Object.fromEntries(
+    defaultRows.filter((row) => row.optionalSeparatedTreatment)
+      .map((row) => [row.category, row.optionalSeparatedTreatment]),
+  ) as NonNullable<EngineInput["defaultOptionalSeparatedRules"]>;
   const cellsByJurisdiction = new Map<string, TaxabilityCell[]>();
   for (const row of cells) {
     if (row.jurisdictionId === null) continue;
@@ -870,6 +875,11 @@ async function buildTaxContext(
         (cellsByJurisdiction.get(jurisdiction.id) ?? [])
           .filter((row) => row.provisional).map((row) => [row.category, true]),
       ) as NonNullable<EngineJurisdiction["provisional"]>,
+      optionalSeparatedRules: Object.fromEntries(
+        (cellsByJurisdiction.get(jurisdiction.id) ?? [])
+          .filter((row) => row.optionalSeparatedTreatment)
+          .map((row) => [row.category, row.optionalSeparatedTreatment]),
+      ) as NonNullable<EngineJurisdiction["optionalSeparatedRules"]>,
     })) ?? [];
   const currentJurisdictionIds = new Set(
     jurisdictions.map((jurisdiction) => jurisdiction.id),
@@ -900,6 +910,7 @@ async function buildTaxContext(
     election: settings.shortTermLeaseElection,
     defaultRules,
     defaultProvisional,
+    defaultOptionalSeparatedRules,
     jurisdictions,
     exemptJurisdictionIds,
   };

@@ -18,6 +18,8 @@ export type TaxabilityCell = {
   category: TaxChargeCategory;
   taxability: Taxability;
   provisional: boolean;
+  /** FEETAX-1: the optional-and-separately-stated answer for a service line; null/absent = same as taxability. */
+  optionalSeparatedTreatment?: Taxability | null;
 };
 export type TaxabilityCellVersion = TaxabilityCell & { effectiveFrom: Date; createdAt: Date };
 export type ScheduledTaxabilityCell = TaxabilityCell & { effectiveFrom: Date; createdAt: Date };
@@ -32,7 +34,7 @@ function newestFirst(a: { effectiveFrom: Date; createdAt: Date }, b: { effective
 
 function plain(cell: TaxabilityCell): TaxabilityCell {
   return { jurisdictionId: cell.jurisdictionId, category: cell.category, taxability: cell.taxability,
-    provisional: cell.provisional };
+    provisional: cell.provisional, optionalSeparatedTreatment: cell.optionalSeparatedTreatment ?? null };
 }
 
 export function resolveTaxabilityAsOf(
@@ -65,19 +67,27 @@ export function resolveTaxabilityAsOf(
   const out: TaxabilityCell[] = [];
   for (const [key] of keys) {
     const due = dueByKey.get(key)?.sort(newestFirst)[0];
-    if (due) { out.push(plain(due)); continue; }
+    if (due) {
+      // A scheduled decision change carries only the regular answer; the optional-separate
+      // answer keeps riding the stored rule (FEETAX-1).
+      const stored = currentByKey.get(key);
+      out.push({ ...plain(due), optionalSeparatedTreatment: stored?.optionalSeparatedTreatment ?? null });
+      continue;
+    }
     const row = currentByKey.get(key);
     if (!row) continue;
     const history = (versionsByKey.get(key) ?? []).sort(newestFirst);
     const newest = history[0];
-    if (!newest || newest.taxability !== row.taxability || newest.provisional !== row.provisional) {
+    if (!newest || newest.taxability !== row.taxability || newest.provisional !== row.provisional
+      || (newest.optionalSeparatedTreatment ?? null) !== (row.optionalSeparatedTreatment ?? null)) {
       out.push(plain(row));
       continue;
     }
     // Spec 4a: the newest version that started on or before `at`. None that early means nothing was decided then.
     const then = history.find((version) => version.effectiveFrom.getTime() <= at.getTime());
-    out.push(plain(then ? { ...row, taxability: then.taxability, provisional: then.provisional }
-      : { ...row, taxability: "UNDECIDED", provisional: false }));
+    out.push(plain(then ? { ...row, taxability: then.taxability, provisional: then.provisional,
+        optionalSeparatedTreatment: then.optionalSeparatedTreatment ?? null }
+      : { ...row, taxability: "UNDECIDED", provisional: false, optionalSeparatedTreatment: null }));
   }
   return out;
 }

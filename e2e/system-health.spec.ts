@@ -160,6 +160,7 @@ test.describe("owner system health", () => {
     async function createAction(index: number) {
       const operation = await prisma.agentOperation.create({ data: {
         connectionId: connection.id, actorUserId: account.id,
+        connectionGrantVersion: connection.grantVersion,
         tool: "appliance_action_preview", action: "PAUSE_AUTOMATION", targetRef: "system-issues-sweep",
         requestKeyDigest: String(index).repeat(64), argsHash: "e".repeat(64), args: { ruleKey: "system-issues-sweep" },
         previewHash: "f".repeat(64), preview: {

@@ -13,7 +13,7 @@ const validRaw: Record<string, unknown> = {
   publicAddress: "1 Main St", hours: { mon: none, tue: none, wed: none, thu: none, fri: none, sat: none, sun: none },
   holidayClosuresText: "", facebookUrl: "", instagramUrl: "", googleUrl: "", nextdoorUrl: "", logoUrl: "",
   serviceAreaCities: "Greeley, Evans", serviceAreaZips: "80631",
-  deliveryFeeDollars: 45, installationFeeDollars: 0, removalFeeDollars: 0, damageWaiverEnabled: true, depositEnabled: false,
+  deliveryFeeDollars: 45, installationFeeDollars: 0, removalFeeDollars: 0, haulAwayFeeDollars: 0, damageWaiverEnabled: true, depositEnabled: false,
   lateFeeGraceDays: 10, lateFeeFlatDollars: 5, lateFeePercent: 0, sixMonthPrepaySetDollars: 0, sixMonthPrepaySingleDollars: 0,
   twelveMonthPrepaySetDollars: 0, twelveMonthPrepaySingleDollars: 0, twelveMonthPrepayFreeMonthEnabled: false,
   referralRewardDollars: 25, draftReservationHoldDays: 7, receiptFileKeepDays: 30, unsentPhotoKeepDays: 1,

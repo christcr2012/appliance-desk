@@ -88,7 +88,9 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
       where: { jurisdictionId: null },
       orderBy: { category: "asc" },
     });
-    expect(defaults).toHaveLength(10);
+    // FEETAX-1: the starting-rule seed adds the state HAUL_AWAY default cell
+    // (UNDECIDED, like every other seeded default) — 11 rows, not 10.
+    expect(defaults).toHaveLength(11);
     expect(new Set(defaults.map((row) => row.taxability))).toEqual(
       new Set(["UNDECIDED"]),
     );
@@ -104,6 +106,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
         "LATE_PAYMENT_FEE",
         "OTHER_CHARGE",
         "ADMINISTRATIVE_SETUP",
+        "HAUL_AWAY",
       ]),
     );
     expect(migration).not.toContain('INSERT INTO "TaxFilingAccount"');
