@@ -1,4 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { vi } from "vitest";
+// AR-8: listSettingsHistory now guards itself with requireRole (SETTINGS spec section 1), so this
+// suite stands in an owner session the way the history page does.
+vi.mock("@/lib/session", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/session")>()),
+  requireRole: async () => ({ user: { id: "history-test-owner", role: "OWNER" } }),
+}));
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { updateBusinessSettings } from "@/domains/settings";
