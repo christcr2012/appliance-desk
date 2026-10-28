@@ -1,6 +1,6 @@
-## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (in progress)
+## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 
-Branch `ai/vivienne/taxben-2`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` section
+Merged via PR #714 (squash `f9adbb2a`); publishing chain #711 → #713 → #714 as main kept moving. Final branch `ai/vivienne/taxben-2c`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` section
 TAXBEN-2; card `docs/pr-cards/TAXBEN-2.md`; execution packet
 `docs/pr-cards/execution/TAXBEN-2.json`. Built: the year's election statements on the CMP-2
 accountant packet (de minimis statement once the year's capitalization policy is signed and

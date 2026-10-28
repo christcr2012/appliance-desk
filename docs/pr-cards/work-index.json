@@ -4378,7 +4378,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "IN PROGRESS — branch ai/vivienne/taxben-2 (2026-10-27); packet registered, building",
+      "status": "MERGED — PR #714 (squash f9adbb2a on main, 2026-10-27); publishing chain #711 → #713 → #714",
       "migration": "none",
       "budget": 420,
       "units": [
