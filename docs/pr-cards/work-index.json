@@ -4436,7 +4436,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "IN REVIEW — PR #725 (Lane 4, 2026-10-28)",
+      "status": "IN REVIEW — PR #730 (Lane 4, 2026-10-28; replaces #725, same tree)",
       "migration": "none",
       "budget": 500,
       "units": [

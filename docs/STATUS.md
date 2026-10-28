@@ -12,7 +12,13 @@ uses. The Sheet renders only for the owner, and the deciding action refuses
 anyone else itself. New browser spec e2e/today-inline.spec.ts covers approve
 and decline through the confirmation, the staff view, and axe at five sizes.
 
-## October 28 — AR-3 Money area: built and in review (PR #725, Lane 4)
+## October 28 — AR-3 Money area: built and in review (PR #730, Lane 4)
+
+PR #725 was closed unmerged and replaced by PR #730 with the identical tree: #725's branch was
+pushed through the git-data route, whose commits carry no merge ancestry, so after main advanced
+three times GitHub computed it as permanently conflicted even though the branch tree already held
+the hand-resolved merges (the AUD-E trap). The replacement branch was recreated from current main
+and the same tree pushed on top; CI was fully green on #725 at three heads and re-runs on #730.
 
 The Money area is built on the kit: a Money overview (money in, still owed, past due, coming in
 30 days, money-group decisions, recent payments), a Payments list (Received / Failed / Needs a
@@ -23,7 +29,7 @@ bill record rebuilt as a kit record page with an Activity tab. No money rules ch
 button is the existing server action. CI is green on the PR head (the full browser suite included —
 it caught and I fixed a kit-guard menu move, plain-words titles, bundle budgets for the two new
 pages, a missing Toaster on the statement page, and three test files that followed the old
-deposits/waiting URLs). Next: review gate, merge, close-out.
+deposits/waiting URLs). Next: CI on #730, review gate, merge, close-out.
 
 
 ## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
