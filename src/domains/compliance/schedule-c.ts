@@ -277,6 +277,27 @@ export function packetCsv(packet: PacketData): string {
 }
 
 /** The same packet as a simple, printable PDF (pdf-lib, text pages). */
+/**
+ * Word-wrap a long paragraph for the packet PDF, whose renderer draws one
+ * fixed-width line at a time and truncates at 110 characters. Legal
+ * statement text must never be silently cut (TAXBEN-2 review).
+ */
+export function wrapPdfLine(text: string, width = 100): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current && current.length + 1 + word.length > width) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? `${current} ${word}` : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+}
+
 export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
   const { PDFDocument, StandardFonts } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
@@ -340,14 +361,20 @@ export async function packetPdf(packet: PacketData): Promise<Uint8Array> {
     push("");
     push("Elections and statements", true);
     push(`Return due date: ${e.dueOnKey}. With an extension: ${e.extensionKey}.`);
-    for (const line of e.deMinimisText.split("\n")) push(line);
+    const pushStatement = (statement: string) => {
+      for (const paragraph of statement.split("\n")) {
+        if (!paragraph.trim()) push("");
+        else for (const line of wrapPdfLine(paragraph)) push(line);
+      }
+    };
+    pushStatement(e.deMinimisText);
     if (e.electOutText) {
       push("");
-      for (const line of e.electOutText.split("\n")) push(line);
+      pushStatement(e.electOutText);
     }
     if (e.startupNoteText) {
       push("");
-      for (const line of e.startupNoteText.split("\n")) push(line);
+      pushStatement(e.startupNoteText);
     }
   }
   push("");

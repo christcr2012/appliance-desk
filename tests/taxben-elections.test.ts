@@ -16,7 +16,7 @@ import {
 import { signCapitalizationPolicy } from "@/domains/taxben/policy";
 import { policyTemplateKey } from "@/domains/taxben/policy";
 import { computeStartupSummary } from "@/domains/taxben/startup";
-import { packetCsv, computeScheduleCYear, type PacketData } from "@/domains/compliance/schedule-c";
+import { packetCsv, packetPdf, wrapPdfLine, computeScheduleCYear, type PacketData } from "@/domains/compliance/schedule-c";
 import { compute1099KTieOut } from "@/domains/compliance/k-reconciliation";
 import { build4562Worksheet, build4797Worksheet } from "@/domains/compliance/worksheets";
 import { listAccountantChanges } from "@/domains/accountant";
@@ -37,6 +37,19 @@ describe("election date helpers", () => {
     expect(returnDueKey("SINGLE_MEMBER_LLC", 2026)).toBe("2027-04-15");
     expect(returnDueKey("MULTI_MEMBER_LLC", 2026)).toBe("2027-03-15");
     expect(returnDueKey("S_CORP", 2026)).toBe("2027-03-15");
+  });
+});
+
+describe("packet PDF wrapping (review fix)", () => {
+  it("wraps long statement paragraphs without losing a word", () => {
+    const paragraph =
+      "Under Internal Revenue Code section 168(k)(7), Robinson Appliance Rentals elects not to deduct bonus depreciation for the following classes of property placed in service during 2028: 5-year property (rental appliances). Property in these classes is depreciated under the regular rules instead.";
+    const lines = wrapPdfLine(paragraph);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.every((line) => line.length <= 100)).toBe(true);
+    expect(lines.join(" ")).toBe(paragraph);
+    expect(wrapPdfLine("")).toEqual([""]);
+    expect(wrapPdfLine("short line")).toEqual(["short line"]);
   });
 });
 
@@ -260,6 +273,8 @@ describe.skipIf(!enabled)("elections (real Postgres)", () => {
     const withElections = packetCsv({ ...base, elections });
     expect(withElections).toContain("Elections and statements");
     expect(withElections).toContain("2029-10-15");
+    const pdf = await packetPdf({ ...base, elections });
+    expect(pdf.byteLength).toBeGreaterThan(0);
   });
 
   it("opens the year-end planning window on November 15, not before", async () => {
