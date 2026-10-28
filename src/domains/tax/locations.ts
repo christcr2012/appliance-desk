@@ -737,7 +737,7 @@ export async function getJurisdictionRentalTaxability(
 export async function listTaxabilityRuleCells(tx: Prisma.TransactionClient) {
   return tx.taxabilityRule.findMany({
     select: { id: true, jurisdictionId: true, category: true, taxability: true, cpaConfirmedOn: true,
-      provisional: true },
+      provisional: true, optionalSeparatedTreatment: true },
     orderBy: [{ category: "asc" }, { id: "asc" }],
   });
 }

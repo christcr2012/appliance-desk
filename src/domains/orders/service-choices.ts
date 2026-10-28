@@ -149,6 +149,40 @@ export function defaultServiceChoice(
   return "BY_BUSINESS";
 }
 
+const FROZEN_SERVICE_WORDS: Partial<Record<ServiceChoiceService, string>> = {
+  DELIVERY: "delivery",
+  INSTALLATION: "installation",
+  REMOVAL: "pickup at the end of the rental",
+};
+
+/**
+ * The binding-quote guard: a service choice recorded at approval must agree
+ * with the order's frozen charges. The frozen signing order is owner-reviewed
+ * and fingerprint-bound, so a customer picking the free alternative for a
+ * service the quote still charges for — or asking for delivery on a pickup
+ * quote — cannot be accepted here; the quote itself must be updated first
+ * (the same answer the approval flow already gives for a mismatched delivery
+ * charge). Haul-away is never in the frozen order, so it is not guarded.
+ */
+export function assertServiceChoicesFitFrozenCharges(args: {
+  recorded: { service: ServiceChoiceService; choice: ServiceChoiceValue }[];
+  frozenChargeCents: Partial<Record<ServiceChoiceService, number>>;
+  pickupOnly: boolean;
+}): void {
+  for (const row of args.recorded) {
+    const word = FROZEN_SERVICE_WORDS[row.service];
+    if (!word) continue;
+    if (row.service === "DELIVERY" && row.choice === "BY_BUSINESS" && args.pickupOnly)
+      throw new Error(
+        "This quote is for pickup. If you'd like delivery instead, ask us for an updated quote so the delivery charge and window are set up first.",
+      );
+    if (row.choice === "CUSTOMER_DOES_IT" && (args.frozenChargeCents[row.service] ?? 0) > 0)
+      throw new Error(
+        `This quote includes a charge for ${word}. If you'd rather do that part yourself, ask us for an updated quote first — you won't be charged for a service you do yourself.`,
+      );
+  }
+}
+
 export type ServiceChoiceSelection = {
   service: ServiceChoiceService;
   choice: ServiceChoiceValue;

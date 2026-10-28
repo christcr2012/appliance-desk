@@ -744,16 +744,43 @@ export async function approveEstimate(
     // the client's submission only says who does the work.
     {
       const { serviceChoiceOffersInTx } = await import("@/domains/orders/service-choice-offers");
-      const { recordServiceChoicesInTx } = await import("@/domains/orders/service-choices");
-      const { offers } = await serviceChoiceOffersInTx(tx, estimate,
+      const { recordServiceChoicesInTx, assertServiceChoicesFitFrozenCharges } =
+        await import("@/domains/orders/service-choices");
+      const { inputs, offers } = await serviceChoiceOffersInTx(tx, estimate,
         input.deliverySelection?.questions.dryerOutlet ?? input.serviceDryerOutlet ?? null);
-      await recordServiceChoicesInTx(tx, {
+      const recorded = await recordServiceChoicesInTx(tx, {
         orderId: id,
         quoteVersion: estimate.deliveryOfferVersion,
         offers,
         selections: input.serviceChoices ?? [],
         pickupOnly,
       });
+      // FEETAX-1 review fix: the recorded choices must agree with the order's
+      // frozen charges. Read the binding V2 components when the order has
+      // them; on a V1 order the mandatory charges came from the same inputs
+      // the offers were built from, so those are the charge signal there.
+      const frozenChargeCents: Partial<Record<string, number>> = {
+        DELIVERY: inputs.deliveryPriceCents ?? 0,
+        INSTALLATION: inputs.installationFeeCents,
+        REMOVAL: inputs.removalFeeCents,
+      };
+      const choiceAgreements = await tx.rentalAgreement.findMany({
+        where: { sourceEstimateId: id }, select: { id: true },
+      });
+      if (choiceAgreements.length) {
+        const { getFrozenSigningOrderInTx } = await import("@/domains/billing/signing-frozen-verify");
+        const frozen = await getFrozenSigningOrderInTx(tx, choiceAgreements[0].id);
+        const v2 = frozen.filter(row => row.schemaVersion === 2);
+        if (v2.length) {
+          for (const key of Object.keys(frozenChargeCents)) frozenChargeCents[key] = 0;
+          for (const row of v2)
+            for (const component of row.v2Extension.components)
+              if (component.category in frozenChargeCents)
+                frozenChargeCents[component.category] =
+                  (frozenChargeCents[component.category] ?? 0) + component.amountCents;
+        }
+      }
+      assertServiceChoicesFitFrozenCharges({ recorded, frozenChargeCents, pickupOnly });
     }
     let customerId = estimate.customerId;
     let activationEmail: string | null = null;

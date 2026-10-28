@@ -90,3 +90,47 @@ describe("FEETAX-1 service categories for an order", () => {
       .toEqual(["OTHER"]);
   });
 });
+
+// FEETAX-1 review fix: choices recorded at approval must agree with the
+// frozen charges in the binding quote.
+describe("assertServiceChoicesFitFrozenCharges", () => {
+  it("rejects the free alternative for a service the frozen quote still charges for", async () => {
+    const { assertServiceChoicesFitFrozenCharges } = await import("../src/domains/orders/service-choices");
+    expect(() => assertServiceChoicesFitFrozenCharges({
+      recorded: [{ service: "DELIVERY", choice: "CUSTOMER_DOES_IT" }],
+      frozenChargeCents: { DELIVERY: 7500 }, pickupOnly: false,
+    })).toThrow(/includes a charge for delivery/);
+    expect(() => assertServiceChoicesFitFrozenCharges({
+      recorded: [{ service: "INSTALLATION", choice: "CUSTOMER_DOES_IT" }],
+      frozenChargeCents: { INSTALLATION: 5000 }, pickupOnly: false,
+    })).toThrow(/installation/);
+    expect(() => assertServiceChoicesFitFrozenCharges({
+      recorded: [{ service: "REMOVAL", choice: "CUSTOMER_DOES_IT" }],
+      frozenChargeCents: { REMOVAL: 4000 }, pickupOnly: false,
+    })).toThrow(/pickup at the end of the rental/);
+  });
+  it("rejects asking for delivery on a pickup quote", async () => {
+    const { assertServiceChoicesFitFrozenCharges } = await import("../src/domains/orders/service-choices");
+    expect(() => assertServiceChoicesFitFrozenCharges({
+      recorded: [{ service: "DELIVERY", choice: "BY_BUSINESS" }],
+      frozenChargeCents: { DELIVERY: 0 }, pickupOnly: true,
+    })).toThrow(/quote is for pickup/);
+  });
+  it("accepts choices that match the frozen charges", async () => {
+    const { assertServiceChoicesFitFrozenCharges } = await import("../src/domains/orders/service-choices");
+    // Self-pickup on a pickup quote; self-install when no installation is charged;
+    // haul-away is never part of the frozen order.
+    assertServiceChoicesFitFrozenCharges({
+      recorded: [
+        { service: "DELIVERY", choice: "CUSTOMER_DOES_IT" },
+        { service: "INSTALLATION", choice: "CUSTOMER_DOES_IT" },
+        { service: "HAUL_AWAY", choice: "BY_BUSINESS" },
+      ],
+      frozenChargeCents: { DELIVERY: 0, INSTALLATION: 0 }, pickupOnly: true,
+    });
+    assertServiceChoicesFitFrozenCharges({
+      recorded: [{ service: "DELIVERY", choice: "BY_BUSINESS" }],
+      frozenChargeCents: { DELIVERY: 7500 }, pickupOnly: false,
+    });
+  });
+});
