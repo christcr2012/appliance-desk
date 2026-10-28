@@ -1,19 +1,30 @@
-## October 27 — FEETAX-1: Optional, separately stated service lines and per-place fee rules (in progress)
+## October 28 — FEETAX-1 merged: Optional, separately stated service lines and per-place fee rules
 
-Branch `ai/vivienne/feetax-1`. Spec `docs/build-specs/engines/FEE-TAXABILITY.md` sections
-1–7; card `docs/pr-cards/FEETAX-1.md`; execution packet
-`docs/pr-cards/execution/FEETAX-1.json`. Building: delivery, installation, pickup at the
-end and haul-away as separate optional choices with prices shown at ordering (the free
-do-it-myself alternative included; gas appliances never offer self-install), each choice
-saved with the order as `OrderServiceChoice`, and the tax engine applying a place's
-optional-and-separately-stated answer only when the order proves the alternative was
-shown — old orders and unproven cases fall back to the regular taxed answer. Starting
-rules seed as "Researched — not confirmed"; Greeley's service answers stay unset (taxed)
-until Greeley confirms in writing. The $45 setup fee stays as set (IN-74). Lane 5 is
-paired on this card: it builds slices 4–6 and verifies slices 1–3, on its own branch,
-checkout and database (port 5433), under Lane 4's tax and fee rules.
+Merged 2026-10-28 as PR #718 (squash `e2a1e45e`) — Lane 4's last card; the lane is
+complete. Paired build: Lane 4 built slices 1–3 (data, engine, seeds/decisions/email),
+Lane 5 built slices 4–6 (order capture, desk flow, integration tests) and verified
+slices 1–3 independently; Lane 4 integrated and shipped.
 
-## October 27 — Lane 1 AR-12 Features + Practice (branch ai/chatgpt/ar12-feature-visibility-20261027, in implementation)
+Delivery, installation, pickup at the end and haul-away are separate optional choices
+with prices shown at ordering (gas appliances never offer self-install); every choice is
+saved with the order as `OrderServiceChoice` inside the order's locked transaction, and
+approval now checks the choices against the order's frozen charges — picking the free
+alternative for a service the quote still charges for asks for an updated quote instead
+of silently billing it. The tax engine applies a place's optional-and-separate answer
+only when the order proves the alternative was shown; old orders are treated as not
+optional. Starting rules are seeded "Researched — not confirmed" (state services not
+taxed when optional and separate; delivery taxed even when separate in Fort Collins,
+Thornton, Broomfield, Boulder, Aurora and Westminster; separately listed installation
+not taxed in Fort Collins, Thornton and Broomfield); Greeley's answers stay unset
+(taxed) until Greeley confirms in writing. Confirmed and researched taxability saves
+now carry the optional-and-separate answer, so a CPA answer settles the whole cell.
+The $45 setup fee is unchanged (IN-74) with its home-rule note; Settings warns when a
+service price runs well above its real cost. Nine DQ-FEETAX-* questions are filed in
+OWNER-INPUTS; the "Email Greeley" draft lives on Settings › Taxes (the app drafts it,
+Chris sends it). Customer-isolation, agreement/bill-line matching and the engine proof
+rule are covered by tests; CI was green at the exact head `4dcd14cf` and every review
+comment was read and answered (three P1 findings fixed before merge).
+
 ## October 27 — AR-11 measured desk JavaScript guard (PR #691, review/checks pending)
 
 The real Next 16 production build records the gzip JavaScript actually requested by each private desk page and rejects missing route baselines or growth over 10%. PR #691 passed its previous exact-head CI and had a pending review gate; merging AR-12 and Help changed main, so the actual branch conflict is being reconciled without reverting those releases. Fresh exact-head CI and review are required. AR-1 was incorrectly marked merged via #714, which actually shipped tax benefits; work-index correction is included. Real-phone installation remains an owner verification item.
