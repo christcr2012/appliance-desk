@@ -77,7 +77,7 @@ describe("W-8 simpler menu", () => {
     expect(deskMoreLinks("OWNER").map((link) => link.label)).toEqual(
       ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Manage my business", "Website", "Business records", "Set up your business", "Logins vault", "If something happens to me", "Vehicle and mileage", "Insurance", "Privacy requests", "Privacy and security", "App feedback", "Activity", "My account", "How do I…?"]);
     expect(deskMoreLinks("ADMIN").map((link) => link.label)).toEqual(
-      ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Manage my business", "Website", "Vehicle and mileage", "Privacy and security", "App feedback", "Activity", "My account"]);
+      ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Manage my business", "Website", "Vehicle and mileage", "Privacy and security", "App feedback", "Activity", "My account", "How do I…?"]);
     expect(deskMoreLinks("STAFF").map((link) => link.label)).toEqual(["Expenses", "Activity", "My account", "How do I…?"]);
     expect(deskMoreLinks("CUSTOMER")).toEqual([]);
     const everything = JSON.stringify([deskNavigation("OWNER"), deskMoreLinks("OWNER"), DESK_SECTIONS]);
