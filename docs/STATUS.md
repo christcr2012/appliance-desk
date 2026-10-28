@@ -1,4 +1,4 @@
-## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #722)
+## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
 AR-4's first slice rebuilds Rentals on the desk kit (RENTALS spec). The list
 gains status tabs with counts (Active, Waiting for signature, Starting,
