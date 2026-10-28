@@ -38,7 +38,13 @@ export function ApprovalsSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
-  const [cards, setCards] = useState<ApprovalCardData[]>(requests);
+  // The cards are the latest server list minus the ones decided in this
+  // session (PR #728 Codex P2): deriving them from the props means a
+  // background refresh bringing a new request — or the next batch past the
+  // 50-row page — shows up the next time the Sheet opens, while a card the
+  // owner just decided never comes back from a stale render.
+  const [decidedIds, setDecidedIds] = useState<ReadonlySet<string>>(new Set());
+  const cards = requests.filter((r) => !decidedIds.has(r.id));
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState<{ card: ApprovalCardData; decision: "APPROVE" | "DECLINE" } | null>(null);
   const [decidingId, setDecidingId] = useState<string | null>(null);
@@ -57,12 +63,23 @@ export function ApprovalsSheet({
         message: OUTCOME_WORDS[outcome] ?? outcome,
         tone: DANGER_OUTCOMES.has(outcome) ? "danger" : "good",
       });
-      const remaining = cards.filter((c) => c.id !== card.id);
-      setCards(remaining);
-      if (remaining.length === 0) {
+      const next = new Set(decidedIds);
+      next.add(card.id);
+      setDecidedIds(next);
+      if (requests.every((r) => next.has(r.id))) {
         onOpenChange(false);
         router.refresh();
       }
+    } catch {
+      // PR #728 Codex P2: a rejected call (network, unexpected server error)
+      // must never fail silently on a money action — the outcome is unknown,
+      // so say so and reconcile with the server before any retry.
+      toast({
+        message:
+          "We could not confirm what happened, so nothing was assumed. Check the approvals page: the request may already be decided, so do not repeat it until you know.",
+        tone: "danger",
+      });
+      router.refresh();
     } finally {
       setDecidingId(null);
     }
