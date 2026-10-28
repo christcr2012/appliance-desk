@@ -8,16 +8,18 @@ import type { GlossaryKey } from "./types";
 
 export function GlossaryPopover({
   term,
+  next,
   trigger,
   triggerClassName,
   triggerLabel,
 }: {
-  term: GlossaryKey;
+  term?: GlossaryKey;
+  next?: string;
   trigger: ReactNode;
   triggerClassName: string;
   triggerLabel?: string;
 }) {
-  const entry = GLOSSARY[term];
+  const entry = term ? GLOSSARY[term] : null;
   const [open, setOpen] = useState(false);
   // A hidden (kept-alive) page must not come back with the popover still open.
   useLayoutEffect(() => () => setOpen(false), []);
@@ -33,8 +35,14 @@ export function GlossaryPopover({
           collisionPadding={16}
           className="z-50 w-72 max-w-[85vw] rounded-card border border-line bg-surface p-3 text-left text-sm text-ink shadow-raise"
         >
-          <strong className="block font-bold">{entry.title}</strong>
-          <span className="mt-1 block leading-relaxed">{entry.description}</span>
+          {entry ? <>
+            <strong className="block font-bold">{entry.title}</strong>
+            <span className="mt-1 block leading-relaxed">{entry.description}</span>
+          </> : null}
+          {next ? <div className={entry ? "mt-3 border-t border-line pt-3" : ""}>
+            <strong className="block font-bold">What happens next</strong>
+            <span className="mt-1 block leading-relaxed">{next}</span>
+          </div> : null}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
