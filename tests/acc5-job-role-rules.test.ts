@@ -13,7 +13,7 @@ describe("job role screens", () => {
     expect(screenForPath("/desk/parts")).toBe("inventory");
     expect(screenForPath("/desk/reports?x=1")).toBe("billing");
     expect(screenForPath("/desk/settings/website")).toBe("management");
-    for (const p of ["/desk", "/desk/today", "/desk/account/security", "/desk/security/setup", "/desk/notices", "/desk/search", "/desk/more"]) {
+    for (const p of ["/desk", "/desk/today", "/desk/account/security", "/desk/security/setup", "/desk/notices", "/desk/search", "/desk/more", "/desk/help"]) {
       expect(screenForPath(p)).toBe("always");
     }
     expect(screenForPath("/account")).toBeNull();
@@ -41,7 +41,7 @@ describe("job role screens", () => {
     expect(hrefs).toContain("/desk/dispatch");
     expect(hrefs).not.toContain("/desk/customers");
     expect(hrefs).toContain("/desk/more");
-    expect(deskMoreLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/activity", "/desk/account"]);
+    expect(deskMoreLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/activity", "/desk/account", "/desk/help"]);
     // No job role: exactly what the access level gave before.
     expect(deskNavigation("STAFF", null)).toEqual(deskNavigation("STAFF"));
   });
