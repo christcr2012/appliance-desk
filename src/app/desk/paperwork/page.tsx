@@ -55,8 +55,9 @@ export default async function PaperworkPage({
 }: {
   searchParams: Promise<{ tab?: string; q?: string }>;
 }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const isOwner = session.user.role === "OWNER";
+  const isAccountant = session.user.role === "ACCOUNTANT";
   const { tab: tabParam, q } = await searchParams;
   const tab: TabKey = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : "needs-you";
   const query = (q ?? "").trim();
@@ -110,7 +111,9 @@ export default async function PaperworkPage({
         description={
           isOwner
             ? "Your LLC papers, licenses, tax accounts, insurance, contracts and the files behind them — with the numbers stored encrypted and shown only to you, masked. Add a date and you'll get a reminder on your Today list."
-            : "The business records the owner shares with admins. Records holding a stored number, and the numbers themselves, are owner-only."
+            : isAccountant
+              ? "The records the owner has shared with you. Stored numbers are never shown here — you see only that a number is on file. You can add files to a shared record; everything else stays with the owner."
+              : "The business records the owner shares with admins. Records holding a stored number, and the numbers themselves, are owner-only."
         }
         primaryAction={isOwner ? <ButtonLink href="/desk/paperwork/new">Add a record</ButtonLink> : undefined}
       />
