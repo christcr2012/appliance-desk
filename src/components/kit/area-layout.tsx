@@ -13,7 +13,7 @@ export async function AreaLayout({ area, children }: { area: AreaKey; children: 
   const selected = visibleAreas(session.user.role, screens, shown).find(a => a.key === area);
   if (!selected || selected.tabs.length < 2) return <>{children}</>;
   return <>
-    <AreaTabs label={selected.label + " sections"} items={selected.tabs.map(t => ({ href: t.href, label: t.label, matches: t.matches, query: t.query }))} />
+    <AreaTabs page label={selected.label + " sections"} items={selected.tabs.map(t => ({ href: t.href, label: t.label, matches: t.matches, query: t.query }))} />
     {children}
   </>;
 }

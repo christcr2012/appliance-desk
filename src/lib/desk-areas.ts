@@ -90,7 +90,11 @@ export function visibleAreas(role: string | undefined, screens: readonly string[
   })).filter(area => area.tabs.length > 0);
 }
 
-export function areaHome(area: Area): string { return area.tabs[0]?.href ?? "/desk/today"; }
+export function areaHome(area: Area): string {
+  // The Customers area opens the customer list; Leads remains its first section tab.
+  const customerList = area.key === "customers" ? area.tabs.find(tab => tab.key === "customers") : undefined;
+  return customerList?.href ?? area.tabs[0]?.href ?? "/desk/today";
+}
 
 /** Longest matching path wins. Query rules apply only to the tab's own href. */
 export function activeArea(pathname: string, search: URLSearchParams, areas: Area[]): { area: AreaKey; tab: string } | null {

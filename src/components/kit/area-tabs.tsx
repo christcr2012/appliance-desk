@@ -40,7 +40,7 @@ export function currentAreaTab(items: AreaTabItem[], pathname: string, search = 
   return best >= 0 ? best : firstOnPath;
 }
 
-export function AreaTabs({ label, items }: { label: string; items: AreaTabItem[] }) {
+export function AreaTabs({ label, items, page = false }: { label: string; items: AreaTabItem[]; page?: boolean }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const search = useSearchParams()?.toString() ?? "";
@@ -51,7 +51,7 @@ export function AreaTabs({ label, items }: { label: string; items: AreaTabItem[]
     currentRef.current?.scrollIntoView?.({ block: "nearest", inline: "center" });
   }, [current]);
   return (
-    <nav aria-label={label} className="-mx-5 border-b border-line lg:mx-0">
+    <nav aria-label={label} className={page ? "-mx-4 min-w-0 border-b border-line sm:-mx-6 lg:mx-0" : "-mx-5 min-w-0 border-b border-line lg:mx-0"}>
       <ul className="flex gap-1 overflow-x-auto px-5 [scrollbar-width:none] lg:px-0 [&::-webkit-scrollbar]:hidden">
         {visible.map((item, index) => {
           const isCurrent = index === current;

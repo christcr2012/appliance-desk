@@ -1,6 +1,6 @@
 import { jobRoleAllowsPath } from "@/domains/team/job-role-rules";
 import { isHrefHidden, type FeatureKey } from "@/domains/features/registry";
-import type { Area, ProfileLink } from "@/lib/desk-areas";
+import { areaHome, type Area, type ProfileLink } from "@/lib/desk-areas";
 
 export type CommandChoice = {
   group: "Go to" | "Do" | "Records" | "Help" | "Recent";
@@ -31,7 +31,7 @@ export function commandLocalChoices(query: string, role: string, screens: readon
   const q = query.trim().toLocaleLowerCase();
   const usable = (href: string) => jobRoleAllowsPath(screens, href)
     && (!shown || !isHrefHidden(href, shown));
-  if (!q) return areas.map(a => choice(a.label, a.tabs[0]?.href ?? "/desk/today", "Go to"));
+  if (!q) return areas.map(a => choice(a.label, areaHome(a), "Go to"));
   if (q.length < 2) return [];
   const go = areas.flatMap(a => [
     choice(a.label, a.tabs[0]?.href ?? "/desk/today", "Go to"),

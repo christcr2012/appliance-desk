@@ -59,7 +59,9 @@ describe("AR-1 five desk areas", () => {
   });
 
   it("keeps a safe first tab after role and visibility filtering", () => {
-    for (const area of visibleAreas("OWNER", null, all)) expect(areaHome(area)).toBe(area.tabs[0]?.href);
+    for (const area of visibleAreas("OWNER", null, all)) {
+      expect(areaHome(area)).toBe(area.key === "customers" ? "/desk/customers" : area.tabs[0]?.href);
+    }
     const schedule = visibleAreas("OWNER", null, new Set()).find(a => a.key === "schedule")!;
     expect(areaHome(schedule)).toBe("/desk/jobs");
   });

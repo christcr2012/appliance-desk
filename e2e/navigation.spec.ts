@@ -32,10 +32,10 @@ test.describe("AR-1 five area navigation", () => {
     await page.reload();
     await expect(page.getByRole("button", { name: "Expand menu" })).toBeVisible();
     await page.keyboard.press("Tab");
-    const skip = page.getByRole("link", { name: "Skip to content" });
+    const skip = page.getByRole("link", { name: "Skip to main content" });
     await skip.focus();
     await page.keyboard.press("Enter");
-    await expect(page.locator("#main")).toBeFocused();
+    await expect(page.locator("#main-content")).toBeFocused();
   });
 
   test("area tabs, keyboard command and retired landing-page redirects", async ({ page }) => {
