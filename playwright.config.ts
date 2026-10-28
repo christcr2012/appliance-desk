@@ -24,6 +24,8 @@ export default defineConfig({
     command:
       'test -f .next/BUILD_ID || { echo "Browser tests need the production build and a test database. Run: npm run test:browser -- e2e/<file>.spec.ts" >&2; exit 1; }; exec npm run start',
     url: "http://localhost:3000",
+    // ZONE-1: the address checker answers from fixed town centers instead of calling the Census Bureau.
+    env: { CENSUS_GEOCODER_FIXTURES: "1" },
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },

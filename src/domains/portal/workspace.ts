@@ -54,6 +54,7 @@ export async function getPortalHome(rawAddressId?: string) {
         type: true,
         status: true,
         scheduledAt: true,
+        customerPickupHandoff: true,
         serviceAddress: { select: { line1: true, line2: true, city: true } },
       },
     }),
@@ -105,7 +106,7 @@ export async function getPortalHome(rawAddressId?: string) {
     prisma.job.findMany({
       where: jobWhere, take: 5,
       orderBy: [{ scheduledAt: { sort: "asc", nulls: "first" } }, { id: "asc" }],
-      select: { id: true, type: true, status: true, createdAt: true, scheduledAt: true },
+      select: { id: true, type: true, status: true, createdAt: true, scheduledAt: true, customerPickupHandoff: true },
     }),
     getNextBills(customer.id, addressId),
   ]);

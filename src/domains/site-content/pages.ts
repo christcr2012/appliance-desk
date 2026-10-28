@@ -29,7 +29,7 @@ export const WEBSITE_PAGES: ReadonlyArray<WebsitePage> = [
   { id: "pricing", name: "Pricing", about: "The price cards, fees and “good to know” notes. The prices themselves come from your price list.", registryPages: ["Pricing", "Price cards"], previewPath: "/pricing" },
   { id: "contact", name: "Contact and quote form", about: "The page where people ask for a quote, with every form label and message.", registryPages: ["Get a quote"], previewPath: "/contact" },
   { id: "how", name: "How it works", about: "The steps from asking for a quote to delivery.", registryPages: ["How it works"], previewPath: "/how-it-works" },
-  { id: "area", name: "Service area", about: "Where you deliver. The cities and ZIP codes come from Settings.", registryPages: ["Service area"], previewPath: "/service-area" },
+  { id: "area", name: "Service area", about: "Where you deliver. The zone map, prices and towns come from Settings › Delivery zones.", registryPages: ["Service area"], previewPath: "/service-area" },
   { id: "launch", name: "Launch list", about: "The sign-up page used while you prepare to open.", registryPages: ["Launch list"], previewPath: "/launch" },
   { id: "city", name: "City pages", about: "One page for each city you serve.", registryPages: ["City pages"], previewPath: null, cityPage: true },
   { id: "search", name: "Search results (Google)", about: "The titles and descriptions search engines and link previews show. They are not on a page.", registryPages: ["Search results"], previewPath: null },

@@ -17,6 +17,8 @@ import {
 } from "@/domains/billing/mandatory-charge-assessment";
 import { readCommercialReserveHistory } from "./commercial-reserve-policy";
 import { lockPreparedEstimatePolicyScopeInTx } from "./prepared-policy-scope";
+import { snapshotLocation } from "@/domains/delivery/snapshot";
+import { expectedDeliveryChargeForAddressInTx } from "@/domains/orders/route-evidence";
 
 export type PreparedMandatoryChargeLocation={
   agreementId:string;
@@ -186,9 +188,18 @@ export async function savePreparedMandatoryChargeReview(input:{
     if(global.decision.retailDelivery==="EXEMPT"&&
        input.choices.some(row=>row.retailDeliveryEvent))
       throw new Error("An exempt RDF policy cannot assign a chargeable delivery event.");
+    // ZONE-1 (Codex finding on PR #604): an address the customer picks up has no delivery, so it can't carry the
+    // retail delivery fee; an order picked up entirely has no delivery event at all.
+    const zoneSource=await tx.estimate.findUnique({where:{id:estimate.id},select:{deliveryZoneSnapshot:true}});
+    const pickupIds=new Set(agreements.filter(row=>snapshotLocation(zoneSource?.deliveryZoneSnapshot,
+      row.serviceAddressId)?.choice==="CUSTOMER_PICKUP").map(row=>row.id));
+    if(input.choices.some(row=>row.retailDeliveryEvent&&pickupIds.has(row.agreementId)))
+      throw new Error("A customer pickup has no delivery, so it can't carry the retail delivery fee.");
+    const deliveredCount=agreements.filter(row=>!pickupIds.has(row.id)).length;
     if(global.decision.retailDelivery==="REQUIRED"&&
-       input.choices.filter(row=>row.retailDeliveryEvent).length!==1)
-      throw new Error("Assign the potential RDF to exactly one original delivery event.");
+       input.choices.filter(row=>row.retailDeliveryEvent).length!==(deliveredCount>0?1:0))
+      throw new Error(deliveredCount>0?"Assign the potential RDF to exactly one original delivery event."
+        :"Every address on this order is a customer pickup, so there is no delivery to carry the retail delivery fee.");
     if(input.choices.some(row=>row.retailDeliveryEvent&&!byId.has(row.agreementId)))
       throw new Error("An RDF event does not belong to this exact estimate.");
     const rdf=await provisionalRdfOrderDecisionInTx(tx,asOf);
@@ -213,10 +224,14 @@ export async function savePreparedMandatoryChargeReview(input:{
       const prior=history.at(-1);
       if((prior?.revision??null)!==versions.get(agreement.id))
         throw new Error("An owner changed reviewed service fees. Refresh the full order.");
+      // ZONE-1: the delivery price is the one helper's answer for this address (pickup $0, an owner-recorded
+      // driving-route exception's frozen price, else the frozen zone price); older estimates keep the configured fee.
+      const zoneDelivery=await expectedDeliveryChargeForAddressInTx(tx,{estimateId:estimate.id,agreementId:agreement.id,
+        serviceAddressId:agreement.serviceAddressId,zone:snapshotLocation(zoneSource?.deliveryZoneSnapshot,agreement.serviceAddressId)});
       const charges=mandatoryChargeAmounts({
         global:global.decision,choice,
         settings:{
-          delivery:settings.oneTimeDeliveryFeeCents,
+          delivery:zoneDelivery??settings.oneTimeDeliveryFeeCents,
           installation:settings.oneTimeInstallationFeeCents,
           removal:settings.oneTimeRemovalFeeCents,
           waiverEnabled:settings.damageWaiverEnabled,
@@ -228,7 +243,7 @@ export async function savePreparedMandatoryChargeReview(input:{
       const reserveRevision=commercialHistory.at(-1)?.revision??null;
       const tax=await provisionalMandatoryServiceTaxInTx(tx,agreement.id,charges,asOf);
       const retailDelivery=allocateReviewedRdfForLocation(
-        rdf,global.decision.retailDelivery,choice.retailDeliveryEvent);
+        rdf,global.decision.retailDelivery,choice.retailDeliveryEvent,pickupIds.has(agreement.id));
       if(address.state!=="CO"&&retailDelivery.status==="APPLIES")
         throw new Error("RDF may only be allocated to Colorado service addresses.");
       if(commercialHistory.at(-1)&&

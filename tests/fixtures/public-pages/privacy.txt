@@ -32,6 +32,8 @@ Basic technical data:
 standard web server logs (e.g. IP address, browser type) generated automatically by visiting the site.
 How we use it
 To follow up on quote requests, deliver and service rented appliances, bill accurately, comply with the law, and improve the site. We do not sell your personal information, and we do not share it with third parties for their own marketing.
+Delivery zone check
+To check an address we send it to the U.S. Census Bureau's address lookup; we don't keep addresses typed into the checker.
 Website visit statistics
 We use Metricool to understand visits to our public marketing pages and which campaigns bring visitors to our site. Metricool receives the public page address, fixed campaign labels, browser-window size, referring website domain, and the IP address needed to receive the visit request. This tracking does not use cookies. We exclude account, staff, signing, estimate, and privacy-request pages, and remove other query values and referring-page paths. This Metricool tracking honors browser Do Not Track and Global Privacy Control signals. Form entries are not included in these visit requests.
 Text messages

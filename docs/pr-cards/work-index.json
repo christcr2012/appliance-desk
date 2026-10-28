@@ -4378,7 +4378,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "MERGED — PR #714 (squash f9adbb2a on main, 2026-10-27); publishing chain #711 → #713 → #714",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -5739,7 +5739,7 @@
         "CMP-2",
         "ACCT-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/taxben-2 (2026-10-27); packet registered, building",
       "migration": "none",
       "budget": 250,
       "units": [
@@ -5909,6 +5909,10 @@
     {
       "id": "TAXBEN-1",
       "path": "docs/pr-cards/execution/TAXBEN-1.json"
+    },
+    {
+      "id": "TAXBEN-2",
+      "path": "docs/pr-cards/execution/TAXBEN-2.json"
     },
     {
       "id": "W-22D12",

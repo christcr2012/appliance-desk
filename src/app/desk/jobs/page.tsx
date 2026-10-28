@@ -15,7 +15,7 @@ import {
 import {
   jobStatusLabel,
   jobStatusTone,
-  jobTypeLabel,
+  jobKindLabel,
 } from "@/lib/status-labels";
 
 export const metadata = { title: "Jobs" };
@@ -77,7 +77,7 @@ export default async function JobsPage({
             href={`/desk/jobs/${job.id}`}
             className="font-semibold text-ink underline-offset-4 hover:underline"
           >
-            {jobTypeLabel(job.type)}
+            {jobKindLabel(job)}
             {job.customer &&
               ` — ${job.customer.user.name ?? job.customer.user.email}`}
           </Link>

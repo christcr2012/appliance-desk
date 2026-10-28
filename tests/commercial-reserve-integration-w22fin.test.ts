@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll,beforeAll,describe,expect,it,vi } from "vitest";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { prepareEstimateAgreementsBeforeApproval } from
   "@/domains/estimates/preapproval-agreements";
@@ -229,6 +230,51 @@ describe.skipIf(!enabled)("W-22FIN commercial reserve owner workflow on disposab
       await prisma.businessSettings.update({where:{id:"singleton"},data:{
         signingMandatoryPolicyVersions:prior as never,
       }});
+    }
+  });
+  it("ZONE-1: a customer pickup carries no retail delivery fee, and an all-pickup order needs no fee event (Codex finding on PR #604)",async()=>{
+    const prior=(await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}})).signingMandatoryPolicyVersions;
+    const priorZone=(await prisma.estimate.findUniqueOrThrow({where:{id:estimateId}})).deliveryZoneSnapshot;
+    const location=(serviceAddressId:string,choice:"DELIVER"|"CUSTOMER_PICKUP")=>({serviceAddressId,zone:1,name:"Local",
+      miles:4,method:"STRAIGHT_LINE",center:{lat:40.4233,lon:-104.7091},priceCents:0,pickupPriceCents:0,choice,
+      checkedAt:new Date().toISOString()});
+    const setChoices=(a:"DELIVER"|"CUSTOMER_PICKUP",b:"DELIVER"|"CUSTOMER_PICKUP")=>prisma.estimate.update({
+      where:{id:estimateId},data:{deliveryZoneSnapshot:{version:1,locations:[location(addressA,a),location(addressB,b)]} as never}});
+    const save=async(event:(agreementId:string)=>boolean)=>{
+      const review=(await getPreparedMandatoryChargeOverview(estimateId))!;
+      return savePreparedMandatoryChargeReview({
+        actorUserId:owner,estimateId,expectedEstimateUpdatedAt:new Date(review.estimateUpdatedAt),
+        expectedGlobalPolicyRevision:review.globalPolicyRevision,expectedSettingsUpdatedAt:review.settingsUpdatedAt,
+        expectedRevisions:review.locations.map(l=>({agreementId:l.agreementId,revision:l.revision})),
+        choices:review.locations.map(l=>({agreementId:l.agreementId,decisions:{delivery:"NOT_APPLICABLE" as const,
+          installation:"NOT_APPLICABLE" as const,removal:"NOT_APPLICABLE" as const,damageWaiver:"NOT_APPLICABLE" as const},
+          exceptionReasons:{},retailDeliveryEvent:event(l.agreementId)})),
+        reason:"Owner reviewed the pickup order's delivery fee for the synthetic test",
+      });
+    };
+    try{
+      await recordMandatorySigningPolicy(owner,{effectiveFromKey:"2026-10-14",
+        reason:"Synthetic internal test: retail delivery fee required on deliveries",
+        decisions:{delivery:"NOT_APPLICABLE",installation:"NOT_APPLICABLE",removal:"NOT_APPLICABLE",
+          damageWaiver:"NOT_APPLICABLE",retailDelivery:"REQUIRED"}});
+      const agreements=await prisma.rentalAgreement.findMany({where:{sourceEstimateId:estimateId},
+        select:{id:true,serviceAddressId:true}});
+      const idFor=(address:string)=>agreements.find(a=>a.serviceAddressId===address)!.id;
+      // One address delivered, one picked up: the fee can't go on the pickup, and the delivery must carry it.
+      await setChoices("DELIVER","CUSTOMER_PICKUP");
+      await expect(save(id=>id===idFor(addressB))).rejects.toThrow(/customer pickup has no delivery/);
+      await expect(save(()=>false)).rejects.toThrow(/exactly one/);
+      // Everything picked up: no fee event at all, and each address records "no retail delivery fee".
+      await setChoices("CUSTOMER_PICKUP","CUSTOMER_PICKUP");
+      await expect(save(id=>id===idFor(addressA))).rejects.toThrow(/customer pickup has no delivery/);
+      await save(()=>false);
+      for(const agreement of await prisma.rentalAgreement.findMany({where:{sourceEstimateId:estimateId}})){
+        const latest=(agreement.mandatoryChargeReviewVersions as Array<Record<string,unknown>>).at(-1)!;
+        expect(latest.retailDelivery).toMatchObject({event:false,status:"EXEMPT",amountCents:0});
+      }
+    }finally{
+      await prisma.businessSettings.update({where:{id:"singleton"},data:{signingMandatoryPolicyVersions:prior as never}});
+      await prisma.estimate.update({where:{id:estimateId},data:{deliveryZoneSnapshot:(priorZone===null?Prisma.DbNull:priorZone) as never}});
     }
   });
   it("leaves an already sent agreement's refundable reserve immutable",async()=>{

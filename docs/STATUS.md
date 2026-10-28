@@ -1,6 +1,63 @@
 ## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
 The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
 
+## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
+
+Merged via PR #714 (squash `f9adbb2a`); publishing chain #711 → #713 → #714 as main kept moving. Final branch `ai/vivienne/taxben-2c`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` section
+TAXBEN-2; card `docs/pr-cards/TAXBEN-2.md`; execution packet
+`docs/pr-cards/execution/TAXBEN-2.json`. Built: the year's election statements on the CMP-2
+accountant packet (de minimis statement once the year's capitalization policy is signed and
+the election is on — business name, address and EIN last-4 only, never a full tax ID; the
+bonus elect-out statement for the classes chosen for the year; the Section 195 note), with
+the return due date (the filing's own) and the extension date six months later; the
+November 15 year-end planning To do with the year's facts (tentative profit, retirement
+room, mid-quarter status, safe-harbor expensed total — information, never advice to buy —
+plus the questions for the CPA); and the elect-out choice editable by the owner, an admin
+or the accountant through one audited save (taxben.elections.save) that lands in the
+owner's Changes by your accountant feed. The Tax benefits page now admits the accountant
+(registered in the ACCT-1 allowlist inventory) and shows the statement previews. One
+additive migration (TaxYearFacts.bonusElectOutClasses) — the card estimated none; the
+per-year choice needs a durable home. Local proof: typecheck clean; taxben-elections (13),
+taxben-policy, taxben-benefits-integration, rule-book lint, rules-registry, today role
+access, accountant access + allowlist, compliance filings and Schedule C mapping suites
+green on the repo's disposable-database route; lint clean.
+
+## October 27 — OPS-3 finished + Lane 7 parked list (branch `ai/claude/ops3-mileage-feed`)
+
+Tax packet line 9 (car and truck) now follows your mileage choice: logged business miles x the dated IRS rate under the
+standard rate, or the books' vehicle costs under actual costs, never both, with the other way shown for comparison (also on
+the Vehicle page). The driver view prompts for the odometer before the first stop and after the last. Tests on real Postgres
+pass. The few Lane 7 items that are deliberately not built, with why and what would unblock them, are listed in
+docs/ROADMAP.md ("Parked from Lane 7"); nothing in them waits on Chris. Lane 7 build work is otherwise complete.
+
+## October 27 — Lane 7 leftovers written down (branch `ai/claude/lane7-deferred`)
+
+Docs only: ROADMAP.md now lists every OPS item left unbuilt on purpose, with the reason and the trigger that makes it
+buildable, so a later agent knows what to pick up and what not to fake. Next: mileage into Schedule C line 9 (unblocked
+by CMP-2 #660).
+
+## October 27 — ZONE-1: delivery zones from the address, zone map (in review, PR #604)
+
+Zones are owner settings (Settings › Delivery zones; starting values IN-06, straight line). An address is looked up
+with the U.S. Census Bureau (server only, 5 s, saved per address in its own table) → zone and price on the estimate;
+lookup trouble → "We'll confirm" + a To do. Delivery or "I'll pick it up" ($0) on desk and customer estimate pages;
+frozen once sent, copied to the agreement. `/service-area` is our own SVG map + town list + checker; `/rent/{town}`
+from the town list. One rule sets each address's delivery charge for the fee review, quote, approval and signing:
+pickup $0, else an owner-recorded driving-route exception's frozen price, else the zone price — and the desk and
+customer estimate pages show that same price (an exception says so in plain words).
+**Pickup hand-over (new):** signing a pickup rental creates one "Customer pickup: hand over {items} to {name}" job (on
+To do, never "Schedule delivery"); marking it **Handed over** runs the normal delivered steps — rental start date,
+Rented, custody, monthly billing — but it is never a driver-route stop, trip-log stop, day-of reminder, delivery count
+or retail delivery fee (CDOR: no fee when the customer picks up). The fee review puts no retail delivery fee on a
+pickup address (an all-pickup order needs no fee event), and a city's delivery-license rule doesn't stop a pickup order (quote, approval, conversion or hand-over).
+**Signed stays signed (new):** signing freezes the zone and delivery/pickup choice onto the agreement; a still-open
+estimate can't change a signed agreement's delivery or pickup (refused with a plain message).
+Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
+Proof: unit tests here; database and browser tests run in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
+
+## October 27 — Lane 1 AR-12 next-step status explanations (PR #695)
+Connected exhaustive bill, rental and visit next steps, automatic-work labels and plain-words checks to current main without dropping the previously merged saved views. Original Reviewgate passed; recheck exact-head CI after resolving a real conflict. Feature controls and Help are separate AR-12 outcomes.
+
 ## October 27 — ACCT-1: Accountant sign-in (MERGED — PR #709, squash dc839ad6)
 
 ## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (MERGED — PR #705, squash bbc3f78f)
@@ -662,8 +719,9 @@ Bills and the revenue dashboard), the Bills list reads, Today's weekly health, C
 grouping, the customer-scoped next steps and summary, and the three screens with loading/error screens. Same server
 actions and role checks as before (staff: no money on Today, refused on Bills, operational customer view). Proof: unit
 tests here; database and browser tests run in CI only. Your look-over row is on the checklist. Next: AR-1.
-**Open (unexplained):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. The
-phone-width scan now names the element that overflows, so the next occurrence identifies the cause — fix it then.
+**Resolved (was open):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. Cause
+found and fixed by BA-1 (#610): the shared phone-width scan helper measured right after a resize, before the desktop
+sidebar padding recalculated, so it briefly reported phone width with desktop padding.
 
 ## October 25 (night) — MCP-1: System health that tells the truth (merged PR #602)
 

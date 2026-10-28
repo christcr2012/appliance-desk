@@ -34,6 +34,8 @@ const JOB_TYPES: { value: string; label: string }[] = [
   { value: "SWAP", label: "Swap" },
   { value: "MAINTENANCE_VISIT", label: "Maintenance visit" },
   { value: "REMOVAL", label: "Removal" },
+  // ZONE-1: for a rental the customer picks up (for example, items not handed over the first time).
+  { value: "CUSTOMER_PICKUP_HANDOFF", label: "Customer pickup (hand-over)" },
 ];
 
 export function NewJobForm({

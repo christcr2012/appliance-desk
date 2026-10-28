@@ -75,6 +75,8 @@ const APP_ALLOWLIST = [
   "app/desk/reports/page.tsx",
   "app/desk/sales-tax/audit-pack/export/route.ts",
   "app/desk/sales-tax/audit-pack/page.tsx",
+  "app/desk/sales-tax/benefits/actions.ts",
+  "app/desk/sales-tax/benefits/page.tsx",
   "app/desk/sales-tax/delivery-fees/page.tsx",
   "app/desk/sales-tax/layout.tsx",
   "app/desk/sales-tax/page.tsx",
@@ -129,6 +131,7 @@ const DOMAIN_ALLOWLIST = [
   "domains/tax/returns-view.ts",
   "domains/tax/setup.ts",
   "domains/tax/workspace-overview.ts",
+  "domains/taxben/elections.ts",
 ];
 
 // Areas that must never admit the role, whatever the sets above say (defense in depth, readable intent).

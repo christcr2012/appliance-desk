@@ -4,6 +4,7 @@
 export * from "./types";
 export { Icon, ICON_NAMES, type IconName } from "./icons";
 export { StatusPill, PILL_TONE } from "./status-pill";
+export { AutomationLine, automationText } from "./automation-line";
 export { ActionButton, actionButtonClass, type ActionButtonProps } from "./action-button";
 export { ActionBar } from "./action-bar";
 export { EmptyState } from "./empty-state";
