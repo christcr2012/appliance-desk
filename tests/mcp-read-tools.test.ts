@@ -37,19 +37,22 @@ async function connect(context: AgentContext) {
 afterEach(() => vi.clearAllMocks());
 
 describe("MCP-4 diagnostic tool registry", () => {
-  it("publishes precisely nine tools with readonly/idempotent annotations and input/output schemas", async () => {
+  it("publishes nine diagnostic reads, one operation read and two guarded write actions", async () => {
     const { client, close } = await connect(actor("owner", ["ops:read", "decisions:read"]));
     try {
       const { tools } = await client.listTools();
       expect(tools.map((tool) => tool.name).sort()).toEqual([
+        "appliance_action_execute", "appliance_action_preview",
         "appliance_automation_list_runs", "appliance_backup_get_status",
         "appliance_configuration_get_readiness", "appliance_decisions_get",
         "appliance_decisions_list", "appliance_health_get_issue",
-        "appliance_health_get_overview", "appliance_health_list_issues", "appliance_whoami",
+        "appliance_health_get_overview", "appliance_health_list_issues",
+        "appliance_operation_get", "appliance_whoami",
       ]);
       for (const tool of tools) {
         expect(tool.annotations).toMatchObject({
-          readOnlyHint: true, destructiveHint: false, idempotentHint: true,
+          readOnlyHint: !["appliance_action_execute", "appliance_action_preview"].includes(tool.name),
+          destructiveHint: false, idempotentHint: true,
         });
         expect(tool.inputSchema.type).toBe("object");
         expect(tool.outputSchema?.type).toBe("object");

@@ -22,7 +22,7 @@ test.describe("owner keyboard desk controls", () => {
     await page.keyboard.press("g");
     await page.keyboard.press("c");
     await expect(page).toHaveURL(/\/desk\/customers/);
-    await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Customers", exact: true, level: 1 })).toBeVisible();
     await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
     await page.keyboard.press("Shift+/");
     const help = page.getByRole("dialog", { name: "Keyboard shortcuts" });

@@ -1,3 +1,17 @@
+## October 28 — MCP-5 full-CI regression corrections (PR #717, branch only)
+
+Full CI at head 90f77371 exposed stale test assumptions after adding three
+assistant tools, a DEC-1 shared-settings test omitted from the serial inventory,
+a browser approval fixture missing the exact grant version, and an ambiguous
+Customers heading selector. All are corrected without weakening authorization
+or assertions. The books poster suite also moves to the serial settings
+project because it edits the shared accounting start date. On the combined
+current main + MCP-5 branch, 37 disposable-PostgreSQL integration tests
+passed (including 19 accounting and 18 assistant tests), none skipped; eight
+focused catalog/inventory tests passed. Full GitHub CI and the required
+review gates on this correction are still pending. No customer or production
+data changed.
+
 ## October 28 — MCP-5 review fixes verified, merge pending (PR #717)
 
 Fixed three reviewed safety issues: previews and owner approvals now belong to

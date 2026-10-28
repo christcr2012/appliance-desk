@@ -22,6 +22,17 @@ unsafe, and the journal without actions does nothing.
 - [ ] Assistant activity list with Approve/Decline passes axe, phone/desktop, light/dark.
 - [ ] `ci` green at the exact head; every review comment read.
 
+## Full CI correction evidence — October 28
+
+After exact-head CI identified stale tool counts, missing serial-test
+classification, an invalid manually seeded approval grant and a keyboard
+heading-selector collision, we repaired each at its source. The books poster
+suite now runs in the serial shared-settings project because it changes the
+singleton books-start setting. All 37 focused disposable-PostgreSQL
+integrations (19 books + 18 assistant) passed without skips, plus eight
+read-tool/catalog and serial-inventory tests. Full hosted browser checks and
+exact-head CI and review-gate are still mandatory before merging.
+
 ## Review correction evidence — October 28
 
 The three Codex findings on PR #717 are fixed in one bounded patch: grant
