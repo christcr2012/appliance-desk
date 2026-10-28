@@ -95,7 +95,8 @@
       "desk-offline.spec.ts",
       "recalls.spec.ts",
       "app-feel.spec.ts",
-      "mobile-pull-refresh.spec.ts"
+      "mobile-pull-refresh.spec.ts",
+      "help-guides.spec.ts"
     ],
     "browser-e": [
       "crm-workspace.spec.ts",
