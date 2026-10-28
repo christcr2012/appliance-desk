@@ -1,3 +1,17 @@
+## October 28 — AR-2 slice 2 in progress: approvals Sheet on Today
+
+Slice 1 merged (PR #727). Slice 2 lets the owner decide approval requests
+without leaving Today: when the "Requests waiting for your approval" item is in
+the inbox, it also loads the waiting list, its primary action becomes "Review
+requests" and opens a "Waiting for your approval" Sheet (the approvals page
+stays in the item's menu). Each request is a card (summary; who asked, when,
+how much; when it expires — expired requests offer only Decline). Approve and
+Decline always go through the plain confirmation, never optimistic, never
+Undo; the outcome arrives as a toast with the same words the approvals page
+uses. The Sheet renders only for the owner, and the deciding action refuses
+anyone else itself. New browser spec e2e/today-inline.spec.ts covers approve
+and decline through the confirmation, the staff view, and axe at five sizes.
+
 ## October 28 — AR-2 slice 1 in progress: approval actions moved out of the approvals page (PR #727)
 
 AR-2 (Today inbox, finished) runs in three short laps, one PR per slice. Slice 1 is

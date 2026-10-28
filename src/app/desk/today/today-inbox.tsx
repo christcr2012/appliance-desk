@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { Sheet, useOptimisticAction } from "@/components/kit";
 import { businessDateFromKey, formatShortDate } from "@/lib/business-date";
+import { ApprovalsSheet, type ApprovalCardData } from "./approvals-sheet";
 
 export type InboxEntry = { key: string; todoKey?: string; title: string; node: ReactNode };
 type ServerAction = (fd: FormData) => Promise<unknown>;
@@ -19,6 +20,7 @@ export function TodayInbox({
   resumeAction,
   dates,
   initialSnoozeKey,
+  approvals,
   children,
 }: {
   entries: InboxEntry[];
@@ -27,6 +29,8 @@ export function TodayInbox({
   /** YYYY-MM-DD in Colorado: earliest (tomorrow), latest (90 days) and the starting value (3 business days). */
   dates: { min: string; max: string; initial: string };
   initialSnoozeKey?: string;
+  /** AR-2 slice 2: the OWNER-only approvals Sheet, present only when the inbox holds the approvals item. */
+  approvals?: { requests: ApprovalCardData[]; decideAction: ServerAction; initialOpen?: boolean };
   children?: ReactNode;
 }) {
   const router = useRouter();
@@ -39,6 +43,7 @@ export function TodayInbox({
   );
   const known = (key: string | undefined) => (key ? entries.find((entry) => entry.todoKey === key) : undefined);
   const [snoozing, setSnoozing] = useState<InboxEntry | null>(() => (snoozeAction ? (known(initialSnoozeKey) ?? null) : null));
+  const [approvalsOpen, setApprovalsOpen] = useState<boolean>(() => approvals?.initialOpen ?? false);
 
   function clearSnoozeParam() {
     const params = new URLSearchParams(search);
@@ -48,16 +53,30 @@ export function TodayInbox({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
+  function clearApprovalsParam() {
+    const params = new URLSearchParams(search);
+    if (!params.has("approvals")) return;
+    params.delete("approvals");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
   function onClickCapture(event: MouseEvent<HTMLDivElement>) {
-    if (!snoozeAction) return;
     const anchor = (event.target as Element | null)?.closest?.("a[href]");
     if (!anchor) return;
-    let key: string | null = null;
+    let params: URLSearchParams | null = null;
     try {
-      key = new URL(anchor.getAttribute("href") ?? "", window.location.href).searchParams.get("snooze");
+      params = new URL(anchor.getAttribute("href") ?? "", window.location.href).searchParams;
     } catch {
       return;
     }
+    if (approvals && params.get("approvals") === "1") {
+      event.preventDefault();
+      setApprovalsOpen(true);
+      return;
+    }
+    if (!snoozeAction) return;
+    const key = params.get("snooze");
     const entry = known(key ?? undefined);
     if (!entry) return;
     event.preventDefault();
@@ -109,6 +128,17 @@ export function TodayInbox({
             clearSnoozeParam();
           }}
           onSubmit={submit}
+        />
+      ) : null}
+      {approvals ? (
+        <ApprovalsSheet
+          requests={approvals.requests}
+          decideAction={approvals.decideAction}
+          open={approvalsOpen}
+          onOpenChange={(next) => {
+            setApprovalsOpen(next);
+            if (!next) clearApprovalsParam();
+          }}
         />
       ) : null}
     </div>
