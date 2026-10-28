@@ -2,8 +2,9 @@
 import { useActionState, useState } from "react";
 import { formatMoney } from "@/lib/money-ui";
 import { approveCancellationAction } from "./actions";
-export function CancellationApprovalForm({agreementId,fingerprint,canRetain,defaultPolicy,receiptCents,setupCents}:{
- agreementId:string;fingerprint:string;canRetain:boolean;defaultPolicy:"FULL_REFUND"|"RETAIN_SETUP";receiptCents:number;setupCents:number;
+import { EndReasonFields } from "../end-reason-fields";
+export function CancellationApprovalForm({agreementId,fingerprint,canRetain,defaultPolicy,receiptCents,setupCents,endReasons}:{
+ agreementId:string;fingerprint:string;canRetain:boolean;defaultPolicy:"FULL_REFUND"|"RETAIN_SETUP";receiptCents:number;setupCents:number;endReasons:string[];
 }) {
  const [state,action,pending]=useActionState(approveCancellationAction,{error:""});
  const [policy,setPolicy]=useState(defaultPolicy);
@@ -23,6 +24,7 @@ export function CancellationApprovalForm({agreementId,fingerprint,canRetain,defa
    <textarea name="reason" required minLength={12} maxLength={500} rows={3} className="w-full border rounded-lg p-2"/>
   </label>
   <label className="block"><input type="checkbox" name="reviewedTerms" required/> I reviewed this customer&apos;s agreed terms and approve cancellation.</label>
+  <EndReasonFields reasons={endReasons}/>
   <p className="text-sm">No refund is sent or marked returned. Money-out requires separate authorization and provider evidence. An outside-window full refund needs an explicit documented override.</p>
   {state.error&&<p role="alert">{state.error}</p>}
   <button disabled={pending} type="submit" className="rounded-lg border p-3">Approve cancellation and record refund due</button>
