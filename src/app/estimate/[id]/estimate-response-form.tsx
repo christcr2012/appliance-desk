@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { approveEstimateAction, requestEstimateChangesAction, declineEstimateAction, type EstimateResponseState } from "./actions";
 import { estimateFormText, type FormCopyKey } from "@/domains/language/estimate-form-copy";
 import type { CustomerLanguage } from "@/domains/language/copy";
-import { formatCents } from "@/domains/pricing";
+import { formatCents } from "@/domains/pricing/money";
 import {
   computeServiceChoiceOffers, defaultServiceChoice, serviceCategoriesForOrder,
   type ServiceChoiceService, type ServiceChoiceValue,

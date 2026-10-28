@@ -6,7 +6,8 @@ const CHANGE_DAY = new Date("2026-11-01T06:00:00Z"); // Denver start of Nov 1 (s
 const created = new Date("2026-10-25T18:00:00Z");
 
 const cell = (taxability: TaxabilityCell["taxability"], provisional = false, jurisdictionId: string | null = null) =>
-  ({ jurisdictionId, category: "DELIVERY" as const, taxability, provisional });
+  // FEETAX-1: resolved cells always carry the optional-and-separate answer (null = none recorded).
+  ({ jurisdictionId, category: "DELIVERY" as const, taxability, provisional, optionalSeparatedTreatment: null });
 
 function find(cells: TaxabilityCell[], jurisdictionId: string | null = null) {
   return cells.find((row) => row.jurisdictionId === jurisdictionId && row.category === "DELIVERY");
