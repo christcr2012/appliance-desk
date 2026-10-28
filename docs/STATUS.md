@@ -1,4 +1,4 @@
-## October 28 — AR-2 slice 2 in progress: approvals Sheet on Today
+## October 28 — AR-2 slice 2 in progress: approvals Sheet on Today (PR #728)
 
 Slice 1 merged (PR #727). Slice 2 lets the owner decide approval requests
 without leaving Today: when the "Requests waiting for your approval" item is in
