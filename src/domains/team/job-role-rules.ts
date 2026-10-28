@@ -29,7 +29,7 @@ export type ScreenKey = keyof typeof SCREENS;
 export const SCREEN_KEYS = Object.keys(SCREENS) as ScreenKey[];
 
 /** Screens everyone on the team always has, whatever their job role (so nobody is locked out of their own account). */
-export const ALWAYS_ALLOWED = ["today", "account", "security", "notices", "search", "more"] as const;
+export const ALWAYS_ALLOWED = ["today", "account", "security", "notices", "search", "more", "help"] as const;
 
 /**
  * ACCT-1: the accountant's screens. An accountant is NOT a job role — the level itself is the limit, and it is

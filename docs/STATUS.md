@@ -1,3 +1,6 @@
+## October 27 — Lane 1 AR-12 Help guide review correction (PR #702)
+The 15-guide Help screen and role-sensitive search are built. CI identified one stale navigation list expectation and it was corrected; all three Codex findings were fixed and replied to. Reconciled Help against main's newer navigation and shard lists; exact-head CI and Reviewgate must pass before merge.
+
 ## October 27 — TAXBEN-2: Elections, statements and year-end planning for the CPA (merged)
 
 Merged via PR #714 (squash `f9adbb2a`); publishing chain #711 → #713 → #714 as main kept moving. Final branch `ai/vivienne/taxben-2c`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` section
