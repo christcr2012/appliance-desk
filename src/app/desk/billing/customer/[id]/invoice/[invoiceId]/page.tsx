@@ -263,13 +263,13 @@ export default async function DeskInvoicePage({
         />
       </div>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-5">
-        <section className={tab === "activity" ? "hidden lg:block" : undefined}>
+        <section className={tab === "activity" ? "hidden lg:block print:block" : "print:block"}>
           <LateFeeSection invoiceId={invoiceId} standing={invoice.lateFee} />
           <div className="mt-4 print:mt-0">
             <InvoiceDocument invoice={invoice} />
           </div>
         </section>
-        <aside className={tab === "bill" ? "hidden lg:flex lg:flex-col lg:gap-4" : "flex flex-col gap-4"}>
+        <aside className={(tab === "bill" ? "hidden lg:flex lg:flex-col lg:gap-4" : "flex flex-col gap-4") + " print:hidden"}>
           <section aria-labelledby="bill-activity">
             <h2 id="bill-activity" className="pb-1 text-base font-extrabold text-ink">
               Activity

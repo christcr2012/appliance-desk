@@ -15,6 +15,7 @@ export function TakeCardPaymentButton({
   variant?: "primary" | "secondary";
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
     <span className="inline-flex flex-col items-start gap-1">
@@ -22,14 +23,23 @@ export function TakeCardPaymentButton({
         type="button"
         disabled={pending}
         className={actionButtonClass({ spec: { kind: "link", label, href: "#" }, variant })}
-        onClick={() =>
+        onClick={() => {
+          // Reserve the tab synchronously inside the click: opening it after the await loses the
+          // click's user activation and popup blockers (notably Safari) can swallow the payment
+          // page after the checkout session was already created.
+          const tab = window.open("about:blank", "_blank");
           start(async () => {
             setError(null);
+            setFallbackUrl(null);
             const r = await startSaleCardPaymentAction(invoiceId);
-            if (r.status === "error") return setError(r.message);
-            window.open(r.url, "_blank", "noopener,noreferrer");
-          })
-        }
+            if (r.status === "error") {
+              tab?.close();
+              return setError(r.message);
+            }
+            if (tab) tab.location.href = r.url;
+            else setFallbackUrl(r.url);
+          });
+        }}
       >
         {label}
       </button>
@@ -37,6 +47,11 @@ export function TakeCardPaymentButton({
         <span role="alert" className="text-sm font-medium text-danger">
           {error}
         </span>
+      ) : null}
+      {fallbackUrl ? (
+        <a href={fallbackUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-info underline">
+          Open the card payment page
+        </a>
       ) : null}
     </span>
   );
