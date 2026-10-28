@@ -11,6 +11,7 @@ import { listCurrentTranslationDrafts } from "@/domains/language/drafts";
 import { SpanishDraftsEditor } from "./spanish-drafts-editor";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
+import { getShownFeatures } from "@/domains/features";
 import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
 import { getTeam, getTeamSettings } from "@/domains/team";
 import { listJobRoles } from "@/domains/team/job-roles";
@@ -77,6 +78,7 @@ export default async function DeskSettingsPage({
   const session = await requireRole("OWNER", "ADMIN");
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
+  const shownFeatures = await getShownFeatures();
   const spanishReview = section === "notifications" ? await getSpanishReview() : null;
   const spanishDrafts = section === "notifications" ? await listCurrentTranslationDrafts() : [];
   const activeSetupTaxTreatment = section === "policies"
@@ -521,7 +523,7 @@ export default async function DeskSettingsPage({
             reviewerName={spanishReview.reviewerName} />
         </Card>
       )}
-      {section === "notifications" && <div className="mb-4 flex flex-wrap gap-3"><ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink><ButtonLink href="/desk/settings/payment-links" variant="secondary">Payment link wording</ButtonLink><ButtonLink href="/desk/settings/lead-response" variant="secondary">Lead response time</ButtonLink><ButtonLink href="/desk/settings/unsigned-follow-up" variant="secondary">Unsigned agreement reminder</ButtonLink><ButtonLink href="/desk/settings/feedback" variant="secondary">App feedback</ButtonLink></div>}
+      {section === "notifications" && <div className="mb-4 flex flex-wrap gap-3">{shownFeatures.has("phoneCosts") && <ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink>}<ButtonLink href="/desk/settings/payment-links" variant="secondary">Payment link wording</ButtonLink><ButtonLink href="/desk/settings/lead-response" variant="secondary">Lead response time</ButtonLink><ButtonLink href="/desk/settings/unsigned-follow-up" variant="secondary">Unsigned agreement reminder</ButtonLink><ButtonLink href="/desk/settings/feedback" variant="secondary">App feedback</ButtonLink></div>}
       {section === "notifications" && <SmsTemplatePreview />}
     </>);
   } else {
@@ -605,6 +607,7 @@ export default async function DeskSettingsPage({
         <ButtonLink href="/desk/settings/decisions" variant="secondary">Decisions &amp; reviews</ButtonLink>
         <ButtonLink href="/desk/settings/history" variant="secondary">Settings history and undo</ButtonLink>
         <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
+        <ButtonLink href="/desk/settings/features" variant="secondary">Features</ButtonLink>
         <ButtonLink href="/desk/settings/price-changes" variant="secondary">Price changes with a start date</ButtonLink>
         {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/permissions" variant="secondary">What each admin may do</ButtonLink>}
         <ButtonLink href="/desk/settings/goals" variant="secondary">Goals and alerts</ButtonLink>

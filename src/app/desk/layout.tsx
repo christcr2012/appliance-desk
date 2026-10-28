@@ -9,6 +9,7 @@ import {
 import { AppShell } from "@/components/ui";
 import { IdleLogout } from "@/components/idle-logout";
 import { deskNavigation } from "@/lib/desk-navigation";
+import { getShownFeatures } from "@/domains/features";
 import { enforceJobRoleScreen, jobRoleScreens } from "@/lib/job-role-guard";
 import { isTwoFactorEnrollmentExemptPath } from "@/domains/security/two-factor";
 
@@ -37,7 +38,8 @@ export default async function DeskLayout({
     await enforceTwoFactorForDeskPage(session);
   }
   await enforceJobRoleScreen(session.user.id, role);
-  const groups = deskNavigation(role, await jobRoleScreens(session.user.id, role));
+  const [screens, shown] = await Promise.all([jobRoleScreens(session.user.id, role), getShownFeatures()]);
+  const groups = deskNavigation(role, screens, shown);
   return (
     <>
       <AppShell nav={groups} role={role}>{children}</AppShell>

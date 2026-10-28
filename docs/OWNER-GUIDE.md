@@ -1,3 +1,9 @@
+## Settings → Features (AR-12, pending normal release)
+
+Open **Settings → Features** to choose which extra menu items to show. Only the owner can change a choice; administrators can see the choices. Features that are already being used (two or more people on your team, a property manager, or your existing budget) stay on automatically with a reason. A hidden menu entry does not prevent someone with the existing permission from visiting that page directly. These controls never grant anyone new access.
+
+**Practice safely** appears here only after you set a separate HTTPS testing-app address in the server setting `PRACTICE_APP_URL` on your production Vercel project. It never appears inside the testing app. Opening the link uses a separate tab. Do not try real customer cards, customer texts, or emails while learning.
+
 ## How do I…? — the short help guides (AR-12)
 
 Open **More → How do I…?** (or `/desk/help`) on your phone or computer. Search for a task by

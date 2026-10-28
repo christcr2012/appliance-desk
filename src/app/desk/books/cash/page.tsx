@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
+import { getShownFeatures } from "@/domains/features";
+import { isHrefHidden } from "@/domains/features/registry";
 import { prisma } from "@/lib/prisma";
 import { getCashDesk } from "@/domains/books/cash/desk";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
@@ -22,12 +24,13 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
  const [data,settings]=await Promise.all([getCashDesk(session.user.id),
   prisma.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}})]);
  const notice=(await searchParams).notice?.slice(0,300),today=businessDateKey(new Date());
+ const shown=await getShownFeatures();
  return <div className="space-y-6">
   <header className="space-y-2">
    <nav aria-label="Books bank workspaces" className="flex flex-wrap gap-2">
     <Link href="/desk/books" className="underline rounded px-2 py-2">Back to Books</Link>
-    <Link href="/desk/books/cash/checks" className="underline rounded px-2 py-2">Bank checks and statement reconciliation</Link>
-    <Link href="/desk/books/budget" className="underline rounded px-2 py-2">Budget backing</Link>
+    {!isHrefHidden("/desk/books/cash/checks", shown) && <Link href="/desk/books/cash/checks" className="underline rounded px-2 py-2">Bank checks and statement reconciliation</Link>}
+    {!isHrefHidden("/desk/books/budget", shown) && <Link href="/desk/books/budget" className="underline rounded px-2 py-2">Budget backing</Link>}
    </nav>
    <h1 className="text-2xl font-bold">Bank statements and cash records</h1>
    <p className="text-muted-foreground">Import settled bank evidence and review it in Bank checks. Nothing here initiates bank transfers, verifies live balances automatically, or funds a budget.</p>
