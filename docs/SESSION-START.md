@@ -33,12 +33,11 @@ building, then the complete tree once. Commands and the table of known CI failur
 
 ## 4. Publish and merge
 
-One push per CI cycle. Open the PR to `main` in plain English and enable **squash auto-merge immediately**.
-GitHub merges when both `ci` and `review-gate` are green on the exact head, acceptance is met, and protections
-allow it; review comments must be read, replied to and fixed when blocking. If GitHub blocks the merge despite green
-checks, investigate the **specific** protection/conflict and never bypass it. Main advancing is not itself a
-blocker. In parallel, build the next independent approved outcome. Update STATUS briefly; do not wait for a
-release or real-account acceptance.
+One push per CI cycle. Open the PR to `main` in plain English. `ci` and `review-gate` green at
+the exact head and all blocking review findings fixed → squash merge. Enable auto-merge immediately **only if**
+GitHub requires both checks; otherwise enable it once Reviewgate has actually passed (AGENTS §6). When GitHub
+reports a real conflict, reconcile both sides, but never sync just because `main` moved. In parallel, build
+an independent approved outcome. Update STATUS briefly; do not wait for a release or real-account acceptance.
 
 ## 5. Close out
 
