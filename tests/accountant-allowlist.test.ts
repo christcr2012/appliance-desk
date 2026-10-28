@@ -106,6 +106,7 @@ const DECISION_GUARD_ALLOWLIST = [
 const DOMAIN_ALLOWLIST = [
   "domains/account/index.ts",
   "domains/billing/setup-tax-planning.ts",
+  "domains/books/accountant-packet.ts",
   "domains/books/adjustments.ts",
   "domains/books/bad-debt-policy.ts",
   "domains/books/cash/accounts.ts",
@@ -156,7 +157,6 @@ const NEVER_PREFIXES = [
   "app/desk/books/setup/",
   "app/desk/customers/",
   "app/desk/settings/actions.ts",
-  "domains/books/accountant-packet.ts",
 ];
 
 describe("ACCT-1 accountant allowlist (static inventory)", () => {

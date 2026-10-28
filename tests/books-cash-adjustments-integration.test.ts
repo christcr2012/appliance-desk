@@ -88,6 +88,20 @@ describe.skipIf(!enabled)("ACCT-1 cash-basis adjusting entries on real Postgres"
     expect(after.summary.rows.find((r) => r.accountId === suppliesId)?.amountCents ?? 0).toBe(0);
   });
 
+  it("the accountant can build the monthly packet; an ended accountant cannot", async () => {
+    const { buildMonthPacket } = await import("@/domains/books/accountant-packet");
+    const packet = await buildMonthPacket({ id: accountantId, role: "ACCOUNTANT" }, "2026-04");
+    expect(packet.journalCsv).toContain("CashAdj repairs");
+    await prisma.user.update({ where: { id: accountantId }, data: { archivedAt: new Date() } });
+    try {
+      await expect(
+        buildMonthPacket({ id: accountantId, role: "ACCOUNTANT" }, "2026-04"),
+      ).rejects.toThrow();
+    } finally {
+      await prisma.user.update({ where: { id: accountantId }, data: { archivedAt: null } });
+    }
+  });
+
   it("an adjusting entry dated before the Books opening date refuses", async () => {
     await expect(
       createAdjustingEntry(
