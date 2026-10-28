@@ -1,6 +1,18 @@
+## Five areas and quick search (AR-1, awaiting CI and normal release)
+
+On a phone the bottom bar has **Today, Customers, Schedule, Equipment and Money** (only areas
+you have access to are shown). On a computer these areas are in the sidebar; use **Collapse
+menu** to make room for your work, and it remembers your choice. Pick an area and use the
+section tabs to change what you are working on. Search at the top, or press **Ctrl K** on
+Windows / **⌘ K** on Mac, to find a customer, an appliance, a screen or a common action.
+Open **Profile** to find Settings, Help, Your account, your theme and Sign out. Team members
+see only links permitted by their account and job role; an absent link does not change
+access to an existing screen. Your old saved desk links still work. These instructions
+apply after AR-1 is merged and the normal tested release reaches the app.
+
 ## How do I…? — the short help guides (AR-12)
 
-Open **More → How do I…?** (or `/desk/help`) on your phone or computer. Search for a task by
+Open **Profile → Help** (or `/desk/help`) on your phone or computer. Search for a task by
 ordinary words such as *refund*, *driver*, *receipt* or *install*. Choose a question to read three simple
 steps, then **Go there** opens the correct screen. Any signed-in team member may read Help; guides to
 money, owner settings or screens their job role cannot use are not offered to them. Nothing is

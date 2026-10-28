@@ -53,4 +53,4 @@ Acceptance evidence to record before merging:
 - [ ] Docs/card and owner records accurate, full exact-head CI and Reviewgate green, no unanswered Codex findings. Phone real-world acceptance remains unchecked.
 
 ## Progress
-Not started.
+Source committed on `ai/chatgpt/ar1-five-area-navigation-20261027` on October 28, 2026. The five-area responsive frame, area tabs, role/job-role/feature filtering, profile menu, command palette with existing server-side search permissions, Today badge, old-route redirects, compatibility tests and new browser coverage are implemented. Exact-head CI, missing integration proof, complete code review and merge have not yet been observed. The owner phone look-over stays unchecked.
