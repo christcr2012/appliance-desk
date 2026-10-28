@@ -5712,7 +5712,7 @@
         "CMP-2",
         "DEC-1"
       ],
-      "status": "IN PROGRESS — branch ai/vivienne/taxben-1 (2026-10-27); built, in PR",
+      "status": "MERGED — PR #705, squash bbc3f78f on main (2026-10-27); successor of PR #696 (identical tree; #696's API-built branch could not be merged by GitHub). Nine Codex findings across both PRs, all fixed with regression tests; CI green at the exact head b186eaee.",
       "migration": "additive (purchase capitalization fields, business-use settings)",
       "budget": 550,
       "units": [
