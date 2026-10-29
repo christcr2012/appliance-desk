@@ -1,7 +1,3 @@
-## October 29 — MCP-11 recovered implementation, in progress
-
-Recovered the consent-scoped assistant feedback implementation and committed its tests. 24 focused disposable-PostgreSQL tests passed (5 agent mutation, 13 human workflow, 6 MCP read catalog); local sandbox typecheck OOM at 2 and 3 GiB memory. The first exact-head CI passed typecheck/lint, 2/3 unit shards and 4/5 browser shards; old MCP-10a no-AI source guards and the consent checkbox produced two red shards. Corrected source guard and optimistic UI state are under verification; corrected-head CI, review and hosted screenshot acceptance remain open. No live messaging.
-
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
 #733's branch was built through snapshot pushes, so its remote ancestry never contained the
