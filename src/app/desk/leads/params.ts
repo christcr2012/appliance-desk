@@ -11,7 +11,7 @@ import type { LeadStage } from "@/domains/leads/stage";
  *
  * Old links keep working: `?status=NEW|CONTACTED|CONVERTED|LOST` maps to the
  * matching stage, `?view=awaiting-reply` to Quote sent, `?view=no-next-task`
- * to Contacted sorted next-up, and `?page=` is ignored. An explicit `stage`
+ * to every stage sorted next-up, and `?page=` is ignored. An explicit `stage`
  * (or `sort`) always wins over the legacy mapping.
  */
 export type LeadsPageParams = LeadQueueParams & { pm?: boolean };
@@ -112,7 +112,8 @@ export function parseLeadsParams(raw: RawParams): LeadsPageParams {
   const view = first(raw.view);
   if (!stage && view === "awaiting-reply") stage = "quoted";
   if (view === "no-next-task") {
-    if (!stage) stage = "contacted";
+    // The old view listed leads of EVERY stage with nothing scheduled
+    // next; the closest new reading is all stages in next-up order.
     if (!first(raw.sort)) sort = "next-up";
   }
 

@@ -270,15 +270,14 @@ export default async function LeadsPage({
   const nextStep = (row: LeadRow) => leadNextStep({ ...row, responseDays }, now);
 
   const columns: Column<LeadRow>[] = [
+    { key: "name", header: "Name", cell: (row) => row.contactName },
     {
-      key: "name",
-      header: "Name",
-      cell: (row) => (
-        <span className="flex flex-col items-start gap-1">
-          <span>{row.contactName}</span>
-          <ContactButtons row={row} step={nextStep(row)} />
-        </span>
-      ),
+      // The kit wraps the FIRST column in the row's panel link, so the
+      // Call/Email links live in their own column — interactive elements
+      // must never nest inside that link.
+      key: "contact",
+      header: "Contact",
+      cell: (row) => <ContactButtons row={row} step={nextStep(row)} />,
     },
     {
       key: "wants",

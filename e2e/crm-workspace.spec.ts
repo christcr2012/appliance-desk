@@ -135,30 +135,46 @@ test("lead search/filter URL survives browser back and links its follow-up", asy
   await page.getByLabel("Phone", { exact: true }).fill("9705550100");
   await page.getByRole("button", { name: "Add lead", exact: true }).click();
   await expect(page).toHaveURL(/\/desk\/leads\/[^/]+$/);
-  await expect(page.getByRole("button", { name: "Convert to customer" })).toBeDisabled();
-  await page.getByLabel("Email for customer account").fill(`ci-${Date.now()}@example.test`);
-  await page.getByRole("button", { name: "Save email", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Convert to customer" })).toBeEnabled();
-  await page.reload();
-  await expect(page.getByRole("button", { name: "Convert to customer" })).toBeEnabled();
+  const recordUrl = page.url();
+  // AR-4b: the legacy queue view lists every stage; the row's menu links
+  // into the contact sheet, and browser back restores the filtered queue.
   await page.goto(
     `/desk/leads?view=no-next-task&q=${encodeURIComponent(name)}`,
   );
-  const row = page
-    .locator("main tr:visible, main li:visible")
-    .filter({ hasText: name })
-    .first();
+  const row = page.locator("tbody tr").filter({ hasText: name });
   await expect(row).toBeVisible();
-  await row.getByRole("link", { name: "Add next task" }).click();
-  await expect(page).toHaveURL(/#follow-up$/);
+  await row.getByRole("button", { name: /More for row/ }).click();
+  await page.getByRole("link", { name: "Log a contact\u2026" }).click();
+  await expect(page).toHaveURL(/sheet=log/);
   await page.goBack();
   await expect(page).toHaveURL(/view=no-next-task.*q=/);
   await expect(row).toBeVisible();
   await page
-    .getByRole("navigation", { name: "Lead status" })
-    .getByRole("link", { name: "Contacted", exact: true })
+    .getByRole("navigation", { name: "Lead stage" })
+    .getByRole("link", { name: /^Contacted/ })
     .click();
-  await expect(page).toHaveURL(/status=CONTACTED/);
+  await expect(page).toHaveURL(/stage=contacted/);
   await page.goBack();
   await expect(row).toBeVisible();
+  // AR-4b record: converting without an email is refused with the reason;
+  // the email is added in the What-they-want Edit sheet; then the same
+  // confirmation converts and lands on the customer record.
+  await page.goto(recordUrl);
+  await page.getByRole("button", { name: `More for ${name}` }).click();
+  await page.getByRole("link", { name: "Convert to customer\u2026" }).click();
+  await expect(
+    page.getByRole("heading", { name: `Make ${name} a customer?` }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Convert to customer" }).click();
+  await expect(page.getByText(/Add a valid email address/)).toBeVisible();
+  await expect(page).toHaveURL(/\/desk\/leads\/[^/]+$/);
+  await page.getByRole("link", { name: "What they want" }).click();
+  await page.getByRole("link", { name: "Edit" }).click();
+  await page.getByLabel("Email").fill(`ci-${Date.now()}@example.test`);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved")).toBeVisible();
+  await page.getByRole("button", { name: `More for ${name}` }).click();
+  await page.getByRole("link", { name: "Convert to customer\u2026" }).click();
+  await page.getByRole("button", { name: "Convert to customer" }).click();
+  await expect(page).toHaveURL(/\/desk\/customers\/[^/]+$/);
 });
