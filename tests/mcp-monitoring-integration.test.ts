@@ -9,6 +9,7 @@ const ownerId = "monitor-owner-" + id;
 const staffId = "monitor-staff-" + id;
 const ruleKey = "open-high-issues";
 const issueKey = "monitor:" + ruleKey;
+const connectionId = "monitor-connection-" + id;
 const now = (date: string) => new Date(date);
 const failing = async (): Promise<MonitorSignal> => ({ failed: true, detail: "Synthetic failing high-priority check" });
 const healthy = async (): Promise<MonitorSignal> => ({ failed: false, detail: "Synthetic resolved check" });
@@ -19,16 +20,24 @@ describe("MCP-7 disposable-PostgreSQL monitoring slots", () => {
       { id: ownerId, role: "OWNER", name: "Synthetic monitor owner", email: ownerId + "@example.test" },
       { id: staffId, role: "STAFF", name: "Synthetic monitor staff", email: staffId + "@example.test" },
     ] });
+    await prisma.mcpConnection.create({ data: {
+      id: connectionId, userId: ownerId, oauthClientId: "monitor-client-" + id,
+      label: "Synthetic maintenance connection", scopes: ["ops:maintain"],
+    } });
   });
   beforeEach(async () => {
     await prisma.monitorRun.deleteMany({ where: { ruleKey } });
     await prisma.monitorRule.deleteMany({ where: { key: ruleKey } });
+    await prisma.agentOperation.deleteMany({ where: { connectionId } });
+    await prisma.mcpConnection.update({ where: { id: connectionId }, data: { revokedAt: null, scopes: ["ops:maintain"] } });
     await prisma.systemIssue.deleteMany({ where: { fingerprint: issueKey } });
   });
   afterAll(async () => {
     await prisma.monitorRun.deleteMany({ where: { ruleKey } });
     await prisma.monitorRule.deleteMany({ where: { key: ruleKey } });
     await prisma.systemIssue.deleteMany({ where: { fingerprint: issueKey } });
+    await prisma.agentOperation.deleteMany({ where: { connectionId } });
+    await prisma.mcpConnection.delete({ where: { id: connectionId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, staffId] } } });
     await prisma.$disconnect();
   });
@@ -36,6 +45,13 @@ describe("MCP-7 disposable-PostgreSQL monitoring slots", () => {
     await saveMonitorRule(ownerId, {
       key: ruleKey, enabled: true, failuresBeforeAlert, cooldownHours,
       notifyEmail, expectedVersion: null,
+    });
+  }
+  async function grantDiagnostic() {
+    await saveMonitorRule(ownerId, {
+      key: ruleKey, enabled: true, failuresBeforeAlert: 1, cooldownHours: 24,
+      notifyEmail: false, expectedVersion: null,
+      autoAction: "RUN_DIAGNOSTIC_SWEEP", autoActionConnectionId: connectionId,
     });
   }
   it("claims one slot with two concurrent workers and no duplicate effect", async () => {
@@ -157,5 +173,67 @@ describe("MCP-7 disposable-PostgreSQL monitoring slots", () => {
     await runMonitors(first, { evaluate: failing });
     await runMonitors(second, { evaluate: failing });
     expect(await prisma.monitorRun.count({ where: { ruleKey } })).toBe(1);
+  });  it("only the owner can grant an active maintenance connection", async () => {
+    await expect(saveMonitorRule(staffId, {
+      key: ruleKey, enabled: true, failuresBeforeAlert: 1, cooldownHours: 24,
+      notifyEmail: false, expectedVersion: null,
+      autoAction: "RUN_DIAGNOSTIC_SWEEP", autoActionConnectionId: connectionId,
+    })).rejects.toThrow();
+    await grantDiagnostic();
+    const rule = await prisma.monitorRule.findUniqueOrThrow({ where: { key: ruleKey } });
+    expect(rule.autoAction).toBe("RUN_DIAGNOSTIC_SWEEP");
+    expect(rule.autoActionConnectionId).toBe(connectionId);
+    await prisma.mcpConnection.update({ where: { id: connectionId }, data: { revokedAt: new Date() } });
+    await expect(saveMonitorRule(ownerId, {
+      key: ruleKey, enabled: true, failuresBeforeAlert: 1, cooldownHours: 24,
+      notifyEmail: false, expectedVersion: rule.version,
+      autoAction: "RUN_DIAGNOSTIC_SWEEP", autoActionConnectionId: connectionId,
+    })).rejects.toThrow("no longer authorized");
+  });
+  it("two workers link at most one MCP-5 operation to one Denver slot", async () => {
+    await grantDiagnostic();
+    const day = now("2026-11-03T18:00:00Z");
+    const both = await Promise.all([
+      runMonitors(day, { evaluate: failing }),
+      runMonitors(day, { evaluate: failing }),
+    ]);
+    expect(both.reduce((n, row) => n + row.alerted, 0)).toBe(1);
+    const run = await prisma.monitorRun.findUniqueOrThrow({
+      where: { ruleKey_slot: { ruleKey, slot: "2026-11-03" } },
+    });
+    expect(run.operationId).toBeTruthy();
+    expect(await prisma.agentOperation.count({ where: { id: run.operationId! } })).toBe(1);
+  });
+  it("connection revocation after preview prevents dispatch", async () => {
+    await grantDiagnostic();
+    await runMonitors(now("2026-11-03T18:00:00Z"), {
+      evaluate: failing,
+      beforeDispatch: async () => {
+        await prisma.mcpConnection.update({ where: { id: connectionId }, data: { revokedAt: new Date() } });
+      },
+    });
+    const run = await prisma.monitorRun.findUniqueOrThrow({
+      where: { ruleKey_slot: { ruleKey, slot: "2026-11-03" } },
+    });
+    expect(run.operationId).toBeTruthy();
+    const operation = await prisma.agentOperation.findUniqueOrThrow({ where: { id: run.operationId! } });
+    expect(operation.state).toBe("DENIED");
+    expect(operation.attempt).toBe(0);
+  });
+  it("disabling a rule after preview blocks its linked action", async () => {
+    await grantDiagnostic();
+    await runMonitors(now("2026-11-03T18:00:00Z"), {
+      evaluate: failing,
+      beforeDispatch: async () => {
+        await prisma.monitorRule.update({ where: { key: ruleKey },
+          data: { enabled: false, version: { increment: 1 } } });
+      },
+    });
+    const run = await prisma.monitorRun.findUniqueOrThrow({
+      where: { ruleKey_slot: { ruleKey, slot: "2026-11-03" } },
+    });
+    const operation = await prisma.agentOperation.findUniqueOrThrow({ where: { id: run.operationId! } });
+    expect(operation.state).toBe("DENIED");
+    expect(operation.attempt).toBe(0);
   });
 });
