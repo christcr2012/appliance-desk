@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "target": "ai/chatgpt/mcp-6-repair-cases",
+  "base": "dfd26b1156417b934514d7cb40a0d2b735627129",
+  "head": "471a0c5f3079d1f557a8d1e2aa21621412e5370e",
+  "commits": 13,
+  "bundleBytes": 44721,
+  "bundleSha256": "f02e0378416d6160ffee676658d32a326c1e62fe75f50bfa3c27ed9fef4c3ccf",
+  "parts": [
+    {
+      "name": "part-000",
+      "sha256": "d23c696756f8c9697056621f4e9571a448c522956c69c7ebdd9b88c8f6d54a0b"
+    },
+    {
+      "name": "part-001",
+      "sha256": "8d58bec2d16cb43c50c03fccb42e30262446d02ca52f4c14982a0b42d35cdab6"
+    },
+    {
+      "name": "part-002",
+      "sha256": "3369030ec517fa7b44828e1d1903cbb7a33f4c0bd38356fe40efa021efbeee5f"
+    },
+    {
+      "name": "part-003",
+      "sha256": "c8aa32e165674795eae5727776bd78e68f4e722c6ac24b77e56c84db50167524"
+    },
+    {
+      "name": "part-004",
+      "sha256": "b624af10de27d374e84edba630d2e978af5bdd222de3494942003216844cf05a"
+    }
+  ]
+}
