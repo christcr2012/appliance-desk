@@ -72,8 +72,15 @@ describe("insights redirects and route shape (AR-9)", () => {
     const { default: RevenueRedirect } = await import("@/app/desk/revenue/page");
     expect(() => GrowthRedirect()).toThrow("NEXT_REDIRECT");
     expect(navState.target).toBe("/desk/customers/insights");
-    expect(() => ReportsRedirect()).toThrow("NEXT_REDIRECT");
+    roleState.role = "OWNER";
+    await expect(ReportsRedirect()).rejects.toThrow("NEXT_REDIRECT");
     expect(navState.target).toBe("/desk/money");
+    // The accountant's Reports entry point survives: they land on the
+    // Books reports they are allowed to open, not the Money overview.
+    roleState.role = "ACCOUNTANT";
+    await expect(ReportsRedirect()).rejects.toThrow("NEXT_REDIRECT");
+    expect(navState.target).toBe("/desk/books/reports");
+    roleState.role = "OWNER";
     expect(() => DashboardRedirect()).toThrow("NEXT_REDIRECT");
     expect(navState.target).toBe("/desk/today");
     await expect(FleetRedirect({ searchParams: Promise.resolve({ page: "3", costs: "missing" }) })).rejects.toThrow("NEXT_REDIRECT");

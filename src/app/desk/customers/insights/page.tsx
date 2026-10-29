@@ -6,7 +6,7 @@ import Link from "next/link";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { formatMoney } from "@/lib/money-ui";
-import { formatShortDate } from "@/lib/business-date";
+import { businessMonthBounds, formatShortDate } from "@/lib/business-date";
 import { getCustomerInsights, getLeadInsights, getWorthACall } from "@/domains/insights/customers";
 import { MIN_LEADS, MIN_RENTALS } from "@/domains/insights/thresholds";
 import { DataTable, EmptyState, InfoTip, MiniBars, ScreenHeader, StatStrip, type Column } from "@/components/kit";
@@ -43,11 +43,10 @@ export default async function CustomersInsightsPage({
   const params = await searchParams;
   const period = periodSchema.parse(params.period);
   const now = new Date();
-  const lastMonthAnchor = (() => {
-    const d = new Date(now);
-    d.setUTCDate(0); // last day of last month (UTC anchor is fine for month selection)
-    return d;
-  })();
+  // The last-month anchor is the instant just before this Denver month
+  // starts — never a UTC date step, which lands in the wrong month on the
+  // last Denver evening of a month.
+  const lastMonthAnchor = new Date(businessMonthBounds(now).start.getTime() - 1);
   const [leads, customers, worth] = await Promise.all([
     getLeadInsights(now),
     getCustomerInsights(period === "last" ? lastMonthAnchor : now),

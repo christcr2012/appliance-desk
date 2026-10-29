@@ -5,7 +5,7 @@
 // the glossary (src/lib/glossary.ts) and the spec.
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { businessMonthBounds, businessWeekStart } from "@/lib/business-date";
+import { businessDateKey, businessDateTimeFromLocal, businessMonthBounds, businessWeekStart } from "@/lib/business-date";
 import { businessMinutesBetween, hasAnyOpeningHours } from "@/lib/business-hours";
 import { parseStoredClosures, parseStoredHours } from "@/domains/settings/profile-extras";
 import { getLeadSourceBreakdown } from "@/domains/leads";
@@ -140,12 +140,24 @@ export async function getLeadInsights(now = new Date()): Promise<LeadInsights> {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // 12 Denver weeks, oldest first: new leads and won leads per week.
-  const currentWeekStart = businessWeekStart(now);
+  // 12 Denver weeks, oldest first: new leads and won leads per week. Week
+  // bounds come from Denver calendar dates, never fixed 168-hour offsets:
+  // across a daylight-saving change a fixed offset lands an hour off
+  // Monday midnight and shifts the midnight hour into the wrong week.
+  const mondayKey = businessDateKey(businessWeekStart(now));
+  const keyPlusDays = (key: string, days: number): string => {
+    const [y, m, d] = key.split("-").map(Number);
+    return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
+  };
+  const weekStartAt = (key: string): Date =>
+    businessWeekStart(businessDateTimeFromLocal(`${key}T12:00`)!);
+  const weekStarts: Date[] = [];
+  for (let i = 11; i >= 0; i--) weekStarts.push(weekStartAt(keyPlusDays(mondayKey, -7 * i)));
+  const nextWeekStart = weekStartAt(keyPlusDays(mondayKey, 7));
   const trend: LeadInsights["trend"] = [];
-  for (let i = 11; i >= 0; i--) {
-    const weekStart = new Date(currentWeekStart.getTime() - i * 7 * 24 * 60 * 60 * 1000);
-    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+  for (let j = 0; j < 12; j++) {
+    const weekStart = weekStarts[j]!;
+    const weekEnd = j < 11 ? weekStarts[j + 1]! : nextWeekStart;
     const [newLeads, wonLeads] = await Promise.all([
       prisma.lead.count({ where: { createdAt: { gte: weekStart, lt: weekEnd }, mergedIntoLeadId: null } }),
       prisma.lead.count({

@@ -5,11 +5,11 @@ import { DESK_AREAS, activeArea, visibleAreas, visibleProfileLinks } from "@/lib
 const hrefs = (role: string) => deskNavigation(role).flatMap(g => g.links.map(l => l.href));
 
 describe("AR-1 five-area navigation compatibility and security", () => {
-  it.each(["OWNER", "ADMIN"] as const)("%s sees five named areas and 22 tabs", role => {
+  it.each(["OWNER", "ADMIN"] as const)("%s sees five named areas and 24 tabs", role => {
     const groups = deskNavigation(role);
     expect(groups.map(g => g.label)).toEqual(["Today", "Customers", "Schedule", "Equipment", "Money"]);
-    expect(groups.flatMap(g => g.links)).toHaveLength(22);
-    expect(new Set(hrefs(role)).size).toBe(22);
+    expect(groups.flatMap(g => g.links)).toHaveLength(24);
+    expect(new Set(hrefs(role)).size).toBe(24);
     expect(groups.find(g => g.label === "Customers")?.links).toContainEqual({ href: "/desk/communications", label: "Messages" });
     expect(groups.find(g => g.label === "Schedule")?.links).toContainEqual({ href: "/desk/dispatch", label: "Board" });
     expect(hrefs(role)).toContain("/desk/sales-tax");

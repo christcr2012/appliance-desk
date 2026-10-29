@@ -49,10 +49,12 @@
     "e2e/communication-launch.spec.ts",
     "e2e/fleet-report.spec.ts",
     "e2e/revenue-records.spec.ts",
+    "e2e/route-inventory.ts",
     "e2e/shards.json",
     "e2e/telecom-reports.spec.ts",
     "prisma/migrations/20261030000000_lead_closed_at/migration.sql",
     "prisma/schema.prisma",
+    "scripts/desk-bundle-budget.json",
     "src/app/desk/customers/insights/page.tsx",
     "src/app/desk/dashboard/page.tsx",
     "src/app/desk/fleet/page.tsx",
@@ -83,13 +85,15 @@
     "tests/business-hours.test.ts",
     "tests/customer-insights-integration.test.ts",
     "tests/desk-areas.test.ts",
+    "tests/desk-navigation.test.ts",
     "tests/earnings-not-cash.test.ts",
     "tests/goals.test.ts",
     "tests/insights-roles.test.ts",
     "tests/lead-closed-at-integration.test.ts",
     "tests/lead-insights-integration.test.ts",
     "tests/lead-source-breakdown.test.ts",
-    "tests/revenue-invoice-links.test.tsx"
+    "tests/revenue-invoice-links.test.tsx",
+    "tests/w8-menu-sections.test.ts"
   ],
   "references": [
     {
