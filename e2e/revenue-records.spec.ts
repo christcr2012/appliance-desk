@@ -23,14 +23,10 @@ for (const width of [360, 768, 1440])
         (mode) => localStorage.setItem("theme", mode),
         theme,
       );
+      // AR-9: /desk/revenue redirects to Money › Income details.
       await page.goto("/desk/revenue");
+      await expect(page).toHaveURL(/\/desk\/money\/income/);
 
-      await expect(
-        page.getByRole("heading", {
-          name: "Income and cash received",
-          exact: true,
-        }),
-      ).toBeVisible();
       await expect(
         page.getByText(
           /the money actually received, and refunds. They are shown separately/i,
@@ -42,22 +38,22 @@ for (const width of [360, 768, 1440])
 
       for (const source of ["payments", "refunds"]) {
         await page
-          .getByRole("navigation", { name: "Invoice ledger source" })
+          .getByRole("navigation", { name: "Income kind" })
           .getByRole("link", {
             name:
-              source === "payments" ? "Cash received" : "Invoice refunds",
+              source === "payments" ? "Money received" : "Refunds",
             exact: true,
           })
           .click();
         await expect(page).toHaveURL(new RegExp(`source=${source}`));
         await page
-          .getByRole("navigation", { name: "Invoice ledger period" })
-          .getByRole("link", { name: "This month (Colorado)", exact: true })
+          .getByRole("navigation", { name: "When" })
+          .getByRole("link", { name: "This month", exact: true })
           .click();
         await expect(page).toHaveURL(/scope=month/);
         await page
-          .getByRole("navigation", { name: "Invoice ledger period" })
-          .getByRole("link", { name: "All recorded dates", exact: true })
+          .getByRole("navigation", { name: "When" })
+          .getByRole("link", { name: "All dates", exact: true })
           .click();
         await expect(page).toHaveURL(/scope=all/);
 
@@ -90,8 +86,8 @@ for (const width of [360, 768, 1440])
       await expect(page).toHaveURL(/source=refunds.*scope=month/);
 
       const allocations = page
-        .getByRole("navigation", { name: "Invoice ledger source" })
-        .getByRole("link", { name: "Cash received", exact: true });
+        .getByRole("navigation", { name: "Income kind" })
+        .getByRole("link", { name: "Money received", exact: true });
       // After "back" the address changes before the page content does. Wait until the
       // links on screen belong to the month view, or Enter can follow a stale link.
       await expect(allocations).toHaveAttribute("href", /scope=month/);
@@ -105,10 +101,7 @@ for (const width of [360, 768, 1440])
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/source=payments.*scope=month/);
       await expect(
-        page.getByRole("heading", {
-          name: "Cash received (one row per payment)",
-          exact: true,
-        }),
+        page.getByText(/matching records · .* total/),
       ).toBeVisible();
       await expect(
         page.getByText(/Each payment appears once, even when one check paid several/i),

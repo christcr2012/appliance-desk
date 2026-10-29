@@ -28,7 +28,7 @@ const ownerOnly = ["/desk/settings/permissions", "/desk/approvals", "/desk/priva
 /** Pages an owner and any admin may open (limits only stop saving, never reading), and staff may not.
  * /desk/paperwork (Business records) joined this list with VAULT-1: admins may read the
  * record kinds the owner allows; records holding a number stay owner-only inside the page. */
-const adminPages = ["/desk/settings", "/desk/billing", "/desk/revenue", "/desk/fleet", "/desk/notices", "/desk/settings/goals", "/desk/settings/workspace", "/desk/paperwork"];
+const adminPages = ["/desk/settings", "/desk/billing", "/desk/money/income", "/desk/inventory/insights", "/desk/notices", "/desk/settings/goals", "/desk/settings/workspace", "/desk/paperwork"];
 
 type Who = "owner" | "admin" | "limited" | "staff";
 const contexts = new Map<Who, BrowserContext>();
