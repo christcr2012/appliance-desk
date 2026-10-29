@@ -38,6 +38,9 @@ const ACTION_PERMISSIONS = {
   RESUME_AUTOMATION: { scope: "ops:maintain", approval: "OWNER_IN_APP" },
   VERIFY_RECOVERY_ARTIFACT: { scope: "ops:maintain", approval: "CONVERSATION" },
   APPLY_DECISION_ANSWERS: { scope: "decisions:apply", approval: "CONVERSATION" },
+  REPAIR_CREATE_CASE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
+  REPAIR_LINK_EVIDENCE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
+  REPAIR_CHECK_CASE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
 } as const;
 
 export type JournalAction = keyof typeof ACTION_PERMISSIONS;
