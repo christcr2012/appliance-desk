@@ -43,7 +43,7 @@ const migratedPaths = new Set(migrated.map((item) => typeof item === "string" ? 
 export function isEverydayScreen(path) {
   const normalized = path.replaceAll("\\", "/");
   // Accountant-only books pages intentionally use specialized field labels.
-  if (/^src\/app\/desk\/books\/(reports|exports?|closing|assets)(?:\/|$)/.test(normalized)) return false;
+  if (/^src\/app\/desk\/books\/(reports|exports?|closing|assets|accountant)(?:\/|$)/.test(normalized)) return false;
   return normalized.startsWith("src/components/kit/") || migratedPaths.has(normalized);
 }
 

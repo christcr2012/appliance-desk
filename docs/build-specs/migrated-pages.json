@@ -7,5 +7,10 @@
   "src/app/desk/payments/page.tsx",
   "src/app/desk/billing/customer/[id]/invoice/[invoiceId]/page.tsx",
   "src/app/desk/customers/[id]/page.tsx",
-  { "file": "src/app/desk/sales-tax/rules/page.tsx", "kind": "list" }
+  { "file": "src/app/desk/sales-tax/rules/page.tsx", "kind": "list" },
+  { "file": "src/app/desk/books/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/books/accountant/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/books/months/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/books/reports/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/books/assets/page.tsx", "kind": "other" }
 ]
