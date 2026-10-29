@@ -13,9 +13,9 @@ describe("AR-1 five areas (W-8 backward-compatible tab helpers)", () => {
   it("has the five approved areas and exactly named tabs for owner/admin", () => {
     const labels = links("OWNER").map(link => link.label);
     expect(labels).toEqual([
-      "Inbox", "Tasks", "Leads", "Customers", "Quotes", "Rentals", "Messages",
+      "Inbox", "Tasks", "Leads", "Customers", "Quotes", "Rentals", "Messages", "Insights",
       "Board", "Visits", "My route", "Repairs",
-      "Fleet", "Purchases", "Parts", "Suppliers", "Retired",
+      "Fleet", "Purchases", "Parts", "Suppliers", "Retired", "Insights",
       "Overview", "Bills", "Payments", "Expenses", "Books", "Taxes",
     ]);
     expect(links("ADMIN").map(link => link.label)).toEqual(labels);
@@ -39,7 +39,7 @@ describe("AR-1 five areas (W-8 backward-compatible tab helpers)", () => {
   });
   it("sends Schedule, Equipment and Money tabs through the same pure source", () => {
     expect(DESK_SECTIONS.schedule.tabs.map(t => t.label)).toEqual(["Board", "Visits", "My route", "Repairs"]);
-    expect(DESK_SECTIONS.equipment.tabs.map(t => t.label)).toEqual(["Fleet", "Purchases", "Parts", "Suppliers", "Retired"]);
+    expect(DESK_SECTIONS.equipment.tabs.map(t => t.label)).toEqual(["Fleet", "Purchases", "Parts", "Suppliers", "Retired", "Insights"]);
     expect(DESK_SECTIONS.money.tabs.map(t => t.label)).toEqual(["Overview", "Bills", "Payments", "Expenses", "Books", "Taxes"]);
     for (const role of ["OWNER", "ADMIN", "STAFF"]) {
       const visible = visibleAreas(role, null);
