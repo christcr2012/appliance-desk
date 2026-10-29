@@ -79,6 +79,10 @@ export async function setPaceSettings(actorUserId: string, next: PaceSettings): 
   if (problem) throw new GoalError(problem);
   await prisma.$transaction(async (tx: Tx) => {
     await assertCapability(tx, actorUserId, "EDIT_SETTINGS");
+    // Lock the singleton row before reading its previous values, so two
+    // concurrent saves cannot both audit the same stale "before" (the
+    // settings writers' established pattern).
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const before = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { goalQuietDays: true, goalBehindPercent: true } });
     await tx.businessSettings.update({ where: { id: "singleton" }, data: { goalQuietDays: next.quietDays, goalBehindPercent: next.behindPercent } });
     await tx.auditLog.create({

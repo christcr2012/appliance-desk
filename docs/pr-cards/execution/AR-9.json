@@ -70,6 +70,7 @@
     "src/app/desk/settings/telecom/telecom-report.tsx",
     "src/components/kit/index.ts",
     "src/components/kit/mini-bars.tsx",
+    "src/domains/billing/revenue-records.ts",
     "src/domains/goals/index.ts",
     "src/domains/goals/pace.ts",
     "src/domains/insights/customers.ts",
@@ -97,6 +98,7 @@
     "tests/leads-conversion.test.ts",
     "tests/reports-definitions.test.ts",
     "tests/revenue-invoice-links.test.tsx",
+    "tests/revenue-records-integration.test.ts",
     "tests/w8-menu-sections.test.ts"
   ],
   "references": [

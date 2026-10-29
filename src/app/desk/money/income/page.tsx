@@ -1,12 +1,13 @@
 // AR-9 (INSIGHTS section 6): Money › Income details — the old Revenue
-// ledger rebuilt as a kit work queue. The read is getRevenueRecords,
-// unchanged; its page param stays a page number, as today.
+// ledger rebuilt as a kit work queue. The read is getRevenueRecords; its
+// page param stays a page number, as today, and it gained an optional
+// customer search for this page's Toolbar.
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { formatMoney } from "@/lib/money-ui";
 import { formatShortDate } from "@/lib/business-date";
 import { getRevenueRecords } from "@/domains/billing/revenue-records";
-import { DataTable, ScreenHeader, StatusTabs, type Column } from "@/components/kit";
+import { DataTable, ScreenHeader, StatusTabs, Toolbar, type Column } from "@/components/kit";
 import { MetricHelp } from "@/components/desk/metric-stat";
 
 export const metadata = { title: "Income details" };
@@ -16,14 +17,14 @@ type IncomeRow = Awaited<ReturnType<typeof getRevenueRecords>>["rows"][number];
 export default async function MoneyIncomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ source?: string; scope?: string; page?: string }>;
+  searchParams: Promise<{ source?: string; scope?: string; page?: string; q?: string }>;
 }) {
   await requireRole("OWNER", "ADMIN");
   const params = await searchParams;
   const source = params.source === "refunds" ? "refunds" : "payments";
   const monthOnly = params.scope !== "all";
   const now = new Date();
-  const records = await getRevenueRecords(source, monthOnly, params.page, now);
+  const records = await getRevenueRecords(source, monthOnly, params.page, now, params.q);
 
   const columns: Column<IncomeRow>[] = [
     {
@@ -100,6 +101,7 @@ export default async function MoneyIncomePage({
           ]}
         />
       </div>
+      <Toolbar search={{ param: "q", placeholder: "Name or email", label: "Search income" }} />
       <p className="text-sm text-ink-soft">
         {records.meta.totalCount} matching records · {formatMoney(records.totalCents)} total
         {source === "refunds" && records.toCreditCents > 0

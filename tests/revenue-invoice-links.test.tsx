@@ -40,5 +40,5 @@ it.each(["payments", "refunds"])("%s rows link to the customer statement and eac
   // revenue page's formatCents dropped the ".00". Same words, kit format.
   expect(screen.getAllByText(/\$5\.00 held as account credit/)).toHaveLength(2);
   expect(m.role).toHaveBeenCalledWith("OWNER", "ADMIN");
-  expect(m.records).toHaveBeenCalledWith(source, false, undefined, expect.any(Date));
+  expect(m.records).toHaveBeenCalledWith(source, false, undefined, expect.any(Date), undefined);
 });

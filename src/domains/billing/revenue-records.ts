@@ -18,13 +18,26 @@ export async function getRevenueRecords(
   monthOnly: boolean,
   rawPage?: string,
   asOf = new Date(),
+  query?: string,
 ) {
   await requireRole("OWNER", "ADMIN");
+  const q = query?.trim() ? query.trim() : null;
+  const customerMatch = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" as const } },
+          { email: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : null;
   return prisma.$transaction(
     async (tx) => {
       const period = revenuePeriod(asOf, monthOnly);
       if (source === "payments") {
-        const where = { receivedOn: period };
+        const where = {
+          receivedOn: period,
+          ...(customerMatch ? { customer: { user: customerMatch } } : {}),
+        };
         const total = await tx.receipt.aggregate({
           where,
           _count: { _all: true },
@@ -99,7 +112,10 @@ export async function getRevenueRecords(
           }),
         };
       }
-      const where = { createdAt: period };
+      const where = {
+        createdAt: period,
+        ...(customerMatch ? { invoice: { customer: { user: customerMatch } } } : {}),
+      };
       const total = await tx.refund.aggregate({
         where,
         _count: { _all: true },
@@ -128,10 +144,16 @@ export async function getRevenueRecords(
         take: meta.pageSize,
       });
       // A refund kept as account credit returns no cash; say so row by row and in the total.
-      const creditSources = await tx.customerCredit.findMany({
-        where: { sourceType: "REFUND_TO_CREDIT", createdAt: period },
-        select: { sourceId: true, amountCents: true },
-      });
+      // With a search active, the credit total covers only the matching refunds.
+      const matchingRefundIds = q
+        ? new Set((await tx.refund.findMany({ where, select: { id: true } })).map((r) => r.id))
+        : null;
+      const creditSources = (
+        await tx.customerCredit.findMany({
+          where: { sourceType: "REFUND_TO_CREDIT", createdAt: period },
+          select: { sourceId: true, amountCents: true },
+        })
+      ).filter((c) => matchingRefundIds === null || matchingRefundIds.has(c.sourceId));
       const creditRefundIds = new Set(creditSources.map((c) => c.sourceId));
       return {
         meta,

@@ -205,9 +205,20 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
   await requireRole("OWNER", "ADMIN");
   const { start: monthStart, end: monthEnd } = businessMonthBounds(now);
 
+  // "Active" is reconstructed AS OF the selected month's end (started
+  // before it, not closed before it), never read from today's statuses —
+  // with Last month selected, today's statuses would span two months and
+  // a customer who left last month but returned this month would vanish
+  // from last month's figures. For the current month the reconstruction
+  // matches the live count.
+  const activeAtEndWhere = {
+    startDate: { lt: monthEnd },
+    OR: [{ closedAt: null }, { closedAt: { gte: monthEnd } }],
+    status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] as const },
+  };
   const [activeRows, atStartRows, earliest, lostCandidates, revenue, activeAgreements] = await Promise.all([
     prisma.rentalAgreement.findMany({
-      where: { status: "ACTIVE" },
+      where: activeAtEndWhere,
       select: { customerId: true },
       distinct: ["customerId"],
     }),
@@ -232,7 +243,7 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
     }),
     getRevenueDashboard(now),
     prisma.rentalAgreement.findMany({
-      where: { status: "ACTIVE" },
+      where: activeAtEndWhere,
       select: { customerId: true, stripeSubscriptionId: true, serviceAddress: { select: { city: true } } },
     }),
   ]);
@@ -244,16 +255,9 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
   ).length;
 
   // Lost: the customer's LAST closed agreement closed this month, and they
-  // hold no ACTIVE or SCHEDULED agreement now.
-  const stillActiveOrScheduled = new Set(
-    (
-      await prisma.rentalAgreement.findMany({
-        where: { status: { in: ["ACTIVE", "SCHEDULED"] } },
-        select: { customerId: true },
-        distinct: ["customerId"],
-      })
-    ).map((r) => r.customerId),
-  );
+  // were not active at the month's end (the reconstruction above — a
+  // customer who returned this month still counts as lost last month).
+  const stillActiveOrScheduled = activeIds;
   const lastByCustomer = new Map<string, (typeof lostCandidates)[number]>();
   for (const row of lostCandidates) {
     if (!lastByCustomer.has(row.customerId)) lastByCustomer.set(row.customerId, row);
