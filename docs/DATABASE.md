@@ -1505,7 +1505,7 @@ Migration `20261024090000_used_appliance_sale` (M-2C) adds nullable `InvoiceLine
 
 ## App feedback (MCP-10a, additive migration `20261027020000_feedback`)
 
-Four new tables, people only (every report is `aiReview = HUMAN_ONLY`; no AI or ops path reads them):
+Four tables originally introduced for people-only reporting (all reports start `aiReview = HUMAN_ONLY`; MCP-11 adds separately consented assistant reads):
 - `FeedbackReport` — one report about the app (never an appliance repair): `number` (auto, shown as "#12"), sender
   (`reporterUserId`, restricted FK to User) and their role at sending, `kind` BUG/IMPROVEMENT, title/description/
   expected/steps (length-capped), `routeTemplate` (page shape only, ids replaced by `[id]`), `appRevision`,
@@ -1520,6 +1520,8 @@ Settings: `BusinessSettings.feedbackMaxAttachments` (0–3, starting 3) and `fee
 The starting Manager job role gains the new owner/admin `feedback` screen. All four tables are in the backup manifest;
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
+
+**MCP-11 (`20261204000000_mcp_feedback_agent`, additive):** `FeedbackReport.aiReview` is reporter-controlled (`HUMAN_ONLY` initially, `ALLOWED` with opt-in, `WITHDRAWN` after withdrawal) and version-checked; assistant reads must also hold separate `feedback:triage` and `feedback:content` grants and never return screenshots. `FeedbackEntry.authorKind` (`PERSON` / `ASSISTANT`) and optional `agentConnectionId` mark the real author source. `FeedbackCaseLink` uniquely links a report and a repair case, with restricted foreign keys and provenance. Journaled assistant replies/status/link changes lock the connection and report, recheck consent and revocation, and require a linked VERIFIED repair case before RESOLVED. Feedback links, history and author kinds are included in backup/restore and reporter privacy rules.
 
 ## Delivery zones (ZONE-1, additive migration `20261130000000_delivery_zones`)
 
