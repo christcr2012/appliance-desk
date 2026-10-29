@@ -199,8 +199,9 @@ test.describe("Leads queue and record (owner)", () => {
     test.skip(!enabled || !fs.existsSync(owner), "Disposable Postgres and a saved owner session required.");
     const { prisma } = await import("../src/lib/prisma");
     const fixture = await makeLead("Record View", { status: "CONTACTED" });
+    const ownerUser = await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } });
     const estimate = await prisma.estimate.create({
-      data: { leadId: fixture.id, title: "Washer set", status: "SENT", sentAt: new Date() },
+      data: { leadId: fixture.id, createdByUserId: ownerUser.id, title: "Washer set", status: "SENT", sentAt: new Date() },
     });
     try {
       await page.setViewportSize({ width: 1280, height: 900 });
@@ -220,6 +221,6 @@ test.describe("Leads queue and record (owner)", () => {
   test("accessibility at five sizes, light and dark", async ({ page }) => {
     test.skip(!enabled || !fs.existsSync(owner), "Disposable Postgres and a saved owner session required.");
     test.setTimeout(150_000);
-    await scanAccessibilityRoute(page, { path: "/desk/leads", role: "OWNER" }, SIZES);
+    await scanAccessibilityRoute(page, { path: "/desk/leads", role: "OWNER", fixture: "/desk/leads" }, SIZES);
   });
 });
