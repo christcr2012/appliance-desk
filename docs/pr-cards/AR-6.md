@@ -28,3 +28,23 @@ diff passes ~1,500 changed lines, split Purchases/Parts/Suppliers into AR-6b and
 
 ## Progress
 Not started.
+
+## Implementation route (reconciled October 28, 2026)
+
+This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
+only when absent; inspect the final prerequisite exports once before coding.
+
+1. Read EQUIPMENT section 1, then inspect `src/domains/inventory/index.ts`,
+   `src/domains/purchasing/index.ts`, `src/domains/purchasing/purchases.ts`, and their actual callers/fakes.
+   Make one acceptance→function→test table for the eight listed fixes before restyling pages.
+2. First deliver role-filtered DTOs, the Retired refusal and stable `(createdAt,id)` cursor. With OWNER, ADMIN,
+   STAFF and CUSTOMER fixtures, assert protected money keys are absent from staff results, not merely hidden
+   in JSX. A single or bulk attempt to set RETIRED must leave status/custody unchanged; the dedicated retire
+   action still requires its reason. Keep any current accountant access where approved by ACCT-1.
+3. Build fleet/record over those reads and existing actions; then purchases/parts/suppliers per sections 5–7.
+   Prove the receipt total equals the existing stored cents fields; keep arithmetic out of pages. Same-time
+   fixtures must appear once each across cursor pages and counts must match the filtered population.
+4. Use the current kit SearchablePicker export for customer/part lookup, not get-all reads; check its real
+   caller/result shape before writing an adapter. Parallelize only independent record reads.
+5. Reuse current inventory/purchasing suites and add the spec’s missing refusal/cursor/DTO regressions. Keep
+   the card’s split rationale if purchasing merits AR-6b; do not block fleet completion on that separate UI.

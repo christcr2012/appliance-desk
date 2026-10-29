@@ -7,7 +7,9 @@ scorecard/bundle-plan steps) is archived in [archive/rules-reset-2026-10-23/](ar
 
 ```bash
 npm run setup                 # once per checkout/worktree: pre-push gate, HTTP/1.1, merge-based syncing
-npm run work -- start         # active card and bounded integration references
+npm run work -- start <ID>    # your assigned packet; no ID uses a shared legacy fallback
+npm run work -- route <ID>    # indexed card discovery when no execution packet exists
+npm run work -- read 1 <ID>   # bounded reference from that same packet
 npm run check:quick           # same gate the pre-push hook runs (secrets, migrations, routes, typecheck, lint)
 npx vitest run tests/x.test.ts                         # focused unit test
 npm run test:db -- tests/y-integration.test.ts         # disposable Postgres + migrations, one command
@@ -53,6 +55,7 @@ Read **all** failed CI jobs before editing. The connected Robinson GitHub MCP pr
 | slow unit/browser shard notice (tests pass) | that group exceeded the 180-second **performance target**, not a test failure | leave CI green and retain the timing notice; compare the **same group over its last five comparable full runs**. Rebalance only if **3 of 5** exceed the target or a reproducible structural regression explains the slowdown. Never skip tests to speed it up |
 | owner-guide-coverage | a new desk screen not named in `docs/OWNER-GUIDE.md` | add it |
 | a menu test counts links | you added a desk menu link | update the expected count and assert the new link |
+| date-only deadline fixture says Due today when Overdue was expected | subtracting 24 hours from an instant can retain today’s UTC date during a Denver evening | start from businessDateKey(now) at UTC midnight, then subtract one UTC calendar day; keep the Overdue assertion |
 | typed value doubled in a form test (e.g. "1012") | typing before the client form loaded its saved value | wait for the saved value to show, then fill |
 | "capacity baselines" timing | noisy shared runner | rerun that job once; it is not a gate on its own, but a repeat means look at the change |
 

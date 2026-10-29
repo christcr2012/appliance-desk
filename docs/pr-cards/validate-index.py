@@ -11,7 +11,7 @@ BY_ID = {card['id']: card for card in CARDS}
 errors = []
 if len(BY_ID) != len(CARDS):
     errors.append('duplicate card IDs')
-expected = {'T', 'S', 'COM-L', 'W', 'V', 'F2', 'K', 'K-CASH', 'M', 'O', 'COM-N', 'BP', 'ACC', 'BA', 'LD', 'CU', 'AR'}
+expected = {'T', 'S', 'COM-L', 'W', 'V', 'F2', 'K', 'K-CASH', 'M', 'O', 'COM-N', 'BP', 'ACC', 'BA', 'LD', 'CU', 'AR', 'DEC', 'MCP', 'TFA', 'CMP', 'VAULT', 'OPS', 'TAXBEN', 'FEETAX'}
 if {c['batch'] for c in CARDS} != expected:
     errors.append('remaining batch coverage changed; reconcile acceptance explicitly')
 # Intentional acceptance scope changes update this reviewed constant. Card IDs
@@ -36,8 +36,12 @@ ACC-1 ACC-2 ACC-3 ACC-4 ACC-5
 BA-1 BA-2 BA-3 BA-4 BA-5 BA-6
 LD-1 LD-2 LD-3 LD-4
 CU-1 CU-2 CU-3
-AR-0 AR-1 AR-2 AR-3 AR-4 AR-5 AR-6 AR-7 AR-8 AR-9 AR-10 AR-11 AR-12
+AR-0 AR-1 AR-2 AR-3 AR-4 AR-5 AR-6 AR-7 AR-8 AR-9 AR-10a AR-10b AR-11 AR-12
 K-CASH-1 K-CASH-2 K-CASH-3 K-CASH-4A K-CASH-4B K-CASH-5A K-CASH-5B K-CASH-6 K-CASH-7
+ACC-6 ACCT-1 AR-13 BILL-1 CMP-1 CMP-2 CMP-3 CMP-4 CMP-5 DEC-1 DEC-2 FEE-1 FEETAX-1 FEETAX-2
+MCP-1 MCP-2 MCP-3 MCP-4 MCP-5 MCP-6 MCP-7 MCP-8 MCP-9 MCP-10a MCP-11
+OPS-1 OPS-2 OPS-3 OPS-4 OPS-5 OPS-6 OPS-7 OPS-8 PORTAL-1 SETUP-1
+TAXBEN-1 TAXBEN-2 TFA-1 TFA-2 TFA-3 VAULT-1 VAULT-2 ZONE-1
 """.split())
 actual_units = {unit for card in CARDS for unit in card['units']}
 if actual_units != REQUIRED_UNITS:
