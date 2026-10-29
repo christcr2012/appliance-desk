@@ -59,7 +59,7 @@ test.describe("MCP-6 repair cases on System health", () => {
   test("Repairs content remains accessible on the owner health page", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/desk/automations", { waitUntil: "load" });
-    await expect(page.getByRole("heading", { name: "Repairs" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Repairs", exact: true })).toBeVisible();
     const route = ACCESSIBILITY_ROUTES.find((item) => item.path === "/desk/automations");
     expect(route).toBeDefined();
     await scanAccessibilityRoute(page, route!);
