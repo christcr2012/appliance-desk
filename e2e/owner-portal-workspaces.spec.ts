@@ -172,7 +172,7 @@ for (const role of ["owner", "customer"] as const) {
         // ZONE-1: the service-area section is now the delivery zones form. Change only the last zone's end-of-rental
         // pickup price (nothing else reads it in the browser suite) and put it back.
         await page.goto("/desk/settings?section=service-area");
-        // AR-8: the zones form opens from its panel row on Business profile.
+        // AR-8: the zones form opens from its panel row on the Business section.
         await page.getByRole("button", { name: /Delivery zones/ }).click();
         const pickup = page.getByLabel("End-of-rental pickup ($)").last();
         const saved = page.getByText(/Delivery zones saved/);
@@ -187,13 +187,16 @@ for (const role of ["owner", "customer"] as const) {
           // The reload starts the page fresh, so the panel is closed again.
           await page.getByRole("button", { name: /Delivery zones/ }).click();
           await expect(pickup).toHaveValue(changed);
+          // AR-8: service-area is the Business section's old name (the page
+          // redirects it here), so Back is exercised between two current
+          // sections: leave for Prices, then Back must restore Business.
           await page
             .getByRole("navigation", { name: "Settings sections" })
-            .getByRole("link", { name: "Business profile", exact: true })
+            .getByRole("link", { name: "Prices & packages", exact: true })
             .click();
-          await expect(page).toHaveURL(/section=business$/);
+          await expect(page).toHaveURL(/section=prices$/);
           await page.goBack();
-          await expect(page).toHaveURL(/section=service-area$/);
+          await expect(page).toHaveURL(/section=business$/);
           // Back may restore the page as it was (panel open) or reload it
           // fresh (panel closed) — open it only if it is closed.
           const zonesButton = page.getByRole("button", { name: /Delivery zones/ });
