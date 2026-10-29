@@ -167,6 +167,7 @@ async function readSignal(key: MonitorKey, now: Date): Promise<MonitorSignal> {
  */
 async function executeMonitoringAction(
   key: MonitorKey, slot: string, version: number, action: MonitorAction, connectionId: string,
+  beforeDispatch?: () => Promise<void>,
 ) {
   const connection = await prisma.mcpConnection.findUnique({
     where: { id: connectionId },
@@ -196,12 +197,27 @@ async function executeMonitoringAction(
     });
     return updated.count === 1;
   });
-  if (linked) await executeAgentOperation(ctx, { previewId: preview.previewId, requestKey });
+  if (linked) {
+    try {
+      // The hook is used by disposable-database race tests; scheduled runs never supply one.
+      await beforeDispatch?.();
+      await executeAgentOperation(ctx, { previewId: preview.previewId, requestKey });
+    } catch (error) {
+      // A revocation before claiming is a definite refusal, not an uncertain effect.
+      // Never touch an operation that may already have begun running.
+      await prisma.agentOperation.updateMany({
+        where: { id: preview.previewId, state: { in: ["PREVIEWED", "AWAITING_APPROVAL"] } },
+        data: { state: "DENIED", failureCode: "MONITORING_GRANT_REVOKED" },
+      });
+      throw error;
+    }
+  }
 }
 
 export async function runMonitors(now = new Date(), input?: {
   evaluate?: (key: MonitorKey, now: Date) => Promise<MonitorSignal>;
   notify?: (key: MonitorKey, slot: string) => Promise<void>;
+  beforeDispatch?: () => Promise<void>; // test-only race hook
 }) {
   const slot = businessDateKey(now);
   const rules = await prisma.monitorRule.findMany({ where: { enabled: true }, orderBy: { key: "asc" } });
@@ -266,7 +282,7 @@ export async function runMonitors(now = new Date(), input?: {
     if (receipt.state === "ALERT") alerted++;
     if (receipt.action && receipt.connectionId) {
       try {
-        await executeMonitoringAction(key, slot, receipt.ruleVersion, receipt.action, receipt.connectionId);
+        await executeMonitoringAction(key, slot, receipt.ruleVersion, receipt.action, receipt.connectionId, input?.beforeDispatch);
       } catch {
         // The ALERT is still durable. Never retry a possibly started operation automatically.
         // An operation that reached the journal remains visible in Assistant activity.
