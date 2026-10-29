@@ -7,7 +7,6 @@ import { getAutomationHealth } from "@/domains/automation/health";
 import { sendOwnerAlert } from "@/domains/messaging/owner-alerts";
 import { previewAgentOperation, executeAgentOperation } from "./operations";
 import type { AgentContext } from "./authorization";
-import type { JournalAction } from "./journal";
 
 export const MONITOR_KEYS = [
   "jobs-late-or-failing", "backup-not-verified-today", "photo-copy-not-paired",
