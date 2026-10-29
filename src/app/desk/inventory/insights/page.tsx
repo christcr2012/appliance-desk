@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/session";
 import { formatMoney } from "@/lib/money-ui";
 import { formatShortDate } from "@/lib/business-date";
 import { getEquipmentInsights } from "@/domains/insights/equipment";
-import { DataTable, InfoTip, ScreenHeader, StatStrip, type Column } from "@/components/kit";
+import { DataTable, InfoTip, ScreenHeader, SidePanel, StatStrip, type Column } from "@/components/kit";
 import { MetricHelp } from "@/components/desk/metric-stat";
 import type { ApplianceProfitability } from "@/domains/inventory";
 
@@ -15,7 +15,7 @@ export const metadata = { title: "Equipment insights" };
 export default async function EquipmentInsightsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; costs?: string }>;
+  searchParams: Promise<{ page?: string; costs?: string; open?: string }>;
 }) {
   await requireRole("OWNER", "ADMIN");
   const params = await searchParams;
@@ -43,9 +43,10 @@ export default async function EquipmentInsightsPage({
     {
       key: "appliance", header: "Appliance",
       // Plain text: the kit table wraps the first cell in its panel link
-      // (rowHref below points at the same appliance record). A second
-      // link here nested anchors, which browsers split into two
-      // same-named links (the fleet spec's page-2 strict-mode failure).
+      // and this page renders the side panel for ?open= (below), whose
+      // "Open full page" goes to the appliance record. A second link
+      // here nested anchors, which browsers split into two same-named
+      // links (the fleet spec's page-2 strict-mode failure).
       cell: (r) => (
         <span className="font-bold text-ink">
           {r.assetNumber} — {r.applianceTypeName}
@@ -67,8 +68,17 @@ export default async function EquipmentInsightsPage({
     },
   ];
 
+  // Desktop rows open the kit side panel (?open=<applianceId>): the row
+  // is already loaded for the table, so the panel shows its own figures
+  // and "Open full page" reaches the appliance record. Without this the
+  // panel links landed on a page that never rendered a panel and
+  // desktop navigation went nowhere (Codex P2 on PR #747).
+  const openRow = params.open ? (data.report.rows.find((r) => r.applianceId === params.open) ?? null) : null;
+  const closeHref = `/desk/inventory/insights?costs=${missingOnly ? "missing" : "all"}&page=${data.report.page}`;
+
   return (
-    <div className="flex flex-col gap-8 px-1 sm:px-0">
+    <div className="flex items-start px-1 sm:px-0">
+      <div className="flex min-w-0 flex-1 flex-col gap-8">
       <ScreenHeader title="Equipment" />
       <StatStrip
         items={[
@@ -211,6 +221,7 @@ export default async function EquipmentInsightsPage({
           rowKey={(r) => r.applianceId}
           columns={reportColumns}
           rowHref={(r) => `/desk/inventory/${r.applianceId}`}
+          selectedKey={openRow?.applianceId}
           mobileCard={(r) => (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-start justify-between gap-3">
@@ -246,6 +257,35 @@ export default async function EquipmentInsightsPage({
           </div>
         ) : null}
       </section>
+      </div>
+      {openRow ? (
+        <SidePanel
+          title={`${openRow.assetNumber} — ${openRow.applianceTypeName}`}
+          closeHref={closeHref}
+          fullHref={`/desk/inventory/${openRow.applianceId}`}
+        >
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {[
+              { label: "Estimated rent", value: formatMoney(openRow.revenueCents) },
+              { label: "Acquisition cost", value: openRow.acquisitionCostRecorded ? formatMoney(openRow.acquisitionCostCents) : "Not recorded" },
+              { label: "Recorded repair costs", value: formatMoney(openRow.repairCostCents) },
+              { label: "Estimated contribution", value: formatMoney(openRow.netContributionCents) },
+            ].map((stat) => (
+              <div key={stat.label} className="min-w-0">
+                <dt className="text-xs font-bold text-ink-soft">{stat.label}</dt>
+                <dd className="mt-0.5 text-[15px] font-bold tabular-nums text-ink">{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4 text-sm text-ink-soft">
+            {!openRow.acquisitionCostRecorded || openRow.incompleteRepairJobIds.length > 0
+              ? "Cost recovery is unknown — costs incomplete."
+              : openRow.paidForItself
+                ? "Estimated rent covers recorded costs."
+                : "Estimated rent has not covered recorded costs yet."}
+          </p>
+        </SidePanel>
+      ) : null}
     </div>
   );
 }

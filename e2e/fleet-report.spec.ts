@@ -113,6 +113,21 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
         exact: true,
       }),
     ).toBeVisible();
+    // Desktop rows open the kit side panel on this page (Codex P2 on
+    // PR #747: the panel link used to land on a page that rendered no
+    // panel, so desktop navigation went nowhere). The panel's full-page
+    // link must reach the appliance record.
+    await page
+      .locator("table")
+      .getByRole("link", {
+        name: `FLEET-${tag}-25 — Fleet report fixture`,
+        exact: true,
+      })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`open=${ids[25]}`));
+    await expect(
+      page.getByRole("link", { name: /Open full page/ }),
+    ).toHaveAttribute("href", `/desk/inventory/${ids[25]}`);
     await page.goto(`/desk/inventory/${ids[0]}`);
     await expect(page.getByText("Unknown — costs incomplete")).toBeVisible();
     await expect(
