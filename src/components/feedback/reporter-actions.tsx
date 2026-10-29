@@ -5,6 +5,7 @@ import { useId, useRef, useState, useTransition } from "react";
 import { Button, Textarea } from "@/components/ui";
 import {
   addFeedbackDetailsAction, addFeedbackScreenshotAction, closeMyFeedbackAction, reopenMyFeedbackAction,
+  setFeedbackAiReviewAction,
   type FeedbackActionResult,
 } from "./actions";
 import { shrinkScreenshot } from "./shrink-image";
@@ -13,9 +14,9 @@ type Mode = "question" | "open" | "reopen" | "none";
 
 /** MCP-10a: what the sender can do on their own report, by its state. */
 export function ReporterActions({
-  id, version, mode, canAddPictures, picturesLeft, reopenDays,
+  id, version, aiReview, mode, canAddPictures, picturesLeft, reopenDays,
 }: {
-  id: string; version: number; mode: Mode; canAddPictures: boolean; picturesLeft: number; reopenDays: number;
+  id: string; version: number; aiReview: "HUMAN_ONLY" | "ALLOWED" | "WITHDRAWN"; mode: Mode; canAddPictures: boolean; picturesLeft: number; reopenDays: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -23,6 +24,7 @@ export function ReporterActions({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [allowAi, setAllowAi] = useState(aiReview === "ALLOWED");
   const fileInput = useRef<HTMLInputElement>(null);
   const uid = useId();
 
@@ -44,6 +46,23 @@ export function ReporterActions({
         ? await reopenMyFeedbackAction(id, version, message)
         : await addFeedbackDetailsAction(id, version, message);
       done(result, kind === "reopen" ? "Your report was reopened." : "Sent. We'll answer here.");
+    });
+  }
+
+  function changeAiPermission(next: boolean) {
+    setError(null);
+    setNotice(null);
+    startTransition(async () => {
+      const result = await setFeedbackAiReviewAction(id, version, next);
+      if (result.status !== "success") {
+        setError(result.message);
+        setAllowAi(aiReview === "ALLOWED");
+        return;
+      }
+      setAllowAi(next);
+      setNotice(next ? "You allowed your assistant to review this report." :
+        "Your assistant can no longer read this report.");
+      router.refresh();
     });
   }
 
@@ -78,9 +97,18 @@ export function ReporterActions({
     router.refresh();
   }
 
-  if (mode === "none") return null;
   return (
-    <section aria-label="What you can do" className="space-y-4 rounded-card border border-line bg-surface p-4 sm:p-6">
+    <>
+      <section aria-label="AI assistant privacy choice" className="rounded-card border border-line bg-surface p-4 space-y-2">
+        <label className="flex gap-3 text-sm text-ink">
+          <input type="checkbox" name="allowAiReview" checked={allowAi} disabled={pending}
+            onChange={(event) => changeAiPermission(event.target.checked)} />
+          <span>Let Chris&apos;s AI assistant read this report to help fix it</span>
+        </label>
+        <p className="text-xs text-ink-soft">Off unless you choose otherwise. You can turn this off any time.
+          Pictures are never sent to an AI assistant.</p>
+      </section>
+    {mode !== "none" && <section aria-label="What you can do" className="space-y-4 rounded-card border border-line bg-surface p-4 sm:p-6">
       {mode === "reopen" ? (
         <>
           <h2 className="text-lg font-semibold text-ink">It&apos;s still not right</h2>
@@ -137,6 +165,7 @@ export function ReporterActions({
       )}
       {error && <p role="alert" className="text-sm font-semibold text-danger">{error}</p>}
       {notice && <p role="status" className="text-sm font-semibold text-ink">{notice}</p>}
-    </section>
+    </section>}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import type { McpScope } from "@/mcp/scopes";
 import { listRepairCases, getRepairCase } from "@/domains/agent-control/repair-cases";
+import { listFeedbackForAgent, getFeedbackForAgent } from "@/domains/feedback/agent";
 import { previewAgentOperation, executeAgentOperation, getAgentOperation } from "@/domains/agent-control/operations";
 import {
   checkMcpActor, healthOverview, issuesList, issueGet, automationRuns,
@@ -37,7 +38,7 @@ const decisionShape = z.object({
  */
 export function boundMcpOutput(raw: Record<string, unknown>): Record<string, unknown> {
   const result = { ...raw };
-  const arrayName = ["issues", "runs", "decisions", "history", "recentRuns", "integrations", "jobs"]
+  const arrayName = ["issues", "runs", "decisions", "history", "recentRuns", "integrations", "jobs", "reports", "entries"]
     .find((key) => Array.isArray(result[key]));
   if (!arrayName) {
     if (JSON.stringify(result).length > 8192) throw new Error("TOOL_RESULT_TOO_LARGE");
@@ -213,6 +214,43 @@ export function buildMcpServer(context: AgentContext): McpServer {
     }), annotations: readOnly,
   }, async ({ id }) => read("decisions:read", () => decisionGet(context, id)));
 
+  // Feedback text requires BOTH the triage grant and the distinct content grant,
+  // plus the report author's still-current opt-in at every read. Pictures have no tool.
+  const feedbackMeta = z.object({
+    reportId: z.string(), number: z.number(), kind: z.string(), state: z.string(),
+    routeTemplate: z.string(), reporterRole: z.string(), createdUtc: z.string(),
+    updatedUtc: z.string(), aiReview: z.string(), hasContentAccess: z.boolean(),
+  });
+  server.registerTool("appliance_feedback_list_reports", {
+    title: "App feedback list", description: "Read report states and page shapes; never written text or pictures.",
+    inputSchema: z.strictObject({
+      state: z.enum(["SUBMITTED","TRIAGED","NEEDS_INFORMATION","ACCEPTED","IN_PROGRESS",
+        "AWAITING_VERIFICATION","RESOLVED","DUPLICATE","DECLINED","CLOSED"]).optional(),
+      kind: z.enum(["BUG","IMPROVEMENT"]).optional(),
+      cursor: z.string().regex(/^c[a-z0-9]{10,50}$/i).optional(),
+      limit: z.number().int().min(1).max(10).default(10),
+    }),
+    outputSchema: z.object({
+      reports: z.array(feedbackMeta), nextCursor: utc, truncated: z.boolean().optional(),
+    }), annotations: readOnly,
+  }, async (input) => read("feedback:triage", () => listFeedbackForAgent(context, input)));
+
+  server.registerTool("appliance_feedback_get_report", {
+    title: "App feedback report",
+    description: "Read metadata, and bounded text only when its author opted in and this assistant has the content scope. Never screenshots.",
+    inputSchema: z.strictObject({ reportId: z.string().regex(/^c[a-z0-9]{10,50}$/i) }),
+    outputSchema: z.object({
+      found: z.boolean(),
+      report: feedbackMeta.extend({
+        title: utc, description: utc, expected: utc, steps: utc,
+        entries: z.array(z.object({
+          id: z.string(), visibility: z.string(), author: z.string(),
+          createdUtc: z.string(), body: utc,
+        })),
+      }).nullable(), truncated: z.boolean().optional(),
+    }), annotations: readOnly,
+  }, async ({reportId}) => read("feedback:triage", () => getFeedbackForAgent(context, reportId)));
+
   // Repairs contain no customer report text, raw GitHub response, or internal
   // actor ID. Even the detail tool explicitly chooses safe, bounded fields.
   server.registerTool("appliance_repair_list_cases", {
@@ -262,6 +300,7 @@ export function buildMcpServer(context: AgentContext): McpServer {
     "RUN_DIAGNOSTIC_SWEEP", "RETRY_DATABASE_BACKUP", "RETRY_MEDIA_COPY",
     "PAUSE_AUTOMATION", "RESUME_AUTOMATION", "VERIFY_RECOVERY_ARTIFACT", "APPLY_DECISION_ANSWERS",
     "REPAIR_CREATE_CASE", "REPAIR_LINK_EVIDENCE", "REPAIR_CHECK_CASE",
+    "FEEDBACK_REPLY", "FEEDBACK_UPDATE", "FEEDBACK_LINK_CASE",
   ]);
   const previewResult = z.object({
     previewId: z.string(), state: z.string(), summary: z.string(),
@@ -303,10 +342,49 @@ export function buildMcpServer(context: AgentContext): McpServer {
     annotations: writePolicy,
   }, async ({ action, args, requestKey }) => actionCall(
     action.startsWith("REPAIR_") ? "repairs:write" :
+      action.startsWith("FEEDBACK_") ? "feedback:triage" :
       action === "APPLY_DECISION_ANSWERS" ? "decisions:apply" : "ops:maintain",
     () => previewAgentOperation(context, { action, args, requestKey }),
   ));
 
+  // Every feedback mutation is a journal preview; execution requires
+  // appliance_action_execute with the same requestKey and returned previewId.
+  server.registerTool("appliance_feedback_reply", {
+    title: "Propose an app-feedback reply",
+    description: "Prepare an in-app reply with AI attribution. No email is sent.",
+    inputSchema: z.strictObject({
+      reportId: z.string().regex(/^c[a-z0-9]{10,50}$/i),
+      expectedVersion: z.number().int().min(1),
+      body: z.string().min(1).max(4000),
+      visibility: z.enum(["REPORTER","INTERNAL"]), requestKey: requestKeySchema,
+    }),
+    outputSchema: previewResult, annotations: writePolicy,
+  }, async ({requestKey, ...args}) => actionCall("feedback:triage",
+    () => previewAgentOperation(context, {action:"FEEDBACK_REPLY",args,requestKey})));
+  server.registerTool("appliance_feedback_update_report", {
+    title: "Propose feedback status update",
+    description: "Calling a report Fixed requires a linked VERIFIED repair case.",
+    inputSchema: z.strictObject({
+      reportId: z.string().regex(/^c[a-z0-9]{10,50}$/i),
+      expectedVersion: z.number().int().min(1),
+      toState: z.enum(["SUBMITTED","TRIAGED","NEEDS_INFORMATION","ACCEPTED","IN_PROGRESS",
+        "AWAITING_VERIFICATION","RESOLVED","DUPLICATE","DECLINED","CLOSED"]),
+      reason: z.string().max(500), requestKey: requestKeySchema,
+    }),
+    outputSchema: previewResult, annotations: writePolicy,
+  }, async ({requestKey, ...args}) => actionCall("feedback:triage",
+    () => previewAgentOperation(context, {action:"FEEDBACK_UPDATE",args,requestKey})));
+  server.registerTool("appliance_feedback_link_case", {
+    title: "Propose repair link",
+    description: "Link a matching software case via journal; do not claim an unverified fix.",
+    inputSchema: z.strictObject({
+      reportId: z.string().regex(/^c[a-z0-9]{10,50}$/i),
+      expectedVersion: z.number().int().min(1),
+      caseId: z.string().regex(/^c[a-z0-9]{10,50}$/i), requestKey: requestKeySchema,
+    }),
+    outputSchema: previewResult, annotations: writePolicy,
+  }, async ({requestKey, ...args}) => actionCall("feedback:triage",
+    () => previewAgentOperation(context, {action:"FEEDBACK_LINK_CASE",args,requestKey})));
   // Every repair mutation is an MCP-5 journal PREVIEW, never a direct write.
   // Only the owner can approve the durable operation in the Assistant Activity
   // screen. Execute requires the original preview ID and request key.

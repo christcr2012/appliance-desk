@@ -7,7 +7,7 @@ import { getServerSession } from "@/lib/session";
 import { readCustomerLanguage } from "@/domains/language";
 import {
   FeedbackError, addFeedbackDetails, addFeedbackScreenshot, addInternalNote, closeMyFeedback, markDuplicate,
-  reopenMyFeedback, replyToReporter, setFeedbackState, submitFeedback,
+  reopenMyFeedback, replyToReporter, setFeedbackState, setFeedbackAiReview, submitFeedback,
 } from "@/domains/feedback";
 import { FEEDBACK_STATES, type FeedbackStateName, type SubmitFeedbackInput } from "@/domains/feedback/rules";
 
@@ -83,6 +83,10 @@ export async function addFeedbackScreenshotAction(reportId: string, form: FormDa
 
 export async function addFeedbackDetailsAction(id: string, version: number, body: string) {
   return run(() => addFeedbackDetails(id, version, body), id);
+}
+
+export async function setFeedbackAiReviewAction(id: string, version: number, allowed: boolean) {
+  return run(() => setFeedbackAiReview(id, version, allowed), id);
 }
 
 export async function closeMyFeedbackAction(id: string, version: number) {
