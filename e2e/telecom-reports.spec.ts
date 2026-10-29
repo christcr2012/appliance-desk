@@ -10,11 +10,11 @@ test.beforeEach(()=>{
 });
 test("telecom report preserves evidence labels and private drill-through",async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto("/desk/reports");
+  // AR-9: the Communications cost evidence section moved from Reports to
+  // Settings › Phone, texts and provider costs, where the setup lives.
+  await page.goto("/desk/settings/telecom");
   await expect(page.getByRole("heading",{name:"Communications cost evidence"})).toBeVisible();
   await expect(page.getByText(/not finalized books/i).first()).toBeVisible();
-  await expect(page.getByRole("link",{name:"View provider setup and private statements"}))
-    .toHaveAttribute("href","/desk/settings/telecom");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   const violations=(await new AxeBuilder({page}).withTags([
     "wcag2a","wcag2aa","wcag21a","wcag21aa",

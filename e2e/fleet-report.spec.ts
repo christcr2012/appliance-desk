@@ -48,7 +48,17 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
         appliances: { create: { applianceId: ids[0] } },
       },
     });
-    await page.goto("/desk/fleet?costs=missing");
+    // /desk/fleet streams its redirect to Equipment › Insights; the
+    // initial navigation can surface as ERR_ABORTED even though the
+    // redirect lands (the same streamed-redirect behavior AR-7a's
+    // staff-refusal test tolerates). Tolerate the abort on goto, then
+    // prove the settled URL and the page content as before.
+    const gotoFleet = async () => {
+      await page.goto("/desk/fleet?costs=missing").catch((err: unknown) => {
+        if (!String(err).includes("ERR_ABORTED")) throw err;
+      });
+    };
+    await gotoFleet();
     for (const width of [360, 768, 1440]) {
       for (const theme of ["light", "dark"]) {
         await page.setViewportSize({ width, height: 900 });
@@ -56,23 +66,24 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
           (mode) => localStorage.setItem("theme", mode),
           theme,
         );
-        await page.goto("/desk/fleet?costs=missing");
+        await gotoFleet();
+        // AR-9: /desk/fleet redirects to Equipment › Insights, keeping the
+        // page and costs params; the fleet report lives there now.
+        await expect(page).toHaveURL(/\/desk\/inventory\/insights\?costs=missing/);
         await expect(
-          page.getByRole("heading", { name: "Your appliances: value and cost" }),
+          page.getByRole("heading", { name: "All appliances: value and cost" }),
         ).toBeVisible();
+        await page
+          .getByRole("button", { name: /How to read these numbers/ })
+          .click();
         await expect(
           page.getByText(
             /figures do not establish cash collected or business profit/,
           ),
         ).toBeVisible();
-        const records = page
-          .getByRole("heading", {
-            name: "Appliance figures and supporting records",
-          })
-          .locator("..")
-          .locator("..")
-          .locator("..");
-        expect(await records.locator("li").count()).toBeLessThanOrEqual(25);
+        await expect(
+          page.getByRole("heading", { name: "Repairs missing a cost" }),
+        ).toBeVisible();
         await expect(
           page.locator(`a[href="/desk/jobs/${jobId}"]:visible`).first(),
         ).toBeVisible();
@@ -94,17 +105,29 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
         });
       }
     }
-    await page
-      .getByRole("navigation", { name: "Pagination" })
-      .getByRole("link", { name: /Next/ })
-      .click();
+    await page.getByRole("link", { name: "Next", exact: true }).click();
     await expect(page).toHaveURL(/costs=missing.*page=2/);
     await expect(
-      page.getByRole("link", {
+      page.locator("table").getByRole("link", {
         name: `FLEET-${tag}-25 — Fleet report fixture`,
         exact: true,
       }),
     ).toBeVisible();
+    // Desktop rows open the kit side panel on this page (Codex P2 on
+    // PR #747: the panel link used to land on a page that rendered no
+    // panel, so desktop navigation went nowhere). The panel's full-page
+    // link must reach the appliance record.
+    await page
+      .locator("table")
+      .getByRole("link", {
+        name: `FLEET-${tag}-25 — Fleet report fixture`,
+        exact: true,
+      })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`open=${ids[25]}`));
+    await expect(
+      page.getByRole("link", { name: /Open full page/ }),
+    ).toHaveAttribute("href", `/desk/inventory/${ids[25]}`);
     await page.goto(`/desk/inventory/${ids[0]}`);
     await expect(page.getByText("Unknown — costs incomplete")).toBeVisible();
     await expect(
