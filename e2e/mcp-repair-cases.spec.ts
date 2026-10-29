@@ -12,7 +12,12 @@ const syntheticOnly = process.env.CI === "true" && db.pathname === "/appliance_d
 test.describe("MCP-6 repair cases on System health", () => {
   test.use({ storageState: fs.existsSync(ownerSession) ? ownerSession : undefined });
   test.beforeEach(() => {
-    test.skip(!syntheticOnly || !fs.existsSync(ownerSession), "Isolated owner and database required.");
+    if (process.env.CI === "true") {
+      expect(syntheticOnly, "MCP-6 browser verification requires the disposable CI database").toBeTruthy();
+      expect(fs.existsSync(ownerSession), "MCP-6 browser verification requires the seeded CI owner session").toBeTruthy();
+    } else {
+      test.skip(true, "Use the isolated CI browser runner; never write synthetic repair rows to a shared database.");
+    }
   });
 
   test("labels unverified change accurately and allows owner to reject with a reason", async ({ page }) => {

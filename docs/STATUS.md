@@ -1,3 +1,12 @@
+## October 28 — MCP-5 / MCP-6 completion work (Lane 2; not merged)
+
+MCP-5 PR #717: branch `ai/chatgpt/mcp-5-action-journal` at `dfd26b11` reconciles updated main;
+sandbox quick check could not finish typecheck (3 GiB heap OOM), so published through the approved
+transfer workflow for exact-head CI/review. GitHub required-check merge refusal remains unresolved.
+MCP-6 branch `ai/chatgpt/mcp-6-repair-cases`: implementation reconciled with revised card,
+30 focused unit/database tests pass on isolated local PostgreSQL; browser and exact-head CI
+are outstanding. Next: finish MCP-5 CI/review/merge, publish and validate MCP-6, no new lane item.
+
 ## October 28 — Implementation guidance repair (in progress, not merged)
 
 Branch `ai/chatgpt/implementation-clarity-20261028`: reconciled the source/PR execution map in MASTER-ROADMAP;

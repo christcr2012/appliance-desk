@@ -4,10 +4,10 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
 **the app reads GitHub's public API** (fixed paths, this repo only).
 
 ## Acceptance
-- [ ] A case keeps its source issue/report and app revision; one active case per problem.
-- [ ] PR open / merged / live / checked are separate and only set from what the app verified itself (fake GitHub tests).
-- [ ] Foreign repositories, made-up PRs and claimed results are rejected.
-- [ ] A fix that doesn't pass its check keeps the problem open.
+- [x] A case keeps its source issue/report and app revision; one active case per problem.
+- [x] PR open / merged / live / checked are separate and only set from what the app verified itself (fake GitHub tests).
+- [x] Foreign repositories, made-up PRs and claimed results are rejected.
+- [x] A fix that doesn't pass its check keeps the problem open.
 - [ ] Repairs list on System health; `ci` green at the exact head; every review comment read.
 
 ## Acceptance plan — committed before implementation (October 27)
@@ -88,6 +88,12 @@ report in RESOLVED state, and a fresh owner confirmation. Six simultaneous
 confirmations produce one final RUNTIME_CHECK evidence row. Eight
 disposable-PostgreSQL cases passed, including staff denial and premature
 confirmation refusal. Changed-file lint passed. Hosted CI remains pending.
+
+Local verification checkpoint (October 28, latest reconciled branch): 30/30 focused tests passed in one
+serial run against fresh disposable PostgreSQL, covering source/version deduplication, foreign or fabricated
+evidence, independent runtime verification, owner-only controls, journal approval/replay and scoped MCP reads.
+The first four acceptance lines are supported by those tests. Browser, full GitHub CI, review and merge remain
+unchecked. The CI browser spec now fails rather than silently skipping when required synthetic fixtures are missing.
 
 ## Implementation route (reconciled October 28, 2026)
 
