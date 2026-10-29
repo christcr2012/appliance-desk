@@ -56,7 +56,10 @@ describe("active-appliances", () => {
           rentalLine: expect.objectContaining({
             agreement: expect.objectContaining({
               status: "ACTIVE",
-              customer: { userId: "user-1" },
+              // AR-10b: an archived customer's login resolves to no
+              // appliances — the portal's other reads already refuse
+              // archived customers the same way.
+              customer: { userId: "user-1", archivedAt: null },
             }),
           }),
         }),

@@ -1,4 +1,5 @@
 import { getDriverJobsForToday } from "@/domains/jobs";
+import { requireRole } from "@/lib/session";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { loadDriverMileage, loadDriverStopCounts } from "@/domains/vehicle/reads";
 import { MileageCard } from "./mileage-card";
@@ -9,11 +10,13 @@ import { DriverJobCard } from "./driver-job-card";
 
 export const metadata = { title: "Driver view" };
 
-// No requireRole call needed here — the /desk layout already lets
-// OWNER, ADMIN, and STAFF in (docs/DECISIONS.md, 2026-09-28 "Staff
-// permissions framework"). This page shows no pricing or financials,
-// so there's nothing further to restrict.
+// AR-10b: the page guards itself. Layouts do not re-run on navigation
+// (the PR #594 lesson), and this page also reads the vehicle mileage
+// helpers and collection cases directly, which carry no guard of their
+// own — so the role check lives here, at the same roles the layout
+// admits (docs/DECISIONS.md, 2026-09-28 "Staff permissions framework").
 export default async function DriverViewPage() {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const jobs = await getDriverJobsForToday();
   const mileage = await loadDriverMileage(new Date());
   const stopCounts = await loadDriverStopCounts(new Date());

@@ -229,7 +229,9 @@ export async function createMaintenanceRequestForUser(
     where: { userId },
     include: { user: { select: { name: true, email: true } } },
   });
-  if (!customer) throw new Error("No customer account found for this login.");
+  // AR-10b: archived customers are refused like the portal reads are
+  // (portalCustomerId's archivedAt rule) — a repair request is a write.
+  if (!customer || customer.archivedAt) throw new Error("No customer account found for this login.");
 
   let applianceLabel: string | null = null;
   if (input.applianceId) {
@@ -309,8 +311,10 @@ export async function updateSmsPreference(
   input: { optedIn: boolean; phone: string | null; disclosureLanguage?: "en" | "es" },
 ): Promise<{ phone: string | null; smsOptInAt: Date | null }> {
   const customer = await prisma.customer.findUniqueOrThrow({
-    where: { userId }, select: { id: true, phone: true },
+    where: { userId }, select: { id: true, phone: true, archivedAt: true },
   });
+  // AR-10b: an archived customer cannot change portal settings.
+  if (customer.archivedAt) throw new Error("No customer account found for this login.");
   const rawPhone = input.phone?.trim() || customer.phone;
   if (input.optedIn && !rawPhone) {
     throw new Error("Add a phone number before turning on text notifications.");
@@ -372,8 +376,9 @@ export async function createPickupRequestForUser(
   const { ensurePickupDraftInTx } = await import("@/domains/agreements/pickup-draft");
   const note = input.note.trim().slice(0, 1000);
   return prisma.$transaction(async (tx) => {
-    const customer = await tx.customer.findUnique({ where: { userId }, select: { id: true } });
-    if (!customer) throw new Error("No customer account found for this login.");
+    const customer = await tx.customer.findUnique({ where: { userId }, select: { id: true, archivedAt: true } });
+    // AR-10b: archived customers are refused, same rule as the portal reads.
+    if (!customer || customer.archivedAt) throw new Error("No customer account found for this login.");
     const held = await tx.applianceCustodyEpisode.findMany({
       where: { customerId: customer.id, endedOn: null, agreementId: { not: null },
         ...(input.applianceId ? { applianceId: input.applianceId } : {}) },
