@@ -1,3 +1,13 @@
+## October 29 — AR-9 Insights: MERGED (PR #749, Lane 5)
+
+AR-9 is on main (squash merge 3c73bd3b): Customers › Insights and Equipment › Insights as kit
+pages, Money Overview rent health and goals, Money › Income replacing the Revenue ledger, the
+redirects, the additive Lead.closedAt migration, goal pace settings, and the Equipment Insights
+side panel. The PR chain (#734/#736/#740/#745/#747) is recorded on #749; all Codex findings across
+the chain were fixed with tests, including the prepaid-cohort and renewal-autopay corrections and
+the desktop side panel. Lane 5's AR share is complete. Next for Lane 5: the telecom-settings
+browser diagnosis (COM line), then the MASTER-ROADMAP.
+
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
 #733's branch was built through snapshot pushes, so its remote ancestry never contained the

@@ -4649,7 +4649,7 @@
         "AR-6",
         "LD-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #749 (successor of #747; source; external acceptance separate)",
       "migration": "20261030000000_lead_closed_at (+ goal threshold settings)",
       "budget": 520,
       "units": [
