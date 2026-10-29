@@ -1,3 +1,19 @@
+## October 28 — AR-9 Insights in progress (successor of PRs #734/#736, branch ai/vivienne/ar-9-v3)
+
+One PR per the card: Customers › Insights and Equipment › Insights tabs
+(LD-4/CU-3 and the fleet report, rebuilt as kit pages over a new
+OWNER/ADMIN-only insights domain), Money Overview gains rent health,
+goals and under-paying rentals, the Revenue ledger becomes Money › Income
+details, and Growth/Fleet/Revenue/Reports/Dashboard are redirects (AR-10
+retires them later). Additive migration: `Lead.closedAt` (backfilled from
+audit history) plus the two goal-pace settings. All six steps are built;
+PR #734 carried two CI fix rounds (bundle budgets, the accountant's
+Reports home, Denver-true month/week bounds, the closedAt write-shape
+expectations, metric definitions on the successor screens) and then went
+dirty against moved main, and its successor #736 in turn went dirty
+and picked up two type errors in its fix round, so this branch off
+current main carries the identical tree plus all fixes.
+
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 
 Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:

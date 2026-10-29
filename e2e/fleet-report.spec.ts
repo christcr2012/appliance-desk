@@ -57,22 +57,23 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
           theme,
         );
         await page.goto("/desk/fleet?costs=missing");
+        // AR-9: /desk/fleet redirects to Equipment › Insights, keeping the
+        // page and costs params; the fleet report lives there now.
+        await expect(page).toHaveURL(/\/desk\/inventory\/insights\?costs=missing/);
         await expect(
-          page.getByRole("heading", { name: "Your appliances: value and cost" }),
+          page.getByRole("heading", { name: "All appliances: value and cost" }),
         ).toBeVisible();
+        await page
+          .getByRole("button", { name: /How to read these numbers/ })
+          .click();
         await expect(
           page.getByText(
             /figures do not establish cash collected or business profit/,
           ),
         ).toBeVisible();
-        const records = page
-          .getByRole("heading", {
-            name: "Appliance figures and supporting records",
-          })
-          .locator("..")
-          .locator("..")
-          .locator("..");
-        expect(await records.locator("li").count()).toBeLessThanOrEqual(25);
+        await expect(
+          page.getByRole("heading", { name: "Repairs missing a cost" }),
+        ).toBeVisible();
         await expect(
           page.locator(`a[href="/desk/jobs/${jobId}"]:visible`).first(),
         ).toBeVisible();
@@ -94,13 +95,10 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
         });
       }
     }
-    await page
-      .getByRole("navigation", { name: "Pagination" })
-      .getByRole("link", { name: /Next/ })
-      .click();
+    await page.getByRole("link", { name: "Next", exact: true }).click();
     await expect(page).toHaveURL(/costs=missing.*page=2/);
     await expect(
-      page.getByRole("link", {
+      page.locator("table").getByRole("link", {
         name: `FLEET-${tag}-25 — Fleet report fixture`,
         exact: true,
       }),

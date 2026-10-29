@@ -1,3 +1,7 @@
+## October 28 — AR-9 Insights (additive)
+
+Migration `20261030000000_lead_closed_at` adds `Lead.closedAt` (nullable timestamp; set when a lead is marked LOST or converted to a customer, cleared when a closed lead reopens, set on the merged-away lead at a merge; index on (`status`, `closedAt`)). The migration backfills it from each closed lead's newest `lead.status`/`lead.convert` audit row; leads closed before audit history existed keep null, and Insights says so. The same migration adds `BusinessSettings.goalQuietDays` (integer, default 7; the settings save validates 0–15) and `BusinessSettings.goalBehindPercent` (integer, default 75; validated 50–100): how long a goal may sit quiet and how far through the period it may be before it shows as behind, edited in Settings › Goals. No new models, so the backup manifest is unchanged.
+
 ## MCP-5 review safety guards — additive migration 20261202000000_mcp5_review_guards
 
 AgentOperation.connectionGrantVersion captures the original MCP connection

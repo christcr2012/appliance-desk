@@ -14,7 +14,7 @@ test.describe("COM-L15 owner launch proof (non-sending CI)",()=>{
   await page.goto("/desk/settings/telecom");
   await expect(page.getByRole("heading",{name:"Phone, texts and provider costs"})).toBeVisible();
   await expect(page.getByText(/Saving suggested warnings does not turn on SMS/)).toBeVisible();
-  await page.goto("/desk/reports");
+  // AR-9: the cost evidence section moved onto this settings page from Reports.
   await expect(page.getByRole("heading",{name:"Communications cost evidence"})).toBeVisible();
   await page.goto("/desk/communications");
   await expect(page.getByRole("heading",{name:"Communications",exact:true})).toBeVisible();
