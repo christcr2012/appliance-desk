@@ -1,10 +1,14 @@
-/** W-3 (D-W4): the Taxes area has four tabs; every tax screen belongs to exactly one of them. */
+/** AR-7 (BOOKS-TAXES 2): the Taxes area has six sub-tabs; every tax screen belongs to exactly one
+ * of them. This replaces the W-3 four-tab set (To file / Use tax / Rates & areas / Setup): Returns
+ * and Exemptions are now tabs of their own, and use-tax settings sit under Use tax. */
 export const TAXES_BASE = "/desk/sales-tax";
 
 export const TAXES_TABS = [
-  { key: "file", label: "To file", href: TAXES_BASE },
+  { key: "overview", label: "Overview", href: TAXES_BASE },
+  { key: "returns", label: "Returns", href: `${TAXES_BASE}/returns` },
+  { key: "areas", label: "Areas & rates", href: `${TAXES_BASE}/areas` },
+  { key: "exemptions", label: "Exemptions", href: `${TAXES_BASE}/exemptions` },
   { key: "use-tax", label: "Use tax", href: `${TAXES_BASE}/use-tax` },
-  { key: "rates", label: "Rates & areas", href: `${TAXES_BASE}/areas` },
   { key: "setup", label: "Setup", href: `${TAXES_BASE}/setup` },
 ] as const;
 
@@ -23,7 +27,7 @@ export const TAXES_SETUP_LINKS = [
   { href: `${TAXES_BASE}/benefits`, label: "Tax benefits", detail: "Every write-off and benefit found in the books for the year — depreciation, start-up costs, mileage, home office, retirement, QBI — plus the capitalization policy to sign. Estimates: your CPA confirms." },
 ] as const;
 
-const SETUP_PREFIXES = ["setup", "exemptions", "taxability", "audit-pack", "record-retention", "rules", "benefits"];
+const SETUP_PREFIXES = ["setup", "taxability", "audit-pack", "record-retention", "rules", "benefits"];
 const RATES_PREFIXES = ["areas", "area", "delivery-fees"];
 
 /** Which tab a Taxes address belongs to; null when the address is outside Taxes. */
@@ -31,9 +35,11 @@ export function activeTaxesTab(pathname: string): TaxesTabKey | null {
   if (pathname !== TAXES_BASE && !pathname.startsWith(`${TAXES_BASE}/`)) return null;
   const rest = pathname.slice(TAXES_BASE.length).split("/").filter(Boolean);
   const first = rest[0];
-  if (!first || first === "returns") return "file";
-  if (first === "use-tax") return rest[1] === "settings" ? "setup" : "use-tax";
-  if (RATES_PREFIXES.includes(first)) return "rates";
+  if (!first) return "overview";
+  if (first === "returns") return "returns";
+  if (first === "exemptions") return "exemptions";
+  if (first === "use-tax") return "use-tax";
+  if (RATES_PREFIXES.includes(first)) return "areas";
   if (SETUP_PREFIXES.includes(first)) return "setup";
-  return "file";
+  return "overview";
 }

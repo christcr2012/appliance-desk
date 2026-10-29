@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { parseDollarInput } from "@/lib/money-ui";
 import { MoneyInput, Money } from "@/components/ui/money";
-import { InfoTip } from "@/components/ui/info-tip";
+import { InfoTip, ScreenHeader } from "@/components/kit";
 import { getUseTaxThreshold, saveUseTaxThreshold as saveUseTaxThresholdRule } from "@/domains/tax/use-tax";
 
 export const metadata = { title: "Consumer use-tax threshold", robots: { index: false, follow: false } };
@@ -29,14 +29,14 @@ export default async function UseTaxThresholdPage() {
   const cents = await getUseTaxThreshold();
   return (
     <main className="mx-auto max-w-2xl space-y-5">
-      <Link href="/desk/inventory" className="text-sm underline">Back to inventory</Link>
-      <h2 className="text-xl font-semibold">Use-tax threshold</h2>
+      <ScreenHeader title="Use-tax threshold" back={{ href: "/desk/inventory", label: "Back to inventory" }} />
       <p className="text-sm text-ink-soft">
-        Owner-only setting. The annual-to-monthly decision uses cumulative yearly
-        use tax due, not the purchase value. Changes apply prospectively; filed
-        periods must never be rewritten. Confirm your filing requirements with your tax adviser.
+        Owner-only setting. The annual-to-monthly decision uses cumulative yearly use tax due, not the purchase value.
       </p>
-      <form action={saveUseTaxThreshold} className="space-y-4 rounded-md border p-4">
+      <p className="text-sm text-ink-soft">
+        Changes apply prospectively; filed periods must never be rewritten. Confirm your filing requirements with your tax adviser.
+      </p>
+      <form action={saveUseTaxThreshold} className="space-y-4 rounded-card border border-line bg-surface p-4">
         <input type="hidden" name="expectedCents" value={cents} />
         <label htmlFor="thresholdDollars" className="block font-medium">
           Annual use tax due threshold ($) <InfoTip term="use-tax-threshold" />

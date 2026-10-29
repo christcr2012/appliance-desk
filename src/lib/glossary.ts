@@ -52,5 +52,10 @@ export const GLOSSARY = {
   "held-conflict": { title: "Check this", description: "Refunded in Stripe after it was kept as credit and partly used. Look at it with your bookkeeper." },
   // AR-7 Books overview.
   "books-profit": { title: "Profit", description: "Billed minus spent this month (accrual). Your accountant may use a different method for taxes." },
+  "taxes-overview": { title: "Taxes", description: "Your Colorado filing setup, upcoming returns and tax decisions. Filing and paying stay your own actions." },
+  "tax-returns": { title: "Returns", description: "Your official filing checklist and recorded return evidence. The application does not submit forms to SUTS or send payments on your behalf." },
+  "tax-areas": { title: "Areas & rates", description: "If a provider cannot confirm an address or a rate, keep it in review instead of treating an unknown result as verified." },
+  "audit-pack": { title: "Audit pack", description: "Every appliance and part you bought in a date range, with the seller, price, tax paid or use tax reported, the return and its confirmation number, and the receipt." },
+  "delivery-area": { title: "Delivery area", description: "A delivery address can only be quoted, ordered and scheduled when every taxing place for it is set up here: its rental tax rule is decided, and where the city requires a license, the license is on file in Business records. Places outside this list work the same way — the first address there shows up as not set up until it is reviewed here." },
 } as const;
 export type GlossaryKey = keyof typeof GLOSSARY;

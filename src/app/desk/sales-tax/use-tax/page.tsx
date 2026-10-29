@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { InfoTip } from "@/components/ui/info-tip";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
+import { DataTable, EmptyState, InfoTip, ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Use-tax worksheets", robots: { index: false, follow: false } };
 
@@ -20,26 +19,34 @@ export default async function UseTaxWorksheetsPage() {
     orderBy: [{ periodStart: "desc" }, { id: "desc" }],
     take: 100,
   });
+  type Row = (typeof periods)[number];
   return (
-    <main className="mx-auto max-w-3xl space-y-5">
-      <h2 className="text-xl font-semibold">Use tax: what you owe on purchases</h2>
+    <main className="space-y-5">
+      <div className="flex items-start gap-1.5">
+        <ScreenHeader title="Use tax" />
+        <span className="pt-1.5"><InfoTip term="use-tax" /></span>
+      </div>
       <p className="text-sm text-ink-soft">
-        Use tax is the tax you owe the state yourself when a seller did not charge Colorado tax on something you bought for the business. Each period below shows what to file and pay; these are private working figures, not completed official returns. <InfoTip term="use-tax" />
+        What you owe on purchases when a seller did not charge Colorado tax.
       </p>
-      {periods.length === 0 ? (
-        <p>No use-tax filing periods have been created yet.</p>
-      ) : (
-        <ul className="divide-y">
-          {periods.map((period) => (
-            <li key={period.id} className="py-3">
-              <Link className="font-medium underline" href={`/desk/sales-tax/use-tax/${period.id}`}>
-                {period.filingAccount.name}: {formatBusinessDate(period.periodStart)} – {formatBusinessDate(period.periodEnd)}
-              </Link>
-              <span className="ml-2 text-sm text-ink-soft">{period.status}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataTable<Row>
+        caption="Use-tax worksheets"
+        rows={periods}
+        rowKey={(period) => period.id}
+        rowHref={(period) => `/desk/sales-tax/use-tax/${period.id}`}
+        empty={<EmptyState title="No use-tax filing periods have been created yet" />}
+        columns={[
+          { key: "worksheet", header: "Worksheet", cell: (period) => period.filingAccount.name },
+          { key: "period", header: "Period", cell: (period) => `${formatBusinessDate(period.periodStart)} – ${formatBusinessDate(period.periodEnd)}` },
+          { key: "status", header: "Status", cell: (period) => period.status },
+        ]}
+        mobileCard={(period) => (
+          <div className="space-y-1">
+            <p className="font-semibold">{period.filingAccount.name}</p>
+            <p className="text-sm text-muted-foreground">{formatBusinessDate(period.periodStart)} – {formatBusinessDate(period.periodEnd)} · {period.status}</p>
+          </div>
+        )}
+      />
     </main>
   );
 }
