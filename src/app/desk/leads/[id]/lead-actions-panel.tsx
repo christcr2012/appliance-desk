@@ -16,17 +16,9 @@ const NEXT_STATUSES: { value: "NEW" | "CONTACTED"; label: string }[] = [
   { value: "CONTACTED", label: "Mark as Contacted" },
 ];
 
-// A short pick-list of common reasons a lead goes LOST (2026-09-29,
-// Chris's CRM brainstorm — see docs/DECISIONS.md) — "Other" always lets
-// staff type something not on the list; nothing here constrains what's
-// actually stored (Lead.lostReason is free text).
-const LOST_REASONS = [
-  "Too expensive",
-  "Went with a competitor",
-  "Outside our service area",
-  "Never heard back after contacting them",
-  "Changed their mind / no longer needed",
-];
+// The shared lost-reason pick-list lives in the leads domain (AR-4b) so the
+// queue and record Mark-lost sheets offer the same words.
+import { LEAD_LOST_REASONS as LOST_REASONS } from "@/domains/leads/lost-reasons";
 
 export function LeadActionsPanel({
   leadId,
