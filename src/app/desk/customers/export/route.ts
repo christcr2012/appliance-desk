@@ -28,7 +28,13 @@ export async function GET(request: Request) {
       ? sortRaw
       : undefined
   ) as CustomerSort | undefined;
-  const params: CustomerListParams = {
+  const ids = (sp.get("ids") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 500);
+  const params: CustomerListParams & { ids?: string[] } = {
+    ids: ids.length ? ids : undefined,
     segment,
     q: sp.get("q") ?? undefined,
     city: sp.getAll("city"),

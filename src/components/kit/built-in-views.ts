@@ -13,9 +13,9 @@ export const BUILT_IN_VIEWS: Record<ListKey, BuiltInView[]> = {
     { id:"autopay-off", label:"Autopay off", params:{status:"open",autopay:"off"} },
   ],
   customers: [
-    { id:"renting-now", label:"Renting now", params:{status:"active"} },
-    { id:"owe-money", label:"Owe money", params:{owes:"yes"}, pending:true },
-    { id:"property-managers", label:"Property managers", params:{kind:"pm"}, feature:"propertyManagers" },
+    { id:"renting-now", label:"Renting now", params:{segment:"active"} },
+    { id:"owe-money", label:"Owe money", params:{segment:"owes"}, roles:["OWNER","ADMIN"] },
+    { id:"property-managers", label:"Property managers", params:{pm:"1"}, feature:"propertyManagers" },
   ],
   rentals: [
     { id:"starting-this-week", label:"Starting this week", params:{starts:"this-week"} },

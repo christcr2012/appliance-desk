@@ -13,8 +13,9 @@
  * "Past due" is a reading-query fact, never a view fact: pastDueCents is a
  * LATERAL sum over open invoices due before the Denver start of today.
  */
-import { Prisma } from "@prisma/client";
+import { Prisma, type InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { payPathFor } from "@/domains/billing/bill-status";
 import { requireRole } from "@/lib/session";
 import { formatShortDate } from "@/lib/business-date";
 import { jobTypeLabel } from "@/lib/status-labels";
@@ -73,6 +74,9 @@ export type CustomerListRow = {
   owedCents?: number;
   pastDueCents?: number;
   autopay?: boolean;
+  /** The Take payment target (oldest open bill), OWNER/ADMIN rows only. */
+  oldestOpenBillId?: string | null;
+  oldestOpenBillPayPath?: "STRIPE_LINK" | "SHOP_CARD" | "MANUAL_ONLY" | null;
   nextVisitAt: Date | null;
   nextVisitType: string | null;
   nextVisitDurationMinutes: number | null;
@@ -241,6 +245,11 @@ type RawRow = {
   pickupAt: Date | null;
   propertyCount: number;
   city: string | null;
+  obId: string | null;
+  obStatus: string | null;
+  obOwed: number | null;
+  obStripe: string | null;
+  obSale: string | null;
 };
 
 const BASE_FROM = Prisma.sql`
@@ -257,6 +266,21 @@ function nextJobLateral(): Prisma.Sql {
       AND j."scheduledAt" = v."nextVisitAt" AND j."type" = v."nextVisitType"
     ORDER BY j."id" ASC LIMIT 1
   ) nj ON true`;
+}
+
+/** The oldest open bill (the record page's Take payment target) — money-adjacent, owner/admin only. */
+function oldestBillLateral(): Prisma.Sql {
+  return Prisma.sql`LEFT JOIN LATERAL (
+    SELECT i."id" AS "obId", i."status"::text AS "obStatus",
+      GREATEST(i."amountDueCents" - i."amountPaidCents", 0)::int AS "obOwed",
+      i."stripeInvoiceId" AS "obStripe", i."saleKind" AS "obSale"
+    FROM "Invoice" i
+    WHERE i."customerId" = v."id"
+      AND i."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+      AND i."amountDueCents" > i."amountPaidCents"
+    ORDER BY i."dueDate" ASC NULLS LAST, i."createdAt" ASC
+    LIMIT 1
+  ) ob ON true`;
 }
 
 function pastDueLateral(startToday: Date): Prisma.Sql {
@@ -289,10 +313,12 @@ async function fetchRows(
       ${money},
       v."oldestOpenDueDate", v."nextVisitAt", v."nextVisitType",
       nj."nextVisitDurationMinutes",
-      v."nextBillOn", v."endingOn", v."pickupAt", v."propertyCount", v."city"
+      v."nextBillOn", v."endingOn", v."pickupAt", v."propertyCount", v."city",
+      ob."obId", ob."obStatus", ob."obOwed", ob."obStripe", ob."obSale"
     ${BASE_FROM}
     ${nextJobLateral()}
     ${staff ? Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::int AS "pastDueCents") pd ON true` : pastDueLateral(startToday)}
+    ${staff ? Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::text AS "obId", NULL::text AS "obStatus", NULL::int AS "obOwed", NULL::text AS "obStripe", NULL::text AS "obSale") ob ON true` : oldestBillLateral()}
     WHERE ${where}
     ${order}`);
 }
@@ -363,15 +389,24 @@ export async function getCustomerList(
       row.owedCents = r.owedCents ?? 0;
       row.pastDueCents = r.pastDueCents ?? 0;
       row.autopay = r.autopay ?? false;
+      row.oldestOpenBillId = r.obId;
+      row.oldestOpenBillPayPath = r.obId
+        ? payPathFor({
+            status: r.obStatus as InvoiceStatus,
+            owedCents: r.obOwed ?? 0,
+            stripeInvoiceId: r.obStripe,
+            saleKind: r.obSale,
+          })
+        : null;
     }
     return row;
   });
   return { rows, nextCursor, capped };
 }
 
-/** The CSV export read: same filters as the list, no window cap, max 10,000 rows. OWNER/ADMIN only. */
+/** The CSV export read: same filters as the list, no window cap, max 10,000 rows. OWNER/ADMIN only. With `ids`, exports exactly that selection. */
 export async function getCustomerExportRows(
-  p: Omit<CustomerListParams, "cursor" | "pageSize">,
+  p: Omit<CustomerListParams, "cursor" | "pageSize"> & { ids?: string[] },
   now = new Date(),
 ): Promise<CustomerListRow[]> {
   const session = await requireRole("OWNER", "ADMIN");
@@ -380,7 +415,10 @@ export async function getCustomerExportRows(
   const startToday = startOfTodayDenver(now);
   const windowEnd = endingWindowEnd(now, endingDays);
   const sort: CustomerSort = p.sort ?? "attention";
-  const where = Prisma.sql`${filtersSql(p, false)} AND ${segmentSql(p, startToday, windowEnd)}`;
+  const where =
+    p.ids && p.ids.length > 0
+      ? Prisma.sql`v."id" IN (${Prisma.join(p.ids.slice(0, 500))})`
+      : Prisma.sql`${filtersSql(p, false)} AND ${segmentSql(p, startToday, windowEnd)}`;
   const all = await fetchRows(where, sort, false, startToday, windowEnd);
   return all.slice(0, 10_000).map((r) => ({
     id: r.id,
