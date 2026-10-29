@@ -1,3 +1,12 @@
+## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
+
+Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:
+measured locally, most browser tests run at 50–85% of 30s, so CI contention pushed the longest ones over
+the timeout and Playwright's context teardown made the failures look like browser crashes, rotating across
+shards and branches. `playwright.config.ts` now sets 60s / 10s; no test or assertion changed. AR-8
+(PR #732, review complete and green) is held unmerged by the owner's decision until this fix is proven
+across repeated green CI runs, then it lands by the normal rule.
+
 ## October 28 — MCP-6 PR #738 CI correction (not merged)
 
 Published MCP-6 repair cases on `ai/chatgpt/mcp-6-repair-cases`, PR #738.

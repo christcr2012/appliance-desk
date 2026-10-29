@@ -58,6 +58,7 @@ Read **all** failed CI jobs before editing. The connected Robinson GitHub MCP pr
 | date-only deadline fixture says Due today when Overdue was expected | subtracting 24 hours from an instant can retain today’s UTC date during a Denver evening | start from businessDateKey(now) at UTC midnight, then subtract one UTC calendar day; keep the Overdue assertion |
 | typed value doubled in a form test (e.g. "1012") | typing before the client form loaded its saved value | wait for the saved value to show, then fill |
 | "capacity baselines" timing | noisy shared runner | rerun that job once; it is not a gate on its own, but a repeat means look at the change |
+| browser test dies with `browserContext.close: Failed to find context`, `Target page, context or browser has been closed`, or `browserContext.close: Test ended` | the test crossed the Playwright test timeout under load; Playwright disposes the context at the timeout, so the error surfaces at the next call or the finally's `close()` and looks like a browser crash | read it as a timeout, not a crash: check the file's measured durations (shard notices) before suspecting the page; the config budgets (60s test / 10s expect) are sized for this suite's long scans and flows — do not shrink them back toward the defaults |
 
 ## Local tests and GitHub publishing without repeat work
 
