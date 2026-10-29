@@ -6,7 +6,13 @@ accountant, plus Money set aside when budgets are on), a new Overview home with 
 numbers and what needs attention, a Month by month list, Reports regrouped into four views (the
 old closing page moves in), an Equipment value page without the manual forms, and a For your
 accountant page holding the full journal and account forms unchanged. No accounting rules change.
-PR #733 is open; CI at the exact head decides, then auto-merge.
+PR #733 is open. First CI run at cf0802d1 failed one browser spec (books-reports: the unscoped
+"Reports" link matched both the tab strip and the Overview task card); a fix batch riding with
+this note scopes both Books navigation assertions (Reports, Equipment value) to the tab strip.
+Local proof: preflight checks, fresh typecheck and lint green; related tests 554/555 (the one
+failure, scenario-16 serialization under parallel load, passes alone on a disposable database);
+the local browser build is blocked by the repo's resource guard after an out-of-memory kill on
+this 8 GB box, so CI at the new head is the browser proof. CI green at the exact head, then auto-merge.
 
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 

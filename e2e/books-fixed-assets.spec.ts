@@ -21,7 +21,9 @@ test("fix-by-hand controls live on For your accountant",async({page})=>{
 });
 test("Books links to management assets without granting staff finance access",async({page,browser})=>{
  await page.goto("/desk/books");
- await expect(page.getByRole("link",{name:"Equipment value",exact:true})).toHaveAttribute("href","/desk/books/assets");
+ // The Books tab strip and the Overview's task cards both link to Equipment value; the
+ // navigation assertion targets the tab strip (aria-label "Books sections").
+ await expect(page.getByRole("navigation",{name:"Books sections"}).getByRole("link",{name:"Equipment value",exact:true})).toHaveAttribute("href","/desk/books/assets");
  const context=await browser.newContext({storageState:"e2e/.auth/staff.json"});
  try{
   const staff=await context.newPage();

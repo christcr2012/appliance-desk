@@ -22,7 +22,9 @@ for(const width of [360,1280]){
 }
 test("Books navigation reaches reports, and staff cannot read owner finance reports",async({page,browser})=>{
  await page.goto("/desk/books");
- await expect(page.getByRole("link",{name:"Reports",exact:true})).toHaveAttribute("href","/desk/books/reports");
+ // The Books tab strip and the Overview's task cards both link to Reports; the
+ // navigation assertion targets the tab strip (aria-label "Books sections").
+ await expect(page.getByRole("navigation",{name:"Books sections"}).getByRole("link",{name:"Reports",exact:true})).toHaveAttribute("href","/desk/books/reports");
  const ctx=await browser.newContext({storageState:"e2e/.auth/staff.json"});
  try{
   const staff=await ctx.newPage();
