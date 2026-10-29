@@ -28,5 +28,6 @@ Reason: each list is an independent, usable screen with its own data and risks; 
 
 ## Progress
 AR-4a (Rentals) is built and in review — see the top STATUS entry and packet
-AR-4A. AR-4b (Leads), AR-4c (Customers list) and AR-4d (Quotes and Messages)
-have not started.
+AR-4A. AR-4c (Customers list) is building (Lane 5, packet AR-4C, branch
+ai/vivienne/ar-4c). AR-4b (Leads) and AR-4d (Quotes and Messages) have not
+started; AR-4d is queued behind AR-4c.
