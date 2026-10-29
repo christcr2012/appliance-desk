@@ -10,8 +10,8 @@ called this "gate G"):
 - Focused behavioral tests for every new rule, permission and failure path;
   real-Postgres tests for anything concurrent or transactional.
 - Applicable code checks and full CI green (throwaway Postgres, migrations,
-  upgrade drill, build, browser/axe), and a Vercel preview that is clicked
-  through.
+  upgrade drill, build, browser/axe). Hosted acceptance uses the authorized testing app under
+  TESTING-ENVIRONMENT; deployment/owner/provider acceptance is separate from merge (AGENTS sections 1–3).
 - UI work is checked at 360 / 768 / 1440 px widths, by keyboard, and in light
   and dark themes; axe reports no violations.
 - New tables or columns are added to backup/export coverage and the
@@ -20,9 +20,8 @@ called this "gate G"):
 - No customer fixtures, test emails, or reset scripts against the live
   database. Stripe stays in test mode. No live message sending.
 - The batch's PR description carries the acceptance checklist with evidence.
-- Owner policy items (listed per batch) are inputs, not things to invent.
-  Build the mechanism; leave the policy-dependent behavior switched off and
-  listed in `docs/OWNER-INPUTS.md` until Chris answers.
+- Missing policy answers follow AGENTS section 1 “Decisions never block building”: researched, editable
+  starting values and a decision question; only affected unsafe real use waits for confirmation.
 - Business time is America/Denver (store UTC); DST edges are tested.
 - Reuse what exists. The "Already shipped" list below is not to be rebuilt.
 
@@ -58,29 +57,19 @@ number; law/terms review is not hereby complete.
 
 A, B, C, R, B2, D, E, E2, F-part-1 and G are merged. Batches T (including acquisition evidence, retail delivery fee and the tax workspace), S, COM-L, W, V, F-part-2, K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 are also merged (see MASTER-ROADMAP and STATUS). Their owner/provider acceptance checks are still pending on OWNER-CHECKLIST. V is built and merged (#487–#491); the owner accepted the bolder look on 2026-10-17. Live payments/customer email/SMS remain separately gated. Complete historical deliverables and acceptance are preserved in [the pre-reset plan](archive/reset-2026-10-08/PLAN.md), not discarded.
 
-## What truly remains (audited against the code, 2026-10-23)
+## What truly remains
 
-A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the stale "remaining" lists. Anything not listed here is built.
+The October 23 snapshot was stale: COM-N, O-3B, MCP-1…4, TFA-3 and ZONE-1 subsequently landed.
+Use the [current execution map](MASTER-ROADMAP.md#current-execution-map--october-28-2026) for observed source/PR
+state and card ownership. Acceptance checkboxes below preserve their evidence; an unchecked historical batch
+checkbox is not a request to rebuild its implementation. Owner/provider acceptance stays on OWNER-CHECKLIST.
 
-**Not built, and waiting only for Chris's go-ahead or an answer**
-- BP-1…BP-16 (offers, property authorizations, portfolio contracts, partners): PROPOSED, nothing built.
-- W-11 live Colorado GIS rates (IN-61), W-12 sales tax XML file (IN-62, IN-44). W-13 receipt photo reading is DEFERRED (IN-64).
-- MCP-1…MCP-11 and the in-app feedback design: nothing built.
-
-**Approved but not built yet (engineering an agent can start)**
-- O-3B (merged, #552): refund, credit and kept-deposit approvals (write-off and expense approvals are built).
-- COM-N1A…N4: lead/job/billing text messages, click-to-call, telecom statement to an expense, service metrics.
-- Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.
-
-**Partial items inside built units**
-- (M-1C is complete: Colorado retail delivery fee on delivered sales and taking back a used appliance are built. Only real-account acceptance remains, see the owner checklist and STATUS.) (The revenue-report label now reads "Shop sales (parts and items sold)".)
-- (Owner controls O-1, O-2B and O-4 are complete: change preview and stale-save protection, the full Switches list, the role-shaped page proof, and scheduled price changes for single appliances and rental sets.)
-- (The yearly "check your SUTS setup" Today task is built: `TAX_SETUP_CHECK`, each January and 12 months after the last check.)
-- Website pricing page does not show the all-in total or $45 fee (hidden on purpose by the owner).
-- (The eight older review findings in LAUNCH-LEDGER are closed, 2026-10-25: photo clean-up, HEIC, earnings basis, billing-estimate check, narrow-width check. Only the real-storage confirmation is on the owner checklist.)
-- No browser specs yet for shop sales or retired appliances. (Approvals, switches, permissions, price changes, goals and workspace now have them: owner-settings-history, owner-price-changes, role-shaped-pages, owner-controls.)
-
-**Owner and provider steps** are only on [OWNER-CHECKLIST](OWNER-CHECKLIST.md) and never block building.
+Remaining approved source outcomes at the October 28 inspected baseline: AR-4b/c/d, AR-5, AR-6, AR-7 (in flight),
+AR-8 (in flight), AR-9 (in flight), AR-13, AR-10, PORTAL-1, and MCP-5 (in flight) → MCP-6/7 → MCP-8/11 → MCP-9.
+This is a routing summary, not proof that every individual acceptance item is absent. Reconcile the selected
+card against current main and unmerged lane branches before implementing. BP stays PROPOSED;
+W-11/12 keep their specific owner/provider prerequisites and W-13 stays DEFERRED. Website setup-fee visibility
+remains an owner choice. Real-account and professional acceptance never becomes invented passing evidence.
 
 ## Every remaining implementation
 

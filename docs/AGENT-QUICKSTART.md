@@ -7,7 +7,9 @@ scorecard/bundle-plan steps) is archived in [archive/rules-reset-2026-10-23/](ar
 
 ```bash
 npm run setup                 # once per checkout/worktree: pre-push gate, HTTP/1.1, merge-based syncing
-npm run work -- start         # active card and bounded integration references
+npm run work -- start <ID>    # your assigned packet; no ID uses a shared legacy fallback
+npm run work -- route <ID>    # indexed card discovery when no execution packet exists
+npm run work -- read 1 <ID>   # bounded reference from that same packet
 npm run check:quick           # same gate the pre-push hook runs (secrets, migrations, routes, typecheck, lint)
 npx vitest run tests/x.test.ts                         # focused unit test
 npm run test:db -- tests/y-integration.test.ts         # disposable Postgres + migrations, one command
