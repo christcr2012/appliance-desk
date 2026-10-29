@@ -13,5 +13,8 @@
   { "file": "src/app/desk/books/accountant/page.tsx", "kind": "other" },
   { "file": "src/app/desk/books/months/page.tsx", "kind": "other" },
   { "file": "src/app/desk/books/reports/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/books/assets/page.tsx", "kind": "other" }
+  { "file": "src/app/desk/books/assets/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/customers/insights/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/inventory/insights/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/money/income/page.tsx", "kind": "list" }
 ]
