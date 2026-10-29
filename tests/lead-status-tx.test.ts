@@ -93,6 +93,8 @@ describe("updateLeadStatus in one transaction", () => {
         status: "CONTACTED",
         lostReason: null,
         nextFollowUpOn: followUp,
+        // AR-9: a move to an open stage keeps the close stamp clear.
+        closedAt: null,
         // The follow-up changed (none → set), so its version advances.
         version: { increment: 1 },
       },
@@ -125,6 +127,8 @@ describe("updateLeadStatus in one transaction", () => {
         status: "LOST",
         lostReason: "No longer needed",
         nextFollowUpOn: null,
+        // AR-9: closing the lead stamps when it closed.
+        closedAt: expect.any(Date),
         // Clearing a set follow-up is a change, so its version advances.
         version: { increment: 1 },
       },
@@ -149,7 +153,7 @@ describe("updateLeadStatus in one transaction", () => {
     await updateLeadStatus("owner-1", "lead-1", "CONTACTED", undefined, followUp);
     expect(leadUpdate).toHaveBeenCalledWith({
       where: { id: "lead-1" },
-      data: { status: "CONTACTED", lostReason: null, nextFollowUpOn: followUp },
+      data: { status: "CONTACTED", lostReason: null, nextFollowUpOn: followUp, closedAt: null },
     });
   });
 

@@ -222,7 +222,7 @@ describe("convertLeadToCustomer — customer activation, no relayed passwords", 
     userFindUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER", customer: { id: "cust-existing" } });
     const { convertLeadToCustomer } = await import("@/domains/leads");
     await convertLeadToCustomer("owner-1", "lead-1");
-    expect(leadClaim).toHaveBeenCalledWith({ where: { id: "lead-1", status: "NEW" }, data: { status: "CONVERTED" } });
+    expect(leadClaim).toHaveBeenCalledWith({ where: { id: "lead-1", status: "NEW" }, data: { status: "CONVERTED", closedAt: expect.any(Date) } });
     expect(leadClaim.mock.invocationCallOrder[0]).toBeLessThan(leadUpdate.mock.invocationCallOrder[0]);
   });
 

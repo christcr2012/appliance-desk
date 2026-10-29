@@ -53,7 +53,9 @@ describe("report metric definitions", () => {
 
   it("every number on the four screens takes its label from the definitions", () => {
     const used = new Set<string>();
-    for (const page of ["reports", "revenue", "fleet", "growth"]) {
+    // AR-9: the four old report screens moved — Reports/Revenue into Money,
+    // Fleet into Equipment Insights, Growth into Customers Insights.
+    for (const page of ["money", "money/income", "inventory/insights", "customers/insights"]) {
       const text = readFileSync(`src/app/desk/${page}/page.tsx`, "utf8");
       for (const match of text.matchAll(/metric="([\w.]+)"/g)) used.add(match[1]);
     }
