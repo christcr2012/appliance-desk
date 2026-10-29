@@ -89,7 +89,10 @@ export async function getBooksHome(
     }),
     getTaxWorkspaceOverview(actor.id, now).catch(() => null),
     prisma.bookAsset.count(),
-    prisma.appliance.count({ where: { acquisitionCostCents: { gt: 0 }, bookAsset: { is: null } } }),
+    // Missing purchase price uses the autopilot's own predicate (null or non-positive cost on an
+    // unenrolled, not-retired appliance) — priced-but-unenrolled appliances are enrollment
+    // candidates, not missing prices.
+    prisma.appliance.count({ where: { status: { not: "RETIRED" }, bookAsset: { is: null }, OR: [{ acquisitionCostCents: null }, { acquisitionCostCents: { lte: 0 } }] } }),
   ]);
 
   // Months with no period row yet count as still to review once they have ended.

@@ -19,6 +19,12 @@ let original: {
   booksStartDate: Date | null; booksLastProblemCount: number; booksLastBroughtUpToDateAt: Date | null;
 } | null = null;
 const entryIds: string[] = [];
+// Journal entries are business-wide, not per-user: other suites sharing this database post
+// their own September/October entries, so the figures are asserted as DELTAS over a baseline
+// captured before this suite's entries exist (this file is also in SHARED_SETTINGS_TESTS).
+let baseOct = { incomeCents: 0, expenseCents: 0, netProfitCents: 0 };
+let baseSep = { incomeCents: 0, expenseCents: 0, netProfitCents: 0 };
+let baseCollectedOct = 0;
 
 async function entry(onKey: string, lines: { accountId: string; debitCents: number; creditCents: number }[]) {
   const row = await prisma.journalEntry.create({
@@ -46,6 +52,9 @@ describe.skipIf(!enabled)("AR-7 books home on disposable PostgreSQL", () => {
       data: { booksStartDate: new Date("2026-09-01T06:00:00.000Z"), booksLastProblemCount: 2, booksLastBroughtUpToDateAt: NOW },
     });
     await prisma.user.create({ data: { id: owner, email: owner + "@example.test", role: "OWNER" } });
+    baseSep = (await profitAndLoss(owner, { from: "2026-09-01", to: "2026-09-30", basis: "ACCRUAL" })).summary;
+    baseOct = (await profitAndLoss(owner, { from: "2026-10-01", to: "2026-10-28", basis: "ACCRUAL" })).summary;
+    baseCollectedOct = (await collectedBetween(null, new Date("2026-10-01T06:00:00.000Z"), NOW)).netCents;
     const income = await prisma.ledgerAccount.findFirstOrThrow({ where: { type: "INCOME", active: true } });
     const expense = await prisma.ledgerAccount.findFirstOrThrow({ where: { type: "EXPENSE", active: true } });
     const asset = await prisma.ledgerAccount.findFirstOrThrow({ where: { type: "ASSET", active: true } });
@@ -76,8 +85,13 @@ describe.skipIf(!enabled)("AR-7 books home on disposable PostgreSQL", () => {
     const home = await getBooksHome({ id: owner, role: "OWNER" }, NOW);
     expect(home.started).toBe(true);
     expect(home.problemCount).toBe(2);
-    expect(home.thisMonth).toEqual({ billedCents: 10000, collectedCents: 0, spentCents: 2500, profitCents: 7500 });
-    expect(home.lastMonth).toEqual({ billedCents: 4000, collectedCents: 0, spentCents: 0, profitCents: 4000 });
+    expect(home.thisMonth.billedCents - baseOct.incomeCents).toBe(10000);
+    expect(home.thisMonth.spentCents - baseOct.expenseCents).toBe(2500);
+    expect(home.thisMonth.profitCents - baseOct.netProfitCents).toBe(7500);
+    expect(home.thisMonth.collectedCents - baseCollectedOct).toBe(0);
+    expect(home.lastMonth.billedCents - baseSep.incomeCents).toBe(4000);
+    expect(home.lastMonth.spentCents - baseSep.expenseCents).toBe(0);
+    expect(home.lastMonth.profitCents - baseSep.netProfitCents).toBe(4000);
 
     const pnl = await profitAndLoss(owner, { from: "2026-10-01", to: "2026-10-28", basis: "ACCRUAL" });
     expect(home.thisMonth.billedCents).toBe(pnl.summary.incomeCents);
