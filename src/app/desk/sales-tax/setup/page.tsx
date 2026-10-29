@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Money, MoneyInput } from "@/components/ui/money";
-import { InfoTip } from "@/components/ui/info-tip";
+import { InfoTip, ScreenHeader } from "@/components/kit";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "./forms";
@@ -47,22 +47,18 @@ export default async function TaxSetupPage() {
   ]);
   const address = settings.businessTaxAddress && typeof settings.businessTaxAddress==="object" &&
     !Array.isArray(settings.businessTaxAddress) ? settings.businessTaxAddress as Record<string,unknown> : {};
-  return <main className="space-y-7">
+  return <div className="space-y-7">
+    <ScreenHeader title="Setup" />
     {!owner && <p role="status" className="rounded border border-border p-3">Read only. Ask the owner to approve changes to tax setup.</p>}
     <section aria-labelledby="more-setup" className="space-y-2">
-      <h2 id="more-setup" className="text-lg font-semibold">All tax setup in one list</h2>
+      <h2 id="more-setup" className="text-base font-extrabold text-ink">All tax setup in one list</h2>
       <ul className="grid gap-2 sm:grid-cols-2">
-        {TAXES_SETUP_LINKS.filter(item => !item.href.endsWith("/setup")).map(item => <li key={item.href} className="rounded-lg border border-border bg-card p-3 text-sm">
+        {TAXES_SETUP_LINKS.filter(item => !item.href.endsWith("/setup")).map(item => <li key={item.href} className="rounded-card border border-line bg-surface p-3 text-sm">
           <Link href={item.href} className="font-semibold underline">{item.label}</Link>
           <p className="text-muted-foreground">{item.detail}</p>
         </li>)}
       </ul>
     </section>
-    <nav aria-label="Setup sections" className="flex flex-wrap gap-3 text-sm underline">
-      <a href="#decisions">Tax decisions</a><a href="#fee">Delivery fee</a>
-      <a href="#accounts">Filing accounts</a><a href="#sources">Official sources</a>
-      <a href="#location">Business location</a>
-    </nav>
     {owner ? <TaxActionForm action={saveTaxSettingsAction} title="Tax decisions and owner setup">
       <input type="hidden" name="expectedUpdatedAt" value={settings.updatedAt.toISOString()} />
       <section id="decisions" className="grid gap-4 md:grid-cols-2">
@@ -91,7 +87,9 @@ export default async function TaxSetupPage() {
       <fieldset className="space-y-2 rounded border border-border p-3">
         <legend className="font-semibold">Official rate updates</legend>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="autoApplyOfficialRateChanges" defaultChecked={settings.autoApplyOfficialRateChanges} />Apply eligible reviewed rate updates within the limit</label>
-        <p className="text-sm text-muted-foreground">Off: every new rate waits for your approval on To do. This starts off — turn it on only if you want reviewed rate updates applied on their own, within the limit below. Greeley&rsquo;s own rate always waits for your approval either way.</p>
+        <p className="text-sm text-muted-foreground">Off: every new rate waits for your approval on To do.</p>
+        <p className="text-sm text-muted-foreground">This starts off — turn it on only if you want reviewed rate updates applied on their own, within the limit below.</p>
+        <p className="text-sm text-muted-foreground">Greeley&rsquo;s own rate always waits for your approval either way.</p>
         <label className={field}>Maximum change (milli-percent)<input name="autoRateChangeMaxMilliPercent" type="number" min={0} max={100000} className={css} defaultValue={settings.autoRateChangeMaxMilliPercent} required /></label>
       </fieldset>
       <fieldset id="location" className="space-y-2 rounded border border-border p-3">
@@ -138,14 +136,17 @@ export default async function TaxSetupPage() {
     </section>
     <section id="greeley-email" className="rounded border border-border p-4 space-y-3">
       <h2 className="font-semibold">Email Greeley — ask how rentals and fees are taxed</h2>
-      <p className="text-sm text-muted-foreground">Greeley collects its own tax and its answers for rentals and service fees are not published, so the app taxes them until Greeley confirms in writing. This draft asks the three open questions. The app never sends it — the button opens the draft in your own email app so their reply comes to you.</p>
+      <p className="text-sm text-muted-foreground">Greeley collects its own tax, and its answers for rentals and service fees are not published.</p>
+      <p className="text-sm text-muted-foreground">The app taxes them until Greeley confirms in writing. This draft asks the three open questions.</p>
+      <p className="text-sm text-muted-foreground">The app never sends it — the button opens the draft in your own email app so their reply comes to you.</p>
       {(() => { const draft = greeleyFeeEmailDraft(complianceProfile?.businessLegalName ?? ""); return <>
         <p className="text-sm">To: {draft.to}</p>
         <p className="text-sm">Subject: {draft.subject}</p>
         <pre className="whitespace-pre-wrap rounded border border-border bg-card p-3 text-sm">{draft.body}</pre>
         <p><a className="font-semibold underline" href={draft.mailto}>Open the draft in your email app</a></p>
       </>; })()}
-      <p className="text-sm text-muted-foreground">When the written reply arrives, record the answers on Taxes › Rules — the questions FEETAX-GREELEY-LEASE, FEETAX-GREELEY-SERVICE and FEETAX-GREELEY-OTHER then show as confirmed.</p>
+      <p className="text-sm text-muted-foreground">When the written reply arrives, record the answers on Taxes › Rules.</p>
+      <p className="text-sm text-muted-foreground">The questions FEETAX-GREELEY-LEASE, FEETAX-GREELEY-SERVICE and FEETAX-GREELEY-OTHER then show as confirmed.</p>
     </section>
     <section id="fee-rates" className="space-y-3">
       <h2 className="font-semibold">Recorded fee rates</h2>
@@ -168,7 +169,7 @@ export default async function TaxSetupPage() {
         <div className="grid gap-3 md:grid-cols-3">
           <label className={field}>Return type<select name="kind" className={css}><option value="SALES_RETURN">Sales</option><option value="USE_TAX_RETURN">Use tax</option><option value="RETAIL_DELIVERY_FEE_RETURN">RDF</option></select></label>
           <label className={field}>Frequency<select name="frequency" className={css}><option value="MONTHLY">Monthly</option><option value="QUARTERLY">Quarterly</option><option value="ANNUAL">Annual</option></select></label>
-          <label className={field}>Basis<select name="basis" className={css}><option value="UNDECIDED">Ask CPA</option><option value="CASH">Cash</option><option value="ACCRUAL">Accrual</option></select></label>
+          <label className={field}>Basis<select name="basis" className={css}><option value="UNDECIDED">Ask CPA</option><option value="CASH">When paid</option><option value="ACCRUAL">When billed</option></select></label>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <label className={field}>Account number<input name="accountNumber" className={css} /></label>
@@ -190,6 +191,6 @@ export default async function TaxSetupPage() {
         {source.lastError && <p role="status" className="text-destructive">Source failure: {source.lastError}</p>}
       </li>)}</ul>
     </section>
-  </main>;
+  </div>;
 }
 

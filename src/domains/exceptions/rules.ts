@@ -635,7 +635,7 @@ export function businessUsePercentException(input: {
     category: "SALES_TAX",
     severity: "medium",
     title: "Answer the business-use share of your shared bills",
-    detail: "Accounts you share between business and personal use — phone and internet — deduct 0% until you answer what share is business. Answer once in Write-off settings on Taxes > Tax benefits; the app remembers it.",
+    detail: "Accounts you share between business and personal use — phone and internet — deduct 0% until you answer what share is business. Answer once in Your deduction answers on Taxes > Tax benefits; the app remembers it.",
     href: "/desk/sales-tax/benefits",
     todoKey: `taxben-business-use:${input.year}`,
     since: input.since,

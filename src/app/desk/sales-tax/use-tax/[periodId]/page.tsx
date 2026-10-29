@@ -11,6 +11,7 @@ import { availableDr0252Years, dr0252YearFor } from "@/domains/tax/dr0252-form";
 import { getRuleTimingSettings } from "@/domains/rules/reads";
 import { fileAndPayOnDate } from "@/domains/rules/timing";
 import { legalDueOn } from "@/domains/tax/filing-calendar";
+import { ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Consumer use-tax worksheet", robots: { index: false, follow: false } };
 
@@ -28,7 +29,7 @@ export default async function UseTaxWorksheetPage({
       filingAccount: { select: { kind: true } } },
   });
   if (!period || period.filingAccount.kind !== "USE_TAX_RETURN") {
-    return <main><h2 className="text-xl font-semibold">Use-tax worksheet unavailable</h2><p>No consumer use-tax period was found.</p></main>;
+    return <div><ScreenHeader title="Use-tax worksheet unavailable" back={{ href: "/desk/sales-tax/use-tax", label: "Back to use-tax periods" }} /><p>No consumer use-tax period was found.</p></div>;
   }
   const result = await loadFilingPacket(periodId);
   const worksheet = result.status === "READY" ? buildUseTaxWorksheet(result.packet) : null;
@@ -42,10 +43,13 @@ export default async function UseTaxWorksheetPage({
       }))
     : undefined;
   return (
-    <main className="mx-auto max-w-3xl space-y-5 print:max-w-none">
-      <nav className="print:hidden">
-        <Link href="/desk/sales-tax/use-tax" className="text-sm underline">Back to use-tax periods</Link>
-      </nav>
+    <div className="mx-auto max-w-3xl space-y-5 print:max-w-none">
+      <div className="print:hidden">
+        <ScreenHeader
+          title={result.status === "READY" ? worksheet!.heading : "Use-tax worksheet"}
+          back={{ href: "/desk/sales-tax/use-tax", label: "Back to use-tax periods" }}
+        />
+      </div>
       {result.status === "BLOCKED" ? (
         <section>
           <h2 className="text-xl font-semibold">Worksheet needs review</h2>
@@ -53,7 +57,7 @@ export default async function UseTaxWorksheetPage({
         </section>
       ) : (
         <section className="space-y-4">
-          <h2 className="text-xl font-semibold">{worksheet!.heading}</h2>
+          <h2 className="hidden text-xl font-semibold print:block">{worksheet!.heading}</h2>
           <div className="print:hidden space-y-2">
             <FileAndPayHeadline
               kind="USE_TAX_RETURN"
@@ -82,6 +86,6 @@ export default async function UseTaxWorksheetPage({
           <p className="text-sm">Print using your browser’s print command. Verify every entry against the official filing portal.</p>
         </section>
       )}
-    </main>
+    </div>
   );
 }

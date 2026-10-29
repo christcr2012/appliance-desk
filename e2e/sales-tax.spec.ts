@@ -18,24 +18,25 @@ test.describe("sales tax overview and resolved Today routing", () => {
   test("delivery fees waiting page loads and passes axe", async ({ page }) => {
     test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
     await page.goto("/desk/sales-tax/delivery-fees");
-    await expect(page.getByRole("heading", { name: "Retail delivery fees waiting on you" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Delivery fees" })).toBeVisible();
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
   });
 
-  test("four tax tabs have working navigation at phone width and dark mode", async ({ page }) => {
+  test("six tax tabs have working navigation at phone width and dark mode", async ({ page }) => {
     test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
     await page.setViewportSize({ width: 360, height: 780 });
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/desk/sales-tax");
-    await expect(page.getByRole("heading", { name: "Tax overview" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Taxes" })).toBeVisible();
+    await expect(page.getByText("Next return due")).toBeVisible();
     const nav = page.getByRole("navigation", { name: "Taxes sections" });
-    for (const name of ["To file", "Use tax", "Rates & areas", "Setup"]) {
+    for (const name of ["Overview", "Returns", "Areas & rates", "Exemptions", "Use tax", "Setup"]) {
       await expect(nav.getByRole("link", { name })).toBeVisible();
     }
-    await expect(nav.getByRole("link", { name: "To file" })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
     await page.getByRole("link", { name: "All returns and filing history" }).click();
-    await expect(page.getByRole("heading", { name: "Tax filing returns" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Returns" })).toBeVisible();
     await nav.getByRole("link", { name: "Use tax" }).click();
     await expect(nav.getByRole("link", { name: "Use tax" })).toHaveAttribute("aria-current", "page");
     // The old addresses forward into the one Taxes area.
