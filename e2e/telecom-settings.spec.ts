@@ -13,6 +13,13 @@ test("owner navigates to private telecom setup with controls inactive", async ({
   await page.goto("/desk/settings/features");
   const phoneShown=(await page.getByRole("switch",{name:"Phone and texting costs"}).getAttribute("aria-checked"))==="true";
   await page.goto("/desk/settings?section=notifications");
+  // AR-8 maps this old section id to "messages". The settings page decides
+  // that redirect only after its data loads, and the page streams (it has a
+  // loading shell), so the redirect lands as a late client-side navigation
+  // that can cancel this test's next goto with net::ERR_ABORTED under load.
+  // Wait for the canonical landing before navigating onward; this also
+  // proves the old-id redirect lands where AR-8 promises.
+  await expect(page).toHaveURL(/\/desk\/settings\?section=messages/);
   const link=page.getByRole("link",{name:"Phone, SMS and provider costs"});
   await expect(link).toHaveCount(phoneShown?1:0);
   if(phoneShown) await link.click();
