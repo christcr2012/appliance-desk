@@ -95,7 +95,17 @@ test.describe("Books on the kit for staff (AR-7a)", () => {
   test("staff are refused the books pages", async ({ page }) => {
     test.skip(process.env.CI !== "true" || !fs.existsSync(staff), "Disposable Postgres and a saved staff session required.");
     for (const path of ["/desk/books", "/desk/books/accountant", "/desk/books/months"]) {
-      await page.goto(path, { waitUntil: "load" });
+      await page.goto(path, { waitUntil: "load" }).catch((error) => {
+        // A refused page redirects to "/" from its server component; in a streamed
+        // response that redirect can replace this navigation mid-load, and Playwright
+        // then reports ERR_ABORTED (CI runs 40829366514 and 40835559457, both times on
+        // the heaviest page, /desk/books/accountant). The bounce is the refusal — the
+        // assertions below still prove staff never see the pages: the settled URL is
+        // no longer the Books path and neither heading is present.
+        if (!String(error).includes("ERR_ABORTED")) throw error;
+      });
+      await page.waitForLoadState("load");
+      expect(page.url()).not.toContain(path);
       await expect(page.getByRole("heading", { name: "Books", exact: true })).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "For your accountant", exact: true })).toHaveCount(0);
     }
