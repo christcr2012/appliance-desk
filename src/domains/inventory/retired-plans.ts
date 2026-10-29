@@ -4,6 +4,8 @@ import type { Prisma, RetiredPlanChoice } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
+import { fieldsRevision } from "@/domains/settings/preview";
+import { SettingsConflictError } from "@/domains/settings/effects";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { postForSource } from "@/domains/books/post";
 import { stageEquipmentBookRetirementInTx, writeOffRetiredBookAssetInTx,
@@ -502,11 +504,15 @@ export async function getRetiredFollowUpDays(): Promise<number> {
   return row?.retiredFollowUpDays ?? DEFAULT_RETIRED_FOLLOW_UP_DAYS;
 }
 
-export async function setRetiredFollowUpDays(actorUserId: string, days: number): Promise<void> {
+export async function setRetiredFollowUpDays(actorUserId: string, days: number, expectedRevision?: string): Promise<void> {
   if (!Number.isSafeInteger(days) || days < 0 || days > 365) throw new RetiredPlanError("Enter a number of days from 0 to 365 (0 turns the reminder off).");
   await prisma.$transaction(async (tx) => {
     await assertCapability(tx, actorUserId, "EDIT_SETTINGS");
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const before = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { retiredFollowUpDays: true } });
+    // AR-8 review (P2): refuse a stale settings-row save inside the locked transaction.
+    if (expectedRevision !== undefined && fieldsRevision(before ?? {}, ["retiredFollowUpDays"]) !== expectedRevision)
+      throw new SettingsConflictError();
     await tx.businessSettings.update({ where: { id: "singleton" }, data: { retiredFollowUpDays: days } });
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "settings.retired_follow_up_days", entityType: "BusinessSettings", entityId: "singleton", oldValue: { days: before?.retiredFollowUpDays ?? null }, newValue: { days } },

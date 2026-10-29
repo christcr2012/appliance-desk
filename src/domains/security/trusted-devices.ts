@@ -12,6 +12,8 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { fieldsRevision } from "@/domains/settings/preview";
+import { SettingsConflictError } from "@/domains/settings/effects";
 import { normalizeAccountEmail } from "@/lib/account-provisioning";
 
 export const DEVICE_COOKIE_NAME = "ad_device";
@@ -71,18 +73,22 @@ export async function getTrustedDeviceSettings(): Promise<{ days: number }> {
  * Owner only. Lowering the number also shortens every remembered device (0 forgets them all at once), so a
  * device is never remembered longer than the setting in force.
  */
-export async function updateTrustedDeviceSettings(ownerId: string, input: { days: unknown }): Promise<{ days: number }> {
+export async function updateTrustedDeviceSettings(ownerId: string, input: { days: unknown }, expectedRevision?: string): Promise<{ days: number }> {
   const days = validateTrustedDeviceDays(input.days);
   await prisma.$transaction(async (tx) => {
-    await updateTrustedDeviceSettingsInTx(tx, ownerId, days);
+    await updateTrustedDeviceSettingsInTx(tx, ownerId, days, expectedRevision);
   });
   return { days };
 }
 
-export async function updateTrustedDeviceSettingsInTx(tx: Prisma.TransactionClient, ownerId: string, days: number): Promise<void> {
+export async function updateTrustedDeviceSettingsInTx(tx: Prisma.TransactionClient, ownerId: string, days: number, expectedRevision?: string): Promise<void> {
   validateTrustedDeviceDays(days);
   await assertActiveTeamActor(tx, ownerId, ["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   const before = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { trustedDeviceDays: true } });
+  // AR-8 review (P2): refuse a stale settings-row save inside the locked transaction.
+  if (expectedRevision !== undefined && fieldsRevision(before ?? {}, ["trustedDeviceDays"]) !== expectedRevision)
+    throw new SettingsConflictError();
   await tx.businessSettings.upsert({
     where: { id: "singleton" },
     create: { id: "singleton", trustedDeviceDays: days },
