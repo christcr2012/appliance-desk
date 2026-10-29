@@ -151,6 +151,7 @@ test('drift includes unstaged, staged, untracked and predecessor changes; prompt
     const prompt = continuation(f.packet, f.git('rev-parse', 'HEAD'));
     assert.ok(prompt.includes('not proof of GitHub merge or CI'));
     assert.ok(prompt.includes('bundle workload'));
+    assert.ok(prompt.includes('work -- start A-1'));
     assert.throws(() => continuation(f.packet, 'unknown'), /Invalid local head/);
   } finally { f.cleanup(); }
 });
@@ -205,5 +206,6 @@ test('explicit numbered reads stay on the selected lane and reject unknown packe
     output.length = 0;
     main(['start', 'B-1'], f.root, neverExecute, s => output.push(s));
     assert.ok(output[0].startsWith('Execution B-1'));
+    assert.ok(output[0].includes('work read <number> B-1'));
   } finally { f.cleanup(); }
 });

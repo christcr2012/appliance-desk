@@ -69,7 +69,8 @@ AR-8 (in flight), AR-9 (in flight), AR-13, AR-10, PORTAL-1, and MCP-5 (in flight
 This is a routing summary, not proof that every individual acceptance item is absent. Reconcile the selected
 card against current main and unmerged lane branches before implementing. BP stays PROPOSED;
 W-11/12 keep their specific owner/provider prerequisites and W-13 stays DEFERRED. Website setup-fee visibility
-remains an owner choice. Real-account and professional acceptance never becomes invented passing evidence.
+remains an owner choice. The October 23 browser-coverage gaps for shop sales and retired appliances must be
+checked during AR-10 and filled if still absent; moving this summary does not close them. Real-account and professional acceptance never becomes invented passing evidence.
 
 ## Every remaining implementation
 
