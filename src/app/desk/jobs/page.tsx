@@ -4,14 +4,11 @@ import { requireRole } from "@/lib/session";
 import { getJobsPage, getJobsCount } from "@/domains/jobs";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { FilterBar } from "@/components/desk/workspace";
 import {
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
+import { DataTable, ScreenHeader, StatusTabs, type Column } from "@/components/kit";
 import {
   jobStatusLabel,
   jobStatusTone,
@@ -66,11 +63,10 @@ export default async function JobsPage({
     return qs ? `/desk/jobs?${qs}` : "/desk/jobs";
   }
 
-  const columns: DataListColumn<JobRow>[] = [
+  const columns: Column<JobRow>[] = [
     {
       key: "job",
       header: "Job",
-      primary: true,
       cell: (job) => (
         <div>
           <Link
@@ -111,29 +107,33 @@ export default async function JobsPage({
 
   return (
     <div>
-      <PageHeader
+      <ScreenHeader
         title="Jobs"
-        description="Review scheduled, active, completed, and cancelled service work."
-        primaryAction={
-          canScheduleJobs
-            ? { href: "/desk/jobs/new", label: "Schedule a job" }
-            : undefined
-        }
+        list
+        primary={canScheduleJobs ? { kind: "link", label: "Schedule a job", href: "/desk/jobs/new" } : undefined}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Review scheduled, active, completed, and cancelled service work.
+      </p>
 
-      <FilterBar
+      <StatusTabs
         label="Filter jobs by status"
-        items={STATUS_TABS.map((tab) => ({
-          href: jobsHref(1, tab.value),
-          label: tab.label,
-          active: (status ?? "ALL") === tab.value,
-        }))}
+        param="status"
+        current={status ?? "ALL"}
+        items={STATUS_TABS.map((tab) => ({ value: tab.value, label: tab.label }))}
       />
 
-      <DataList
+      <DataTable
         rows={jobs}
+        rowKey={(job) => job.id}
         columns={columns}
         caption="Jobs"
+        mobileCard={(job) => (
+          <div className="space-y-1">
+            {columns[0].cell(job)}
+            {columns[1].cell(job)}
+          </div>
+        )}
         empty={
           <EmptyState
             title={status ? "No jobs with this status" : "No jobs scheduled yet"}

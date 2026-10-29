@@ -3,12 +3,10 @@ import { requireRole } from "@/lib/session";
 import { getPurchaseOrders } from "@/domains/purchasing";
 import { formatCents } from "@/domains/pricing";
 import {
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
+import { DataTable, ScreenHeader, type Column } from "@/components/kit";
 import type { StatusTone } from "@/components/status-badge";
 
 export const metadata = { title: "Purchase orders" };
@@ -26,11 +24,10 @@ export default async function PurchaseOrdersPage() {
   await requireRole("OWNER", "ADMIN");
   const orders = await getPurchaseOrders();
 
-  const columns: DataListColumn<PurchaseOrderRow>[] = [
+  const columns: Column<PurchaseOrderRow>[] = [
     {
       key: "order",
       header: "Purchase order",
-      primary: true,
       cell: (order) => (
         <div>
           <Link
@@ -82,19 +79,30 @@ export default async function PurchaseOrdersPage() {
 
   return (
     <div>
-      <PageHeader
+      <ScreenHeader
         title="Purchase orders"
-        description="Parts and supplies you've ordered, and whether they've arrived."
-        primaryAction={{
+        list
+        primary={{
+          kind: "link",
           href: "/desk/purchase-orders/new",
           label: "New purchase order",
         }}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Parts and supplies you&apos;ve ordered, and whether they&apos;ve arrived.
+      </p>
 
-      <DataList
+      <DataTable
         rows={orders}
+        rowKey={(order) => order.id}
         columns={columns}
         caption="Purchase orders"
+        mobileCard={(order) => (
+          <div>
+            {columns[0].cell(order)}
+            <div className="mt-2">{columns[1].cell(order)}</div>
+          </div>
+        )}
         empty={
           <EmptyState
             title="No purchase orders yet"

@@ -27,6 +27,7 @@ import { LateReturnWaiverForm } from "./late-return-waiver-form";
 import { getLateReturnWaiverState } from "@/domains/billing/late-return-waiver";
 import { RecordConnections } from "@/components/desk/record-connections";
 import { SafetyIncidentButton } from "@/components/desk/safety-incident-button";
+import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Job" };
 
@@ -98,19 +99,25 @@ export default async function JobDetailPage({
   }) : [];
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/jobs" className="text-sm text-ink-soft hover:underline">
-        &larr; Back to jobs
-      </Link>
-
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">{job.customerPickupHandoff ? jobKindLabel(job) : job.type}</h1>
-        <Link
-          href={`/desk/jobs/${job.id}/work-order`}
-          className="text-sm text-primary hover:underline"
-        >
-          View / print work order &rarr;
-        </Link>
-      </div>
+      <RecordHeader
+        title={job.customerPickupHandoff ? jobKindLabel(job) : job.type}
+        subtitle={[
+          job.customer ? (job.customer.user.name ?? job.customer.user.email) : null,
+          job.serviceAddress
+            ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || undefined}
+        back={{ href: "/desk/jobs", label: "Jobs" }}
+        actions={[
+          {
+            kind: "link",
+            label: "View / print work order",
+            href: `/desk/jobs/${job.id}/work-order`,
+          },
+        ]}
+      />
       <SafetyIncidentButton jobId={job.id} />
       {pickupCase && job.status !== "COMPLETED" && job.status !== "CANCELLED" && (
         <div className="mt-3 rounded-lg border border-line p-3"><p className="mb-2 text-sm">If the customer says no at the door, do not take the appliance.</p>
@@ -124,12 +131,6 @@ export default async function JobDetailPage({
           <div className="mt-4"><CallPanel userId={session.user.id} subject={{ type: "Job", id: job.id }} path={`/desk/jobs/${job.id}`} /></div>
         </div>
       )}
-      <p className="mt-1 text-sm text-ink-soft">
-        {job.customer && (job.customer.user.name ?? job.customer.user.email)}
-        {job.serviceAddress &&
-          ` · ${job.serviceAddress.line1}, ${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}`}
-      </p>
-
       {privateLocation && <section className="mt-4 rounded-lg border border-line bg-subtle p-3 text-sm">
         <h2 className="font-medium">Assigned-visit location details</h2>
         <p>Appointment confirmer: {privateLocation.permission.appointmentConfirmer === "TENANT" ? "tenant, if contact permitted" : "client"}</p>

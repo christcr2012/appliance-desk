@@ -4,12 +4,10 @@ import { getLowStockParts } from "@/domains/purchasing";
 import {
   ButtonLink,
   Card,
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
+import { DataTable, ScreenHeader, Toolbar, type Column, type FilterDef } from "@/components/kit";
 import { PartStockPanel } from "./part-stock-panel";
 import { PartSaleSettings } from "./part-sale-settings";
 
@@ -29,11 +27,10 @@ export default async function PartsPage({
   ]);
   const lowStockIds = new Set(lowStockParts.map((part) => part.id));
 
-  const columns: DataListColumn<PartRow>[] = [
+  const columns: Column<PartRow>[] = [
     {
       key: "part",
       header: "Part",
-      primary: true,
       cell: (part) => (
         <div>
           <Link
@@ -99,18 +96,13 @@ export default async function PartsPage({
 
   return (
     <div>
-      <PageHeader
-        title="Parts"
-        description="Every part you've logged, grouped by model number. Add new parts from an appliance record for that model."
-        secondaryActions={
-          <ButtonLink
-            href={showArchived ? "/desk/parts" : "/desk/parts?archived=1"}
-            variant="secondary"
-          >
-            {showArchived ? "Hide archived parts" : "Show archived parts"}
-          </ButtonLink>
-        }
+      <ScreenHeader title="Parts" list />
+      <Toolbar
+        filters={[{ kind: "toggle", param: "archived", label: "Show archived parts" }] satisfies FilterDef[]}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Every part you&apos;ve logged, grouped by model number. Add new parts from an appliance record for that model.
+      </p>
 
       {lowStockParts.length > 0 && (
         <div className="mb-6">
@@ -138,10 +130,12 @@ export default async function PartsPage({
         </div>
       )}
 
-      <DataList
+      <DataTable
         rows={partRecords}
+        rowKey={(part) => part.id}
         columns={columns}
         caption="Parts"
+        mobileCard={(part) => columns[0].cell(part)}
         empty={
           <EmptyState
             title="No parts logged yet"

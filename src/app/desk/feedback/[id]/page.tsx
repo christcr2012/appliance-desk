@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getFeedbackForTriage } from "@/domains/feedback";
-import { kindWords, teamPill, TEAM_STATE_WORDS } from "@/domains/feedback/rules";
+import { kindWords, teamPill, TEAM_STATE_WORDS, type PillTone } from "@/domains/feedback/rules";
 import { describeRouteTemplate, describeSafeContext } from "@/domains/feedback/context";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
-import { StatusPill } from "@/components/ui";
+import { RecordHeader, type Tone } from "@/components/kit";
 import { orNotFound } from "@/components/feedback/page-helpers";
 import { TriageActions } from "@/components/feedback/triage-actions";
 
@@ -21,6 +21,15 @@ function when(date: Date) {
   return `${formatBusinessDate(date)}, ${formatBusinessTime(date)}`;
 }
 
+// The feedback domain speaks the ui pill tones; the kit header pill takes the kit tones.
+const KIT_TONE: Record<PillTone, Tone> = {
+  success: "good",
+  pending: "info",
+  attention: "attention",
+  stopped: "neutral",
+  progress: "attention",
+};
+
 // MCP-10a: the owner/admin view of one report: everything, plus internal notes and the history.
 export default async function FeedbackTriageReportPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole("OWNER", "ADMIN");
@@ -30,25 +39,25 @@ export default async function FeedbackTriageReportPage({ params }: { params: Pro
   const live = report.attachments.filter((picture) => !picture.deleted);
   return (
     <div className="max-w-4xl space-y-5">
-      <Link href="/desk/feedback" className="inline-flex min-h-11 items-center text-sm font-semibold underline">App feedback</Link>
-      <header className="space-y-2">
-        <p className="text-sm text-ink-soft">Report #{report.number} · {kindWords(report.kind)}</p>
-        <h1 className="break-words text-2xl font-semibold text-ink">{report.title}</h1>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-ink-soft">
-          <StatusPill tone={pill.tone} label={pill.label} />
-          <span>From {report.reporter.name} ({ROLE_WORDS[report.reporter.role]})</span>
-          {report.reporterOtherReports > 0 && (
-            <Link className="font-semibold underline" href={`/desk/feedback?tab=open&reporter=${encodeURIComponent(report.reporter.id)}`}>
-              {report.reporterOtherReports} other {report.reporterOtherReports === 1 ? "report" : "reports"} from them
-            </Link>
-          )}
-          {report.duplicateOf && (
-            <Link className="font-semibold underline" href={`/desk/feedback/${encodeURIComponent(report.duplicateOf.id)}`}>
-              Same as report #{report.duplicateOf.number}
-            </Link>
-          )}
-        </div>
-      </header>
+      <RecordHeader
+        title={report.title}
+        subtitle={`Report #${report.number} · ${kindWords(report.kind)}`}
+        pills={[{ label: pill.label, tone: KIT_TONE[pill.tone] }]}
+        back={{ href: "/desk/feedback", label: "App feedback" }}
+      />
+      <div className="flex flex-wrap items-center gap-3 text-sm text-ink-soft">
+        <span>From {report.reporter.name} ({ROLE_WORDS[report.reporter.role]})</span>
+        {report.reporterOtherReports > 0 && (
+          <Link className="font-semibold underline" href={`/desk/feedback?tab=open&reporter=${encodeURIComponent(report.reporter.id)}`}>
+            {report.reporterOtherReports} other {report.reporterOtherReports === 1 ? "report" : "reports"} from them
+          </Link>
+        )}
+        {report.duplicateOf && (
+          <Link className="font-semibold underline" href={`/desk/feedback/${encodeURIComponent(report.duplicateOf.id)}`}>
+            Same as report #{report.duplicateOf.number}
+          </Link>
+        )}
+      </div>
 
       <section aria-label="What they sent" className="space-y-3 rounded-card border border-line bg-surface p-4">
         <p className="text-sm font-semibold text-ink">{report.reporter.name} · {when(report.createdAt)}</p>

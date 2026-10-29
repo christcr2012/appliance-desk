@@ -3,15 +3,12 @@ import type { MaintenanceStatus } from "@prisma/client";
 import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domains/maintenance";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { FilterBar } from "@/components/desk/workspace";
 import {
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
 import type { StatusTone } from "@/components/status-badge";
+import { DataTable, ScreenHeader, StatusTabs, type Column } from "@/components/kit";
 import { maintenanceStatusLabel } from "@/lib/status-labels";
 
 export const metadata = { title: "Maintenance" };
@@ -80,11 +77,10 @@ export default async function MaintenancePage({
     return qs ? `/desk/maintenance?${qs}` : "/desk/maintenance";
   }
 
-  const columns: DataListColumn<MaintenanceRow>[] = [
+  const columns: Column<MaintenanceRow>[] = [
     {
       key: "request",
       header: "Request",
-      primary: true,
       cell: (request) => (
         <div>
           <Link
@@ -126,24 +122,29 @@ export default async function MaintenancePage({
 
   return (
     <div>
-      <PageHeader
-        title="Maintenance requests"
-        description="Customer-submitted service requests from the account portal."
-      />
+      <ScreenHeader title="Maintenance requests" list />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Customer-submitted service requests from the account portal.
+      </p>
 
-      <FilterBar
+      <StatusTabs
         label="Filter by status"
-        items={STATUS_TABS.map((tab) => ({
-          href: maintenanceHref(1, tab.value),
-          label: tab.label,
-          active: (status ?? "ALL") === tab.value,
-        }))}
+        param="status"
+        current={status ?? "ALL"}
+        items={STATUS_TABS.map((tab) => ({ value: tab.value, label: tab.label }))}
       />
 
-      <DataList
+      <DataTable
         rows={requests}
+        rowKey={(request) => request.id}
         columns={columns}
         caption="Maintenance requests"
+        mobileCard={(request) => (
+          <div className="space-y-1">
+            {columns[0].cell(request)}
+            {columns[1].cell(request)}
+          </div>
+        )}
         empty={
           <EmptyState
             title={
