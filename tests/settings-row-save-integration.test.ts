@@ -17,7 +17,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { prisma } from "@/lib/prisma";
 import { fieldsRevision } from "@/domains/settings/preview";
-import { saveServiceAreaAction, saveSettingRowAction, undoSettingRowAction } from "@/app/desk/settings/row-actions";
+import { rowHistoryAction, saveServiceAreaAction, saveSettingRowAction, undoSettingRowAction } from "@/app/desk/settings/row-actions";
 
 const target = (() => { try { return new URL(process.env.DATABASE_URL ?? ""); } catch { return null; } })();
 const enabled = process.env.CI === "true" && !!target && ["localhost", "127.0.0.1"].includes(target.hostname)
@@ -48,6 +48,7 @@ describe.skipIf(!enabled)("AR-8 row save on real Postgres", () => {
       deliveryMorningStartHour: s.deliveryMorningStartHour,
       deliveryMorningEndHour: s.deliveryMorningEndHour,
       retiredFollowUpDays: s.retiredFollowUpDays,
+      lateFeePercent: s.lateFeePercent,
     };
   });
 
@@ -153,6 +154,24 @@ describe.skipIf(!enabled)("AR-8 row save on real Postgres", () => {
     expect((await row()).trustedDeviceDays).toBe(15);
     const restored = await saveSettingRowAction("trustedDeviceDays", before, await revFor("trustedDeviceDays"));
     expect(restored.status).toBe("success");
+  });
+
+  it("refuses a fractional percent and saves a whole one (AR-8 review P2)", async () => {
+    const bad = await saveSettingRowAction("lateFeePercent", 2.5, await revFor("lateFeePercent"));
+    expect(bad.status).toBe("error");
+    if (bad.status === "error") expect(bad.message).toMatch(/whole-number/);
+    const good = await saveSettingRowAction("lateFeePercent", 25, await revFor("lateFeePercent"));
+    expect(good.status).toBe("success");
+    expect((await row()).lateFeePercent).toBe(25);
+  });
+
+  it("shows a domain-writer save in that row's history (AR-8 review P2)", async () => {
+    const saved = await saveSettingRowAction("trustedDeviceDays", 21, await revFor("trustedDeviceDays"));
+    expect(saved.status).toBe("success");
+    const entries = await rowHistoryAction("trustedDeviceDays");
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries[0].to).toContain("21");
+    expect(entries[0].undoable).toBe(false);
   });
 
   it("saves the service area as stored lists and refuses a stale revision", async () => {

@@ -70,8 +70,10 @@ function validateAndConvert(def: SettingRowDef, value: unknown): { ok: true; sto
       return { ok: true, stored: parsed.data };
     }
     case "percent": {
-      const parsed = z.number().finite().min(def.min ?? 0).max(def.max ?? 100).safeParse(value);
-      if (!parsed.success) return fail(`Enter a percent between ${def.min ?? 0} and ${def.max ?? 100}.`);
+      // Both percent settings are whole-number (Int) columns; a fraction
+      // must be refused here with the reason, not fail at the database.
+      const parsed = z.number().finite().int().min(def.min ?? 0).max(def.max ?? 100).safeParse(value);
+      if (!parsed.success) return fail(`Enter a whole-number percent between ${def.min ?? 0} and ${def.max ?? 100}.`);
       return { ok: true, stored: parsed.data };
     }
     case "yesno": {
@@ -198,7 +200,7 @@ export type RowHistoryEntry = {
 /** One setting's changes for the row's History sheet (SETTINGS spec section 5): newest first, at most 20. */
 export async function rowHistoryAction(key: string): Promise<RowHistoryEntry[]> {
   await requireRole("OWNER", "ADMIN");
-  const history = await listSettingsHistory(50);
+  const history = await listSettingsHistory(50, key);
   const out: RowHistoryEntry[] = [];
   for (const row of history) {
     const change = row.changes.find((c) => c.key === key);

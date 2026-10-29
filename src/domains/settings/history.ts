@@ -132,7 +132,19 @@ export type SettingsHistoryRow = {
   undo: { key: string; ok: boolean; reason?: string }[];
 };
 
-export async function listSettingsHistory(limit = 50): Promise<SettingsHistoryRow[]> {
+/**
+ * The three domain-writer rows save through their own domains, whose audit
+ * payloads name the value differently from the settings field. This map
+ * normalizes one such event into the row's change (AR-8 review: a domain
+ * save must appear in its row's History, not report "Not changed yet.").
+ */
+const DOMAIN_AUDIT_FIELDS: Record<string, { key: string; beforeField: string; afterField: string }> = {
+  "settings.retired_follow_up_days": { key: "retiredFollowUpDays", beforeField: "days", afterField: "days" },
+  "settings.approval_limits": { key: "approvalExpiryDays", beforeField: "expiryDays", afterField: "expiryDays" },
+  "security.trusted_device_settings": { key: "trustedDeviceDays", beforeField: "trustedDeviceDays", afterField: "days" },
+};
+
+export async function listSettingsHistory(limit = 50, forKey?: string): Promise<SettingsHistoryRow[]> {
   // AR-8 (spec section 1): the read guards itself, not just its page (same reason as PR #594).
   await requireRole("OWNER", "ADMIN");
   const [rows, current] = await Promise.all([
@@ -167,6 +179,40 @@ export async function listSettingsHistory(limit = 50): Promise<SettingsHistoryRo
         }),
     });
     for (const c of changes) touchedLater.add(c.key);
+  }
+  // Domain-writer saves for the requested row: load their own audit events
+  // and normalize each into that row's change. They are never undoable here
+  // (undo runs through settings.update rows), so the reason says so plainly.
+  if (forKey) {
+    const def = settingRowByKey(forKey);
+    const actions = (def?.auditActions ?? []).filter((a) => DOMAIN_AUDIT_FIELDS[a]?.key === forKey);
+    if (actions.length > 0) {
+      const domainRows = await prisma.auditLog.findMany({
+        where: { action: { in: actions }, entityType: "BusinessSettings", entityId: "singleton" },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        include: { user: { select: { name: true, email: true } } },
+      });
+      for (const r of domainRows) {
+        const map = DOMAIN_AUDIT_FIELDS[r.action];
+        const oldRec = (r.oldValue ?? {}) as Record<string, unknown>;
+        const newRec = (r.newValue ?? {}) as Record<string, unknown>;
+        const changes = describeSettingsChange(
+          { [map.key]: oldRec[map.beforeField] },
+          { [map.key]: newRec[map.afterField] },
+        );
+        if (changes.length === 0) continue;
+        out.push({
+          id: r.id,
+          at: r.createdAt,
+          by: r.user?.name || r.user?.email || "Someone",
+          isUndo: false,
+          changes,
+          undo: changes.map((c) => ({ key: c.key, ok: false, reason: "This change was saved by its own editor, so it cannot be undone from here." })),
+        });
+      }
+      out.sort((a, b) => b.at.getTime() - a.at.getTime());
+    }
   }
   return out;
 }

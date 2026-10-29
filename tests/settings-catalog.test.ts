@@ -80,6 +80,14 @@ describe("catalog coverage", () => {
     expect(OLD_SECTION_REDIRECTS["security"]).toBe("team");
   });
 
+  it("keeps tenant contact retention at or above the erasure floor of 1 month", () => {
+    // eraseExpiredTenantPII refuses any retention below 1 month, so the row
+    // must never offer it (AR-8 review P2).
+    const row = ALL_SETTING_ROWS.find((r) => r.key === "tenantContactRetentionMonths");
+    expect(row).toBeTruthy();
+    expect(row!.min).toBeGreaterThanOrEqual(1);
+  });
+
   it("recommended values equal the schema defaults unless a decision owns them", () => {
     const fields = businessSettingsFields();
     for (const r of ALL_SETTING_ROWS) {
