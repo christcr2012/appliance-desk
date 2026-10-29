@@ -1,7 +1,5 @@
 "use server";
 
-import { businessSettingsSchema } from "@/domains/settings/form-schema";
-
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
@@ -31,79 +29,10 @@ import {
 // one place that talks to the database, per docs/BUSINESS-RULES.md
 // ("money is stored as integer cents, never floating point").
 
-function splitList(value: string): string[] {
-  return value
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
-}
-
 export type SettingsActionState =
   | { status: "idle" }
   | { status: "success"; revision?: string }
   | { status: "error"; message: string };
-
-export async function updateSettingsAction(
-  raw: Record<string, unknown>,
-): Promise<SettingsActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
-
-  const parsed = businessSettingsSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { status: "error", message: "Please fix the highlighted fields." };
-  }
-
-  const {
-    serviceAreaCities,
-    serviceAreaZips,
-    deliveryFeeDollars,
-    installationFeeDollars,
-    removalFeeDollars,
-    haulAwayFeeDollars,
-    lateFeeFlatDollars,
-    sixMonthPrepaySetDollars,
-    sixMonthPrepaySingleDollars,
-    twelveMonthPrepaySetDollars,
-    twelveMonthPrepaySingleDollars,
-    referralRewardDollars,
-    ...rest
-  } = parsed.data;
-
-  try {
-    await updateBusinessSettings(session.user.id, {
-      ...rest,
-      oneTimeDeliveryFeeCents: dollarsToCents(deliveryFeeDollars),
-      oneTimeInstallationFeeCents: dollarsToCents(installationFeeDollars),
-      oneTimeRemovalFeeCents: dollarsToCents(removalFeeDollars),
-      oneTimeHaulAwayFeeCents: dollarsToCents(haulAwayFeeDollars),
-      lateFeeFlatCents: dollarsToCents(lateFeeFlatDollars),
-      sixMonthPrepayDiscountSetCents: dollarsToCents(sixMonthPrepaySetDollars),
-      sixMonthPrepayDiscountSingleCents: dollarsToCents(
-        sixMonthPrepaySingleDollars,
-      ),
-      twelveMonthPrepayDiscountSetCents: dollarsToCents(
-        twelveMonthPrepaySetDollars,
-      ),
-      twelveMonthPrepayDiscountSingleCents: dollarsToCents(
-        twelveMonthPrepaySingleDollars,
-      ),
-      referralRewardCents: dollarsToCents(referralRewardDollars),
-      serviceAreaCities: splitList(serviceAreaCities),
-      serviceAreaZips: splitList(serviceAreaZips),
-    });
-  } catch {
-    return {
-      status: "error",
-      message:
-        "Settings could not be saved. Your changes are still in the form; please try again.",
-    };
-  }
-
-  revalidatePath("/", "layout");
-  revalidatePath("/desk/settings");
-
-  return { status: "success" };
-}
 
 export async function updateAppliancePriceAction(
   applianceTypeId: string,
@@ -606,5 +535,25 @@ export async function signOutStaffEverywhereAction(
       status: "error",
       message: error instanceof Error ? error.message : "That account could not be signed out.",
     };
+  }
+}
+
+/**
+ * AR-8: verify the driving origin from Settings. Same domain writer the
+ * estimates flow uses (owner-only, audited); this is the settings route's
+ * own thin action over it.
+ */
+export async function verifyDrivingOriginAction(
+  address: string,
+  reference: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const session = await requireRole("OWNER");
+  try {
+    const { setVerifiedDrivingOrigin } = await import("@/domains/orders/route-evidence");
+    await setVerifiedDrivingOrigin(session.user.id, address, reference);
+    revalidatePath("/desk/settings");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Origin not verified." };
   }
 }

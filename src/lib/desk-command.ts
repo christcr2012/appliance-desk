@@ -1,6 +1,7 @@
 import { jobRoleAllowsPath } from "@/domains/team/job-role-rules";
 import { isHrefHidden, type FeatureKey } from "@/domains/features/registry";
 import { areaHome, type Area, type ProfileLink } from "@/lib/desk-areas";
+import { ALL_SETTING_ROWS } from "@/domains/settings/catalog";
 
 export type CommandChoice = {
   group: "Go to" | "Do" | "Records" | "Help" | "Recent";
@@ -38,12 +39,20 @@ export function commandLocalChoices(query: string, role: string, screens: readon
     ...a.tabs.map(t => choice(t.label, t.href, "Go to")),
   ]).concat(profile.map(l => choice(l.label, l.href, "Go to")))
     .filter(item => item.label.toLocaleLowerCase().includes(q));
+  // AR-8 (SETTINGS spec section 3): the catalog's labels join the "Go to" group, filtered by role —
+  // settings are OWNER/ADMIN only, and owner-only rows are offered to the owner alone.
+  const settings = (role === "OWNER" || role === "ADMIN")
+    ? ALL_SETTING_ROWS.filter(r =>
+        (r.who === "finance" || role === "OWNER")
+        && (r.label.toLocaleLowerCase().includes(q) || r.keywords.some(k => k.toLocaleLowerCase().includes(q)))
+      ).map(r => choice(r.label, `/desk/settings?section=${r.section}#row-${r.key}`, "Go to"))
+    : [];
   const acts = COMMAND_ACTIONS.filter(a =>
     (!a.restriction || (role === "OWNER" || role === "ADMIN"))
     && usable(a.href)
     && matches(a.label, a.synonyms, q)
   ).map(a => choice(a.label, a.href, "Do"));
-  return [...go, ...acts];
+  return [...go, ...settings, ...acts];
 }
 
 /** Stored record URLs are untrusted after role changes; discard any inaccessible prefix or external URL. */

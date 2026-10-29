@@ -12,6 +12,8 @@ export { Skeleton, ListSkeleton, RecordSkeleton, InboxSkeleton } from "./skeleto
 export { Toaster, toast, dismissToast, clearToasts, plainError, TOAST_MS, TOAST_UNDO_MS, type ToastInput } from "./toaster";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Sheet, type SheetProps } from "./sheet";
+export { SettingRow, PanelRow, RowAnchorFlash, formatRowValue, type SettingRowData } from "./setting-row";
+export { SettingsLayout, SettingsIndex } from "./settings-layout";
 export { ScreenHeader, type ScreenHeaderProps } from "./screen-header";
 export { AreaTabs, currentAreaTab, type AreaTabItem } from "./area-tabs";
 export { StatusTabs, statusTabHref, type StatusTabItem } from "./status-tabs";

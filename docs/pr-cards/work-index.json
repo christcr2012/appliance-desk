@@ -4344,7 +4344,7 @@
       "title": "Application kit, guards and three reference screens (Today, Invoices, Customer record) on the testing app",
       "batch": "AR",
       "dependencies": [],
-      "status": "IN PROGRESS — AR-0a merged PR #601 (2026-10-25); AR-0b building",
+      "status": "MERGED — AR-0a PR #601, AR-0b PR #606 (2026-10-25)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4617,7 +4617,7 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — successor PR of #732 opened 2026-10-28 from main after the CI timeout fix (#737); CI pending",
       "migration": "none",
       "budget": 520,
       "units": [
@@ -5789,7 +5789,7 @@
         "TFA-1",
         "ZONE-1"
       ],
-      "status": "MERGED \u2014 PR #718 (squash e2a1e45e, 2026-10-28); paired build (Lane 4 S1\u2013S3, Lane 5 S4\u2013S6); close-out in progress",
+      "status": "MERGED — PR #718 (squash e2a1e45e, 2026-10-28); paired build (Lane 4 S1–S3, Lane 5 S4–S6); close-out in progress",
       "migration": "additive (OrderServiceChoice, HAUL_AWAY, optionalSeparatedTreatment)",
       "budget": 450,
       "units": [
@@ -6125,11 +6125,14 @@
     {
       "id": "ACCT-1",
       "path": "docs/pr-cards/execution/ACCT-1.json"
-    }
-  ,
+    },
     {
       "id": "AR-3",
       "path": "docs/pr-cards/execution/AR-3.json"
+    },
+    {
+      "id": "AR-8",
+      "path": "docs/pr-cards/execution/AR-8.json"
     }
   ]
 }
