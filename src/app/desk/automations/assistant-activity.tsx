@@ -33,7 +33,7 @@ export async function AssistantActivity({
     take: 26, ...(cursor && /^c[a-z0-9]{10,70}$/i.test(cursor)
       ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
-      id: true, state: true, action: true, targetRef: true, createdAt: true,
+      id: true, state: true, action: true, tool: true, targetRef: true, createdAt: true,
       finishedAt: true, preview: true, verification: true,
       connection: { select: { label: true, userId: true, user: { select: { name: true } } } },
     },
@@ -59,6 +59,8 @@ export async function AssistantActivity({
                   {formatBusinessDate(operation.createdAt)} at {formatBusinessTime(operation.createdAt)} — {operation.connection.label}
                   {" · "}{labels[operation.state] ?? "Not known"}
                 </p>
+                {operation.tool.startsWith("monitor-rule_") ?
+                  <p className="text-sm text-ink-soft">Approved by your monitoring rule</p> : null}
                 {canSeeAll && operation.connection.userId !== userId ?
                   <p className="text-sm text-ink-soft">Connected by {operation.connection.user.name ?? "another team member"}</p> : null}
                 {operation.state === "SUCCEEDED" && observed ?

@@ -129,7 +129,7 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
       userId: ctx.userId, action: "mcp.operation.previewed", entityType: "AgentOperation",
       entityId: created.id, newValue: { action: input.action, targetRef: input.targetRef ?? null },
     } });
-    if (policy.approval === "OWNER_IN_APP") {
+    if (policy.approval === "OWNER_IN_APP" && !input.tool.startsWith("monitor-rule_")) {
       await createTaskInTx(tx, { userId: ctx.userId, role: "OWNER" }, {
         note: "Approve or decline assistant action: " + safe.summary +
           ". Open System health > Assistant activity.",

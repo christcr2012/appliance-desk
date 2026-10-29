@@ -1,13 +1,14 @@
 import type { AutomationHealthRow } from "@/domains/automation/health";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
-import type { listMonitorRules } from "@/domains/agent-control/monitoring";
+import { MONITOR_ACTIONS, type listMonitorRules, type listMonitorConnections } from "@/domains/agent-control/monitoring";
 import { Button } from "@/components/ui";
 import { saveMonitorRuleAction } from "./actions";
 
 type MonitorRows = Awaited<ReturnType<typeof listMonitorRules>>;
-type Props = { rules: MonitorRows; heartbeat: AutomationHealthRow | null; canManage: boolean };
+type Props = { rules: MonitorRows; connections: Awaited<ReturnType<typeof listMonitorConnections>>;
+  heartbeat: AutomationHealthRow | null; canManage: boolean };
 
-export function MonitoringSection({ rules, heartbeat, canManage }: Props) {
+export function MonitoringSection({ rules, connections, heartbeat, canManage }: Props) {
   return (
     <section id="monitoring" aria-labelledby="monitoring-heading" className="my-8 space-y-4 scroll-mt-4">
       <div>
@@ -16,7 +17,7 @@ export function MonitoringSection({ rules, heartbeat, canManage }: Props) {
           They start turned off. An alert becomes one system problem on your To do list,
           not a new task each day.</p>
         <p className="mt-1 text-sm text-ink-soft">Email notices are off until you turn them on
-          and the app&apos;s email controls permit sending. Assistant fixes are not enabled by these settings.</p>
+          and the app&apos;s email controls permit sending. Assistant actions require a separate owner-approved rule and connection.</p>
       </div>
       <div className="rounded-control border border-line bg-surface p-4">
         <h3 className="font-semibold text-ink">Monitoring heartbeat</h3>
@@ -57,6 +58,29 @@ export function MonitoringSection({ rules, heartbeat, canManage }: Props) {
                 <input type="checkbox" name="notifyEmail" defaultChecked={rule.notifyEmail} /> Also email owners
                 (only when email sending is allowed)
               </label>
+              <fieldset className="rounded-control border border-line p-3">
+                <legend className="px-1 text-sm font-semibold">Optional standing assistant approval</legend>
+                <p className="mb-2 text-xs text-ink-soft">Choose one specific maintenance action and one of your active assistant
+                  connections. Once this check alerts, the app may perform that action automatically without asking you again.
+                  Turning off this rule, changing it, or revoking the connection stops pending actions. Starting value: none.</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="text-sm text-ink">Approved action
+                    <select name="autoAction" defaultValue={rule.autoAction ?? ""} className="mt-1 block w-full rounded-control border border-line-strong bg-surface p-2">
+                      <option value="">No automatic action</option>
+                      {MONITOR_ACTIONS.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm text-ink">Approved connection
+                    <select name="autoActionConnectionId" defaultValue={rule.autoActionConnectionId ?? ""}
+                      className="mt-1 block w-full rounded-control border border-line-strong bg-surface p-2">
+                      <option value="">No assistant connection</option>
+                      {connections.map(connection => <option key={connection.id} value={connection.id}>{connection.label}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {!connections.length ? <p className="mt-2 text-xs text-ink-soft">Connect an assistant with maintenance access
+                  before enabling an automatic action.</p> : null}
+              </fieldset>
               <div className="flex flex-wrap gap-3">
                 <Button type="submit" variant="secondary">Save monitoring</Button>
                 <Button type="submit" name="operation" value="restore" formNoValidate variant="secondary">
