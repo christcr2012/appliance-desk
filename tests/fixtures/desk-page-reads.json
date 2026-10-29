@@ -1,0 +1,157 @@
+[
+  {
+    "page": "src/app/desk/activity/page.tsx",
+    "reads": [
+      {
+        "name": "getActivityCount",
+        "guard": "requireRole"
+      },
+      {
+        "name": "getActivityPage",
+        "guard": "requireRole"
+      },
+      {
+        "name": "getActivitySummary",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/billing/reconciliation/page.tsx",
+    "reads": [
+      {
+        "name": "loadBillingReconciliationPageData",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/books/closing/page.tsx",
+    "reads": [],
+    "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
+  },
+  {
+    "page": "src/app/desk/control-center/page.tsx",
+    "reads": [],
+    "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
+  },
+  {
+    "page": "src/app/desk/customers/new/page.tsx",
+    "reads": [],
+    "reason": "Static form shell: renders no data; submissions go through guarded server actions."
+  },
+  {
+    "page": "src/app/desk/dashboard/page.tsx",
+    "reads": [],
+    "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
+  },
+  {
+    "page": "src/app/desk/fleet/page.tsx",
+    "reads": [],
+    "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
+  },
+  {
+    "page": "src/app/desk/growth/page.tsx",
+    "reads": [],
+    "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
+  },
+  {
+    "page": "src/app/desk/inventory/[id]/qr/page.tsx",
+    "reads": [
+      {
+        "name": "getOperationalApplianceById",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/jobs/[id]/work-order/page.tsx",
+    "reads": [
+      {
+        "name": "getWorkOrderDetail",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/leads/new/page.tsx",
+    "reads": [],
+    "reason": "Static form shell: renders no data; submissions go through guarded server actions."
+  },
+  {
+    "page": "src/app/desk/leads/page.tsx",
+    "reads": [
+      {
+        "name": "getLeadWorkspace",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/maintenance/page.tsx",
+    "reads": [
+      {
+        "name": "getMaintenanceRequestsCount",
+        "guard": "requireRole"
+      },
+      {
+        "name": "getMaintenanceRequestsPage",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/more/page.tsx",
+    "reads": [],
+    "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
+  },
+  {
+    "page": "src/app/desk/parts/[id]/page.tsx",
+    "reads": [
+      {
+        "name": "getPartMovementHistory",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/parts/page.tsx",
+    "reads": [
+      {
+        "name": "getAllPartRecords",
+        "guard": "requireRole"
+      },
+      {
+        "name": "getLowStockParts",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/revenue/page.tsx",
+    "reads": [],
+    "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
+  },
+  {
+    "page": "src/app/desk/search/page.tsx",
+    "reads": [
+      {
+        "name": "searchAll",
+        "guard": "requireRole"
+      }
+    ]
+  },
+  {
+    "page": "src/app/desk/tasks/page.tsx",
+    "reads": [
+      {
+        "name": "getTaskAssignees",
+        "guard": "requireRole"
+      },
+      {
+        "name": "getTaskWorkspace",
+        "guard": "requireRole"
+      }
+    ]
+  }
+]

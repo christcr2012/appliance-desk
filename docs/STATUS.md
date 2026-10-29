@@ -1,3 +1,43 @@
+## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
+
+AR-10 is split by risk: AR-10b (the §5 permissions audit) first, AR-10a (the redesign sweep)
+second, each its own PR under the AR-10 packet. Step 1 — server-action inventory
+(tests/server-action-auth-inventory.test.ts): all 118 action files / 500 exported actions are
+guarded or listed with a verified reason (470 directly guarded; 30 fixture entries: 8 desk
+domain-guarded, 22 public/token surfaces), plus a new refusal test for the estimate bearer
+actions (5/5 green on Lane 4 Postgres). Step 2 — desk-page inventory: 161 pages, 141 guard
+themselves, 19 reasoned fixture entries. FINDING 1 (fixed in this PR): /desk/driver relied on
+the layout for its role check while running unguarded reads and a direct query exposing
+today's route with customer names, phones and addresses; the page now calls
+requireRole("OWNER", "ADMIN", "STAFF") itself, matching its domain guard. Step 3 — API-route
+inventory: all 56 routes classified by verified mechanism (session guards, cron secret,
+provider signatures, token checks); exactly 4 reasoned public listings (Better Auth handler,
+OAuth authorize redirect, health, public-scope site media). Step 4 — customer A/B matrix
+(tests/customer-ab-matrix-integration.test.ts): 12 named surfaces, 13/13 green — customer A
+never sees or touches customer B's data, and neither does an archived customer or a staff
+login with no customer record. FINDING 2 (fixed in this PR): the portal resolved the customer
+by login with no archived check on four paths, so an archived customer could still list their
+appliances and start writes; getActiveApplianceOptionsForUser now filters archivedAt: null and
+createMaintenanceRequestForUser / createPickupRequestForUser / updateSmsPreference refuse an
+archived customer with the existing "No customer account found for this login." message.
+(discardUnsentRequestPhoto was reviewed and deliberately left: its cleanup is prefix-bound to
+the caller's own folder, so an archived caller can only ever queue their own unsent photo.)
+Step 5 — e2e/session-deactivation.spec.ts extended: a removed team member's live session is
+refused on the next page load and the next API call, and signing out and in as another
+customer never shows the first customer's data, back button included (browser proof is CI's).
+No guard was weakened anywhere to make an inventory pass. Remaining for AR-10b: preflight,
+push, CI, review, merge. AR-10a follows on its own branch.
+
+## October 29 — AR-7 Books + Taxes on the kit: COMPLETE (PR #753, Lane 4)
+
+AR-7 is done: AR-7a (Books) merged in #744 and AR-7b (Taxes) merged in #753 (squash dce092e7)
+after a three-PR chain (#746, #750, #753) — each successor carried the identical tree onto a
+newer main as shared registry files kept moving; the conflicts were genuine each time and were
+resolved as unions. At the merged head both CI runs were green (the telecom-settings failure
+that blocked #750 did not reproduce), review-gate was green on the combined status, and no tax
+or fee rule changed anywhere in the packet. Lane 4's last card is AR-10, starting with AR-10b
+(the permissions audit, FINAL-SWEEP section 5).
+
 ## October 29 — AR-9 Insights: MERGED (PR #749, Lane 5)
 
 AR-9 is on main (squash merge 3c73bd3b): Customers › Insights and Equipment › Insights as kit

@@ -4594,7 +4594,7 @@
         "AR-12",
         "BA-1"
       ],
-      "status": "IN PROGRESS — AR-7b Taxes PR #753 open, successor of #750 and #746 (AR-7a Books merged in #744, Lane 4, 2026-10-29)",
+      "status": "COMPLETE — AR-7a Books merged in #744, AR-7b Taxes merged in #753 (Lane 4, 2026-10-29)",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -4684,7 +4684,7 @@
         "AR-8",
         "AR-9"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — AR-10b permissions audit started (Lane 4, 2026-10-29)",
       "migration": "none",
       "budget": 700,
       "units": [
@@ -5913,6 +5913,10 @@
     {
       "id": "AR-7",
       "path": "docs/pr-cards/execution/AR-7.json"
+    },
+    {
+      "id": "AR-10",
+      "path": "docs/pr-cards/execution/AR-10.json"
     },
     {
       "id": "AR-9",

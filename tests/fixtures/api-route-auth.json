@@ -1,0 +1,18 @@
+[
+  {
+    "file": "src/app/api/auth/[...all]/route.ts",
+    "reason": "Better Auth's own endpoints (sign in, sign out, session): this route IS the authentication surface, so it is public by design."
+  },
+  {
+    "file": "src/app/api/auth/oauth2/authorize/route.ts",
+    "reason": "OAuth 2.0 authorize endpoint for the MCP server: it only redirects the browser into the sign-in and consent flow; no token is issued without signing in."
+  },
+  {
+    "file": "src/app/api/health/route.ts",
+    "reason": "Liveness probe by design: returns only ok and the build revision \u2014 no database, settings or secret values."
+  },
+  {
+    "file": "src/app/api/site-media/[assetId]/route.ts",
+    "reason": "Public website media: serves only assets stored as public site content (findServableAsset with the public scope); private assets are served by the guarded desk route."
+  }
+]
