@@ -9,8 +9,10 @@ this file is archived in [archive/rules-reset-2026-10-23/](archive/rules-reset-2
    review comments (`gh api repos/christcr2012/appliance-desk/pulls?state=open`). Fix an actionable blocker;
    when checks/review are pending, continue eligible independent work rather than waiting. Never disturb another
    agent's lane. A moving `main` alone does **not** require syncing an open PR.
-2. Read the top of [STATUS.md](STATUS.md) and `npm run work -- start` (names the active card). Trust the repo and
-   GitHub over any chat handoff — handoffs go stale.
+2. Use the [current execution map](MASTER-ROADMAP.md#current-execution-map--october-28-2026), then read only your lane’s latest STATUS entry.
+   Run `npm run work -- start <PACKET-ID>` for your assigned packet, or `npm run work -- route <CARD-ID>`
+   if it has none. Bare `work start` uses a shared legacy fallback, **not your lane assignment**.
+   Trust current main and open PRs over old status prose; do not change the shared activeExecution to claim a lane.
 3. Read [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) before hosted acceptance: use the seeded testing app,
    never repoint the public site or seed the production database. Check the deployed SHA and provider mode.
 4. Check [OWNER-CHECKLIST.md](OWNER-CHECKLIST.md) for rows that have become ready (a release landed, an account was

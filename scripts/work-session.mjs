@@ -42,7 +42,7 @@ export function doctor(root) {
 
 export function continuation(packet, head) {
   if (!/^[a-f0-9]{40}$/.test(head)) throw new Error('Invalid local head');
-  return `Resume christcr2012/appliance-desk from actual current main. Local checkpoint ${head} is not proof of GitHub merge or CI. Reconcile open PRs, concurrent work and unresolved reviews first. Read AGENTS.md, docs/SESSION-START.md and the current handoff at the top of docs/STATUS.md; run npm run work -- start. Next recorded outcome: ${packet.outcome} (${packet.id}); refresh the packet against current code and owner inputs. Follow the approved scope, scoped-blocker recovery, safeguards and outcome-led PR sizing; complete the bundle workload requested in the current owner prompt (if any), without counting PRs, helpers or repairs as bundles. Update the existing execution packet/card and STATUS inside the implementation PR, keep implementation separate from real acceptance, and finish eligible session obligations, then end with a verified checkpoint and compact permanent handoff.`;
+  return `Resume christcr2012/appliance-desk from actual current main. Local checkpoint ${head} is not proof of GitHub merge or CI. Reconcile open PRs, concurrent work and unresolved reviews first. Read AGENTS.md, docs/SESSION-START.md and the current handoff at the top of docs/STATUS.md; run npm run work -- start ${packet.id}. Next recorded outcome: ${packet.outcome} (${packet.id}); refresh the packet against current code and owner inputs. Follow the approved scope, scoped-blocker recovery, safeguards and outcome-led PR sizing; complete the bundle workload requested in the current owner prompt (if any), without counting PRs, helpers or repairs as bundles. Update the existing execution packet/card and STATUS inside the implementation PR, keep implementation separate from real acceptance, and finish eligible session obligations, then end with a verified checkpoint and compact permanent handoff.`;
 }
 
 export function main(args, root = ROOT, execute = spawnSync, output = console.log) {
@@ -52,10 +52,10 @@ export function main(args, root = ROOT, execute = spawnSync, output = console.lo
   if (action === 'install') return installWorktree(rest, root, execute, output);
   const fresh = rest.includes('--fresh');
   const ids = rest.filter(s => s !== '--fresh');
-  if (ids.length > 1 || (fresh && action !== 'verify')) throw new Error('Select one packet; --fresh is valid only with verify');
+  if (ids.length > (action === 'read' ? 2 : 1) || (fresh && action !== 'verify')) throw new Error('Select one packet; --fresh is valid only with verify');
   const index = JSON.parse(readFileSync(resolve(root, 'docs/pr-cards/work-index.json'), 'utf8'));
   if (action === 'read') {
-    const packet = loadPacket(root, index);
+    const packet = loadPacket(root, index, ids[1]);
     output(referenceExcerpt(packet, ids[0], root)); return 0;
   }
   if (action === 'route') {
@@ -86,7 +86,10 @@ export function main(args, root = ROOT, execute = spawnSync, output = console.lo
     output(JSON.stringify({ ...summary, note: 'Bounded local check history only; no CI duration or customer acceptance inferred.' }, null, 2)); return 0;
   }
   const packet = loadPacket(root, index, ids[0]);
-  if (action === 'start') { output(renderPacket(packet)); return 0; }
+  if (action === 'start') {
+    if (!ids.length) output('Shared legacy fallback: ' + packet.id + '. This is not a lane assignment. Select your assigned packet with work start <ID>, or discover its card with work route <ID>; reconcile current main and open PRs before building.');
+    output(renderPacket(packet)); return 0;
+  }
   if (action === 'prompt') { output(continuation(packet, git(root, ['rev-parse', 'HEAD']))); return 0; }
   if (action === 'drift') {
     git(root, ['cat-file', '-e', packet.baseline + '^{commit}']);

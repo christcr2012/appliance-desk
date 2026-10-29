@@ -1,3 +1,12 @@
+## October 28 — Implementation guidance repair (in progress, not merged)
+
+Branch `ai/chatgpt/implementation-clarity-20261028`: reconciled the source/PR execution map in MASTER-ROADMAP;
+removed stale approval/default/preview/PR-quota guidance; added bounded implementation routes to inactive remaining
+cards. Startup now warns that its global K-CASH fallback is not a lane assignment; numbered reads can select the
+same explicit packet as startup. No application behavior or release/provider settings changed. Local navigation,
+index/link, safety and quick-check evidence plus exact-head CI/review must be recorded in the PR before merge.
+Next: agents use their assigned card/packet and existing in-flight PRs; do not rebuild completed work.
+
 ## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
 
 Slices 1 and 2 merged (PRs #727, #728). Slice 3 finishes AR-2: a due task's

@@ -16,3 +16,21 @@ services.
 
 ## Progress
 Not started.
+
+## Implementation route (reconciled October 28, 2026)
+
+This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
+only when absent; inspect the final prerequisite exports once before coding.
+
+1. After MCP-5’s final exports exist, implement MONITORING sections 1–2 before its screen. Reuse the
+   existing system-issues sweep, automation schedule and issue upsert; do not add another scheduler.
+2. Use the spec’s `(ruleKey, Denver slot)` uniqueness plus the repository’s transaction/actor conventions.
+   Two workers for one rule/day must yield one run and at most one operation. Fixtures: failures 1 then 2
+   alert, another within cooldown does not notify, recovery happens once, DST keeps the correct date key.
+3. Reuse MCP-5’s dispatch/rechecks for auto actions, never call native repair writers directly. Test revoking
+   the chosen connection or disabling the rule after queueing: no side effect. Email failure records evidence
+   without creating a new alert incident. Default disabled, email off, no auto action.
+4. Add heartbeat from the existing schedule; `/api/health` is the spec’s process/revision signal, never proof
+   the database or monitoring is healthy. Keep the external uptime step as optional owner acceptance.
+5. Implement the named monitoring integration/policy tests and the settings browser journey. Add each actual
+   setting/control to the AR-8/MCP-8 catalog integration when that export is available.
