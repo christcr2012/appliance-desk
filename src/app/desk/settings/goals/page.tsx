@@ -6,8 +6,8 @@ import { parseDollarInput, formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { businessDateKey } from "@/lib/business-date";
 import { CapabilityError } from "@/domains/capabilities";
 import {
-  clearMonthlyGoal, getAlertSettings, getGoalProgress, GoalError, setAlertSettings, setMonthlyGoal,
-  DEFAULT_IDLE_ALERT_DAYS, type GoalMetric,
+  clearMonthlyGoal, getAlertSettings, getGoalProgress, getPaceSettings, GoalError, setAlertSettings, setMonthlyGoal, setPaceSettings,
+  DEFAULT_GOAL_BEHIND_PERCENT, DEFAULT_GOAL_QUIET_DAYS, DEFAULT_IDLE_ALERT_DAYS, type GoalMetric,
 } from "@/domains/goals";
 
 export const metadata = { title: "Goals and alerts", robots: { index: false, follow: false } };
@@ -59,6 +59,25 @@ async function saveAlerts(form: FormData) {
   redirect(`${PAGE}?saved=1`);
 }
 
+async function savePace(form: FormData) {
+  "use server";
+  const session = await requireRole("OWNER", "ADMIN");
+  const restore = form.get("operation") === "restore";
+  try {
+    await setPaceSettings(session.user.id, {
+      quietDays: restore ? DEFAULT_GOAL_QUIET_DAYS : Number(form.get("quietDays")),
+      behindPercent: restore ? DEFAULT_GOAL_BEHIND_PERCENT : Number(form.get("behindPercent")),
+    });
+  } catch (e) {
+    if (e instanceof GoalError || e instanceof CapabilityError) fail(e.message);
+    throw e;
+  }
+  revalidatePath(PAGE);
+  revalidatePath("/desk/today");
+  revalidatePath("/desk/money");
+  redirect(`${PAGE}?saved=1`);
+}
+
 const STATUS_TEXT = {
   MET: "Goal reached.",
   ON_PACE: "On pace.",
@@ -70,7 +89,7 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
   await requireRole("OWNER", "ADMIN");
   const params = await searchParams;
   const now = new Date();
-  const [progress, alerts] = await Promise.all([getGoalProgress(now), getAlertSettings()]);
+  const [progress, alerts, paceSettings] = await Promise.all([getGoalProgress(now), getAlertSettings(), getPaceSettings()]);
   const monthKey = businessDateKey(now).slice(0, 7);
   const show = (metric: GoalMetric, n: number) => (metric === "cash" ? formatMoney(n) : String(n));
   return (
@@ -125,6 +144,24 @@ export default async function GoalsPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-wrap gap-3">
           <button type="submit" className="min-h-11 rounded-md border px-4 py-2 font-medium">Save warnings</button>
           <button name="operation" value="restore" type="submit" formNoValidate className="min-h-11 rounded-md border px-4 py-2">Restore recommended (idle {DEFAULT_IDLE_ALERT_DAYS} days, utilization off)</button>
+        </div>
+      </form>
+
+      <form action={savePace} className="space-y-4 rounded-md border p-4">
+        <h2 className="font-medium">When a goal shows as behind</h2>
+        <div className="space-y-1">
+          <label htmlFor="quietDays" className="block font-medium">Quiet days at the start of a month (days)</label>
+          <input id="quietDays" name="quietDays" type="number" min={0} max={15} step={1} required defaultValue={paceSettings.quietDays} className="w-24 rounded-md border bg-surface p-2" />
+          <p className="text-xs text-ink-soft">Days at the start of a month before a goal can show as behind. Starting value {DEFAULT_GOAL_QUIET_DAYS}, because the first week is too early to judge.</p>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="behindPercent" className="block font-medium">Behind below this share of the expected pace (percent)</label>
+          <input id="behindPercent" name="behindPercent" type="number" min={50} max={100} step={1} required defaultValue={paceSettings.behindPercent} className="w-24 rounded-md border bg-surface p-2" />
+          <p className="text-xs text-ink-soft">A goal shows Behind when you&apos;re below this share of where you&apos;d expect to be by today. Starting value {DEFAULT_GOAL_BEHIND_PERCENT}%.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" className="min-h-11 rounded-md border px-4 py-2 font-medium">Save pace settings</button>
+          <button name="operation" value="restore" type="submit" formNoValidate className="min-h-11 rounded-md border px-4 py-2">Restore recommended ({DEFAULT_GOAL_QUIET_DAYS} days, {DEFAULT_GOAL_BEHIND_PERCENT}%)</button>
         </div>
       </form>
       <p className="text-xs text-ink-soft">Owners and admins who are allowed to change business settings can use this page.</p>
