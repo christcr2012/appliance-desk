@@ -14,7 +14,7 @@ begins the next slice … one for each batch … but also from PR to PR").
 | Already delivered | the card's work exists, with persisted behavior and a passing test | remove it from the card, keep any remainder, cite the PR/test. A symbol alone is not proof. |
 | Compatible extension | a new enum value or required field the contract already allows | include it in validators, allowlists, exhaustive branches and tests. |
 | Semantic | different money ownership, tax rule, status transition, lock order, signed snapshot, provider replay, data exposure, schema invariant | don't guess. Write the precise question and a proposed safe contract change with its tests as a dated amendment; get it reviewed in the current PR before coding that slice. Continue other approved work. |
-| Owner-only | new price or promise, paid resource, legal wording, live activation, destructive production write | keep the gate and its `IN-xx`; build the default-off/manual path if designed; never pretend it is done. |
+| Owner-only | paid resource, live activation, destructive production write | Keep the affected operation gated under AGENTS section 1. Missing business/legal defaults follow its “Decisions never block building” rule; never invent an owner answer. |
 
 ## A. Start of every PR — drift check (one bounded pass, ~10 minutes)
 
@@ -46,7 +46,7 @@ job): a PR that changes `src/` or `prisma/` must also change `docs/STATUS.md` an
 1. **The card tells the truth.** Record implemented behavior and actual pending gates; use `MERGED (#n)` only after
    observing the merge, never as anticipated evidence. Any part that was split off or deferred is
    named with its new owner card.
-2. **Successor card updated.** If the next card exists: set its "Baseline inspected" to this merge SHA, fix paths and
+2. **Successor card updated.** If the next card exists: record the actually inspected baseline (the current PR cannot know its future merge SHA), fix paths and
    signatures this PR changed, and list any low-risk review findings carried to it (finding, why safe, proving test).
    If it doesn't exist yet (JIT), put the same facts in `docs/designs/CHANGES-SINCE-DESIGN.md` so its author finds them.
 3. **Shared contract log only when something downstream changes.** Add a short dated entry to
@@ -77,7 +77,7 @@ next substantive PR. Do not create a bookkeeping-only PR or require a separate p
 4. **Check the next batch against today's code** before its first card: run its design's "Verify before starting"
    table; classify each difference with the kinds table; amend the design (dated) or record "no drift" in STATUS. Write
    (or refresh) the next batch's first card from the result.
-5. **Release remains scheduled:** only the daily checked `main`→`live` workflow promotes production. Do not trigger
+5. **Release remains scheduled:** only the checked scheduled release chain in `.github/RELEASE-POLICY.md` promotes production. Do not trigger
    a manual batch release, request a Vercel preview or wait for deployment to merge a green development PR. Record
    actual released/provider evidence separately when observed; [release policy](../../.github/RELEASE-POLICY.md).
 6. **Queue and status:** MASTER-ROADMAP (batch complete, next batch), `work-index.json`, STATUS, and one

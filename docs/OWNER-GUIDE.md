@@ -393,7 +393,7 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 ![Website editor](owner-guide/screenshots/website.png)
 
-**What it's for.** **More → Website** (owner and admin). Pick a page, a section, then the item; on a computer you see the list, the editor and the real page side by side, and clicking words, a button or the home photo in the preview jumps to it. **Nothing is live until you publish**: *Save draft* keeps work private, **Review & publish** shows each change before and after, every link's destination and the business facts used, and **History** lists every live version (*Put in draft* copies one back; nothing is erased). Facts stay in Settings: type `{phone}`, `{email}`, `{businessName}`, `{city}` and the real values fill in. Links inside sentences are `[words](/pricing)` or `[words](https://…)`. Pictures need a short description (or marked decoration), a focus point and the wide/square/phone crops; promotions have an on/off switch and start and end times in Colorado time. The home heading can highlight a phrase in fresh green. The address check on the home page stores nothing and sends nothing.
+**What it's for.** **More → Website** (owner and admin). Pick a page, a section, then the item; on a computer you see the list, the editor and the real page side by side, and clicking words, a button or the home photo in the preview jumps to it. **Nothing is live until you publish**: *Save draft* keeps work private, **Review & publish** shows each change before and after, every link's destination and the business facts used, and **History** lists every live version (*Put in draft* copies one back; nothing is erased). Facts stay in Settings: type `{phone}`, `{email}`, `{businessName}`, `{city}` and the real values fill in. Links inside sentences can point to a page on your website or to a complete https address. Pictures need a short description (or marked decoration), a focus point and the wide/square/phone crops; promotions have an on/off switch and start and end times in Colorado time. The home heading can highlight a phrase in fresh green. The address check on the home page stores nothing and sends nothing.
 
 **Change without code.** Every word, button, link and picture on the public site except legal wording (privacy, terms, accessibility). Prices, phone, email, address and service area always come from Settings and the price list.
 
@@ -404,6 +404,29 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 **What it's for.** `/launch` is an interest list, not a booking. Add `?utm_source=instagram` or `?utm_source=facebook` to a link to see which brings signups. Before enabling emails enter the mailing address and a monitored inbox, read the three emails shown, tick Enable and save; the first goes on the next daily run and the next two at least 3 and 4 days later. Untick to pause; **Stop emails** removes one person.
 
 **If it fails.** An email marked Needs review may be in progress; check Resend's sending activity before resending anything and do not reset the sequence. "Sent" means the provider accepted it, not that it reached an inbox.
+
+## System health — Assistant activity and approvals (MCP-5, pending checked merge)
+
+Open **Desk → More → System health → Assistant activity** to see the requests
+from assistants you connected. Each action is named and dated, with a status:
+Waiting for you, Approved, Working, Done, Declined, Expired or Not sure. Only
+you, the OWNER, can approve or decline a waiting action. Before approving, read
+the **Current** and **After** columns in the confirmation dialog, including
+any storage-use note. **Approve** authorizes one attempt; it does not itself
+run the request. **Decline** ends it without changing the target.
+
+Your Today list gets a follow-up task when an owner-approved action is waiting.
+Only the original assistant request can execute the approved action, within
+its short expiration window. If the target changed or the assistant lost
+permission, the app refuses to run it and a new preview is required.
+
+**If it fails.** **Not sure** means an action may already have affected the
+target. Check the actual target and any system issue under System health, not
+the assistant's message alone. The nightly check tries to verify the result
+but **never repeats** a possibly completed action. You can disconnect the
+assistant under **Connect an AI assistant** to revoke future access. These
+controls are in development until MCP-5 has passed GitHub CI, review and
+the protected merge; they are not yet available in the released app.
 
 ## System health — backups you can trust (MCP-2; pending checked release)
 

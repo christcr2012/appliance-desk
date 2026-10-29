@@ -1,14 +1,57 @@
 # MASTER ROADMAP — scope and ordered work coverage
 
-Audited baseline: main after #541, October 24, 2026 (documents re-checked against the code, Vercel and Neon that day). [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
+Audited baseline: main after #541, October 24, 2026 (documents re-checked against the code, Vercel and Neon that day). [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). Historical scope tables follow the current execution map.
 
 ## Where things stand
 
 Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through T, S, COM-L, W (except W-11/12/13), V, F2,
 K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
-Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), AR app-wide redesign plus BA/LD/CU engines (designed, awaiting go-ahead),
-W-11/12/13 (owner-gated), MCP-1…11. The full audited list is "What truly remains" in [PLAN](PLAN.md). **New 2026-10-23:** ACC (accounts and sign-in) is built and merged (#544–#548).
+Current implementation routing and observed evidence are in the execution map below. The older scope tables
+preserve coverage and design order; their JIT labels are not current completion claims.
+
+## Current execution map — October 28, 2026
+
+Inspected main `f11608ea` plus open PRs #717, #732, #733, #734. This is source/PR evidence only;
+no hosted/provider/owner acceptance was inferred. Refresh only your row at a substantive PR boundary.
+An old STATUS heading saying “pause” applies to its dated session; it does not cancel later approved work.
+Lane numbers below are observed handoffs, not new assignments. Preserve another agent’s unmerged work;
+check their branch as well as open PRs before claiming a card. No PR is evidence of merge until observed.
+
+| Work / observed lane | Observed state | Implementer’s next step |
+|---|---|---|
+| AR foundations / Lane 1 | AR-0, AR-1, AR-11, AR-12 landed (#606, #720, #691, #716/#702/#695) | Reuse `src/components/kit/index.ts`; no kit rebuild. |
+| AR-2 Today | Three slices landed #727–729 | Reuse inline approval actions and optimistic task completion. |
+| AR-3 Money / Lane 4 | Landed #730, close-out #731 | Do not rebuild payments or bill actions. |
+| AR-4 Customers | Rentals landed #723; b/c/d remain on main; a remote AR-4b prep commit exists | Reconcile Leads branch before claiming b. Complete b/c/d independently per [card](pr-cards/AR-4.md). |
+| AR-5 Schedule / Lane 6 handoff | Card says not started | Build a then b; offline copy is its own privacy boundary. |
+| AR-6 Equipment / Lane 6 handoff | Card says not started | Fleet/record then purchasing screens per [card](pr-cards/AR-6.md); do not wait for unrelated Customers screens. |
+| AR-7 Books/Taxes / Lane 4 | Books PR #733 open; Taxes remains | Preserve in-flight card; reconcile current read models before Taxes. |
+| AR-8 Settings / Lane 6 | PR #732 open (successor of #724/#726) | Finish existing review/CI; keep catalog’s exports for MCP-8/AR-13. |
+| AR-9 Insights / Lane 5 | PR #734 open | Finish review/CI; declared dependencies are not proof all AR-4/6/7 acceptance is done. |
+| AR-13 notifications | AR-1/2 source prerequisites landed | Event hooks → per-person reads → bell/preferences → retention, per [card](pr-cards/AR-13.md). |
+| AR-10 sweep / Lane 4 handoff | Final sweep waits for relevant screen conversions | Security inventory (10b) can start independently now; do not delete a still-used component. |
+| PORTAL-1 | Approved; card not started, scheduled after desk units | Preserve customer isolation, existing Pay now and Spanish review gates. |
+| MCP / Lane 2 | MCP-1 #602, MCP-2 #611, MCP-3 #692, MCP-4 #704 landed; MCP-5 #717 open | Finish #717, then 6/7 independently, then 8/11, then 9 with all actual prerequisites. |
+| Books engine / Lane 3 | BA-1…3 built; BA-4/5 absorbed by AR-7 | No duplicate engine or second Books home. |
+| Tax/compliance | TFA-3 #646, ZONE-1 #604, TAXBEN-2 #714/#715, FEETAX-1 #718 and FEETAX-2 #684 landed | Reuse rules/readiness; remaining professional/provider proof stays separate. |
+| Operations / Lane 7 | Mileage landed #712; parked scope is in ROADMAP | Do not revive deliberately parked work from an old checkbox. |
+| Older commercial/telecom work | COM-N, M-2C, M-3 and O-3B marked built in cards/index | Reconcile individual evidence if affected; do not restart from October 23’s list. |
+| BP; W-11/12/13 | Proposed or specifically gated/deferred | Preserve existing scope/prerequisites; choose another approved outcome. |
+
+### A finite start for each implementing model
+
+1. Pick the assigned row, inspect its current code and open PR/branch once. Use explicit `work start <PACKET-ID>`;
+   if unregistered, `work route <CARD-ID>` locates the approved scope. Do not change global `activeExecution`.
+2. Read the card plus only its cited spec sections, current kit exports and affected functions/tests. Write a
+   short acceptance-to-file/test table in that same card. Do not reread the full STATUS, PLAN or design archive.
+3. Implement the first complete outcome. Keep existing data writers; add only named read models/fixes.
+   Include necessary fakes, permissions, route/shard/backup registries in the same change. Missing paths in an
+   older spec are drift to reconcile, not permission to invent a parallel subsystem.
+4. Before publishing: focused regression, applicable quick checks; exact-head CI/review per AGENTS. Use real
+   Git ancestry or the supported transfer route. Never copy a merged-looking tree onto an old PR branch.
+5. Keep source implemented, merged, deployed and externally accepted distinct. Update only the selected card’s
+   evidence; do not rewrite another lane’s active card or keep reselecting the shared legacy fallback.
 
 **New required implementer reading:** October 13
 [56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)
@@ -44,7 +87,7 @@ procedure and re-entry trigger. CPA/counsel review restricts affected real use,
 
 ## Implementing agent — paste this
 
-> Run `npm run work -- start`; read `docs/SESSION-START.md`, the top STATUS handoff and the current card (plus its resume note `docs/pr-cards/<ID>.progress.md` if present). Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch blocking findings/failures, assign only safe low-risk follow-ups under PLAYBOOK, refresh exact-head gates, and merge when authorized and green. When finite CI is the only dependency, keep the turn active with PLAYBOOK’s bounded quiet completion wait. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
+> Run `npm run work -- start <assigned-packet-ID>` (or `work route <card-ID>` when no packet exists); read `docs/SESSION-START.md`, the top STATUS handoff and the current card (plus its resume note `docs/pr-cards/<ID>.progress.md` if present). Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, continue eligible independent approved work under AGENTS; do not overlap another agent’s lane. Batch blocking findings/failures, assign only safe low-risk follow-ups under PLAYBOOK, refresh exact-head gates, and merge when authorized and green. Treat pending CI as a checkpoint under AGENTS, not a reason to poll or rebuild a PR. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
 
 ## Work coverage
 

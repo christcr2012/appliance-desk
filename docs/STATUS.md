@@ -8,6 +8,24 @@ old closing page moves in), an Equipment value page without the manual forms, an
 accountant page holding the full journal and account forms unchanged. No accounting rules change.
 PR #733 is open; CI at the exact head decides, then auto-merge.
 
+## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
+
+Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:
+measured locally, most browser tests run at 50–85% of 30s, so CI contention pushed the longest ones over
+the timeout and Playwright's context teardown made the failures look like browser crashes, rotating across
+shards and branches. `playwright.config.ts` now sets 60s / 10s; no test or assertion changed. AR-8
+(PR #732, review complete and green) is held unmerged by the owner's decision until this fix is proven
+across repeated green CI runs, then it lands by the normal rule.
+
+## October 28 — Implementation guidance repair (in progress, not merged)
+
+Branch `ai/chatgpt/implementation-clarity-20261028`: reconciled the source/PR execution map in MASTER-ROADMAP;
+removed stale approval/default/preview/PR-quota guidance; added bounded implementation routes to inactive remaining
+cards. Startup now warns that its global K-CASH fallback is not a lane assignment; numbered reads can select the
+same explicit packet as startup. No application behavior or release/provider settings changed. Local navigation,
+index/link, safety and quick-check evidence plus exact-head CI/review must be recorded in the PR before merge.
+Next: agents use their assigned card/packet and existing in-flight PRs; do not rebuild completed work.
+
 ## October 28 — AR-2 slice 3: task Done in place with Undo (PR #729) — AR-2 complete when merged
 
 Slices 1 and 2 merged (PRs #727, #728). Slice 3 finishes AR-2: a due task's
@@ -3740,3 +3758,22 @@ payment evidence or approval to collect; all such paths remain disabled.
 **Next: W-22C5 reviewed immutable per-agreement tax-inclusive freeze and
 server send/sign gates**, followed by W-22 checkout/manual payment, credit,
 refund/cancellation and delivery acceptance. IN-79 open; W-23 blocked.
+
+## October 28 — MCP-4 direct read diagnostics (PR #704; merge reconciliation)
+
+The nine privacy-safe MCP reads, authorization checks, continuation cursors and
+verified backup evidence were implemented and reviewed in PR #704. All Codex
+findings were answered and resolved; GitHub's exact-source CI and review-gate
+passed. This status note is deliberately kept outside the top-of-file latest
+updates so other lane agents can prepend their new work without creating the
+same merge conflict. Merge and deployed acceptance remain separate from checks.
+
+## October 28 — MCP-5 integration after MCP-4 merged (PR #717)
+
+MCP-4 merged under protected green checks as PR #704, squash `f11608ea`.
+MCP-5 action-journal now integrates the merged diagnostics and current main
+into its feature branch, preserving the approved MCP-5 scopes, preview/owner
+approval, execution journal and readback tools. This integration resolves
+the tool registry and read test alongside newer app routes. Exact-head CI
+and review are required again; no live provider actions or production data
+were changed.
