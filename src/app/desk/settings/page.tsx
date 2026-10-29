@@ -477,7 +477,9 @@ panels["appliancePricesPanel"] = (
       <div>
         {spanishDrafts.length > 0 && (
           <div className="mb-6">
-            <SpanishDraftsEditor sources={spanishDrafts} />
+            <Card title="Draft translations" description="Spanish copy alongside English source">
+              <SpanishDraftsEditor sources={spanishDrafts} />
+            </Card>
           </div>
         )}
         {spanishReview && (

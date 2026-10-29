@@ -41,6 +41,14 @@ test.describe("W-26 safely stored customer language and owner draft translations
     const context = await browser.newContext({ storageState: ownerFile });
     const page = await context.newPage();
     try {
+      // AR-12: the Spanish wording panel shows only when the Spanish documents
+      // feature is switched on — switch it on the way an owner would.
+      await page.goto("/desk/settings/features");
+      const spanishSwitch = page.getByRole("switch", { name: "Spanish documents" });
+      if ((await spanishSwitch.getAttribute("aria-checked")) !== "true") {
+        await spanishSwitch.click();
+        await expect(spanishSwitch).toHaveAttribute("aria-checked", "true");
+      }
       await page.goto("/desk/settings?section=notifications");
       // AR-8: the Spanish review and drafts open from their panel row.
       await page.getByRole("button", { name: /Spanish wording/ }).click();

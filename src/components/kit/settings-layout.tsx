@@ -122,7 +122,11 @@ export function SettingsLayout({ attention, children }: { attention: SettingsSec
               className="w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-ink"
             />
           </label>
-          {query.trim() ? <SearchResults q={query} /> : <SectionNav current={current} attention={attention} />}
+          {query.trim() ? <SearchResults q={query} /> : (
+            <nav aria-label="Settings sections">
+              <SectionNav current={current} attention={attention} />
+            </nav>
+          )}
         </div>
         {pathname !== "/desk/settings" || searchParams.get("section") ? (
           <Link href="/desk/settings" className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-ink lg:hidden">
