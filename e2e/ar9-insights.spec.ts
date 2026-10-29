@@ -28,7 +28,9 @@ test.describe("AR-9 insights as owner", () => {
     // "New leads" also names the chart's legend item and its data-table
     // column, so the stat is pinned to its <dt> term element.
     await expect(page.getByRole("term").filter({ hasText: "New leads" })).toBeVisible();
-    await expect(page.getByRole("term").filter({ hasText: "Pipeline value" })).toBeVisible();
+    // Pipeline value is not a stat-strip item; it is its own line under
+    // the strip, so it is pinned to that paragraph.
+    await expect(page.locator("p").filter({ hasText: "Pipeline value" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: /^Worth a call/ })).toBeVisible();
 
     await page.goto("/desk/inventory");
