@@ -37,7 +37,7 @@ export default async function ReturnDetailPage({
   const stepKeys = result.status === "READY" ? filingStepKeys(result.packet.steps) : [];
   const saved = period.entryProgress && typeof period.entryProgress === "object" &&
     !Array.isArray(period.entryProgress) ? period.entryProgress as Record<string, unknown> : {};
-  return <main className="space-y-6">
+  return <div className="space-y-6">
     <RecordHeader
       back={{ href: "/desk/sales-tax/returns", label: "All returns" }}
       title={`${period.filingAccount.name}: ${period.filingAccount.kind.replaceAll("_", " ")}`}
@@ -66,12 +66,12 @@ export default async function ReturnDetailPage({
       actOnKey={actOnKey}
     />}
     {result.status === "BLOCKED" ? <section className="space-y-2 rounded-lg border border-destructive p-4">
-      <h3 className="font-semibold">Not ready to file</h3>
+      <h2 className="font-semibold">Not ready to file</h2>
       <ul className="list-disc space-y-1 pl-5 text-sm">{result.problems.map((p,i) => <li key={i}>{p}</li>)}</ul>
       <p className="text-sm">Do not rely on guessed totals. Correct the source evidence first.</p>
     </section> : <>
       <section className="space-y-4">
-        <h3 className="font-semibold">Tax return worksheet {period.status === "FILED" ? "(frozen original)" : "(live preview)"}</h3>
+        <h2 className="font-semibold">Tax return worksheet {period.status === "FILED" ? "(frozen original)" : "(live preview)"}</h2>
         <p className="text-sm">Basis: {result.packet.basis} · {result.packet.zeroReturn ? "Zero return; still requires filing" : "Tax return"}
           {" · "}<Link className="underline" href={"/desk/sales-tax/returns/" + periodId + "/csv"}>Download private CSV worksheet</Link>
         </p>
@@ -108,7 +108,7 @@ export default async function ReturnDetailPage({
         </section>}
       </section>
       {period.status === "OPEN" && <section className="space-y-3 rounded-lg border border-border p-4">
-        <h3 className="font-semibold">Copy exact values to the official filing screen</h3>
+        <h2 className="font-semibold">Copy exact values to the official filing screen</h2>
         {result.packet.account.accountNumber && <FilingCopyField label="Filing account number" value={result.packet.account.accountNumber} />}
         {result.packet.rows.map(r => <div key={r.jurisdictionId} className="rounded border border-border p-3">
           <p className="font-semibold">{r.name}</p>
@@ -127,7 +127,7 @@ export default async function ReturnDetailPage({
         <p className="text-xs text-muted-foreground">Copying values never files a form or pays the government.</p>
       </section>}
       {period.status === "OPEN" && <section className="space-y-4">
-        <h3 className="font-semibold">Step-by-step filing instructions</h3>
+        <h2 className="font-semibold">Step-by-step filing instructions</h2>
         {owner ? <TaxActionForm action={saveReturnProgressAction} title="Save checklist (not filing)" submitLabel="Save progress">
           <input type="hidden" name="periodId" value={periodId} />
           {result.packet.steps.map((step,i) => <label key={i} className="flex items-start gap-3 text-sm">
@@ -159,6 +159,6 @@ export default async function ReturnDetailPage({
         </TaxActionForm>}
       </section>}
     </>}
-  </main>;
+  </div>;
 }
 

@@ -73,9 +73,9 @@ export default async function DeliveryAreaPage({
       </div>
 
       <section aria-labelledby="check-heading" className="space-y-3">
-        <h3 id="check-heading" className="font-semibold">
+        <h2 id="check-heading" className="font-semibold">
           Check an address
-        </h3>
+        </h2>
         <div className="grid gap-4 md:grid-cols-2">
           <form method="get" className="space-y-2 rounded-xl border border-border bg-card p-4">
             <label htmlFor="check-address" className="block text-sm font-medium">
@@ -177,9 +177,9 @@ export default async function DeliveryAreaPage({
       </section>
 
       <section aria-labelledby="places-heading" className="space-y-3">
-        <h3 id="places-heading" className="font-semibold">
+        <h2 id="places-heading" className="font-semibold">
           Places within 50 miles of Greeley, and any place an address has reached
-        </h3>
+        </h2>
         <div
           tabIndex={0}
           role="region"

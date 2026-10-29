@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { notFound, redirect } from "next/navigation";
@@ -28,14 +29,14 @@ export default async function FilingReturnsPage({
   type Row = (typeof rows)[number];
   const status = (row: Row) =>
     `${row.status === "FILED" ? `Filed ${row.filedOn ? day(row.filedOn) : ""}` : "Not yet filed"}${row.amendments.length > 0 ? " · Amendment needs review" : ""}`;
-  return <main className="space-y-5">
+  return <div className="space-y-5">
     <div className="flex items-start gap-1.5">
-      <ScreenHeader
-        title="Returns"
-        primary={{ kind: "link", label: "Download calendar (ICS)", href: "/desk/sales-tax/returns/calendar.ics" }}
-      />
+      <ScreenHeader title="Returns" />
       <span className="pt-1.5"><InfoTip term="tax-returns" /></span>
     </div>
+    <p className="-mt-2 text-sm">
+      <Link className="underline" href="/desk/sales-tax/returns/calendar.ics">Download calendar (ICS)</Link>
+    </p>
     <DataTable<Row>
       caption="Tax filing returns"
       rows={rows}
@@ -65,5 +66,5 @@ export default async function FilingReturnsPage({
     {!rows.length && (
       <p className="text-sm text-muted-foreground">Configure an account in Setup before generating returns.</p>
     )}
-  </main>;
+  </div>;
 }

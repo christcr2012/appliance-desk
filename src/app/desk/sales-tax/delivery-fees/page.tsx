@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { DataTable, EmptyState, ScreenHeader, type Column } from "@/components/kit";
+import { EmptyState, ScreenHeader } from "@/components/kit";
 import { TaxActionForm } from "../setup/forms";
 import { retryPendingDeliveryFees } from "./actions";
 
@@ -17,12 +17,6 @@ const date = (value: Date | null) => value ? value.toISOString().slice(0, 10) : 
 
 const customerName = (row: WaitingRow) => row.agreement?.customer.companyName || row.agreement?.customer.user.name ||
   row.invoice?.customer.companyName || row.invoice?.customer.user.name || "Customer record";
-
-const columns: Column<WaitingRow>[] = [
-  { key: "customer", header: "Customer", cell: customerName },
-  { key: "delivery", header: "Delivered", cell: (row) => date(row.deliveredOn) },
-  { key: "sale", header: "Sale date", cell: (row) => date(row.saleOn) },
-];
 
 export const metadata = { title: "Delivery fees waiting on you", robots: { index: false, follow: false } };
 
@@ -92,20 +86,22 @@ export default async function PendingDeliveryFeesPage() {
         <p className="rounded-lg border border-border p-5">Nothing waiting.</p>
       ) : sections.map(section => (
         <section key={section.id} className="space-y-3 rounded-xl border border-border p-4">
-          <h3 className="text-lg font-semibold">{section.title}</h3>
+          <h2 className="text-lg font-semibold">{section.title}</h2>
           <p className="text-sm text-muted-foreground">
             {section.stats.count} record{section.stats.count === 1 ? "" : "s"} waiting.
             {section.stats.oldest ? " Oldest delivery: " + date(section.stats.oldest) + "." : ""}
           </p>
           <Link className="inline-block font-medium underline" href={section.href}>{section.label}</Link>
-          <DataTable<WaitingRow> rows={section.rows} columns={columns} rowKey={(row) => row.id}
-            caption={section.title} empty={<EmptyState title="No records waiting in this group" />}
-            mobileCard={(row) => (
-              <div className="space-y-1">
-                <p className="font-semibold">{customerName(row)}</p>
-                <p className="text-sm text-muted-foreground">Delivered {date(row.deliveredOn)} · Sale date {date(row.saleOn)}</p>
-              </div>
-            )} />
+          {section.rows.length === 0 ? <EmptyState title="No records waiting in this group" /> : (
+            <ul className="flex flex-col gap-2">
+              {section.rows.map(row => (
+                <li key={row.id} className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3">
+                  <span className="font-semibold">{customerName(row)}</span>
+                  <span className="text-sm text-muted-foreground">Delivered {date(row.deliveredOn)} · Sale date {date(row.saleOn)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           {section.stats.count > section.rows.length && (
             <p className="text-sm text-muted-foreground">
               Showing the oldest {section.rows.length} of {section.stats.count} records.

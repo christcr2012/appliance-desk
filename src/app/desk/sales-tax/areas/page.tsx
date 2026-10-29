@@ -30,14 +30,14 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
   const next = new URLSearchParams();
   if (status) next.set("status", status);
   if (areas.nextCursor) next.set("cursor", areas.nextCursor);
-  return <main className="space-y-8">
+  return <div className="space-y-8 px-1 sm:px-0">
     <div className="flex items-start gap-1.5">
       <ScreenHeader title="Areas & rates" />
       <span className="pt-1.5"><InfoTip term="tax-areas" /></span>
     </div>
     <p className="text-sm text-muted-foreground">Current service-address tax matches and owner-reviewed tax-area rules.</p>
     <section id="addresses" className="space-y-3">
-      <h3 className="font-semibold">Service-address tax review</h3>
+      <h2 className="font-semibold">Service-address tax review</h2>
       <StatusTabs
         label="Filter tax areas"
         current={status ?? "ALL"}
@@ -79,7 +79,7 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
       {areas.nextCursor && <Link className="text-sm underline" href={`/desk/sales-tax/areas?${next.toString()}`}>Next addresses</Link>}
     </section>
     <section id="rates" className="space-y-3">
-      <h3 className="font-semibold">Official rate review and undo</h3>
+      <h2 className="font-semibold">Official rate review and undo</h2>
       {!attention.length && <p className="text-sm text-muted-foreground">No pending/scheduled official rate decisions.</p>}
       {attention.map(row => <div className="space-y-2 rounded-lg border border-border p-4" key={row.kind === "SCHEDULED" ? row.rateVersionId : row.observationId}>
         <p className="font-semibold">{row.jurisdictionName}: {formatRate(row.oldRateMilliPercent ?? 0)} → {formatRate(row.newRateMilliPercent)}</p>
@@ -97,7 +97,7 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
       </div>)}
     </section>
     <section id="sources" className="space-y-3">
-      <h3 className="font-semibold">Official source health</h3>
+      <h2 className="font-semibold">Official source health</h2>
       <ul className="space-y-3">
         {sources.map(s => <li key={s.id} className="rounded-lg border border-border p-3 text-sm">
           <p className="font-semibold">{s.label}: {s.active ? "Watching" : "Inactive"}</p>
@@ -118,7 +118,7 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
       </ul>
     </section>
     <section id="jurisdictions" className="space-y-3">
-      <h3 className="font-semibold">Tax areas and recorded rates</h3>
+      <h2 className="font-semibold">Tax areas and recorded rates</h2>
       <ul className="divide-y divide-border rounded border border-border">
         {jurisdictions.map(j => <li key={j.id} className="p-3 text-sm">
           <b>{j.name}</b> — {j.reviewStatus} · {j.rates[0] ? `${formatRate(j.rates[0].rateMilliPercent)} (since ${j.rates[0].effectiveFrom.toISOString().slice(0, 10)}, ${j.rates[0].source})` : "No rate recorded"}
@@ -127,10 +127,10 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
       <Link href="/desk/sales-tax/taxability" className="text-sm underline">Review owner-confirmed taxability and manual rate history</Link>
     </section>
     <section id="delivery-fees" className="space-y-3">
-      <h3 className="font-semibold">Delivery fees</h3>
+      <h2 className="font-semibold">Delivery fees</h2>
       <p className="text-sm text-muted-foreground">Deliveries waiting on a fee decision or this year&rsquo;s fee amount.</p>
       <Link href="/desk/sales-tax/delivery-fees" className="text-sm underline">Open delivery fees waiting on you</Link>
     </section>
-  </main>;
+  </div>;
 }
 

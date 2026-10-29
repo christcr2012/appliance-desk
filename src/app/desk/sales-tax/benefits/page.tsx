@@ -27,7 +27,7 @@ function RowSection({ row }: { row: BenefitRow }) {
   return (
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-base font-semibold text-foreground">{row.title}</h3>
+        <h2 className="text-base font-semibold text-foreground">{row.title}</h2>
         <p className="text-lg font-semibold text-foreground">
           {row.amountCents !== null ? formatMoney(row.amountCents) : "—"}
         </p>
@@ -114,9 +114,9 @@ export default async function TaxBenefitsPage({
 
       {policy.status === "SIGNED" ? (
         <section className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-base font-semibold text-foreground">
+          <h2 className="text-base font-semibold text-foreground">
             Capitalization policy — signed
-          </h3>
+          </h2>
           <p className="mt-1 text-sm">
             The {year} policy was signed on {policy.signedOn} and is stored in{" "}
             <Link href="/desk/paperwork" className="underline">
@@ -139,9 +139,9 @@ export default async function TaxBenefitsPage({
         </TaxActionForm>
       ) : (
         <section className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-base font-semibold text-foreground">
+          <h2 className="text-base font-semibold text-foreground">
             Capitalization policy — not signed yet
-          </h3>
+          </h2>
           <p className="mt-1 text-sm">
             The {year} policy is ready. Only the owner can sign it — signing
             stores it in Business records.

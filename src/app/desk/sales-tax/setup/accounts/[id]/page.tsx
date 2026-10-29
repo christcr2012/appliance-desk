@@ -35,7 +35,7 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
     !account.firstPeriodStart && "First filing period",
     account.kind !== "RETAIL_DELIVERY_FEE_RETURN" && account.basis === "UNDECIDED" && "CPA-confirmed reporting basis",
   ].filter(Boolean);
-  return <main className="max-w-3xl space-y-5">
+  return <div className="max-w-3xl space-y-5">
     <RecordHeader
       back={{ href: "/desk/sales-tax/setup", label: "Back to tax setup" }}
       title={`Filing account: ${account.name}`}
@@ -127,6 +127,6 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
       <input type="hidden" name="id" value={account.id}/>
       <p className="text-sm">Renewed with Colorado? Mark it here and the expiration moves to {nextLicenseExpiry(account.licenseExpiresOn).toISOString().slice(0, 10)}, the end of the next odd year. The renewal reminders follow the new date.</p>
     </TaxActionForm>}
-  </main>;
+  </div>;
 }
 

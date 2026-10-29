@@ -38,7 +38,7 @@ export default async function SalesTaxRootPage() {
   const decisionsOpen = await listDecisions(actor.user.id, { area: "TAX" })
     .then((cards) => cards.filter((card) => card.state !== "CONFIRMED").length)
     .catch(() => null);
-  return <main className="space-y-8">
+  return <div className="space-y-8">
     <div className="flex items-start gap-1.5">
       <ScreenHeader title="Taxes" />
       <span className="pt-1.5"><InfoTip term="taxes-overview" /></span>
@@ -139,5 +139,5 @@ export default async function SalesTaxRootPage() {
         <Link href="/desk/compliance" className="text-sm font-medium underline">Open Compliance</Link>
       </div>
     </section>
-  </main>;
+  </div>;
 }

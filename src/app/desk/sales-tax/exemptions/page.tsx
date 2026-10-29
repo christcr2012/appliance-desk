@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { getTaxExemptionsPage } from "@/domains/tax/workspace-queries";
 import { DataTable, EmptyState, ScreenHeader } from "@/components/kit";
 
@@ -11,17 +12,24 @@ export default async function TaxExemptionsPage({
   const session = await requireRole("OWNER", "ADMIN");
   const { cursor, open } = await searchParams;
   // The kit table's desktop row click sets ?open=<id> (its side-panel convention).
-  // Certificates have no side panel — the certificate page IS the destination, as
-  // it was before the redesign — so an ?open= link goes straight there.
-  if (open) redirect(`/desk/sales-tax/exemptions/${encodeURIComponent(open)}`);
+  // Certificates have no page of their own — the destination IS the customer's
+  // tax exemptions panel, as it was before the redesign — so an ?open= link goes
+  // straight there. An unknown id just renders the list.
+  if (open) {
+    const certificate = await prisma.customerTaxExemption.findUnique({
+      where: { id: open }, select: { customerId: true },
+    });
+    if (certificate) redirect(`/desk/customers/${certificate.customerId}?tab=billing#tax-exemptions`);
+  }
   const records = await getTaxExemptionsPage(session.user.id, { cursor, limit: 25 });
   type Row = (typeof records.rows)[number];
   const validity = (row: Row) =>
     `Valid from ${day(row.validFrom)}${row.expiresOn ? ` through ${day(row.expiresOn)}` : " · No expiry recorded"}${row.revokedAt ? ` · Revoked ${day(row.revokedAt)}` : ""}`;
-  return <main className="space-y-5">
+  return <div className="space-y-5">
     <ScreenHeader title="Exemptions" />
     <p className="text-sm text-muted-foreground">
-      Certificates and verification history stay private — manage them from each customer&apos;s tax exemptions panel.
+      Certificates and verification history stay private — this list never creates a second certificate record.
+      To add, replace, revoke or verify one, open the existing customer tax exemptions panel.
     </p>
     <DataTable<Row>
       caption="Customers who don't pay tax"
@@ -46,5 +54,5 @@ export default async function TaxExemptionsPage({
         </div>
       )}
     />
-  </main>;
+  </div>;
 }

@@ -47,7 +47,7 @@ export default async function TaxSetupPage() {
   ]);
   const address = settings.businessTaxAddress && typeof settings.businessTaxAddress==="object" &&
     !Array.isArray(settings.businessTaxAddress) ? settings.businessTaxAddress as Record<string,unknown> : {};
-  return <main className="space-y-7">
+  return <div className="space-y-7">
     <ScreenHeader title="Setup" />
     {!owner && <p role="status" className="rounded border border-border p-3">Read only. Ask the owner to approve changes to tax setup.</p>}
     <section aria-labelledby="more-setup" className="space-y-2">
@@ -191,6 +191,6 @@ export default async function TaxSetupPage() {
         {source.lastError && <p role="status" className="text-destructive">Source failure: {source.lastError}</p>}
       </li>)}</ul>
     </section>
-  </main>;
+  </div>;
 }
 

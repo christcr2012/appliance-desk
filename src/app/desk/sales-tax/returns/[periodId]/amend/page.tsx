@@ -39,7 +39,7 @@ export default async function AmendmentPage({ params }: {
     },
   });
   if (!period) throw new Error("Filing period not found.");
-  return <main className="space-y-6">
+  return <div className="space-y-6">
     <RecordHeader
       back={{ href: "/desk/sales-tax/returns/" + periodId, label: "Original return" }}
       title={`Amendments — ${period.filingAccount.name}`}
@@ -49,7 +49,7 @@ export default async function AmendmentPage({ params }: {
     {!owner && <p className="text-sm text-muted-foreground">View only — ask the owner to decide or file amendments.</p>}
     {!period.amendments.length && <p className="text-sm">No detected amendments for this period.</p>}
     {period.amendments.map(a => <section key={a.id} className="space-y-3 rounded-lg border border-border p-4">
-      <h3 className="font-semibold">Amendment #{a.sequence} — {a.status}</h3>
+      <h2 className="font-semibold">Amendment #{a.sequence} — {a.status}</h2>
       <p className="text-sm">Detected {a.detectedAt.toISOString().slice(0,10)} · Additional tax {"$"}{money(a.additionalTaxCents)}</p>
       {a.status !== "OPEN" && <p className="text-sm">Resolved {a.filedOn?.toISOString().slice(0,10) ?? "outside portal"}
         {" · "}{a.confirmationNumber ?? a.notes ?? "See owner audit evidence"}</p>}
@@ -108,6 +108,6 @@ export default async function AmendmentPage({ params }: {
         </>}
       </>}
     </section>)}
-  </main>;
+  </div>;
 }
 

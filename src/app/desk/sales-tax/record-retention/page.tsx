@@ -19,7 +19,7 @@ export default async function RecordRetentionPage() {
   await requireRole("OWNER");
   const years = await getRecordRetentionYears();
   return (
-    <main className="mx-auto max-w-2xl space-y-5">
+    <div className="mx-auto max-w-2xl space-y-5">
       <ScreenHeader title="How long to keep records" back={{ href: "/desk/purchases", label: "Back to purchases" }} />
       <p className="text-sm text-ink-soft">
         Owner-only setting. Receipts for appliances and parts are kept at least this long.
@@ -38,6 +38,6 @@ export default async function RecordRetentionPage() {
           <button name="operation" value="restore" type="submit" formNoValidate className="rounded-md border px-4 py-2">Restore {RECOMMENDED_RETENTION_YEARS}-year default</button>
         </div>
       </form>
-    </main>
+    </div>
   );
 }
