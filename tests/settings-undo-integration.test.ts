@@ -1,4 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { vi } from "vitest";
+// AR-8: listSettingsHistory now guards itself with requireRole (SETTINGS spec section 1), so this
+// suite stands in an owner session the way the history page does.
+vi.mock("@/lib/session", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/session")>()),
+  requireRole: async () => ({ user: { id: "history-test-owner", role: "OWNER" } }),
+}));
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { updateBusinessSettings } from "@/domains/settings";
@@ -99,6 +106,48 @@ describe.skipIf(!enabled)("settings undo on real Postgres", () => {
     expect(history.find((h) => h.id === first.id)!.undo.find((u) => u.key === "referralRewardCents")?.ok).toBe(false);
     const s = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     expect(s.referralRewardCents).toBe(base + 500);
+  });
+
+  it("refuses an admin undoing the owner's change to an owner-only setting (AR-8 review P1)", async () => {
+    const admin = await prisma.user.create({
+      data: { id: `u-adm-${tag}`, name: "Admin", email: `admin-${tag}@example.test`, role: "ADMIN", emailVerified: true },
+    });
+    const s0 = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    try {
+      await updateBusinessSettings(ownerId, { tenantContactRetentionMonths: s0.tenantContactRetentionMonths + 3 });
+      const change = await lastUpdateRow();
+      await expect(undoSettingsChange(admin.id, change.id, "tenantContactRetentionMonths")).rejects.toThrow(/Only the owner/);
+      const s = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+      expect(s.tenantContactRetentionMonths).toBe(s0.tenantContactRetentionMonths + 3);
+      // The owner can still undo it.
+      await undoSettingsChange(ownerId, change.id, "tenantContactRetentionMonths");
+      const s2 = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+      expect(s2.tenantContactRetentionMonths).toBe(s0.tenantContactRetentionMonths);
+    } finally {
+      await prisma.businessSettings.update({ where: { id: "singleton" }, data: { tenantContactRetentionMonths: s0.tenantContactRetentionMonths } });
+      await prisma.auditLog.deleteMany({ where: { userId: admin.id } });
+      await prisma.user.delete({ where: { id: admin.id } }).catch(() => undefined);
+    }
+  });
+
+  it("refuses an undo that would restore an invalid delivery window (AR-8 review P2)", async () => {
+    const s0 = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    try {
+      await updateBusinessSettings(ownerId, { deliveryMorningStartHour: 8, deliveryMorningEndHour: 12 });
+      await updateBusinessSettings(ownerId, { deliveryMorningEndHour: 14 });
+      const endChange = await lastUpdateRow();
+      await updateBusinessSettings(ownerId, { deliveryMorningStartHour: 13 });
+      // Undoing the end change would restore 8..12's end (12) against a 13 start.
+      await expect(undoSettingsChange(ownerId, endChange.id, "deliveryMorningEndHour")).rejects.toThrow(/start before it ends/);
+      const s = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+      expect(s.deliveryMorningStartHour).toBe(13);
+      expect(s.deliveryMorningEndHour).toBe(14);
+    } finally {
+      await prisma.businessSettings.update({
+        where: { id: "singleton" },
+        data: { deliveryMorningStartHour: s0.deliveryMorningStartHour, deliveryMorningEndHour: s0.deliveryMorningEndHour },
+      });
+    }
   });
 
   it("refuses staff and fields outside the undoable list", async () => {
