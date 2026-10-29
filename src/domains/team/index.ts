@@ -8,6 +8,7 @@ import { CAPABILITY_KEYS, isCapability } from "@/domains/capabilities";
 import { cleanName, normalizePhone, noticeWarning } from "@/domains/account";
 import { applyCapabilityLimits, assertJobRoleFits, JobRoleError } from "./job-roles";
 import { forgetTrustedDevicesInTx } from "@/domains/security/trusted-devices";
+import { purgeNotificationsForAccess } from "@/domains/notifications";
 import {
   ACCESS_LEVEL_LABEL, INVALID_LINK_MESSAGE, INVITATION_LINK_DAYS_DEFAULT, TeamError, assertMayInvite,
   assertMayRemoveOrRestore, clampLinkDays, effectiveInvitationState, hashInvitationCode, invitationExpiry,
@@ -408,6 +409,9 @@ export async function changeAccessLevel(ownerId: string, targetId: string, newLe
     await tx.session.deleteMany({ where: { userId: targetId } });
     // ACC-6: changing someone's access level forgets their remembered devices, so they prove a code again.
     await forgetTrustedDevicesInTx(tx, targetId);
+    // AR-13: the job role is cleared with the level, so the new level alone decides which
+    // notifications the person may keep; the rest are deleted here (audited by the purge).
+    await purgeNotificationsForAccess(tx, { actorId: ownerId, userId: targetId, role: level as Role, screens: null });
     await tx.auditLog.create({
       data: { userId: ownerId, action: "team.role_change", entityType: "User", entityId: targetId, oldValue: { role: target.role }, newValue: { role: level, allowed: level === "ADMIN" ? [...ticked] : [] } },
     });
