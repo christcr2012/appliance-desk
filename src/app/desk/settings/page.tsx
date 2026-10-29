@@ -575,7 +575,7 @@ panels["appliancePricesPanel"] = (
               }
               const href = typeof def.editor === "object" && "panelHref" in def.editor ? def.editor.panelHref : undefined;
               return (
-                <PanelRow key={def.key} label={def.label} what={def.what} summary={summaries[def.key]} href={href}>
+                <PanelRow key={def.key} anchorId={`row-${def.key}`} label={def.label} what={def.what} summary={summaries[def.key]} href={href}>
                   {href ? undefined : panels[def.key]}
                 </PanelRow>
               );

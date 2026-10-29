@@ -290,17 +290,18 @@ export function SettingRow({ row }: { row: SettingRowData }) {
   );
 }
 
-export function PanelRow({ label, what, summary, href, children }: {
+export function PanelRow({ label, what, summary, href, anchorId, children }: {
   label: string;
   what: string;
   summary?: string;
   href?: string;
+  anchorId?: string;
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   if (href) {
     return (
-      <Link href={href} className="flex min-h-14 items-center justify-between gap-3 border-b border-line py-2 last:border-b-0">
+      <Link id={anchorId} href={href} className="flex min-h-14 items-center justify-between gap-3 border-b border-line py-2 last:border-b-0">
         <span>
           <span className="block font-semibold text-ink">{label}</span>
           <span className="block text-sm text-ink-soft">{summary || what}</span>
@@ -310,7 +311,7 @@ export function PanelRow({ label, what, summary, href, children }: {
     );
   }
   return (
-    <div className="border-b border-line py-2 last:border-b-0">
+    <div id={anchorId} className="border-b border-line py-2 last:border-b-0">
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex min-h-14 w-full items-center justify-between gap-3 text-left">
         <span>
           <span className="block font-semibold text-ink">{label}</span>

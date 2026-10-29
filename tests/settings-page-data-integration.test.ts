@@ -38,6 +38,19 @@ describe.skipIf(!enabled)("AR-8 settings page data on real Postgres", () => {
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { shownFeatures: shownBefore } });
   });
 
+  it("resolves late-fee recommendations by decision subject, not alias order", async () => {
+    const page = await getSettingsPage("rentals");
+    const flat = page.rows.find((r) => r.def.key === "lateFeeFlatCents");
+    // LATE-FEE-AMOUNT owns the flat fee and recommends a number of cents;
+    // the IN-84 wording-review card (recommended "AS_BUILT") must never
+    // leak into this row through its legacy alias on LATE-FEE-AMOUNT.
+    expect(typeof flat!.recommended).toBe("number");
+    const grace = page.rows.find((r) => r.def.key === "lateFeeGraceDays");
+    const percent = page.rows.find((r) => r.def.key === "lateFeePercent");
+    expect(grace!.recommended).toBe(10);
+    expect(percent!.recommended).toBe(0);
+  });
+
   it("shapes the rentals rows for the owner: display, revision, editable", async () => {
     const page = await getSettingsPage("rentals");
     const relocation = page.rows.find((r) => r.def.key === "relocationFeeCents");

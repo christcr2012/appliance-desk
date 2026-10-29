@@ -105,14 +105,20 @@ export async function getSettingsPage(sectionId: SettingsSectionId): Promise<Set
   const decisionById = new Map<string, { state: string; recommended: unknown }>();
   if (decisionIds.size > 0 && HAS_DECISIONS_CENTER) {
     const cards = await listDecisions(session.user.id).catch(() => []);
-    for (const card of cards) {
-      const ids = [card.id, ...(card.legacyIds ?? [])];
-      for (const id of ids) {
-        if (decisionIds.has(id)) {
-          decisionById.set(id, {
-            state: card.state,
-            recommended: (card.recommended as { value?: unknown } | undefined)?.value,
-          });
+    // Two passes: a card whose own id is requested wins that id; another
+    // card's legacy alias only fills ids no exact card claimed. (LATE-FEE-
+    // AMOUNT aliases IN-84, which is also a wording-review card's own id —
+    // one pass in list order silently overwrote one with the other.)
+    for (const exactPass of [true, false]) {
+      for (const card of cards) {
+        const ids = exactPass ? [card.id] : (card.legacyIds ?? []);
+        for (const id of ids) {
+          if (decisionIds.has(id) && !decisionById.has(id)) {
+            decisionById.set(id, {
+              state: card.state,
+              recommended: (card.recommended as { value?: unknown } | undefined)?.value,
+            });
+          }
         }
       }
     }
