@@ -27,11 +27,16 @@ export default async function MoneyIncomePage({
   const records = await getRevenueRecords(source, monthOnly, params.page, now, params.q);
 
   const columns: Column<IncomeRow>[] = [
+    // Date first: the kit table wraps the FIRST cell in its panel link,
+    // so the first cell must be plain text. The customer cell carries
+    // its own links (statement + invoices) and cannot be the wrapped one
+    // (nested anchors split in the browser and fail axe target-size).
+    { key: "date", header: "Date", cell: (r) => formatShortDate(r.createdAt, now) },
     {
       key: "customer", header: "Customer",
       cell: (r) => (
         <div>
-          <Link href={`/desk/billing/customer/${r.customerId}`} className="font-bold text-ink hover:underline">
+          <Link href={`/desk/billing/customer/${r.customerId}`} className="inline-flex min-h-6 items-center font-bold text-ink hover:underline">
             {r.customerName}
           </Link>
           <p className="mt-1 text-sm font-normal text-ink-soft">
@@ -41,7 +46,7 @@ export default async function MoneyIncomePage({
                   <span key={invoice.id}>
                     {index > 0 && ", "}
                     <Link
-                      className="font-medium text-ink underline-offset-4 hover:underline"
+                      className="inline-flex min-h-6 items-center font-medium text-ink underline-offset-4 hover:underline"
                       href={`/desk/billing/customer/${r.customerId}/invoice/${invoice.id}`}
                     >
                       Invoice #{invoice.invoiceNumber}
@@ -57,7 +62,7 @@ export default async function MoneyIncomePage({
           {r.heldCents > 0 ? (
             <p className="mt-1 text-sm font-normal text-ink-soft">
               {formatMoney(r.heldCents)} held for your decision{" "}
-              <Link href="/desk/billing/held-payments" className="font-medium text-ink underline-offset-4 hover:underline">
+              <Link href="/desk/billing/held-payments" className="inline-flex min-h-6 items-center font-medium text-ink underline-offset-4 hover:underline">
                 Decide
               </Link>
             </p>
@@ -65,7 +70,6 @@ export default async function MoneyIncomePage({
         </div>
       ),
     },
-    { key: "date", header: "Date", cell: (r) => formatShortDate(r.createdAt, now) },
     { key: "basis", header: "Basis", cell: (r) => (r.method ? `${r.basis} · ${r.method}` : r.basis) },
     { key: "amount", header: "Amount", cell: (r) => formatMoney(r.amountCents) },
   ];
@@ -147,11 +151,11 @@ export default async function MoneyIncomePage({
       {records.meta.totalPages > 1 ? (
         <div className="flex items-center gap-3 text-sm">
           {records.meta.page > 1 ? (
-            <Link href={pageHref(records.meta.page - 1)} className="font-bold text-primary hover:underline">Previous</Link>
+            <Link href={pageHref(records.meta.page - 1)} className="inline-flex min-h-6 items-center font-bold text-primary hover:underline">Previous</Link>
           ) : null}
           <span>Page {records.meta.page} of {records.meta.totalPages}</span>
           {records.meta.page < records.meta.totalPages ? (
-            <Link href={pageHref(records.meta.page + 1)} className="font-bold text-primary hover:underline">Next</Link>
+            <Link href={pageHref(records.meta.page + 1)} className="inline-flex min-h-6 items-center font-bold text-primary hover:underline">Next</Link>
           ) : null}
         </div>
       ) : null}

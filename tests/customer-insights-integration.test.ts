@@ -5,7 +5,7 @@ vi.mock("@/lib/session", () => ({
 }));
 import { prisma } from "@/lib/prisma";
 import { getCustomerInsights } from "@/domains/insights/customers";
-import { getRevenueDashboard } from "@/domains/billing";
+import { businessMonthBounds } from "@/lib/business-date";
 
 // AR-9 / CU-3: customer insights against fixed fixtures (March 2027, a
 // month no other suite writes to). Global all-time figures are checked for
@@ -94,8 +94,26 @@ describe.skipIf(!enabled)("customer insights (AR-9 / CU-3)", () => {
     expect(greeley?.count).toBeGreaterThanOrEqual(2);
   });
 
-  it("average rent is the dashboard MRR over active customers, rounded to cents", async () => {
-    const [insights, dashboard] = await Promise.all([getCustomerInsights(NOW), getRevenueDashboard(NOW)]);
-    expect(insights.avgMonthlyRentCents).toBe(Math.round(dashboard.mrrCents / insights.activeNow));
+  it("average rent is the period-end cohort's line rent over its customers, rounded to cents", async () => {
+    const insights = await getCustomerInsights(NOW);
+    // Independent recomputation of the cohort rule for NOW's month:
+    // agreements started before the month's end and not closed before
+    // it (pre-active statuses excluded), rent summed from their lines.
+    // (Not the revenue dashboard: its MRR reads today's ACTIVE set,
+    // which mixes periods — the bug Codex caught on PR #740.)
+    const { end } = businessMonthBounds(NOW);
+    const cohort = await prisma.rentalAgreement.findMany({
+      where: {
+        startDate: { lt: end },
+        OR: [{ closedAt: null }, { closedAt: { gte: end } }],
+        status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] },
+      },
+      select: { lines: { select: { monthlyPriceCents: true } } },
+    });
+    const cohortRent = cohort.reduce(
+      (sum, a) => sum + a.lines.reduce((lineSum, l) => lineSum + l.monthlyPriceCents, 0),
+      0,
+    );
+    expect(insights.avgMonthlyRentCents).toBe(Math.round(cohortRent / insights.activeNow));
   });
 });

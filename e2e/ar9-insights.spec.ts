@@ -20,16 +20,20 @@ test.describe("AR-9 insights as owner", () => {
     await page.goto("/desk/customers");
     await page.getByRole("link", { name: "Insights", exact: true }).first().click();
     await expect(page).toHaveURL(/\/desk\/customers\/insights/);
-    await expect(page.getByRole("heading", { name: "Leads" })).toBeVisible();
+    // Heading names match by substring, and the h2s carry InfoTip buttons
+    // (their labels join the heading's accessible name) — pin level 2 and
+    // anchor the start so "Where leads come from" (h3) and friends cannot
+    // collide with the section titles.
+    await expect(page.getByRole("heading", { level: 2, name: /^Leads/ })).toBeVisible();
     await expect(page.getByText("New leads", { exact: true })).toBeVisible();
     await expect(page.getByText(/Pipeline value/)).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Worth a call" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: /^Worth a call/ })).toBeVisible();
 
     await page.goto("/desk/inventory");
     await page.getByRole("link", { name: "Insights", exact: true }).first().click();
     await expect(page).toHaveURL(/\/desk\/inventory\/insights/);
-    await expect(page.getByRole("heading", { name: "Value and cost" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "All appliances: value and cost" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: /^Value and cost/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "All appliances: value and cost", exact: true })).toBeVisible();
 
     await page.goto("/desk/money/income");
     await expect(page.getByText(/matching records · .* total/)).toBeVisible();
@@ -39,7 +43,8 @@ test.describe("AR-9 insights as owner", () => {
     const landings: [string, RegExp][] = [
       ["/desk/growth", /\/desk\/customers\/insights/],
       ["/desk/fleet", /\/desk\/inventory\/insights/],
-      ["/desk/fleet?costs=missing&page=2", /\/desk\/inventory\/insights\?costs=missing&page=2/],
+      // The redirect preserves both params; their order in the URL is not a contract.
+      ["/desk/fleet?costs=missing&page=2", /\/desk\/inventory\/insights\?(costs=missing&page=2|page=2&costs=missing)/],
       ["/desk/revenue", /\/desk\/money\/income/],
       ["/desk/revenue?source=refunds&scope=all", /\/desk\/money\/income\?scope=all&source=refunds|\/desk\/money\/income\?source=refunds&scope=all/],
       ["/desk/reports", /\/desk\/money$/],
