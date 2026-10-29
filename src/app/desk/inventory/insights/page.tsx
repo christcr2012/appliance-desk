@@ -42,10 +42,14 @@ export default async function EquipmentInsightsPage({
   const reportColumns: Column<ApplianceProfitability>[] = [
     {
       key: "appliance", header: "Appliance",
+      // Plain text: the kit table wraps the first cell in its panel link
+      // (rowHref below points at the same appliance record). A second
+      // link here nested anchors, which browsers split into two
+      // same-named links (the fleet spec's page-2 strict-mode failure).
       cell: (r) => (
-        <Link href={`/desk/inventory/${r.applianceId}`} className="font-bold text-ink hover:underline">
+        <span className="font-bold text-ink">
           {r.assetNumber} — {r.applianceTypeName}
-        </Link>
+        </span>
       ),
     },
     { key: "rent", header: "Estimated rent (line price split evenly)", cell: (r) => formatMoney(r.revenueCents) },
