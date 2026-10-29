@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { communicationsPolicySchema } from "@/domains/messaging/communications-policy";
 import { RECOMMENDED_TELECOM_ALERT_RULES } from "@/domains/messaging/telecom-alerts";
 import { TelecomSettingsControls } from "../telecom-controls";
+import { TelecomReportSection } from "./telecom-report";
 
 export const dynamic = "force-dynamic";
 
@@ -143,12 +144,14 @@ export default async function TelecomSettingsPage() {
     </section>}
     {canEdit && textSettings && reporting && <section aria-labelledby="service-reporting" className="rounded-card border border-line p-4">
       <h2 id="service-reporting" className="text-lg font-semibold">Cost-per-customer report</h2>
-      <p className="mt-1 text-sm text-ink-soft">Controls the what-if forecast and the history needed on Reports → Communications cost evidence. Only the Owner
+      <p className="mt-1 text-sm text-ink-soft">Controls the what-if forecast and the history needed in the Communications cost evidence section below. Only the Owner
         can change these. They change what is shown, nothing is sent or booked.</p>
       <ServiceReportingForm scenarios={reporting.forecastScenarios} minDays={reporting.minForecastCustomerDays} minSample={reporting.minRateSample}
         version={textSettings.policyVersion}
         isRecommended={JSON.stringify(reporting)===JSON.stringify(RECOMMENDED_SERVICE_REPORTING)} />
     </section>}
+    {/* AR-9: the Communications cost section moved here from Reports (it is a phone-cost matter). */}
+    <TelecomReportSection actorUserId={session.user.id} />
   </div>;
 }
 function observedCapability(value: unknown, key: string): string {
