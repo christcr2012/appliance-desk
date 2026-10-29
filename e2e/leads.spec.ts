@@ -82,7 +82,7 @@ test.describe("Leads queue and record (owner)", () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto("/desk/leads?stage=contacted", { waitUntil: "load" });
       await rowMenu(page, fixture.name);
-      await page.getByRole("link", { name: "Set follow-up…" }).click();
+      await page.getByRole("menuitem", { name: "Set follow-up…" }).click();
       await page.getByLabel("Follow up on").fill("2027-01-15");
       await page.getByRole("button", { name: "Save" }).click();
       await expect
@@ -105,7 +105,7 @@ test.describe("Leads queue and record (owner)", () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto("/desk/leads", { waitUntil: "load" });
       await rowMenu(page, fixture.name);
-      await page.getByRole("link", { name: "Mark lost…" }).click();
+      await page.getByRole("menuitem", { name: "Mark lost…" }).click();
       await page.getByLabel("Reason").selectOption("Too expensive");
       await page.getByRole("button", { name: "Mark lost", exact: true }).click();
       await expect
@@ -129,7 +129,7 @@ test.describe("Leads queue and record (owner)", () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto("/desk/leads", { waitUntil: "load" });
       await rowMenu(page, fixture.name);
-      await page.getByRole("link", { name: "Convert to customer" }).click();
+      await page.getByRole("menuitem", { name: "Convert to customer" }).click();
       await page.getByRole("button", { name: "Convert to customer" }).click();
       await page.waitForURL(/\/desk\/customers\//);
       customerId = page.url().split("/").pop() ?? null;
@@ -178,14 +178,35 @@ test.describe("Leads queue and record (owner)", () => {
       await page.goto("/desk/leads?layout=board", { waitUntil: "load" });
       const card = page.locator("article").filter({ hasText: dragged.name });
       await expect(card).toBeVisible();
-      await card.dragTo(page.locator("section[aria-label='Contacted']"));
+      // HTML5 drag-and-drop: Playwright's dragTo stalls on this board (its
+      // drag session never completes against the re-render on dragstart),
+      // so dispatch the real drag events with a DataTransfer instead — the
+      // app's own dragstart/dragover/drop handlers do the work.
+      await page.evaluate(
+        ({ sourceText, targetLabel }) => {
+          const src = [...document.querySelectorAll("article")].find((a) =>
+            a.textContent?.includes(sourceText),
+          );
+          const target = document.querySelector(`section[aria-label='${targetLabel}']`);
+          if (!src || !target) throw new Error("board card or column missing");
+          const dt = new DataTransfer();
+          const fire = (el: Element, type: string) =>
+            el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }));
+          fire(src, "dragstart");
+          fire(target, "dragenter");
+          fire(target, "dragover");
+          fire(target, "drop");
+          fire(src, "dragend");
+        },
+        { sourceText: dragged.name, targetLabel: "Contacted" },
+      );
       await expect
         .poll(async () => (await prisma.lead.findUnique({ where: { id: dragged.id } }))?.status)
         .toBe("CONTACTED");
 
       const card2 = page.locator("article").filter({ hasText: menued.name });
       await card2.getByRole("button", { name: `Actions for ${menued.name}` }).click();
-      await page.getByRole("button", { name: "Mark as Contacted" }).click();
+      await page.getByRole("menuitem", { name: "Mark as Contacted" }).click();
       await expect
         .poll(async () => (await prisma.lead.findUnique({ where: { id: menued.id } }))?.status)
         .toBe("CONTACTED");
@@ -207,10 +228,13 @@ test.describe("Leads queue and record (owner)", () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto(`/desk/leads/${fixture.id}`, { waitUntil: "load" });
       await expect(page.getByRole("list", { name: "Lead stage" })).toBeVisible();
-      await page.getByRole("link", { name: "Quotes" }).click();
+      // Scope to the record's own tab nav — the Customers module subnav
+      // also carries a "Quotes" link.
+      const tabs = page.getByRole("navigation", { name: "Lead sections" });
+      await tabs.getByRole("link", { name: "Quotes" }).click();
       await expect(page.getByText(`Quote #${estimate.estimateNumber}`)).toBeVisible();
       await expect(page.getByText(/Sent ·/)).toBeVisible();
-      await page.getByRole("link", { name: "What they want" }).click();
+      await tabs.getByRole("link", { name: "What they want" }).click();
       await expect(page.getByRole("link", { name: "Edit" })).toBeVisible();
     } finally {
       await prisma.estimate.deleteMany({ where: { id: estimate.id } });

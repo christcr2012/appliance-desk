@@ -31,11 +31,13 @@ export type BoardColumn = {
  */
 export function LeadsBoard({
   columns,
-  lostHref,
+  lostHrefBase,
 }: {
   columns: BoardColumn[];
-  lostHref: (id: string) => string;
+  /** Serializable base href for the Mark-lost sheet; the card id is appended as &lead= (a function prop cannot cross the server/client boundary). */
+  lostHrefBase: string;
 }) {
+  const lostHref = (id: string) => `${lostHrefBase}&lead=${encodeURIComponent(id)}`;
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [dragId, setDragId] = useState<string | null>(null);

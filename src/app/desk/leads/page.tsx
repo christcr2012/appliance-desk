@@ -390,9 +390,10 @@ export default async function LeadsPage({
           {boardMode ? (
             <LeadsBoard
               columns={boardColumns}
-              lostHref={(id) =>
-                leadsHref({ ...params, stage }, { sheet: "lost", lead: id, layout: "board" })
-              }
+              lostHrefBase={leadsHref(
+                { ...params, stage },
+                { sheet: "lost", layout: "board", cursor: null, open: null },
+              )}
             />
           ) : (
           <div className="mt-2">

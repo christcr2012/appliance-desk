@@ -43,10 +43,10 @@ describe("parseLeadsParams", () => {
     expect(parseLeadsParams({ status: "lost" }).stage).toBe("lost");
   });
 
-  it("maps legacy ?view= awaiting-reply to quoted and no-next-task to all stages + next-up", () => {
+  it("maps legacy ?view= awaiting-reply to quoted and no-next-task to contacted + next-up", () => {
     expect(parseLeadsParams({ view: "awaiting-reply" })).toEqual({ stage: "quoted", sort: "next-up" });
-    expect(parseLeadsParams({ view: "no-next-task" })).toEqual({ sort: "next-up" });
-    expect(parseLeadsParams({ view: "no-next-task", sort: "value" }).sort).toBe("value");
+    expect(parseLeadsParams({ view: "no-next-task" })).toEqual({ stage: "contacted", sort: "next-up" });
+    expect(parseLeadsParams({ view: "no-next-task", sort: "value" })).toEqual({ stage: "contacted", sort: "value" });
   });
 
   it("prefers an explicit stage over the legacy mapping and ignores ?page=", () => {
