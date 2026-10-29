@@ -11,7 +11,7 @@ import { businessMinutesBetween, hasAnyOpeningHours } from "@/lib/business-hours
 import { parseStoredClosures, parseStoredHours } from "@/domains/settings/profile-extras";
 import { getLeadSourceBreakdown } from "@/domains/leads";
 import { getLeadResponseDays } from "@/domains/leads/follow-up";
-import { getRevenueDashboard, pastDueInvoiceWhere } from "@/domains/billing";
+import { pastDueInvoiceWhere } from "@/domains/billing";
 import { monthsSince } from "@/domains/growth/signals";
 import {
   getChurnRiskCustomers, getPriceReviewAgreements, getReviewRequestCandidates, getWinBackLeads,
@@ -217,7 +217,7 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
     OR: [{ closedAt: null }, { closedAt: { gte: monthEnd } }],
     status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] },
   };
-  const [activeRows, atStartRows, earliest, lostCandidates, revenue, activeAgreements] = await Promise.all([
+  const [activeRows, atStartRows, earliest, lostCandidates, rentRows, activeAgreements] = await Promise.all([
     prisma.rentalAgreement.findMany({
       where: activeAtEndWhere,
       select: { customerId: true },
@@ -242,7 +242,14 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
       },
       orderBy: { closedAt: "desc" },
     }),
-    getRevenueDashboard(now),
+    // The rent numerator for the SAME period-end cohort as the
+    // denominator below — today's revenue dashboard would mix periods
+    // the same way the old status reads did. Rent lives on the
+    // agreement lines (monthlyPriceCents), summed the way billing does.
+    prisma.rentalAgreement.findMany({
+      where: activeAtEndWhere,
+      select: { lines: { select: { monthlyPriceCents: true } } },
+    }),
     prisma.rentalAgreement.findMany({
       where: activeAtEndWhere,
       select: { customerId: true, stripeSubscriptionId: true, serviceAddress: { select: { city: true } } },
@@ -276,9 +283,11 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
   const whyCounts = new Map<string, number>();
   let lostCustomers = 0;
   for (const [customerId, agreement] of lastByCustomer) {
-    // Only count them lost if this month's close is their latest close ever.
+    // Only count them lost if this close is their latest close WITHIN
+    // the selected month — a departure in a later month must not erase
+    // this month's loss.
     const later = await prisma.rentalAgreement.count({
-      where: { customerId, closedAt: { gt: agreement.closedAt! } },
+      where: { customerId, closedAt: { gt: agreement.closedAt!, lt: monthEnd } },
     });
     if (later > 0 || stillActiveOrScheduled.has(customerId)) continue;
     lostCustomers += 1;
@@ -378,7 +387,13 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
     whyLost: [...whyCounts.entries()]
       .map(([reason, count]) => ({ reason, count }))
       .sort((a, b) => b.count - a.count),
-    avgMonthlyRentCents: activeNow > 0 ? Math.round(revenue.mrrCents / activeNow) : null,
+    avgMonthlyRentCents:
+      activeNow > 0
+        ? Math.round(
+            rentRows.reduce((sum, a) => sum + a.lines.reduce((lineSum, l) => lineSum + l.monthlyPriceCents, 0), 0) /
+              activeNow,
+          )
+        : null,
     avgLifetimeMonths,
     lifetimeBaseCount: lifetimes.length,
     avgCollectedPerCustomerCents,

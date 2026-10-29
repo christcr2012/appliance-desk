@@ -70,8 +70,11 @@ export default async function MoneyIncomePage({
     { key: "amount", header: "Amount", cell: (r) => formatMoney(r.amountCents) },
   ];
 
-  const pageHref = (page: number) =>
-    `/desk/money/income?${new URLSearchParams({ source, scope: monthOnly ? "month" : "all", page: String(page) })}`;
+  const pageHref = (page: number) => {
+    const href = new URLSearchParams({ source, scope: monthOnly ? "month" : "all", page: String(page) });
+    if (params.q) href.set("q", params.q);
+    return `/desk/money/income?${href}`;
+  };
 
   return (
     <div className="flex flex-col gap-5 px-1 sm:px-0">
