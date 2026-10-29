@@ -31,3 +31,24 @@ Reason: the route's on-device copy is a separate privacy/safety boundary with it
 
 ## Progress
 Not started.
+
+## Implementation route (reconciled October 28, 2026)
+
+This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
+only when absent; inspect the final prerequisite exports once before coding.
+
+1. Start with SCHEDULE section 1 and the real `src/domains/jobs/{index,scope,scheduling,completion}.ts` and
+   `src/domains/maintenance/index.ts`. Locate the existing page/action callers from those imports; spec URLs
+   are target routes, not proof a same-named folder already exists. Preserve the existing scheduling writer.
+2. Prove the staff route predicate first: own assigned jobs; unassigned only when the stored setting permits.
+   Reuse it for list, count and route reads. Seed two staff and one job for each plus one unassigned; test each
+   setting state. Confirm denied completion writes nothing.
+3. Build AR-5a’s read models/labels/cursor before its Board and record UI. Include tie-breaking IDs in page
+   ordering and test two jobs with identical timestamps across page boundaries. Then wire the existing
+   completion action’s typed result to each specified hand-off toast (no money words for staff).
+4. AR-5b extends the existing service worker/offline shell; first inspect its cache exclusions. Cache only the
+   authorized route snapshot, partitioned by person and Denver day. Never cache mutation responses or replay
+   a completion offline. Test A signs out → B signs in on the same phone, day rollover, and revoked access
+   on the next online request, plus the spec’s poor-signal read path.
+5. Run affected jobs/maintenance regressions and the new route-offline spec on the supported launcher.
+   New browser paths go in `e2e/shards.json`; follow the card’s existing size/keyboard/axe acceptance.
