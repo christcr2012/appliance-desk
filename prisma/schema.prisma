@@ -493,6 +493,11 @@ model Lead {
   // it, so a future new reason never needs a migration.
   lostReason String?
 
+  // AR-9: when the lead was won or lost (set in the same transaction as the
+  // status change, convert or merge; cleared when a lead is reopened). Null
+  // for leads closed before this field existed that no audit row dates.
+  closedAt DateTime?
+
   // W-6: the date the owner chose for the next follow-up (Colorado midnight). Null = none chosen.
   nextFollowUpOn DateTime?
 
@@ -507,6 +512,7 @@ model Lead {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+  @@index([status, closedAt])
   @@index([score])
   // LD-1: pipeline lists, assignment and duplicate lookups; trigram indexes
   // make the leads search (name/company/city/email/phone) fast.
@@ -3587,6 +3593,10 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  // AR-9: goal pace (src/domains/goals/pace.ts). Starting values 7 and 75,
+  // because the first week of a month is too early to judge a goal.
+  goalQuietDays Int @default(7)
+  goalBehindPercent Int @default(75)
   // OPS-3: how the owner claims vehicle costs. Starting value: the standard mileage rate in the first year (keeps both options open).
   mileageMethod MileageMethod @default(STANDARD_RATE)
   // OPS-3: a medical card is asked for from this vehicle weight up (starting value: required from 16,001 lb; not confirmed).
