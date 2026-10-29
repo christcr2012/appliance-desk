@@ -12,6 +12,9 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 
 ## A. Quick things only you can do (minutes each)
 
+- [ ] **Optional: set up a free external uptime check (MCP-7).** When the tested Monitoring screen has reached the testing app, choose any free HTTPS uptime checker and enter the app’s `/api/health` address. Ask it to alert you if the endpoint stops returning HTTP 200. This does not require the checker to sign in and never exposes secrets or customer data. Ready when monitoring is deployed. You’ll know it worked when the checker shows a successful HTTP 200 check and its own test alert reaches you. The app cannot observe an outage from inside itself.
+
+
 - [ ] **Set the compliance encryption key (CMP-1).** Follow the walkthrough: More → Set up your business →
   Encryption keys (it shows how to make the key and where it goes — never paste it in a chat, email or GitHub).
   Ready when: before you store a real EIN in Compliance › Business facts. You'll know it

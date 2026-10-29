@@ -35,7 +35,7 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
    unverified/failed source and private-text rejection. Build/lint, exact-head
    GitHub CI and review-gate must pass before merge.
 
-**Implementation status:** in progress on the dedicated MCP-6 branch; no PR published or merged yet.
+**Implementation status (October 29):** PR #738 is open at `92e9842a84ca852a3d4cc5a057ffb4a77fb5d7bb`; 30 focused tests passed on disposable PostgreSQL, full GitHub CI passed at the exact head, and review-gate passed with zero unresolved threads. GitHub nevertheless declined the squash merge with `Required status check "ci" is expected` (on the generated PR merge commit). This status update triggers a fresh pull-request CI run through the repaired native Git workspace; do not call the PR merged until GitHub confirms it.
 
 ## Implementation checkpoint — October 28 (NOT COMPLETE)
 

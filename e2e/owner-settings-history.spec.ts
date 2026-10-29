@@ -88,40 +88,43 @@ test.describe("settings history and previews", () => {
     expect((await settings()).lateFeeGraceDays).toBe(75);
   });
 
-  test("a section can be previewed before saving and nothing is written by the preview", async ({ page }) => {
+  test("a row change is previewed in its Change sheet before saving and nothing is written by the preview", async ({ page }) => {
+    // AR-8: the section form's preview became the row's Change sheet, which
+    // shows "From … to …" (and what the change does) before anything saves.
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 10 } });
     await page.goto("/desk/settings?section=policies");
-    const grace = page.getByLabel("Days to pay before a late fee (at least 10)");
-    // The form's saved values are put into the inputs when the page's script starts. Filling before that can leave
-    // the saved "10" and the typed "12" joined as "1012" (seen in CI as "Too big: expected number to be <=90"), so
-    // wait until the saved value shows, as the out-of-date test below already does.
-    await expect(grace).toHaveValue("10");
-    await grace.fill("12");
-    await expect(grace).toHaveValue("12");
-    await page.getByRole("button", { name: "Preview changes" }).click();
-    const panel = page.getByLabel("What saving would change");
-    await expect(panel).toContainText("Late fee grace days: 10 → 12");
-    await expect(panel).toContainText("nothing is saved yet");
+    const row = page.locator("#row-lateFeeGraceDays");
+    await row.getByRole("button", { name: "Change…" }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByLabel("Days")).toHaveValue("10");
+    await sheet.getByLabel("Days").fill("12");
+    await expect(sheet.getByText("From 10 to 12")).toBeVisible();
     expect((await settings()).lateFeeGraceDays).toBe(10);
-    await page.getByRole("button", { name: "Save this section" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Settings saved." })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await row.getByRole("button", { name: "Change…" }).click();
+    await sheet.getByLabel("Days").fill("12");
+    await sheet.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText("Saved Late fee grace days")).toBeVisible();
     await expect.poll(async () => (await settings()).lateFeeGraceDays).toBe(12);
   });
 
-  test("saving from a page that is out of date is refused with a reload message", async ({ page }) => {
-    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 20, referralRewardCents: 2500 } });
+  test("saving from a sheet that is out of date is refused and the newer value is left alone", async ({ page }) => {
+    // AR-8: the per-row revision check is the section check's replacement —
+    // a sheet opened before someone else saved is refused, in place.
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 20 } });
     await page.goto("/desk/settings?section=policies");
-    await expect(page.getByLabel("Days to pay before a late fee (at least 10)")).toHaveValue("20");
-    // Another owner saves the same section while this page stays open.
+    const row = page.locator("#row-lateFeeGraceDays");
+    await row.getByRole("button", { name: "Change…" }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByLabel("Days")).toHaveValue("20");
+    // Another owner saves the same setting while this sheet stays open.
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 30 } });
-    await page.getByLabel("Referral reward — same amount for both people").fill("40");
-    await page.getByRole("button", { name: "Save this section" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "Reload the page" })).toBeVisible();
-    const after = await settings();
-    expect(after.lateFeeGraceDays).toBe(30);
-    expect(after.referralRewardCents).toBe(2500);
-    // What was typed is still in the form.
-    await expect(page.getByLabel("Referral reward — same amount for both people")).toHaveValue("40");
+    await sheet.getByLabel("Days").fill("40");
+    await sheet.getByRole("button", { name: "Save" }).click();
+    await expect(sheet.getByRole("alert")).toContainText("changed");
+    expect((await settings()).lateFeeGraceDays).toBe(30);
+    // What was typed is still in the sheet.
+    await expect(sheet.getByLabel("Days")).toHaveValue("40");
   });
 
   test("the undo check passes the accessibility scan on phone and desktop, light and dark", async ({ page }) => {

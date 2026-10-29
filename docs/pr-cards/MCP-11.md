@@ -21,7 +21,7 @@ reports whose author allowed it.
 5. All tests, exact-head full CI, reviewed findings and squash merge are required; no live customer messages enabled.
 
 ## Progress
-Implementation in progress on ai/chatgpt/mcp-11-feedback, stacked on MCP-6; no verification claimed yet.
+Reporter consent, scope-separated feedback reads and journaled mutations are implemented on `ai/chatgpt/mcp-11-feedback`. On disposable PostgreSQL, 5 journaled-feedback, 13 existing feedback-workflow and 6 MCP read-tool tests passed (24 total) before reconciling current `main`. A browser test now checks opt-in and withdrawal; full browser proof, integrated CI, review and real private-picture storage remain pending. Local sandbox typecheck exceeded its available Node heap twice, so only GitHub CI can establish a complete typecheck. No live customer messaging is enabled.
 
 ## Implementation route (reconciled October 28, 2026)
 

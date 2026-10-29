@@ -42,9 +42,6 @@ describe.skipIf(!enabled)("MCP-11 journaled app feedback on disposable PostgreSQ
     reportId = report.id;
   });
   afterAll(async () => {
-    const ops = await prisma.agentOperation.findMany({
-      where: { connectionId }, select: { id: true },
-    });
     await prisma.feedbackCaseLink.deleteMany({ where: { reportId } });
     await prisma.feedbackEntry.deleteMany({ where: { reportId } });
     await prisma.feedbackEvent.deleteMany({ where: { reportId } });

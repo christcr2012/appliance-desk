@@ -50,5 +50,7 @@ export const GLOSSARY = {
   "expected-30": { title: "Coming in 30 days", description: "Rent from active rentals whose next bill falls in the next 30 days. Tax is added on the bill." },
   "held-payment": { title: "Needs a decision", description: "A card payment arrived after the bill was given up or cancelled. Decide whether to keep it as credit or send it back." },
   "held-conflict": { title: "Check this", description: "Refunded in Stripe after it was kept as credit and partly used. Look at it with your bookkeeper." },
+  // AR-7 Books overview.
+  "books-profit": { title: "Profit", description: "Billed minus spent this month (accrual). Your accountant may use a different method for taxes." },
 } as const;
 export type GlossaryKey = keyof typeof GLOSSARY;

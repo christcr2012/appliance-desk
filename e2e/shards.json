@@ -24,7 +24,8 @@
       "money-bills.spec.ts",
       "money-area.spec.ts",
       "staff-security.spec.ts",
-      "features.spec.ts"
+      "features.spec.ts",
+      "ar8-settings.spec.ts"
     ],
     "browser-b": [
       "owner-controls.spec.ts",
@@ -104,6 +105,7 @@
       "revenue-records.spec.ts",
       "website-editor.spec.ts",
       "books-workspace.spec.ts",
+      "ar7-books-taxes.spec.ts",
       "my-account.spec.ts",
       "feedback.spec.ts",
       "fleet-report.spec.ts",
@@ -124,7 +126,8 @@
       "mcp-repair-cases.spec.ts",
       "navigation.spec.ts",
       "rentals.spec.ts",
-      "today-inline.spec.ts"
+      "today-inline.spec.ts",
+      "mcp-monitoring.spec.ts"
     ]
   }
 }

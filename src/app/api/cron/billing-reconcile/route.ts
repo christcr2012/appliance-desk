@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { sweepSystemIssues } from "@/domains/system-issues/sources";
 import { reconcileAgentOperations } from "@/domains/agent-control/operations";
+import { runMonitors } from "@/domains/agent-control/monitoring";
 import { automationCounts } from "@/domains/automation/counts";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
 import { checkBankPaymentsInFlight } from "@/domains/billing/in-flight-check";
@@ -106,7 +107,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       const issues = await sweepSystemIssues(new Date(), 100);
       // Readback-only: uncertain assistant operations never dispatch a second effect.
       const assistants = await reconcileAgentOperations(new Date(), 10);
-      return { counts: automationCounts({ ...issues, ...assistants }) };
+      const monitors = await runMonitors(new Date());
+      return { counts: automationCounts({ ...issues, ...assistants, ...monitors }) };
     },
   });
   return NextResponse.json({ systemIssues, providerOps, bankInFlight, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });

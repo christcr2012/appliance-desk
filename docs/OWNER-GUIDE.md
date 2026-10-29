@@ -87,6 +87,8 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Past due | `/desk/collections`, `/desk/collections/[agreementId]` | Second and final past-due notices waiting for your approval (nothing is sent until you press Send), the day-30 decision, recording that a customer agreed to a pickup or a court order, the pickup visit and "Customer objected", the small-claims packet and recording a filing, and the three day settings (Money tab) |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |
+| Month by month | `/desk/books/months` | Every month from your books start: open, ready to review, or locked |
+| For your accountant | `/desk/books/accountant` | The full journal, your accounts, book-asset tax details and fix-by-hand tools — the pages your accountant may ask for |
 | Start your books | `/desk/books/setup` | Owner's four-step guide to the date, opening cash/card balances and expenses paid personally |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
 | Bank statements and cash records | `/desk/books/cash` | Import settled CSV observations and enter source-backed owner cash events; importing does not prove cleared money |
@@ -354,6 +356,8 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 **What it's for.** **Notices** are the formal letters (renewal reminders, month-to-month change notices): each is saved, held until delivered and can be marked delivered by hand while customer email is off. Customer and lead pages have a **Messages** panel with the business template, recipient and the recorded state; "Accepted by provider" is not "Delivered", and "Outcome unknown", "Bounced" and "Suppressed" mean exactly that. **Communications** is the text-message inbox (read, assign, mark reviewed; there is no send button until texting is approved). **Automations** shows whether each scheduled pass is healthy, failing, unknown, never run, paused or unconfigured; "never run" and "unknown" do not mean success. **App feedback** (`/desk/feedback`, owner and admins) collects problems with this app and ideas sent by customers and your team (never appliance repairs): reply, add a team-only note, change the status with a reason, or mark a copy as already reported. New and answered reports appear on To do. Everyone can send one from the "App feedback" link and follow their own reports.
 
+**AI assistance with app feedback (MCP-11).** Each person controls a checkbox on their own report: “Let Chris’s AI assistant read this report to help fix it”. It starts off and may be withdrawn at any time. Without both their current permission and the assistant’s separate content grant, the assistant sees report status and page type but not what the person wrote; screenshots are never provided. AI replies are labelled and team-only notes remain private. Assistant suggestions use the existing approval journal and are not automatic, and marking feedback Fixed through that channel needs independent verified repair evidence.
+
 **Change without code.** Settings → Notifications (customer email on/off, message wording and previews), Notice delivery, Languages (Spanish wording and reviews), App feedback (pictures per report, days to reopen). Pausing a rule is audited.
 
 **If it fails.** A send that fails after the change was saved leaves the change done and the message pending. A send whose outcome is unknown is held for a person — never resend it just because a dashboard is down; follow `docs/runbooks/MESSAGE-DELIVERY.md` and `docs/runbooks/PROVIDER-OUTAGE.md`. A reminder past its last day is marked missed and never sent.
@@ -402,6 +406,10 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 **What it's for.** `/launch` is an interest list, not a booking. Add `?utm_source=instagram` or `?utm_source=facebook` to a link to see which brings signups. Before enabling emails enter the mailing address and a monitored inbox, read the three emails shown, tick Enable and save; the first goes on the next daily run and the next two at least 3 and 4 days later. Untick to pause; **Stop emails** removes one person.
 
 **If it fails.** An email marked Needs review may be in progress; check Resend's sending activity before resending anything and do not reset the sequence. "Sent" means the provider accepted it, not that it reached an inbox.
+
+## System health — Monitoring (MCP-7 daily checks)
+
+Open **Desk → More → System health → Monitoring** to see the nightly check heartbeat and each optional owner-controlled monitor. Each check starts **off**, with an alert after two failed days in a row, a 24-hour repeat delay, and owner email off. Turn on only the checks that matter, set how many failures you tolerate, and save. A confirmed alert appears as **one system issue** on Today; a later successful source check marks it recovered. Email can send only when both the monitor and the separate email controls allow it. The built-in heartbeat shows whether the daily sweep ran; it cannot detect the entire app being down. The public `/api/health` route is for an optional external uptime checker and returns no customer information. Monitoring does not grant an assistant permission to fix things automatically; delegated repair requires a separately reviewed owner-authorization feature.
 
 ## System health — Assistant activity and approvals (MCP-5, pending checked merge)
 

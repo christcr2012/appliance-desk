@@ -14,8 +14,18 @@ services.
 ## Owner checklist
 "Optional: free uptime check" (spec section 3). Never blocks merging.
 
-## Progress
-Not started.
+## Acceptance plan — October 28
+
+1. Built-in monitor rules are owner-configurable and disabled by default; one slot per Denver date is claimed durably so two concurrent workers never run the same rule twice.
+2. Two consecutive failures trigger one problem/To do incident; cooldown, recovery and Denver DST are tested on disposable PostgreSQL.
+3. Owner-assigned standing authorization never bypasses MCP-5 or revocation; revoked or disabled actions do nothing.
+4. Owner email starts off and observes existing live switches; delivery failure cannot generate another incident.
+5. The existing sweep does the work, with owner controls, heartbeat, HTTP health probe, mobile/dark UI and full CI.
+
+## Progress — MCP-7a independently usable monitor/owner alert boundary
+
+The daily checks, owner settings, one-incident To do alerts, cooldown/recovery, optional gated owner email, heartbeat and public liveness probe are implemented on ai/chatgpt/mcp-7-monitoring. Eight focused real-database/policy tests passed. This first PR is intentionally independent of delegated assistant writes: that boundary requires an MCP-5 approval/dispatch extension and separate revocation checks; permitting it before the extension would be a security regression. The automatic assistant-action acceptance remains unchecked and MCP-7 as a whole is not complete. Exact-head CI, browser test and review still pending.
+
 
 ## Implementation route (reconciled October 28, 2026)
 
@@ -34,3 +44,5 @@ only when absent; inspect the final prerequisite exports once before coding.
    the database or monitoring is healthy. Keep the external uptime step as optional owner acceptance.
 5. Implement the named monitoring integration/policy tests and the settings browser journey. Add each actual
    setting/control to the AR-8/MCP-8 catalog integration when that export is available.
+
+MCP-7a review correction (Oct 28): treat ACKNOWLEDGED incidents as active across cooldown/recovery and time feedback waits from the newest unanswered update. Two new disposable-PostgreSQL regressions passed; 10/10 focused total. Initial full GitHub CI passed at 32e24511, while the corrected head still requires exact-head CI/review.

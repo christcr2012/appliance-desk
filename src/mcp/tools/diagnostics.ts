@@ -27,6 +27,11 @@ export async function healthOverview(ctx: AgentContext, input: { cursor?: string
   const selected = rows.slice(start, start + (input.limit ?? 10));
   return {
     states,
+    monitoring: (() => {
+      const heartbeat = rows.find((row) => row.ruleKey === "system-issues-sweep");
+      return { lastRunAt: at(heartbeat?.latest?.startedAt ?? heartbeat?.lastSuccessAt),
+        nextDueAt: at(heartbeat?.nextDueAt), state: heartbeat?.state ?? "unknown" };
+    })(),
     jobs: selected.map((row) => ({
       key: row.ruleKey, title: row.label, state: row.state,
       explanation: row.explanation, nextStep: row.state === "healthy" ? "No action needed" : "Review System health in the app",

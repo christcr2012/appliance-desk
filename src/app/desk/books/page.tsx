@@ -1,138 +1,192 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { getShownFeatures } from "@/domains/features";
-import { isHrefHidden } from "@/domains/features/registry";
-import { getBooksWorkspace, currentOpeningBalances } from "@/domains/books/management";
-import { OpeningCorrectionSheet } from "./opening-correction-sheet";
-import { formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
-import {
-  renameAccountAction, createAccountAction, mapExportAccountAction,
-  postBooksAction,
-} from "./actions";
-import { listAccountantChanges, markAccountantChangesSeen } from "@/domains/accountant";
+import { formatShortDate, relativeBusinessDay } from "@/lib/business-date";
+import { getBooksHome } from "@/domains/books/home";
+import { currentOpeningBalances } from "@/domains/books/management";
+import { getExceptionOverview } from "@/domains/exceptions";
+import { inboxActions, inboxEyebrow, inboxEyebrowTone } from "@/domains/exceptions/inbox";
+import { InboxCard, ScreenHeader, StatStrip, TaskCard, Toaster } from "@/components/kit";
+import { OpeningCorrectionSheet } from "./opening-correction-sheet";
+import { postBooksAction } from "./actions";
 
-export const metadata={title:"Your books"};
-const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
-const button="rounded border border-border bg-card px-3 py-2 text-foreground font-medium hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2";
-const SOURCE_LABEL: Record<string, string> = {
-  INVOICE: "A bill to a customer", PAYMENT: "A customer payment", REFUND: "A refund", EXPENSE: "A business expense",
-  CUSTOMER_CREDIT: "Credit on a customer's account", APPLIANCE: "An appliance you own", USE_TAX: "Use tax you owe",
-  TAX_FILING: "A tax filing", OPENING: "Your starting balances", HELD_PAYMENT: "A payment held for review",
-  ADJUSTMENT: "An adjusting entry",
-  STRIPE_BALANCE_TXN: "A Stripe card transaction", RECURRING_EXPENSE: "A repeating expense",
-};
-const sourceLabel = (type: string) => SOURCE_LABEL[type.toUpperCase()] ?? type.replace(/_/g, " ").toLowerCase();
-export default async function BooksPage({searchParams}:{searchParams:Promise<{month?:string;page?:string;notice?:string}>}) {
-  const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
-  const params=await searchParams;
-  const shown=await getShownFeatures();
-  const owner=session.user.role==="OWNER";
-  const accountant=session.user.role==="ACCOUNTANT";
-  // ACCT-1: the owner's feed of accountant changes (spec section 4). The owner
-  // looking at this page is what "seen" means; stamp it after reading.
-  const feed=!accountant?await listAccountantChanges(session.user.id).catch(()=>[]):[];
-  if(owner&&feed.length>0)await markAccountantChangesSeen(session.user.id).catch(()=>{});
-  const model=await getBooksWorkspace({id:session.user.id,role:session.user.role},{
-    month:params.month,page:Number(params.page)||1,
-  });
-  const selected=params.month??new Date().toISOString().slice(0,7);
-  const opening=owner&&model.settings?.booksStartDate
-    ? await currentOpeningBalances({id:session.user.id,role:"OWNER"}):null;
-  const notice=params.notice?.slice(0,200);
-  return <div className="space-y-6">
-    <header className="space-y-2">
-      <nav aria-label="More about your books" className="flex flex-wrap gap-x-5 gap-y-2">
-      {!accountant&&<Link className="underline" href="/desk/expenses">Expenses and receipts</Link>}
-      {!isHrefHidden("/desk/books/exports", shown) && <Link className="underline" href="/desk/books/exports">Export to QuickBooks, Xero or CSV</Link>}
-      <Link className="underline" href="/desk/books/assets">Rental equipment and book depreciation</Link>
-      <Link className="underline" href="/desk/books/reports">Profit, balance and payback</Link>
-      {!accountant && !isHrefHidden("/desk/books/budget", shown) && <Link className="underline" href="/desk/books/budget">Budget envelopes</Link>}
-      {!isHrefHidden("/desk/books/cash", shown) && <Link className="underline" href="/desk/books/cash">Bank statements and cash records</Link>}
-      {!accountant&&<Link className="underline" href="/desk/books/closing">Cash forecast, customer health and year-end</Link>}
-      </nav>
-      <h1 className="text-2xl font-bold">Your books</h1>
-      <p className="text-muted-foreground">This is the record your accountant and your tax return will use. It fills itself in from your bills, payments, refunds and expenses, so you never type entries here. Nothing on this screen sends or moves money.</p>
-      {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
-    </header>
-    {feed.length>0&&<section className="rounded-lg border border-border p-4 space-y-3">
-      <h2 className="text-lg font-semibold">Changes by your accountant</h2>
-      <p className="text-sm text-muted-foreground">Everything your accountant changed, newest first. Adjusting entries can be reversed from the month they are dated in.</p>
-      <ul className="space-y-2">{feed.map(row=><li key={row.id} className="border-t border-border py-2">
-        <p className="font-medium">{row.summary}</p>
-        <p className="text-xs text-muted-foreground">{row.actorName}{row.actorFirm?` (${row.actorFirm})`:""} · {formatBusinessDate(row.at)}{row.href&&<> · <Link className="underline" href={row.href}>Open</Link></>}</p>
-      </li>)}</ul>
-    </section>}
-    {!model.settings?.booksStartDate ? <section className="rounded-lg border border-border p-4 space-y-3">
-      <h2 className="text-lg font-semibold">Start your books</h2>
-      <p>Get the business&apos;s starting date and balances in order using four simple steps. You can correct an opening balance later without changing the original record.</p>
-      {owner?<Link href="/desk/books/setup" className={button}>Set up my books</Link>:
-       <p>Ask the owner to set up the books. Your existing access stays unchanged.</p>}
-    </section>:<section className="rounded-lg border border-border p-4 space-y-3">
-      <h2 className="text-lg font-semibold">Money in and out, month by month</h2>
-      <p>Started {formatBusinessDate(model.settings.booksStartDate)}. Entries are never edited or deleted. If something was wrong, the app adds a second entry that cancels it, so there is always a clear trail.</p>
-      {opening&&<OpeningCorrectionSheet
-        opening={{bankCents:opening.bankCents,stripeCents:opening.stripeCents,
-          cardCents:opening.cardCents}}/>}
-      {!accountant&&<form action={postBooksAction}><button type="submit" className={button}>Bring the books up to date</button></form>}
-      <form method="GET" className="flex flex-wrap items-end gap-3">
-        <label>Month <input className={input} type="month" name="month" defaultValue={selected}/></label>
-        <button type="submit" className={button}>View this month</button>
-        <Link className="underline" href="/desk/books">All entries</Link>
-        {!isHrefHidden("/desk/books/export", shown) && <a className="underline" href={"/desk/books/export?month="+encodeURIComponent(selected)}>Download this month for your accountant (CSV)</a>}
-      </form>
-      <div className="overflow-x-auto"><table className="min-w-full text-sm">
-        <caption className="text-left text-muted-foreground pb-2">{model.total} entries; 30 per page</caption>
-        <thead><tr className="border-b border-border text-left"><th scope="col">Date</th><th scope="col">Where it came from</th><th scope="col">What changed (debit and credit are bookkeeping words your accountant knows)</th></tr></thead>
-        <tbody>{model.entries.map(entry=><tr className="border-b border-border align-top" key={entry.id}>
-          <td className="p-2 whitespace-nowrap">{formatBusinessDate(entry.entryDate)}<p>#{entry.entryNumber}</p>{entry.lateForDate&&<p>Late for {formatBusinessDate(entry.lateForDate)}</p>}</td>
-          <td className="p-2 break-all">{sourceLabel(entry.sourceType)}<p className="text-xs text-muted-foreground">Reference {entry.sourceId.slice(0,10)}</p></td>
-          <td className="p-2"><p className="font-medium">{entry.memo}</p>{entry.lines.map(line=><p key={line.id} className="flex gap-3 justify-between">
-            <span>{line.ledgerAccount.name}</span><span className="tabular-nums">{line.debitCents?formatMoney(line.debitCents)+" debit":formatMoney(line.creditCents)+" credit"}</span></p>)}</td>
-        </tr>)}</tbody>
-      </table></div>
-      <nav aria-label="Journal pages" className="flex gap-4">
-        {model.page>1&&<Link className="underline" href={`/desk/books?month=${model.month??""}&page=${model.page-1}`}>Previous</Link>}
-        {model.page*30<model.total&&<Link className="underline" href={`/desk/books?month=${model.month??""}&page=${model.page+1}`}>Next</Link>}
-      </nav>
-      <p className="text-sm text-muted-foreground">Months you have locked: {model.periods.length?model.periods.map(p=>p.periodKey+" "+(p.status==="CLOSED"?"locked":"open")).join(" · "):"none yet, every month is still open"}</p>
-      <div className="space-y-2 rounded border border-border p-3">
-        <h3 className="font-semibold">Review this month before locking it</h3>
-        <p>Check source records, receipts, payments and depreciation. The owner can lock a completed month after its required checks. Admins can review it.</p>
-        <Link className={button} href={"/desk/books/months/"+selected}>Review {selected}</Link>
+export const metadata = { title: "Books" };
+
+const MONTH_NAME = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const monthLabel = (key: string) => `${MONTH_NAME[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
+const timeOf = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Denver" }).toLowerCase();
+
+// AR-7 (BOOKS-TAXES 1.1): the Books overview. The journal and account forms moved to
+// /desk/books/accountant; every number here is getBooksHome (profitAndLoss + collectedBetween).
+export default async function BooksOverviewPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+  const session = await requireRole("OWNER","ADMIN","ACCOUNTANT");
+  const params = await searchParams;
+  const notice = params.notice?.slice(0, 200);
+  const owner = session.user.role === "OWNER";
+  const accountant = session.user.role === "ACCOUNTANT";
+  const now = new Date();
+  const home = await getBooksHome({ id: session.user.id, role: session.user.role }, now);
+
+  if (!home.started) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ScreenHeader title="Books" />
+        {notice ? <p role="status" className="rounded-card border border-line bg-surface p-3 text-sm">{notice}</p> : null}
+        <div className="flex flex-col items-center justify-center gap-3 rounded-card bg-surface px-4 py-10 text-center">
+          <p className="text-base font-bold text-ink">Set up your books (5 minutes)</p>
+          {owner ? (
+            <Link href="/desk/books/setup" className="rounded-field bg-action px-4 py-2.5 font-bold text-on-action">Set up my books</Link>
+          ) : (
+            <p className="text-sm text-ink-soft">Ask the owner to set up the books</p>
+          )}
+        </div>
+        <section className="grid gap-3 sm:grid-cols-2">
+          <TaskCard
+            title="Month by month"
+            href="/desk/books/months"
+            info="Do this once a month: check, send to your accountant, lock."
+            status={{ label: "Starts with your books setup", tone: "neutral" }}
+          />
+          <TaskCard
+            title="Reports"
+            href="/desk/books/reports"
+            info="Use this when you want to know how the business is doing: profit, what you own and owe, which appliances have paid for themselves, cash coming up, who pays on time."
+            status={{ label: "Starts with your books setup", tone: "neutral" }}
+          />
+          <TaskCard
+            title="Equipment value"
+            href="/desk/books/assets"
+            info="Use this to see what your rental appliances are worth on paper. The app keeps it up to date."
+            status={{ label: "Starts with your books setup", tone: "neutral" }}
+          />
+          <TaskCard
+            title="For your accountant"
+            href="/desk/books/accountant"
+            info="Use this when your accountant asks for something."
+            status={{ label: "Nothing new", tone: "neutral" }}
+          />
+        </section>
       </div>
-    </section>}
-    {model.issues.length>0&&<section className="rounded-lg border border-border p-4 space-y-2">
-      <h2 className="text-lg font-semibold">Things the books could not record</h2>
-      <p>These were not fully recorded. Open the bill or expense behind each one, fix what is wrong, then press &ldquo;Bring the books up to date&rdquo;.</p>
-      <ul className="space-y-2">{model.issues.map(issue=><li key={issue.id} className="border-t border-border py-2">
-        <p className="font-semibold">{issue.summary}</p><p className="text-sm">{issue.detail}</p>
-        <p className="text-xs text-muted-foreground">Detected {issue.occurrences} time(s).</p>
-      </li>)}</ul>
-    </section>}
-    <section className="rounded-lg border border-border p-4 space-y-3">
-      <h2 className="text-lg font-semibold">Your accounts</h2>
-      <p className="text-sm text-muted-foreground">Accounts are the buckets your money is sorted into (cash, what customers owe you, rent income, expenses and so on). You can rename them or match them to QuickBooks or Xero. Renaming never changes past entries.</p>
-      <div className="space-y-2">{model.accounts.map(a=><div className="grid gap-2 border-t border-border py-3 sm:grid-cols-3" key={a.id}>
-        <div><p className="font-semibold">{a.name}</p><p className="text-xs text-muted-foreground">{a.type} · {a.description}</p><p className="font-medium">Net change so far: {formatMoney((model.balances.find(row=>row.ledgerAccountId===a.id)?._sum.debitCents??0)-(model.balances.find(row=>row.ledgerAccountId===a.id)?._sum.creditCents??0))}</p></div>
-        {owner?<form action={renameAccountAction} className="flex gap-2 items-end">
-          <input type="hidden" name="accountId" value={a.id}/><label className="flex-1">Account name<input className={input} name="name" defaultValue={a.name} maxLength={120}/></label><button className={button}>Save</button>
-        </form>:<p>{a.name}</p>}
-        {owner||accountant?<form action={mapExportAccountAction} className="flex flex-wrap gap-2 items-end">
-          <input type="hidden" name="accountId" value={a.id}/>
-          <label>Export to<select name="target" className={input}><option value="GENERIC_JOURNAL_CSV">Generic CSV</option><option value="QBO_JOURNAL_CSV">QuickBooks</option><option value="XERO_JOURNAL_CSV">Xero</option><option value="CASH_MOVEMENTS_CSV">Cash movements</option></select></label>
-          <label className="flex-1">External account<input name="externalName" className={input} placeholder="Account name or code" required/></label>
-          <label>Xero tax rate (optional)<input name="externalTaxRate" className={input} placeholder="Tax Exempt" maxLength={120}/></label>
-          <button className={button}>Map</button>
-        </form>:<p>{a.mappings.length} saved export mappings</p>}
-      </div>)}</div>
-      {owner&&<form action={createAccountAction} className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
-        <h3 className="col-span-full font-semibold">Add an account</h3>
-        <label>Name<input className={input} name="name" required/></label><label>Description<input className={input} name="description" required/></label>
-        <label>Type<select className={input} name="type"><option value="ASSET">Something I own</option><option value="LIABILITY">Something I owe</option><option value="EXPENSE">A cost of doing business</option></select></label>
-        <label className="flex gap-2 items-center"><input type="checkbox" name="isPaymentSource"/> Can pay expenses from this account</label>
-        <button type="submit" className={button}>Add account</button>
-      </form>}
-    </section>
-  </div>;
+    );
+  }
+
+  const exceptions = await getExceptionOverview();
+  const attention = exceptions.items.filter((item) => item.category.startsWith("BOOKS_")).slice(0, 10);
+  const opening = owner ? await currentOpeningBalances({ id: session.user.id, role: "OWNER" }).catch(() => null) : null;
+  const upToDate = home.problemCount === 0;
+  const reviewMonth = home.monthsToReview[0];
+  const lastMonthName = MONTH_NAME[Number(home.lastMonthKey.slice(5, 7)) - 1];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Toaster />
+      <ScreenHeader title="Books" />
+      {notice ? <p role="status" className="rounded-card border border-line bg-surface p-3 text-sm">{notice}</p> : null}
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {upToDate ? (
+          <p className="font-semibold text-success">
+            Up to date as of {home.lastUpToDateAt ? `${relativeBusinessDay(home.lastUpToDateAt, now)} ${timeOf(home.lastUpToDateAt)}` : "now"}
+          </p>
+        ) : (
+          <Link href="/desk/today?group=taxes" className="font-semibold text-warning-ink underline">
+            Not up to date — {home.problemCount} things need you
+          </Link>
+        )}
+        {!accountant ? (
+          <form action={postBooksAction}>
+            <button type="submit" className="text-sm font-medium text-ink-soft underline">Update now</button>
+          </form>
+        ) : null}
+        {opening ? <OpeningCorrectionSheet opening={{ bankCents: opening.bankCents, stripeCents: opening.stripeCents, cardCents: opening.cardCents }} /> : null}
+      </div>
+
+      <StatStrip
+        items={[
+          { label: "Billed this month", value: formatMoney(home.thisMonth.billedCents), sub: `Last month ${formatMoney(home.lastMonth.billedCents)}` },
+          { label: "Collected", value: formatMoney(home.thisMonth.collectedCents), sub: `Last month ${formatMoney(home.lastMonth.collectedCents)}` },
+          { label: "Spent", value: formatMoney(home.thisMonth.spentCents), sub: `Last month ${formatMoney(home.lastMonth.spentCents)}` },
+          {
+            label: "Profit",
+            value: formatMoney(home.thisMonth.profitCents),
+            sub: `Last month ${formatMoney(home.lastMonth.profitCents)}`,
+            tone: home.thisMonth.profitCents < 0 ? "attention" : undefined,
+            info: "books-profit",
+          },
+        ]}
+      />
+
+      {attention.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-base font-extrabold text-ink">Needs your attention</h2>
+          {attention.map((item) => {
+            const { actions, overflow } = inboxActions(item);
+            return (
+              <InboxCard
+                key={item.todoKey ?? `${item.href}-${item.title}`}
+                eyebrow={inboxEyebrow(item, now)}
+                eyebrowTone={inboxEyebrowTone(item)}
+                title={item.title}
+                detail={item.detail}
+                actions={actions}
+                overflow={overflow}
+                severity={item.severity === "high" ? "high" : "normal"}
+              />
+            );
+          })}
+        </section>
+      ) : null}
+
+      {reviewMonth || home.nextTaxDue ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-base font-extrabold text-ink">Coming up</h2>
+          {reviewMonth ? (
+            <div className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3">
+              <span className="font-medium">Review {monthLabel(reviewMonth)}</span>
+              <Link href={`/desk/books/months/${reviewMonth}`} className="rounded-field border border-line px-3 py-2 text-sm font-bold">Review</Link>
+            </div>
+          ) : null}
+          {home.nextTaxDue ? (
+            <div className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3">
+              <span className="font-medium">Sales tax due {formatShortDate(home.nextTaxDue.dueOn, now)}</span>
+              <Link href="/desk/sales-tax" className="rounded-field border border-line px-3 py-2 text-sm font-bold">Open Taxes</Link>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <TaskCard
+          title="Month by month"
+          href="/desk/books/months"
+          info="Do this once a month: check, send to your accountant, lock."
+          status={reviewMonth
+            ? { label: `${monthLabel(reviewMonth)} ready to review`, tone: "attention" }
+            : { label: "All months locked", tone: "good" }}
+        />
+        <TaskCard
+          title="Reports"
+          href="/desk/books/reports"
+          info="Use this when you want to know how the business is doing: profit, what you own and owe, which appliances have paid for themselves, cash coming up, who pays on time."
+          status={{ label: `${lastMonthName} profit ${formatMoney(home.lastMonthProfitCents)}`, tone: home.lastMonthProfitCents < 0 ? "attention" : "neutral" }}
+        />
+        <TaskCard
+          title="Equipment value"
+          href="/desk/books/assets"
+          info="Use this to see what your rental appliances are worth on paper. The app keeps it up to date."
+          status={home.assetsNeedingPrice > 0
+            ? { label: `${home.assetsNeedingPrice} need${home.assetsNeedingPrice === 1 ? "s" : ""} a purchase price`, tone: "attention" }
+            : { label: `${home.assetCount} appliances, all recorded`, tone: "good" }}
+        />
+        <TaskCard
+          title="For your accountant"
+          href="/desk/books/accountant"
+          info="Use this when your accountant asks for something."
+          status={home.accountantPackageMonth
+            ? { label: `${monthLabel(home.accountantPackageMonth)} package ready`, tone: "good" }
+            : { label: "Nothing new", tone: "neutral" }}
+        />
+      </section>
+    </div>
+  );
 }
