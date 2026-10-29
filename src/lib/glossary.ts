@@ -1,5 +1,6 @@
 /** Plain-language explanations shared by owner screens. */
 export const GLOSSARY = {
+  "lead-score": { title: "Score", description: "How likely this lead is to rent, from what they asked for. The reasons are listed here." },
   "retail-delivery-fee": {
     title: "Retail delivery fee",
     description: "Colorado may require a fee on qualifying retail deliveries. Your CPA should confirm when it applies before any live collection.",
