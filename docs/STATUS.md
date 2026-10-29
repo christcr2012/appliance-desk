@@ -8,6 +8,21 @@ the chain were fixed with tests, including the prepaid-cohort and renewal-autopa
 the desktop side panel. Lane 5's AR share is complete. Next for Lane 5: the telecom-settings
 browser diagnosis (COM line), then the MASTER-ROADMAP.
 
+## October 29 — AR-7b Taxes on the kit: PR #750 open, successor of #746 (Lane 4)
+
+AR-7a merged to main as the squash commit 60090f41 (CI run 40838554175 green at the exact head,
+review-gate green, auto-merge). AR-7b (Taxes) is built under the same AR-7 packet: the Taxes frame
+moves to the spec's six sub-tabs (Overview · Returns · Areas & rates · Exemptions · Use tax · Setup),
+the Overview gets its StatStrip/InboxCard layout with the DEC-1 decisions count, and every Taxes page
+joins migrated-pages.json (kit guards 43/43 against the union registry, plain-words pass after
+rewording seven pre-existing jargon strings — labels only, stored values unchanged).
+No tax calculation, filing or evidence behavior changes — layout, words and read-only summaries only.
+PR #746 went fully green (CI run 40872209100) but main had advanced and a merge-tree check found one
+genuine conflict — migrated-pages.json, resolved as a union (32 entries) — so the identical tree,
+merged with current main, is open as PR #750 and #746 is closed unmerged with the reason recorded.
+A second union merge with main 3744b569 (the AR-9 close-out, #751) resolved the STATUS,
+registry and glossary overlaps the same way later on October 29.
+
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
 #733's branch was built through snapshot pushes, so its remote ancestry never contained the
