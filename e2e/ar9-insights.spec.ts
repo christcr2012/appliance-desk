@@ -25,8 +25,10 @@ test.describe("AR-9 insights as owner", () => {
     // anchor the start so "Where leads come from" (h3) and friends cannot
     // collide with the section titles.
     await expect(page.getByRole("heading", { level: 2, name: /^Leads/ })).toBeVisible();
-    await expect(page.getByText("New leads", { exact: true })).toBeVisible();
-    await expect(page.getByText(/Pipeline value/)).toBeVisible();
+    // "New leads" also names the chart's legend item and its data-table
+    // column, so the stat is pinned to its <dt> term element.
+    await expect(page.getByRole("term").filter({ hasText: "New leads" })).toBeVisible();
+    await expect(page.getByRole("term").filter({ hasText: "Pipeline value" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: /^Worth a call/ })).toBeVisible();
 
     await page.goto("/desk/inventory");
