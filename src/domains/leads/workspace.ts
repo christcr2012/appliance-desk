@@ -95,7 +95,7 @@ export async function getLeadWorkspace(
       },
       estimates: {
         where: { status: { in: ["SENT", "VIEWED"] } },
-        select: { id: true, estimateNumber: true, status: true },
+        select: { id: true, estimateNumber: true, status: true, createdAt: true, sentAt: true, viewedAt: true },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 1,
       },
@@ -107,7 +107,7 @@ export async function getLeadEstimates(leadId: string) {
   await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.estimate.findMany({
     where: { leadId },
-    select: { id: true, estimateNumber: true, status: true },
+    select: { id: true, estimateNumber: true, status: true, createdAt: true, sentAt: true, viewedAt: true },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 26,
   });

@@ -4594,7 +4594,7 @@
         "AR-12",
         "BA-1"
       ],
-      "status": "IN PROGRESS — AR-7a Books PR #744 open (successor of #733, Lane 4, 2026-10-29)",
+      "status": "COMPLETE — AR-7a Books merged in #744, AR-7b Taxes merged in #753 (Lane 4, 2026-10-29)",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -4649,7 +4649,7 @@
         "AR-6",
         "LD-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #749 (successor of #747; source; external acceptance separate)",
       "migration": "20261030000000_lead_closed_at (+ goal threshold settings)",
       "budget": 520,
       "units": [
@@ -4684,7 +4684,7 @@
         "AR-8",
         "AR-9"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — AR-10b permissions audit started (Lane 4, 2026-10-29)",
       "migration": "none",
       "budget": 700,
       "units": [
@@ -5913,6 +5913,18 @@
     {
       "id": "AR-7",
       "path": "docs/pr-cards/execution/AR-7.json"
+    },
+    {
+      "id": "AR-4B",
+      "path": "docs/pr-cards/execution/AR-4B.json"
+    },
+    {
+      "id": "AR-10",
+      "path": "docs/pr-cards/execution/AR-10.json"
+    },
+    {
+      "id": "AR-9",
+      "path": "docs/pr-cards/execution/AR-9.json"
     },
     {
       "id": "FEETAX-2",

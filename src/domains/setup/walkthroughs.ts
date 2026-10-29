@@ -467,12 +467,12 @@ export const WALKTHROUGHS: readonly Walkthrough[] = [
       {
         key: "business-use",
         title: "Answer the business-use share of shared bills",
-        body: "On Taxes → Tax benefits, in Write-off settings, enter the business share of each shared account (phone and internet). Until you answer, the app deducts none of it — 0% — so this one answer is real money. Pick the share you could defend from the bills, and revisit it when your usage changes.",
+        body: "On Taxes → Tax benefits, in Your deduction answers, enter the business share of each shared account (phone and internet). Until you answer, the app deducts none of it — 0% — so this one answer is real money. Pick the share you could defend from the bills, and revisit it when your usage changes.",
       },
       {
         key: "enterprise-zone",
         title: "Check the enterprise-zone map",
-        body: "Colorado gives a credit for equipment bought for use inside an enterprise zone, but the buy must be pre-certified first. Check whether your business (or storage) address is inside a zone on the state's OEDIT map, then record the answer in Write-off settings on Taxes → Tax benefits. Your CPA confirms — equipment the fleet uses outside the zone likely does not qualify.",
+        body: "Colorado gives a credit for equipment bought for use inside an enterprise zone, but the buy must be pre-certified first. Check whether your business (or storage) address is inside a zone on the state's OEDIT map, then record the answer in Your deduction answers on Taxes → Tax benefits. Your CPA confirms — equipment the fleet uses outside the zone likely does not qualify.",
         link: { href: "https://oedit.colorado.gov/enterprise-zone-program", label: "Colorado OEDIT — enterprise zone program" },
       },
       {

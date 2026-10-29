@@ -38,7 +38,7 @@ describe("appliance earnings are an estimate, not cash", () => {
   });
 
   it("the screens label the number as an estimate that splits the line price evenly", () => {
-    for (const file of [join(root, "src/components/desk/appliance-earnings-summary.tsx"), join(root, "src/app/desk/fleet/page.tsx")]) {
+    for (const file of [join(root, "src/components/desk/appliance-earnings-summary.tsx"), join(root, "src/app/desk/inventory/insights/page.tsx")]) {
       const text = readFileSync(file, "utf8");
       expect(text).toContain("Estimated rent (line price split evenly)");
       expect(text).not.toContain("Estimated rental value");

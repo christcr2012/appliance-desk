@@ -1,0 +1,212 @@
+[
+  {
+    "file": "src/app/desk/command-actions.ts",
+    "name": "commandSearchAction",
+    "guardedBy": "searchAll",
+    "reason": "Delegates to searchAll, which calls requireRole(OWNER, ADMIN, STAFF) and applies job-role permissions before any database access.",
+    "test": "tests/search-roles.test.ts"
+  },
+  {
+    "file": "src/app/desk/tasks/actions.ts",
+    "name": "createTaskAction",
+    "guardedBy": "createTask",
+    "reason": "The domain task function calls requireRole for an authorized desk role before it reads or changes any task record.",
+    "test": "tests/task-assignment-integration.test.ts"
+  },
+  {
+    "file": "src/app/desk/tasks/actions.ts",
+    "name": "updateTaskAction",
+    "guardedBy": "updateTask",
+    "reason": "The domain task function calls requireRole for an authorized desk role before it reads or changes any task record.",
+    "test": "tests/task-assignment-integration.test.ts"
+  },
+  {
+    "file": "src/app/desk/tasks/actions.ts",
+    "name": "completeTaskAction",
+    "guardedBy": "completeTask",
+    "reason": "The domain task function calls requireRole for an authorized desk role before it reads or changes any task record.",
+    "test": "tests/task-assignment-integration.test.ts"
+  },
+  {
+    "file": "src/app/desk/tasks/actions.ts",
+    "name": "reopenTaskAction",
+    "guardedBy": "reopenTask",
+    "reason": "The domain task function calls requireRole for an authorized desk role before it reads or changes any task record.",
+    "test": "tests/task-assignment-integration.test.ts"
+  },
+  {
+    "file": "src/app/desk/tasks/actions.ts",
+    "name": "deleteTaskAction",
+    "guardedBy": "deleteTask",
+    "reason": "The domain task function calls requireRole for an authorized desk role before it reads or changes any task record.",
+    "test": "tests/task-assignment-integration.test.ts"
+  },
+  {
+    "file": "src/app/desk/communications/[id]/actions.ts",
+    "name": "linkMessageContextAction",
+    "guardedBy": "linkMessageContext",
+    "reason": "The domain function calls requireRole(OWNER, ADMIN) and assertActiveTeamActor inside its transaction before linking.",
+    "test": "tests/communication-context-links.test.ts"
+  },
+  {
+    "file": "src/app/desk/settings/preview-storage/actions.ts",
+    "name": "runPreviewStorageCheck",
+    "guardedBy": "verifyPreviewPrivateStorage",
+    "reason": "The domain check calls getServerSession and refuses everyone except the OWNER before touching storage.",
+    "test": "tests/preview-storage.test.ts"
+  },
+  {
+    "file": "src/app/(public)/privacy/actions.ts",
+    "name": "publicPrivacyRequestAction",
+    "guardedBy": "public form (rate limited)",
+    "reason": "Public privacy-request form by design: rate limited by address, validates input, and creates only a privacy request record.",
+    "test": "tests/privacy-requests.test.ts"
+  },
+  {
+    "file": "src/app/join/[code]/actions.ts",
+    "name": "acceptInvitationAction",
+    "guardedBy": "acceptInvitation",
+    "reason": "The invitation code is the credential: the domain function validates the code, its state and expiry before creating the account.",
+    "test": "tests/acc2-team-invitations-integration.test.ts"
+  },
+  {
+    "file": "src/app/tenant/repair/[token]/actions.ts",
+    "name": "submitTenantRepairAction",
+    "guardedBy": "submitTenantRepair",
+    "reason": "The tenant repair link token is the credential: the domain function resolves the token to a single tenancy before accepting the report.",
+    "test": "tests/location-contacts-integration.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/language-actions.ts",
+    "name": "chooseQuoteLanguage",
+    "guardedBy": "getEstimateForApproval",
+    "reason": "The quote link id is the capability: the read validates the estimate is in an approvable state and the update touches only that quote's language.",
+    "test": "tests/customer-language-authorization-w26.test.ts"
+  },
+  {
+    "file": "src/app/(public)/check-address-actions.ts",
+    "name": "checkServiceAddress",
+    "guardedBy": "public form (rate limited)",
+    "reason": "Public service-area checker by design: rate limited by address and returns only whether an address can be served, never customer data.",
+    "test": "tests/check-address-action.test.ts"
+  },
+  {
+    "file": "src/app/(public)/contact/actions.ts",
+    "name": "submitLead",
+    "guardedBy": "createLead",
+    "reason": "Public contact form by design: rate limited by address with spam protection; creates only a lead enquiry.",
+    "test": "tests/contact-spam-protection.test.ts"
+  },
+  {
+    "file": "src/app/(public)/launch/actions.ts",
+    "name": "submitLaunchSignup",
+    "guardedBy": "joinLaunchList",
+    "reason": "Public launch list signup by design: rate limited by address; joins only the launch mailing list.",
+    "test": "tests/launch-actions.test.ts"
+  },
+  {
+    "file": "src/app/launch/confirm/[token]/actions.ts",
+    "name": "confirmLaunchAction",
+    "guardedBy": "confirmLaunchSubscription",
+    "reason": "The emailed confirmation token is the credential: the domain function confirms only the subscription that token belongs to.",
+    "test": "tests/launch-integration.test.ts"
+  },
+  {
+    "file": "src/app/emergency/[token]/actions.ts",
+    "name": "requestAccessAction",
+    "guardedBy": "requestEmergencyAccess",
+    "reason": "The emergency link token is the credential: the domain vault function validates the token before notifying the owner or starting access.",
+    "test": "tests/vault-integration.test.ts"
+  },
+  {
+    "file": "src/app/emergency/[token]/actions.ts",
+    "name": "sendCodeAction",
+    "guardedBy": "sendEmergencyCode",
+    "reason": "The emergency link token is the credential: the domain vault function validates the token and the pending request before sending a code.",
+    "test": "tests/vault-integration.test.ts"
+  },
+  {
+    "file": "src/app/emergency/[token]/actions.ts",
+    "name": "confirmCodeAction",
+    "guardedBy": "confirmEmergencyCode",
+    "reason": "The emergency link token plus the one-time code are the credentials: the domain vault function validates both before granting access.",
+    "test": "tests/vault-integration.test.ts"
+  },
+  {
+    "file": "src/app/emergency/[token]/actions.ts",
+    "name": "pauseChargesAction",
+    "guardedBy": "pauseChargesAsContact",
+    "reason": "The emergency link token is the credential: the domain vault function validates the token and the granted contact before pausing charges.",
+    "test": "tests/vault-integration.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/actions.ts",
+    "name": "approveEstimateAction",
+    "guardedBy": "approveEstimate",
+    "reason": "The quote link id is the capability: rate limited by address, and the domain function only approves an estimate in a sent, approvable state.",
+    "test": "tests/estimate-viewed-quote-action.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/actions.ts",
+    "name": "payEstimateDepositAction",
+    "guardedBy": "createDepositCheckoutSessionForEstimate",
+    "reason": "Rate limited by address; the domain function only starts a deposit checkout for an approved estimate that still owes a deposit.",
+    "test": "tests/estimate-viewed-quote-action.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/actions.ts",
+    "name": "requestEstimateChangesAction",
+    "guardedBy": "requestEstimateChanges",
+    "reason": "Rate limited by address; the domain function only records a change request on an estimate still open for responses.",
+    "test": "tests/estimate-bearer-actions-refusal-integration.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/actions.ts",
+    "name": "declineEstimateAction",
+    "guardedBy": "declineOfferedEstimate",
+    "reason": "Rate limited by address; the domain function refuses once the estimate is no longer offered (the replay refusal is proven in the cited test).",
+    "test": "tests/w24-order-integration.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/actions.ts",
+    "name": "continueEstimateOrderAction",
+    "guardedBy": "continueApprovedCustomerOrder",
+    "reason": "Rate limited by address; the domain function only continues an approved order and returns a waiting/review state otherwise, never customer data.",
+    "test": "tests/estimate-bearer-actions-refusal-integration.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/account-actions.ts",
+    "name": "sendFinishedOrderActivationAction",
+    "guardedBy": "sendSignedCustomerAccountLink",
+    "reason": "Rate limited by address and estimate; the domain function sends nothing unless the order is READY_FOR_ACCOUNT for that estimate.",
+    "test": "tests/estimate-bearer-actions-refusal-integration.test.ts"
+  },
+  {
+    "file": "src/app/estimate/[id]/zone-actions.ts",
+    "name": "chooseDeliveryAction",
+    "guardedBy": "setEstimateDeliveryChoiceByCustomer",
+    "reason": "Rate limited by address; the domain function records the delivery choice only for the estimate and service address on the customer's own quote link.",
+    "test": "tests/estimate-delivery-choice.test.tsx"
+  },
+  {
+    "file": "src/app/sign/[id]/actions.ts",
+    "name": "signAgreementAction",
+    "guardedBy": "signAgreement",
+    "reason": "The signing link record id is the credential: rate limited, and the domain function signs only an agreement awaiting that signature.",
+    "test": "tests/agreements-sign-concurrency.test.ts"
+  },
+  {
+    "file": "src/app/w9/[token]/actions.ts",
+    "name": "submitTypedAction",
+    "guardedBy": "submitTypedW9",
+    "reason": "The W-9 link token is the credential: hashed-token and address rate limits, one-time link state checked in the domain before any submission is stored.",
+    "test": "tests/w9-integration.test.ts"
+  },
+  {
+    "file": "src/app/w9/[token]/actions.ts",
+    "name": "submitUploadAction",
+    "guardedBy": "submitUploadedW9",
+    "reason": "The W-9 link token is the credential: hashed-token and address rate limits, one-time link state checked in the domain before any submission is stored.",
+    "test": "tests/w9-integration.test.ts"
+  }
+]

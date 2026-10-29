@@ -1,5 +1,6 @@
 /** Plain-language explanations shared by owner screens. */
 export const GLOSSARY = {
+  "lead-score": { title: "Score", description: "How likely this lead is to rent, from what they asked for. The reasons are listed here." },
   "retail-delivery-fee": {
     title: "Retail delivery fee",
     description: "Colorado may require a fee on qualifying retail deliveries. Your CPA should confirm when it applies before any live collection.",
@@ -52,5 +53,28 @@ export const GLOSSARY = {
   "held-conflict": { title: "Check this", description: "Refunded in Stripe after it was kept as credit and partly used. Look at it with your bookkeeper." },
   // AR-7 Books overview.
   "books-profit": { title: "Profit", description: "Billed minus spent this month (accrual). Your accountant may use a different method for taxes." },
+  "taxes-overview": { title: "Taxes", description: "Your Colorado filing setup, upcoming returns and tax decisions. Filing and paying stay your own actions." },
+  "tax-returns": { title: "Returns", description: "Your official filing checklist and recorded return evidence. The application does not submit forms to SUTS or send payments on your behalf." },
+  "tax-areas": { title: "Areas & rates", description: "If a provider cannot confirm an address or a rate, keep it in review instead of treating an unknown result as verified." },
+  "audit-pack": { title: "Audit pack", description: "Every appliance and part you bought in a date range, with the seller, price, tax paid or use tax reported, the return and its confirmation number, and the receipt." },
+  "delivery-area": { title: "Delivery area", description: "A delivery address can only be quoted, ordered and scheduled when every taxing place for it is set up here: its rental tax rule is decided, and where the city requires a license, the license is on file in Business records. Places outside this list work the same way — the first address there shows up as not set up until it is reviewed here." },
+  // AR-9 Insights (Customers, Equipment, Money Overview).
+  "speed-to-lead": { title: "Speed to lead", description: "The middle response time for leads created this month: from when the lead arrived to when you first contacted them, counting only minutes inside your opening hours on days you are open. Leads whose first contact time was estimated are left out." },
+  "quote-rate": { title: "Quote rate", description: "Of the leads created this month, how many were sent at least one quote." },
+  "win-rate": { title: "Win rate", description: "Of the leads you closed this month, how many became customers. Leads closed before October 2026 may be missing." },
+  "pipeline-value": { title: "Pipeline value", description: "The monthly rent on quotes that are out with leads right now (sent, viewed, asking for changes or approved) and have not become rentals yet." },
+  "active-customers": { title: "Active customers", description: "Customers with a rental going on right now. The change compares with the start of this month." },
+  "customers-left": { title: "Customers who left", description: "Customers whose last rental ended this month and who have no rental going on or booked. The reason is worked out from the record: cancelled before delivery, ended early, the rental finished, they stopped paying, or it just ended." },
+  "average-rent": { title: "Average rent", description: "The monthly rent from active rentals, divided by the number of active customers." },
+  "time-as-customer": { title: "Average time as a customer", description: "For customers who have left: the months from their first rental starting to their last rental ending, averaged." },
+  "collected-per-customer": { title: "Collected per customer", description: "Everything ever received from a customer, minus cash refunds (money kept as account credit is not subtracted), averaged over every customer who has had a rental." },
+  "automatic-payments-share": { title: "On automatic payments", description: "Of customers with a rental going on, how many pay automatically by card or bank on file." },
+  "behind-on-a-bill": { title: "Behind on a bill now", description: "Of customers with a rental going on, how many have a bill that is past its due date and not fully paid." },
+  "fleet-utilization": { title: "Fleet use", description: "The share of appliance time that was rented out over the last 30 days, counting only appliances with enough history to judge." },
+  "idle-appliance": { title: "Idle appliances", description: "Ready-to-rent appliances no customer has had for at least the number of days in your goal settings." },
+  "demand-gap": { title: "What people are asking for", description: "Open requests from leads for each kind of appliance, compared with how many are available. The gap is what you would need to say yes to everyone." },
+  "monthly-rent-now": { title: "Monthly rent now", description: "The monthly rent all active rentals add up to right now. Over a year is that times twelve." },
+  "goal-pace": { title: "Goal pace", description: "A goal is Behind when what you have so far is below the share you set of where a steady pace would be by today. The first days of a month are too early to judge; you set both numbers in Settings, Goals." },
+  "fleet-numbers": { title: "How to read these numbers", description: "Includes all non-archived appliances, including retired units still on file. Rental value uses agreed monthly prices, 30-day proration, and assignment dates; a rental line is split across its distinct assigned units. It is not invoiced or collected revenue. Recorded repair cost is the parts plus labor entered on completed maintenance visits. Contribution subtracts recorded acquisition and repair costs; blank costs count as nothing and stay incomplete. Deposits, refunds, overdue invoices, overhead and taxes are not included, so these figures do not establish cash collected or business profit." },
 } as const;
 export type GlossaryKey = keyof typeof GLOSSARY;

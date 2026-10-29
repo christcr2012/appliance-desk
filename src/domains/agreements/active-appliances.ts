@@ -85,5 +85,7 @@ export async function getActiveApplianceOptionsForCustomer(customerId: string) {
  * always use (docs/BUSINESS-RULES.md's customer-data-isolation rule: never
  * trust or accept an id the caller supplies for "which customer's data"). */
 export async function getActiveApplianceOptionsForUser(userId: string) {
-  return queryActiveApplianceOptions({ status: "ACTIVE", customer: { userId } });
+  // AR-10b: an archived customer gets no options — the same refusal the
+  // other portal reads apply through portalCustomerId (archivedAt check).
+  return queryActiveApplianceOptions({ status: "ACTIVE", customer: { userId, archivedAt: null } });
 }

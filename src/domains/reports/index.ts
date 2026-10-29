@@ -106,8 +106,10 @@ export async function getJobsMissingRepairCost() {
     where: {
       type: "MAINTENANCE_VISIT",
       status: "COMPLETED",
-      partsCostCents: null,
-      laborCostCents: null,
+      // Missing A cost: a job with only one of its two costs entered is
+      // still incomplete (the fleet spec's fixture — parts entered, labor
+      // blank — is exactly the case an owner needs surfaced).
+      OR: [{ partsCostCents: null }, { laborCostCents: null }],
     },
     select: {
       id: true,

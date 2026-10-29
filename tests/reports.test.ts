@@ -82,14 +82,13 @@ describe("getJobsMissingRepairCost", () => {
     jobFindMany.mockReset().mockResolvedValue([]);
   });
 
-  it("only looks for completed maintenance visits with both costs unset", async () => {
+  it("only looks for completed maintenance visits with either cost unset", async () => {
     await getJobsMissingRepairCost();
     const args = jobFindMany.mock.calls[0][0];
     expect(args.where).toEqual({
       type: "MAINTENANCE_VISIT",
       status: "COMPLETED",
-      partsCostCents: null,
-      laborCostCents: null,
+      OR: [{ partsCostCents: null }, { laborCostCents: null }],
     });
   });
 });

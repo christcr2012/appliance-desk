@@ -1,3 +1,88 @@
+## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
+
+AR-10 is split by risk: AR-10b (the §5 permissions audit) first, AR-10a (the redesign sweep)
+second, each its own PR under the AR-10 packet. Step 1 — server-action inventory
+(tests/server-action-auth-inventory.test.ts): all 118 action files / 500 exported actions are
+guarded or listed with a verified reason (470 directly guarded; 30 fixture entries: 8 desk
+domain-guarded, 22 public/token surfaces), plus a new refusal test for the estimate bearer
+actions (5/5 green on Lane 4 Postgres). Step 2 — desk-page inventory: 161 pages, 141 guard
+themselves, 19 reasoned fixture entries. FINDING 1 (fixed in this PR): /desk/driver relied on
+the layout for its role check while running unguarded reads and a direct query exposing
+today's route with customer names, phones and addresses; the page now calls
+requireRole("OWNER", "ADMIN", "STAFF") itself, matching its domain guard. Step 3 — API-route
+inventory: all 56 routes classified by verified mechanism (session guards, cron secret,
+provider signatures, token checks); exactly 4 reasoned public listings (Better Auth handler,
+OAuth authorize redirect, health, public-scope site media). Step 4 — customer A/B matrix
+(tests/customer-ab-matrix-integration.test.ts): 12 named surfaces, 13/13 green — customer A
+never sees or touches customer B's data, and neither does an archived customer or a staff
+login with no customer record. FINDING 2 (fixed in this PR): the portal resolved the customer
+by login with no archived check on four paths, so an archived customer could still list their
+appliances and start writes; getActiveApplianceOptionsForUser now filters archivedAt: null and
+createMaintenanceRequestForUser / createPickupRequestForUser / updateSmsPreference refuse an
+archived customer with the existing "No customer account found for this login." message.
+(discardUnsentRequestPhoto was reviewed and deliberately left: its cleanup is prefix-bound to
+the caller's own folder, so an archived caller can only ever queue their own unsent photo.)
+Step 5 — e2e/session-deactivation.spec.ts extended: a removed team member's live session is
+refused on the next page load and the next API call, and signing out and in as another
+customer never shows the first customer's data, back button included (browser proof is CI's).
+No guard was weakened anywhere to make an inventory pass. Remaining for AR-10b: preflight,
+push, CI, review, merge. AR-10a follows on its own branch.
+
+## October 29 — AR-7 Books + Taxes on the kit: COMPLETE (PR #753, Lane 4)
+
+AR-7 is done: AR-7a (Books) merged in #744 and AR-7b (Taxes) merged in #753 (squash dce092e7)
+after a three-PR chain (#746, #750, #753) — each successor carried the identical tree onto a
+newer main as shared registry files kept moving; the conflicts were genuine each time and were
+resolved as unions. At the merged head both CI runs were green (the telecom-settings failure
+that blocked #750 did not reproduce), review-gate was green on the combined status, and no tax
+or fee rule changed anywhere in the packet. Lane 4's last card is AR-10, starting with AR-10b
+(the permissions audit, FINAL-SWEEP section 5).
+
+## October 29 — AR-9 Insights: MERGED (PR #749, Lane 5)
+
+AR-9 is on main (squash merge 3c73bd3b): Customers › Insights and Equipment › Insights as kit
+pages, Money Overview rent health and goals, Money › Income replacing the Revenue ledger, the
+redirects, the additive Lead.closedAt migration, goal pace settings, and the Equipment Insights
+side panel. The PR chain (#734/#736/#740/#745/#747) is recorded on #749; all Codex findings across
+the chain were fixed with tests, including the prepaid-cohort and renewal-autopay corrections and
+the desktop side panel. Lane 5's AR share is complete. Next for Lane 5: the telecom-settings
+browser diagnosis (COM line), then the MASTER-ROADMAP.
+
+## October 29 — AR-7b Taxes on the kit: PR #753 open, successor of #750 and #746 (Lane 4)
+
+AR-7a merged to main as the squash commit 60090f41 (CI run 40838554175 green at the exact head,
+review-gate green, auto-merge). AR-7b (Taxes) is built under the same AR-7 packet: the Taxes frame
+moves to the spec's six sub-tabs (Overview · Returns · Areas & rates · Exemptions · Use tax · Setup),
+the Overview gets its StatStrip/InboxCard layout with the DEC-1 decisions count, and every Taxes page
+joins migrated-pages.json (kit guards 43/43 against the union registry, plain-words pass after
+rewording seven pre-existing jargon strings — labels only, stored values unchanged).
+No tax calculation, filing or evidence behavior changes — layout, words and read-only summaries only.
+PR #746 went fully green (CI run 40872209100) but main had advanced and a merge-tree check found one
+genuine conflict — migrated-pages.json, resolved as a union (32 entries) — so the identical tree,
+merged with current main, is open as PR #750 and #746 is closed unmerged with the reason recorded.
+A second union merge with main 3744b569 (the AR-9 close-out, #751) resolved the STATUS,
+registry and glossary overlaps the same way later on October 29; #750 still computed dirty
+(content pushes carry no merge ancestry), so the same resolved tree is open as PR #753 from
+current main and #750 is closed unmerged with the reason recorded. The one remaining blocker
+is not in this PR: the telecom-settings browser failure in PR-triggered CI, which Lane 5 is
+diagnosing by the owner's decision.
+
+## October 29 — AR-4b Leads built (PR #760; #752/#755/#756/#758 closed unmerged along the way — the pull_request CI outage, then snapshot-branch merge conflicts); AR-8 merged
+
+AR-8 (Settings rebuild) is MERGED via PR #743 (squash 7a691f9d; successor chain #724 → #726 → #732 →
+#739 → #743). This PR builds AR-4b (Leads) on branch `ai/vivienne/ar-4b-leads` from the execution
+packet Lane 5 prepared (AR-4B.json, cherry-picked; the work-index registration conflict was resolved
+keeping both sides' entries): the `/desk/leads` queue on the kit (stage tabs with counts, filters,
+five sorts, built-in views, cursor Load more), row sheets (follow-up with undo, assign, log a
+contact, mark lost, convert), a bulk bar (assign / follow-up / lost / export selected), a board view
+with drag and menu moves, CSV export of the filtered list, the lead record on the kit (stepper,
+next-step card, duplicate/merge, customer-match and merged banners, Activity / What they want /
+Quotes / Tasks tabs), quote-for-an-existing-lead (`/desk/estimates/new?leadId=`, and the new-lead
+quote flow is now one transaction), and lead editing with a changed-fields-only audit row. This PR
+also carries AR-8's paperwork close-out: the merged wording below and the owner's vault-successor
+answer filed as DQ-CONT-SUCCESSOR in docs/OWNER-INPUTS.md. Next in Lane 6's queue: AR-4c
+(Customers list), then AR-13 notifications.
+
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
 #733's branch was built through snapshot pushes, so its remote ancestry never contained the
@@ -31,6 +116,22 @@ on the streamed Books pages, with the first failing page varying between runs wh
 books-workspace spec (which waits for the heading) passes on the same page — the test analyzed a
 half-streamed document. A second fix batch riding with this note makes the axe test wait for the
 page heading before analyzing; the axe assertion is unchanged. CI green at the exact head, then auto-merge.
+## October 29 — AR-9 Insights: successor PR (branch ai/vivienne/ar-9-v4, Lane 5)
+
+One PR per the card: Customers › Insights and Equipment › Insights tabs
+(LD-4/CU-3 and the fleet report, rebuilt as kit pages over a new
+OWNER/ADMIN-only insights domain), Money Overview gains rent health,
+goals and under-paying rentals, the Revenue ledger becomes Money › Income
+details, and Growth/Fleet/Revenue/Reports/Dashboard are redirects (AR-10
+retires them later). Additive migration: `Lead.closedAt` (backfilled from
+audit history) plus the two goal-pace settings. PRs #734 and #736 went
+dirty against moved main and were closed with pointers; #740 (branch
+ai/vivienne/ar-9-v3) carried the tree through review and four CI fix
+rounds, then main advanced by MCP-6 and AR-7a (including the Oct 29
+budget-test date fix), so this branch merges current main with the
+identical tree plus all fixes — the successor pattern, same as AR-7a's
+#733 → #744.
+
 
 ## October 28 — MCP-7 monitoring build (in progress)
 
@@ -129,7 +230,7 @@ tests/approval-actions.test.ts pins the contract (domain spies, both revalidatio
 inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
 adds optimistic task completion with Undo.
 
-## October 28 — AR-8 Settings rebuild: in review (successor PR #739 of #732, itself successor of #726/#724)
+## October 28 — AR-8 Settings rebuild: MERGED 2026-10-29 via PR #743 (successor of #739/#732/#726/#724)
 
 Fix round on #739 after its first CI run: two settings-frame defects the browser suite caught — the
 section navigation lost the old page's "Settings sections" landmark (restored), and the Spanish wording

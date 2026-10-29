@@ -24,15 +24,31 @@ export type Pace = {
   percentOfTarget: number;
 };
 
-/** `dayOfMonth` is 1-based (Colorado calendar); `daysInMonth` is 28 to 31. */
-export function computePace(input: { target: number; actual: number; dayOfMonth: number; daysInMonth: number }): Pace {
+/** `dayOfMonth` is 1-based (Colorado calendar); `daysInMonth` is 28 to 31.
+ * AR-9: the quiet days and behind share are owner settings (BusinessSettings
+ * goalQuietDays 0-15 / goalBehindPercent 50-100); callers pass them in and
+ * the constants above stay as the defaults. */
+export function computePace(input: {
+  target: number; actual: number; dayOfMonth: number; daysInMonth: number;
+  quietDays?: number; behindPercent?: number;
+}): Pace {
   const { target, actual, dayOfMonth, daysInMonth } = input;
+  const quietDays = input.quietDays ?? PACE_QUIET_DAYS;
+  const behindShare = (input.behindPercent ?? PACE_BEHIND_SHARE * 100) / 100;
   const percentOfTarget = target > 0 ? Math.floor((actual / target) * 100) : 0;
   const expectedSoFar = Math.round((target * Math.min(dayOfMonth, daysInMonth)) / daysInMonth);
   if (target > 0 && actual >= target) return { status: "MET", expectedSoFar, percentOfTarget };
-  if (dayOfMonth <= PACE_QUIET_DAYS) return { status: "TOO_EARLY", expectedSoFar, percentOfTarget };
-  const status = actual < expectedSoFar * PACE_BEHIND_SHARE ? "BEHIND" : "ON_PACE";
+  if (dayOfMonth <= quietDays) return { status: "TOO_EARLY", expectedSoFar, percentOfTarget };
+  const status = actual < expectedSoFar * behindShare ? "BEHIND" : "ON_PACE";
   return { status, expectedSoFar, percentOfTarget };
+}
+
+export function validateGoalQuietDays(days: number): string | null {
+  return Number.isSafeInteger(days) && days >= 0 && days <= 15 ? null : "Enter a number of days from 0 to 15.";
+}
+
+export function validateGoalBehindPercent(value: number): string | null {
+  return Number.isSafeInteger(value) && value >= 50 && value <= 100 ? null : "Enter a percent from 50 to 100.";
 }
 
 export function validateTarget(metric: GoalMetric, value: number): string | null {
