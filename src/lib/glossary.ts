@@ -50,5 +50,23 @@ export const GLOSSARY = {
   "expected-30": { title: "Coming in 30 days", description: "Rent from active rentals whose next bill falls in the next 30 days. Tax is added on the bill." },
   "held-payment": { title: "Needs a decision", description: "A card payment arrived after the bill was given up or cancelled. Decide whether to keep it as credit or send it back." },
   "held-conflict": { title: "Check this", description: "Refunded in Stripe after it was kept as credit and partly used. Look at it with your bookkeeper." },
+  // AR-9 Insights (Customers, Equipment, Money Overview).
+  "speed-to-lead": { title: "Speed to lead", description: "The middle response time for leads created this month: from when the lead arrived to when you first contacted them, counting only minutes inside your opening hours on days you are open. Leads whose first contact time was estimated are left out." },
+  "quote-rate": { title: "Quote rate", description: "Of the leads created this month, how many were sent at least one quote." },
+  "win-rate": { title: "Win rate", description: "Of the leads you closed this month, how many became customers. Leads closed before October 2026 may be missing." },
+  "pipeline-value": { title: "Pipeline value", description: "The monthly rent on quotes that are out with leads right now (sent, viewed, asking for changes or approved) and have not become rentals yet." },
+  "active-customers": { title: "Active customers", description: "Customers with a rental going on right now. The change compares with the start of this month." },
+  "customers-left": { title: "Customers who left", description: "Customers whose last rental ended this month and who have no rental going on or booked. The reason is worked out from the record: cancelled before delivery, ended early, the rental finished, they stopped paying, or it just ended." },
+  "average-rent": { title: "Average rent", description: "The monthly rent from active rentals, divided by the number of active customers." },
+  "time-as-customer": { title: "Average time as a customer", description: "For customers who have left: the months from their first rental starting to their last rental ending, averaged." },
+  "collected-per-customer": { title: "Collected per customer", description: "Everything ever received from a customer, minus cash refunds (money kept as account credit is not subtracted), averaged over every customer who has had a rental." },
+  "automatic-payments-share": { title: "On automatic payments", description: "Of customers with a rental going on, how many pay automatically by card or bank on file." },
+  "behind-on-a-bill": { title: "Behind on a bill now", description: "Of customers with a rental going on, how many have a bill that is past its due date and not fully paid." },
+  "fleet-utilization": { title: "Fleet use", description: "The share of appliance time that was rented out over the last 30 days, counting only appliances with enough history to judge." },
+  "idle-appliance": { title: "Idle appliances", description: "Ready-to-rent appliances no customer has had for at least the number of days in your goal settings." },
+  "demand-gap": { title: "What people are asking for", description: "Open requests from leads for each kind of appliance, compared with how many are available. The gap is what you would need to say yes to everyone." },
+  "monthly-rent-now": { title: "Monthly rent now", description: "The monthly rent all active rentals add up to right now. Over a year is that times twelve." },
+  "goal-pace": { title: "Goal pace", description: "A goal is Behind when what you have so far is below the share you set of where a steady pace would be by today. The first days of a month are too early to judge; you set both numbers in Settings, Goals." },
+  "fleet-numbers": { title: "How to read these numbers", description: "Includes all non-archived appliances, including retired units still on file. Rental value uses agreed monthly prices, 30-day proration, and assignment dates; a rental line is split across its distinct assigned units. It is not invoiced or collected revenue. Recorded repair cost is the parts plus labor entered on completed maintenance visits. Contribution subtracts recorded acquisition and repair costs; blank costs count as nothing and stay incomplete. Deposits, refunds, overdue invoices, overhead and taxes are not included, so these figures do not establish cash collected or business profit." },
 } as const;
 export type GlossaryKey = keyof typeof GLOSSARY;

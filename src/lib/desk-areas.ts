@@ -20,10 +20,11 @@ export const DESK_AREAS: Area[] = [
   ] },
   { key: "customers", label: "Customers", icon: "customers", tabs: [
     { key: "leads", label: "Leads", href: "/desk/leads", restriction: "finance" },
-    { key: "customers", label: "Customers", href: "/desk/customers", matches: ["/desk/growth"] },
+    { key: "customers", label: "Customers", href: "/desk/customers" },
     { key: "quotes", label: "Quotes", href: "/desk/estimates", restriction: "finance" },
     { key: "rentals", label: "Rentals", href: "/desk/agreements", matches: ["/desk/phone-orders"] },
     { key: "messages", label: "Messages", href: "/desk/communications" },
+    { key: "insights", label: "Insights", href: "/desk/customers/insights", restriction: "finance", matches: ["/desk/growth"] },
   ] },
   { key: "schedule", label: "Schedule", icon: "schedule", tabs: [
     { key: "board", label: "Board", href: "/desk/dispatch", feature: "team" },
@@ -32,14 +33,15 @@ export const DESK_AREAS: Area[] = [
     { key: "repairs", label: "Repairs", href: "/desk/maintenance" },
   ] },
   { key: "equipment", label: "Equipment", icon: "equipment", tabs: [
-    { key: "fleet", label: "Fleet", href: "/desk/inventory", matches: ["/desk/fleet"] },
+    { key: "fleet", label: "Fleet", href: "/desk/inventory" },
     { key: "purchases", label: "Purchases", href: "/desk/purchases", restriction: "finance", matches: ["/desk/purchase-orders"] },
     { key: "parts", label: "Parts", href: "/desk/parts" },
     { key: "suppliers", label: "Suppliers", href: "/desk/suppliers", restriction: "finance" },
     { key: "retired", label: "Retired", href: "/desk/inventory/retired", restriction: "finance" },
+    { key: "insights", label: "Insights", href: "/desk/inventory/insights", restriction: "finance", matches: ["/desk/fleet"] },
   ] },
   { key: "money", label: "Money", icon: "money", tabs: [
-    { key: "overview", label: "Overview", href: "/desk/money", restriction: "finance", matches: ["/desk/revenue", "/desk/reports"] },
+    { key: "overview", label: "Overview", href: "/desk/money", restriction: "finance", matches: ["/desk/revenue", "/desk/reports", "/desk/money/income"] },
     { key: "bills", label: "Bills", href: "/desk/billing", restriction: "finance", matches: ["/desk/sales", "/desk/billing/customer"] },
     { key: "payments", label: "Payments", href: "/desk/payments", restriction: "finance",
       matches: ["/desk/billing/held-payments", "/desk/billing/reconciliation", "/desk/billing/deposits"] },
