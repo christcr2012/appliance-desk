@@ -4594,7 +4594,7 @@
         "AR-12",
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — AR-7a Books PR #733 open (Lane 4, 2026-10-28)",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -5909,6 +5909,10 @@
     {
       "id": "AR-2",
       "path": "docs/pr-cards/execution/AR-2.json"
+    },
+    {
+      "id": "AR-7",
+      "path": "docs/pr-cards/execution/AR-7.json"
     },
     {
       "id": "FEETAX-2",
