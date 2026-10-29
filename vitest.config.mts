@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/books-home-integration.test.ts", // AR-7 changes and restores the shared books start date and books problem counters.
   "tests/mcp-decisions-apply-integration.test.ts", // MCP-5 briefly applies and restores shared DEC-1 business settings.
   "tests/books-poster-integration.test.ts", // K-2A changes/restores the books start date; no parallel writes to singleton.
   "tests/ops8-continuity-integration.test.ts", // OPS-8 changes and restores the shared continuity details and the charges-paused switch.
