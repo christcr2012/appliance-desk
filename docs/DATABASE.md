@@ -1,3 +1,7 @@
+## October 28 — AR-9 Insights (additive)
+
+Migration `20261030000000_lead_closed_at` adds `Lead.closedAt` (nullable timestamp; set when a lead is marked LOST or converted to a customer, cleared when a closed lead reopens, set on the merged-away lead at a merge; index on (`status`, `closedAt`)). The migration backfills it from each closed lead's newest `lead.status`/`lead.convert` audit row; leads closed before audit history existed keep null, and Insights says so. The same migration adds `BusinessSettings.goalQuietDays` (integer, default 7; the settings save validates 0–15) and `BusinessSettings.goalBehindPercent` (integer, default 75; validated 50–100): how long a goal may sit quiet and how far through the period it may be before it shows as behind, edited in Settings › Goals. No new models, so the backup manifest is unchanged.
+
 ## October 27 — AR-12 feature visibility (additive, in CI review)
 
 Migration `20261026000000_shown_features` adds `BusinessSettings.shownFeatures` (text list, default empty). The owner's choices change only which menu entries appear; existing pages and authorization do not change. Team (2+ active members), property-manager records and active cash budgeting also enable their corresponding feature indicators automatically. Owner-only changes lock the singleton row and record `settings.features` audit entries, once per actual change. No new model, no backup inventory change, and no production settings changed by this work.

@@ -1,3 +1,18 @@
+## October 28 — AR-9 Insights in progress (successor of PR #734, branch ai/vivienne/ar-9-v2)
+
+One PR per the card: Customers › Insights and Equipment › Insights tabs
+(LD-4/CU-3 and the fleet report, rebuilt as kit pages over a new
+OWNER/ADMIN-only insights domain), Money Overview gains rent health,
+goals and under-paying rentals, the Revenue ledger becomes Money › Income
+details, and Growth/Fleet/Revenue/Reports/Dashboard are redirects (AR-10
+retires them later). Additive migration: `Lead.closedAt` (backfilled from
+audit history) plus the two goal-pace settings. All six steps are built;
+PR #734 carried two CI fix rounds (bundle budgets, the accountant's
+Reports home, Denver-true month/week bounds, the closedAt write-shape
+expectations, metric definitions on the successor screens) and then went
+dirty against moved main, so this successor branch off current main
+carries the identical tree plus those fixes.
+
 ## October 28 — Implementation guidance repair (in progress, not merged)
 
 Branch `ai/chatgpt/implementation-clarity-20261028`: reconciled the source/PR execution map in MASTER-ROADMAP;
