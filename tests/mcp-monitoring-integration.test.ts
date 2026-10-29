@@ -29,6 +29,7 @@ describe("MCP-7 disposable-PostgreSQL monitoring slots", () => {
     await prisma.monitorRun.deleteMany({ where: { ruleKey } });
     await prisma.monitorRule.deleteMany({ where: { key: ruleKey } });
     await prisma.agentOperation.deleteMany({ where: { connectionId } });
+    await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
     await prisma.mcpConnection.update({ where: { id: connectionId }, data: { revokedAt: null, scopes: ["ops:maintain"] } });
     await prisma.systemIssue.deleteMany({ where: { fingerprint: issueKey } });
   });
@@ -37,6 +38,9 @@ describe("MCP-7 disposable-PostgreSQL monitoring slots", () => {
     await prisma.monitorRule.deleteMany({ where: { key: ruleKey } });
     await prisma.systemIssue.deleteMany({ where: { fingerprint: issueKey } });
     await prisma.agentOperation.deleteMany({ where: { connectionId } });
+    // Journal and standing-rule grants create audit entries with a restrictive
+    // User foreign key; remove synthetic test evidence before its synthetic owner.
+    await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
     await prisma.mcpConnection.delete({ where: { id: connectionId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, staffId] } } });
     await prisma.$disconnect();
@@ -183,6 +187,11 @@ describe("MCP-7 disposable-PostgreSQL monitoring slots", () => {
     const rule = await prisma.monitorRule.findUniqueOrThrow({ where: { key: ruleKey } });
     expect(rule.autoAction).toBe("RUN_DIAGNOSTIC_SWEEP");
     expect(rule.autoActionConnectionId).toBe(connectionId);
+    const grant = await prisma.auditLog.findFirst({ where: {
+      userId: ownerId, action: "mcp.monitor.standing_approval",
+      entityType: "MonitorRule", entityId: rule.id,
+    } });
+    expect(grant).toBeTruthy();
     await prisma.mcpConnection.update({ where: { id: connectionId }, data: { revokedAt: new Date() } });
     await expect(saveMonitorRule(ownerId, {
       key: ruleKey, enabled: true, failuresBeforeAlert: 1, cooldownHours: 24,

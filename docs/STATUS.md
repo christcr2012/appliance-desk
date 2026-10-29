@@ -1,6 +1,21 @@
-## October 29 — MCP-11 assistant feedback, PR #748 (Lane 2)
+## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
 
-Consent-scoped feedback assistant reads, reporter withdrawal, journaled assistant replies/state changes and verified repair-case linkage are implemented on #748. Previous 0fbdba4 exact-head `ci` passed and 24 focused disposable-PostgreSQL tests were recorded as passing; after merging latest main, local lint and four no-AI privacy tests passed. Local TypeScript checks ran out of memory in the 4 GiB sandbox, so the new merged head requires GitHub CI. Codex review quota is exhausted; self-review and the required `review-gate` remain pending. Hosted connection and owner UI acceptance are separately pending. No live messaging.
+MCP-11 assistant feedback was merged in PR #748 after its exact-head CI and normal
+review-gate completed. MCP-7b PR #762 adds owner-only, default-off standing
+monitoring approvals for a narrowly allowlisted MCP-5 action and an active,
+maintenance-scoped owner connection; each qualifying alert links its permanent
+Denver-day receipt to the operation journal. The operation checks the exact
+rule version, owner access, connection and scope at claim and before dispatch,
+records owner grant changes in the audit log, and never blindly retries
+an uncertain action. The owner interface explains delegation and assistant
+activity attributes it to the monitoring rule.
+
+Local focused ESLint passed with no errors and monitoring policy tests were 3/3
+green; GitHub's type-check, lint and repository-check job passed. The first
+GitHub CI run found synthetic audit-log teardown cleanup and a missing STATUS
+update; these were corrected for the next exact-head CI. Full database/browser
+CI and review remain required before merge. No live provider or customer
+communications were enabled. MCP-8 and MCP-9 remain outstanding.
 
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 

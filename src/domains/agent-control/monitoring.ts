@@ -101,12 +101,21 @@ export async function saveMonitorRule(actorId: string, input: {
     await tx.$queryRaw`SELECT "id" FROM "MonitorRule" WHERE "key" = ${input.key} FOR UPDATE`;
     const current = await tx.monitorRule.findUnique({ where: { key: input.key } });
     if ((current?.version ?? null) !== input.expectedVersion) throw new Error("These monitoring settings changed. Reload and try again.");
-    if (!current) {
-      await tx.monitorRule.create({ data: { key: input.key, ...next } });
-    } else {
-      await tx.monitorRule.update({
-        where: { id: current.id }, data: { ...next, version: { increment: 1 } },
-      });
+    const saved = !current
+      ? await tx.monitorRule.create({ data: { key: input.key, ...next } })
+      : await tx.monitorRule.update({
+          where: { id: current.id }, data: { ...next, version: { increment: 1 } },
+        });
+    // Standing approval is an auditable, revocable owner decision, not a transient
+    // boolean on a journal operation. Record both grants and withdrawals.
+    if (current?.autoAction || saved.autoAction) {
+      await tx.auditLog.create({ data: {
+        userId: actorId, action: "mcp.monitor.standing_approval",
+        entityType: "MonitorRule", entityId: saved.id,
+        newValue: { ruleKey: input.key, version: saved.version,
+          enabled: saved.enabled, action: saved.autoAction,
+          connectionId: saved.autoActionConnectionId },
+      } });
     }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
