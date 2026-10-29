@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { DataList, type DataListColumn } from "@/components/ui/data-list";
+import { EmptyState, ScreenHeader } from "@/components/kit";
 import { TaxActionForm } from "../setup/forms";
 import { retryPendingDeliveryFees } from "./actions";
 
@@ -15,15 +15,8 @@ type WaitingRow = {
 
 const date = (value: Date | null) => value ? value.toISOString().slice(0, 10) : "Not recorded";
 
-const columns: DataListColumn<WaitingRow>[] = [
-  {
-    key: "customer", header: "Customer", primary: true,
-    cell: (row) => row.agreement?.customer.companyName || row.agreement?.customer.user.name ||
-      row.invoice?.customer.companyName || row.invoice?.customer.user.name || "Customer record",
-  },
-  { key: "delivery", header: "Delivered", cell: (row) => date(row.deliveredOn) },
-  { key: "sale", header: "Sale date", cell: (row) => date(row.saleOn) },
-];
+const customerName = (row: WaitingRow) => row.agreement?.customer.companyName || row.agreement?.customer.user.name ||
+  row.invoice?.customer.companyName || row.invoice?.customer.user.name || "Customer record";
 
 export const metadata = { title: "Delivery fees waiting on you", robots: { index: false, follow: false } };
 
@@ -84,25 +77,31 @@ export default async function PendingDeliveryFeesPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold">Retail delivery fees waiting on you</h2>
-        <p className="text-sm text-muted-foreground">
-          Colorado charges a small fee on deliveries. These deliveries are recorded, but
-          the fee cannot be finished until you answer below.
-        </p>
-      </header>
+      <ScreenHeader title="Delivery fees" />
+      <p className="text-sm text-muted-foreground">
+        Colorado charges a small fee on deliveries. These deliveries are recorded, but
+        the fee cannot be finished until you answer below.
+      </p>
       {decision.count + rate.count === 0 ? (
         <p className="rounded-lg border border-border p-5">Nothing waiting.</p>
       ) : sections.map(section => (
         <section key={section.id} className="space-y-3 rounded-xl border border-border p-4">
-          <h3 className="text-lg font-semibold">{section.title}</h3>
+          <h2 className="text-lg font-semibold">{section.title}</h2>
           <p className="text-sm text-muted-foreground">
             {section.stats.count} record{section.stats.count === 1 ? "" : "s"} waiting.
             {section.stats.oldest ? " Oldest delivery: " + date(section.stats.oldest) + "." : ""}
           </p>
           <Link className="inline-block font-medium underline" href={section.href}>{section.label}</Link>
-          <DataList rows={section.rows} columns={columns}
-            caption={section.title} empty={<p>No records waiting in this group.</p>} />
+          {section.rows.length === 0 ? <EmptyState title="No records waiting in this group" /> : (
+            <ul className="flex flex-col gap-2">
+              {section.rows.map(row => (
+                <li key={row.id} className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3">
+                  <span className="font-semibold">{customerName(row)}</span>
+                  <span className="text-sm text-muted-foreground">Delivered {date(row.deliveredOn)} · Sale date {date(row.saleOn)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           {section.stats.count > section.rows.length && (
             <p className="text-sm text-muted-foreground">
               Showing the oldest {section.rows.length} of {section.stats.count} records.
