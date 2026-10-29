@@ -86,7 +86,9 @@ test("removed team member's live session is refused on next page load and next a
     const deniedResponse = await page.request.post("/api/uploads/photo", { data: {} });
     expect(deniedResponse.status()).toBe(401);
     // Next page load: bounced to the sign-in page, marked deactivated.
-    await page.goto("/desk");
+    // (Probe a real desk page — /desk itself has no page, so it renders
+    // the not-found shell without running the desk layout's guard.)
+    await page.goto("/desk/today");
     await expect(page).toHaveURL(/\/login\?deactivated=1$/);
   } finally {
     if (userId) await prisma.auditLog.deleteMany({ where: { userId } });
