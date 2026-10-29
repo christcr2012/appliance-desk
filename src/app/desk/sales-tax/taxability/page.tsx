@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { TaxChargeCategory } from "@prisma/client";
 import { TaxActionForm } from "../setup/forms";
 import { saveTaxCellAction, addManualRateAction } from "../setup/actions";
+import { ScreenHeader } from "@/components/kit";
 
 /** DEC-1a: a researched starting value runs (and calculates) before the CPA confirms it; say so next to it. */
 function ProvisionalNote() {
@@ -22,9 +23,9 @@ export default async function TaxabilityMatrixPage() {
     },
     orderBy: [{ level: "asc" }, { name: "asc" }], take: 75,
   });
-  return <main className="space-y-5">
-    <h2 className="text-xl font-semibold">What gets taxed</h2>
-    <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and tax area. Undecided items stay undecided; no automatic filing or billing bypass is implied.</p>
+  return <div className="space-y-5">
+    <ScreenHeader title="What gets taxed" />
+    <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and tax area. Undecided items stay undecided.</p>
     {session.user.role === "OWNER" ? <TaxActionForm
       title="Record a CPA-confirmed tax rule" action={saveTaxCellAction} submitLabel="Save tax rule">
       <div className="grid gap-3 md:grid-cols-2">
@@ -50,7 +51,8 @@ export default async function TaxabilityMatrixPage() {
             <option value="">Same as the decision above</option>
             <option value="TAXABLE">Taxable</option><option value="EXEMPT">Exempt</option>
           </select>
-          <span className="text-xs font-normal text-muted-foreground">Only matters for delivery, installation, pickup at the end and haul-away. Leaving it on the first choice settles the service with the decision above.</span>
+          <span className="block text-xs font-normal text-muted-foreground">Only matters for delivery, installation, pickup at the end and haul-away.</span>
+          <span className="block text-xs font-normal text-muted-foreground">Leaving it on the first choice settles the service with the decision above.</span>
         </label>
         <label className={label}>CPA confirmation date
           <input name="cpaConfirmedOn" type="date" required className={css} />
@@ -81,7 +83,7 @@ export default async function TaxabilityMatrixPage() {
       </div>
     </TaxActionForm>}
     <section className="space-y-3">
-      <h3 className="font-semibold">Reviewed area matrix</h3>
+      <h2 className="font-semibold">Reviewed area matrix</h2>
       <div tabIndex={0} role="region" aria-label="Taxability rule matrix" className="overflow-x-auto rounded border border-border">
         <table className="min-w-full divide-y divide-border text-left text-sm">
           <thead className="bg-muted"><tr><th className="p-3">Tax area</th><th className="p-3">Category</th><th className="p-3">Status</th><th className="p-3">CPA date</th></tr></thead>
@@ -103,6 +105,6 @@ export default async function TaxabilityMatrixPage() {
         </table>
       </div>
     </section>
-  </main>;
+  </div>;
 }
 
