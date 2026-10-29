@@ -7,6 +7,24 @@ shards and branches. `playwright.config.ts` now sets 60s / 10s; no test or asser
 (PR #732, review complete and green) is held unmerged by the owner's decision until this fix is proven
 across repeated green CI runs, then it lands by the normal rule.
 
+## October 28 — MCP-6 PR #738 CI correction (not merged)
+
+Published MCP-6 repair cases on `ai/chatgpt/mcp-6-repair-cases`, PR #738.
+First full CI found two real failures: missing RepairCase/RepairEvidence backup export decisions
+and an accessibility browser-test route type. Both corrected; the independent backup
+regression passed all 11 tests locally, with changed-file lint green. Full exact-head
+GitHub CI and review remain required. PR targets main per release policy, with MCP-5
+#717 as an implementation prerequisite; no release or real-provider claim.
+
+## October 28 — MCP-5 / MCP-6 completion work (Lane 2; not merged)
+
+MCP-5 PR #717: branch `ai/chatgpt/mcp-5-action-journal` at `dfd26b11` reconciles updated main;
+sandbox quick check could not finish typecheck (3 GiB heap OOM), so published through the approved
+transfer workflow for exact-head CI/review. GitHub required-check merge refusal remains unresolved.
+MCP-6 branch `ai/chatgpt/mcp-6-repair-cases`: implementation reconciled with revised card,
+30 focused unit/database tests pass on isolated local PostgreSQL; browser and exact-head CI
+are outstanding. Next: finish MCP-5 CI/review/merge, publish and validate MCP-6, no new lane item.
+
 ## October 28 — Implementation guidance repair (in progress, not merged)
 
 Branch `ai/chatgpt/implementation-clarity-20261028`: reconciled the source/PR execution map in MASTER-ROADMAP;
@@ -3767,3 +3785,38 @@ approval, execution journal and readback tools. This integration resolves
 the tool registry and read test alongside newer app routes. Exact-head CI
 and review are required again; no live provider actions or production data
 were changed.
+
+## October 28 — MCP-6 repair-case implementation checkpoint (in progress)
+
+The acceptance plan is committed. Local worktree `ai/chatgpt/mcp-6-repair-cases`
+has additive case/evidence models, fixed-repository verification, System health
+Repairs UI and 8 passing focused tests (four bounded-evidence unit tests, four
+disposable-PostgreSQL integration tests). Browser build ran out of the sandbox's
+4 GB memory; this is not accepted proof. MCP tools, consent/journaling, remaining
+workflow tests and CI are still unfinished. See `docs/pr-cards/MCP-6.md`.
+
+MCP-6 safety checkpoint (Oct 28): an active source-row lock and PostgreSQL
+partial unique index now prevent two live repairs for one issue. Six
+disposable-PostgreSQL tests passed, including twelve competing creates
+and fake GitHub/health evidence transitions;
+full MCP write tools and hosted CI are still pending.
+
+MCP-6 read-only transport checkpoint (Oct 28): bounded scoped repair list
+and detail tools have 3 passing SDK tests; secure write/approval support
+and final CI remain unfinished.
+
+MCP-6 journal checkpoint (October 28): MCP-5 reconciled branch; new
+`repairs:write` OAuth consent, 3 owner-approved journal action previews, and
+17+2 passing transport/unit tests. Three real-database tests verified owner
+approval, replay idempotency, revoked grants, and unverified PR preservation.
+Feedback human check, automated source workflow, and full CI are pending.
+
+MCP-6 feedback consent correction (Oct 28): fixed the actual `ALLOWED`
+consent state, plus fresh consent checks before candidate PR linking or
+external evidence reads. Seven real PostgreSQL case tests passed, including
+withdrawal/deletion refusal; no feedback case is auto-marked verified.
+
+MCP-6 feedback verification (Oct 28): added owner-only confirmation after
+verified deployment and resolved, consented feedback. Eight disposable-DB
+tests passed with repeat-submit and role checks. Full CI and automatic
+discovery/reminders are not yet complete.

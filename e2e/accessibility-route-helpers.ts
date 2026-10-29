@@ -49,11 +49,24 @@ export async function scanAccessibilityRoute(
     .catch(() => undefined);
 
   for (const theme of THEMES) {
-    await page.evaluate((mode) => {
-      localStorage.setItem("theme", mode);
-      document.documentElement.classList.toggle("dark", mode === "dark");
-      document.documentElement.style.colorScheme = mode;
-    }, theme);
+    // Next may finish a server/client redirect immediately after load.
+    // If that single pending navigation destroys the JS context, wait for
+    // the actual destination to load and APPLY the theme there. We still run
+    // every theme/viewport/axe assertion; no failed assertion is ignored.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await page.evaluate((mode) => {
+          localStorage.setItem("theme", mode);
+          document.documentElement.classList.toggle("dark", mode === "dark");
+          document.documentElement.style.colorScheme = mode;
+        }, theme);
+        break;
+      } catch (error) {
+        if (attempt || !String(error).includes("Execution context was destroyed")) throw error;
+        await page.waitForLoadState("load");
+        await expect(page.locator("body")).toBeVisible();
+      }
+    }
 
     await expect(page.locator("html")).toHaveClass(
       theme === "dark" ? /dark/ : /^(?!.*\bdark\b)/,

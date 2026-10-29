@@ -11,6 +11,8 @@ import { getBackupDashboard } from "@/domains/backup/dashboard";
 import { HealthLegend, HealthRow } from "./health-row";
 import { AssistantConnections } from "./assistant-connections";
 import { AssistantActivity } from "./assistant-activity";
+import { RepairCasesSection } from "./repair-cases-section";
+import { listRepairCases } from "@/domains/agent-control/repair-cases";
 
 export const metadata = { title: "System health" };
 
@@ -31,7 +33,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
   const session = await requireRole("OWNER", "ADMIN");
   const query = await searchParams;
   const cursor = query?.issuesCursor;
-  const [health, issueList, backup] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard()]);
+  const [health, issueList, backup, repairCases] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard(), listRepairCases(session.user.id)]);
   const canPause = session.user.role === "OWNER";
   const keys = canPause ? await listOpsAgentKeys(session.user.id) : [];
   const grace = health[0]?.graceMinutes ?? RECOMMENDED_LATE_GRACE_MINUTES;
@@ -44,6 +46,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
       />
 
       <SystemIssuesSection issues={issueList.rows} nextCursor={issueList.nextCursor} canManage={canPause} />
+      <RepairCasesSection rows={repairCases} canManage={canPause} />
       {canPause ? <OpsKeyPanel keys={keys.map(key => ({
         id: key.id, label: key.label, createdAt: timestamp(key.createdAt),
         lastUsedAt: key.lastUsedAt ? timestamp(key.lastUsedAt) : null,
