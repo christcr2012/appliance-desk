@@ -27,7 +27,7 @@ current main and #750 is closed unmerged with the reason recorded. The one remai
 is not in this PR: the telecom-settings browser failure in PR-triggered CI, which Lane 5 is
 diagnosing by the owner's decision.
 
-## October 29 — AR-4b Leads built (this PR); AR-8 merged
+## October 29 — AR-4b Leads built (PR #756; #752/#755 closed unmerged — pull_request CI events stopped firing); AR-8 merged
 
 AR-8 (Settings rebuild) is MERGED via PR #743 (squash 7a691f9d; successor chain #724 → #726 → #732 →
 #739 → #743). This PR builds AR-4b (Leads) on branch `ai/vivienne/ar-4b-leads` from the execution
