@@ -24,6 +24,8 @@ export const BACKUP_MODEL_POLICY = {
   McpConnection: "mcpConnection",
   // Operation attempts are durable business audit evidence, not active consent.
   AgentOperation: "agentOperation",
+  MonitorRule: "monitorRule",
+  MonitorRun: "monitorRun",
   User: "user",
   Session: null,
   Account: null,

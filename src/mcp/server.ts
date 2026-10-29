@@ -119,6 +119,7 @@ export function buildMcpServer(context: AgentContext): McpServer {
     }),
     outputSchema: z.object({
       states: z.record(z.string(), z.number()),
+      monitoring: z.object({ lastRunAt: utc, nextDueAt: utc, state: z.string() }).optional(),
       jobs: z.array(z.object({
         key: z.string(), title: z.string(), state: z.string(), explanation: z.string(),
         nextStep: z.string(), lastGoodUtc: utc, nextDueUtc: utc, nextDueDenver: utc,

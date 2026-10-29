@@ -1,3 +1,7 @@
+
+## MCP-7 monitoring (2026-10-28)
+
+Additive MonitorRule records an owner-disabled-by-default built-in check, threshold, cooldown and optional delivery/delegation choices. MonitorRun stores a unique (ruleKey, Colorado business date) receipt and non-sensitive alert/notification evidence. Both are backed up and restored; no production data reset is required. Migration: 20261203000000_mcp_monitoring.
 ## MCP-5 review safety guards — additive migration 20261202000000_mcp5_review_guards
 
 AgentOperation.connectionGrantVersion captures the original MCP connection

@@ -22,8 +22,10 @@ services.
 4. Owner email starts off and observes existing live switches; delivery failure cannot generate another incident.
 5. The existing sweep does the work, with owner controls, heartbeat, HTTP health probe, mobile/dark UI and full CI.
 
-## Progress
-Building on the MCP-7 monitoring branch; no tests or CI claimed yet.
+## Progress — MCP-7a independently usable monitor/owner alert boundary
+
+The daily checks, owner settings, one-incident To do alerts, cooldown/recovery, optional gated owner email, heartbeat and public liveness probe are implemented on ai/chatgpt/mcp-7-monitoring. Eight focused real-database/policy tests passed. This first PR is intentionally independent of delegated assistant writes: that boundary requires an MCP-5 approval/dispatch extension and separate revocation checks; permitting it before the extension would be a security regression. The automatic assistant-action acceptance remains unchecked and MCP-7 as a whole is not complete. Exact-head CI, browser test and review still pending.
+
 
 ## Implementation route (reconciled October 28, 2026)
 

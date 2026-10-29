@@ -93,3 +93,21 @@ export async function retryBackupAction(): Promise<void> {
   revalidatePath("/desk/automations");
   redirect("/desk/automations?backupMessage=" + message + "#backup-settings");
 }
+
+import { saveMonitorRule } from "@/domains/agent-control/monitoring";
+
+/** Saving this rule alone grants no assistant or provider permission. */
+export async function saveMonitorRuleAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const rawVersion = String(formData.get("version") ?? "");
+  await saveMonitorRule(session.user.id, {
+    key: String(formData.get("key") ?? ""),
+    enabled: formData.get("enabled") === "on",
+    failuresBeforeAlert: Number(formData.get("failuresBeforeAlert")),
+    cooldownHours: Number(formData.get("cooldownHours")),
+    notifyEmail: formData.get("notifyEmail") === "on",
+    expectedVersion: rawVersion ? Number(rawVersion) : null,
+    restore: formData.get("operation") === "restore",
+  });
+  revalidatePath("/desk/automations");
+}

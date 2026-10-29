@@ -1,6 +1,6 @@
 ## October 28 — MCP-7 monitoring build (in progress)
 
-Building owner-configured system monitoring on ai/chatgpt/mcp-7-monitoring while MCP-6 PR #738 completes CI. No MCP-7 behavior or tests have been verified yet.
+Building owner-configured system monitoring on ai/chatgpt/mcp-7-monitoring while MCP-6 PR #738 completes CI. MCP-7 additive schema, disabled-by-default owner checks, owner screen, /api/health, bounded alert/recovery issue and automatic cron invocation are implemented locally. Eight isolated PostgreSQL/policy tests passed (two-worker daily dedupe, alert threshold, cooldown, recovery, failed owner email, active-owner edit and DST). Pending: standing MCP-5 delegated auto actions (separate security boundary), exact-head CI, browser accessibility and review; not complete. Scope split MCP-7a alert/owner controls vs MCP-7b durable delegated writes is required so no automatic action ships without full permission and revocation evidence.
 
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 
