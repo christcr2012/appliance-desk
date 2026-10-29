@@ -1,3 +1,14 @@
+## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
+
+#733's branch was built through snapshot pushes, so its remote ancestry never contained the
+merges of main its tree includes and GitHub computed it as permanently conflicted. #733 is
+closed with the reason recorded; this PR's branch was recreated from current main (cad8f9cd)
+with the identical verified tree (all 41 changed files checked byte-for-byte after the push).
+The three test-only fix batches from #733's CI runs ride along (navigation assertions scoped
+to the tab strip; the axe test waits for the streamed heading), and the tree now sits on a main
+that carries the Oct 29 budget-test date fix. CI at the exact head decides, then auto-merge.
+Next: AR-7b (Taxes) under the same packet, then AR-10.
+
 ## October 28 — AR-7a Books on the kit: PR #733 open (Lane 4)
 
 AR-7 splits into Books (AR-7a, this build) and Taxes (AR-7b, next) under one execution packet.
