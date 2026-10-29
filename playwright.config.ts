@@ -2,6 +2,18 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Time budgets sized for this suite, not Playwright's defaults (30s / 5s).
+  // Measured 2026-10-28: the suite's long tests (accessibility route scans,
+  // multi-page settings and language flows) normally run at 50-85% of the old
+  // 30s test timeout, so ordinary CI contention (two browser workers sharing
+  // one app server and one Postgres on a 4-vCPU runner) pushed them over it.
+  // Playwright disposes the context at the timeout, so the failure surfaced
+  // at the test's next call — or its finally's context.close() — as a
+  // "browser has been closed" / "Failed to find context" death instead of a
+  // timeout, rotating across whichever long test was running. These budgets
+  // change no assertion; they stop load spikes from masquerading as crashes.
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   // Logs in once per role (if the test-only account env vars are set)
   // and saves the session, so authenticated tests reuse it instead of
   // each one logging in for real — see e2e/global-setup.ts.
