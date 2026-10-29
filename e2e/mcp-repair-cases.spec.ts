@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { prisma } from "@/lib/prisma";
 import { scanAccessibilityRoute } from "./accessibility-route-helpers";
+import { ACCESSIBILITY_ROUTES } from "./route-inventory";
 
 const ownerSession = "e2e/.auth/owner.json";
 const db = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/not-test");
@@ -59,6 +60,8 @@ test.describe("MCP-6 repair cases on System health", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/desk/automations", { waitUntil: "load" });
     await expect(page.getByRole("heading", { name: "Repairs" })).toBeVisible();
-    await scanAccessibilityRoute(page, "/desk/automations");
+    const route = ACCESSIBILITY_ROUTES.find((item) => item.path === "/desk/automations");
+    expect(route).toBeDefined();
+    await scanAccessibilityRoute(page, route!);
   });
 });

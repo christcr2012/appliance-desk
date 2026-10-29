@@ -1,3 +1,12 @@
+## October 28 — MCP-6 PR #738 CI correction (not merged)
+
+Published MCP-6 repair cases on `ai/chatgpt/mcp-6-repair-cases`, PR #738.
+First full CI found two real failures: missing RepairCase/RepairEvidence backup export decisions
+and an accessibility browser-test route type. Both corrected; the independent backup
+regression passed all 11 tests locally, with changed-file lint green. Full exact-head
+GitHub CI and review remain required. PR targets main per release policy, with MCP-5
+#717 as an implementation prerequisite; no release or real-provider claim.
+
 ## October 28 — MCP-5 / MCP-6 completion work (Lane 2; not merged)
 
 MCP-5 PR #717: branch `ai/chatgpt/mcp-5-action-journal` at `dfd26b11` reconciles updated main;
