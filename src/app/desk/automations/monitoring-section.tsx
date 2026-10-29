@@ -58,21 +58,21 @@ export function MonitoringSection({ rules, connections, heartbeat, canManage }: 
                 <input type="checkbox" name="notifyEmail" defaultChecked={rule.notifyEmail} /> Also email owners
                 (only when email sending is allowed)
               </label>
-              <fieldset className="rounded-control border border-line p-3">
+              <fieldset className="min-w-0 max-w-full rounded-control border border-line p-3">
                 <legend className="px-1 text-sm font-semibold">Optional standing assistant approval</legend>
                 <p className="mb-2 text-xs text-ink-soft">Choose one specific maintenance action and one of your active assistant
                   connections. Once this check alerts, the app may perform that action automatically without asking you again.
                   Turning off this rule, changing it, or revoking the connection stops pending actions. Starting value: none.</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="text-sm text-ink">Approved action
-                    <select name="autoAction" defaultValue={rule.autoAction ?? ""} className="mt-1 block w-full rounded-control border border-line-strong bg-surface p-2">
+                <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="min-w-0 text-sm text-ink">Approved action
+                    <select name="autoAction" defaultValue={rule.autoAction ?? ""} className="mt-1 block w-full min-w-0 max-w-full rounded-control border border-line-strong bg-surface p-2">
                       <option value="">No automatic action</option>
                       {MONITOR_ACTIONS.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
                     </select>
                   </label>
-                  <label className="text-sm text-ink">Approved connection
+                  <label className="min-w-0 text-sm text-ink">Approved connection
                     <select name="autoActionConnectionId" defaultValue={rule.autoActionConnectionId ?? ""}
-                      className="mt-1 block w-full rounded-control border border-line-strong bg-surface p-2">
+                      className="mt-1 block w-full min-w-0 max-w-full rounded-control border border-line-strong bg-surface p-2">
                       <option value="">No assistant connection</option>
                       {connections.map(connection => <option key={connection.id} value={connection.id}>{connection.label}</option>)}
                     </select>
