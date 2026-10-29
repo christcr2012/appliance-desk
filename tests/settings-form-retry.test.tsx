@@ -9,7 +9,6 @@ import {
 const m = vi.hoisted(() => ({ save: vi.fn(), preview: vi.fn() }));
 vi.mock("@/app/desk/settings/actions", () => ({
   updateSettingsSectionAction: m.save,
-  updateSettingsAction: m.save,
   previewSettingsSectionAction: m.preview,
 }));
 import { SettingsForm } from "@/app/desk/settings/settings-form";

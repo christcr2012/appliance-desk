@@ -26,6 +26,9 @@ export const BACKUP_MODEL_POLICY = {
   AgentOperation: "agentOperation",
   MonitorRule: "monitorRule",
   MonitorRun: "monitorRun",
+  // MCP-6: keep repair provenance and verification evidence in backup/restore.
+  RepairCase: "repairCase",
+  RepairEvidence: "repairEvidence",
   User: "user",
   Session: null,
   Account: null,

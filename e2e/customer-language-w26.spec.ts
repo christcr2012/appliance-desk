@@ -41,7 +41,17 @@ test.describe("W-26 safely stored customer language and owner draft translations
     const context = await browser.newContext({ storageState: ownerFile });
     const page = await context.newPage();
     try {
+      // AR-12: the Spanish wording panel shows only when the Spanish documents
+      // feature is switched on — switch it on the way an owner would.
+      await page.goto("/desk/settings/features");
+      const spanishSwitch = page.getByRole("switch", { name: "Spanish documents" });
+      if ((await spanishSwitch.getAttribute("aria-checked")) !== "true") {
+        await spanishSwitch.click();
+        await expect(spanishSwitch).toHaveAttribute("aria-checked", "true");
+      }
       await page.goto("/desk/settings?section=notifications");
+      // AR-8: the Spanish review and drafts open from their panel row.
+      await page.getByRole("button", { name: /Spanish wording/ }).click();
       await expect(page.getByText(/English remains the default/)).toBeVisible();
       await expect(page.getByText("Draft translations")).toBeVisible();
       await expect(page.getByRole("button", { name: "Enable reviewed Spanish" })).toBeDisabled();
@@ -77,7 +87,17 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
     await attachFrozenZeroOffer(prisma,agreementId,customer.serviceAddresses[0].id,signatureId);
     await prisma.estimate.create({data:{id:estimateId,title:"Synthetic W-26 quote",clientMessage:ownerNote,customerId:customer.id,createdByUserId:owner.id,status:"SENT",sentAt:new Date(),validUntil:new Date(Date.now()+86400000),
       lineItems:{create:{description:"Recorded W-26 washer",quantity:1,monthlyPriceCents:6050,oneTimeFeeCents:4500}}}});
+    // AR-12/AR-8: the drafts editor lives inside the Spanish wording panel,
+    // shown when the Spanish documents feature is switched on.
+    await ownerPage.goto("/desk/settings/features");
+    const spanishSwitchFull = ownerPage.getByRole("switch", { name: "Spanish documents" });
+    if ((await spanishSwitchFull.getAttribute("aria-checked")) !== "true") {
+      await spanishSwitchFull.click();
+      await expect(spanishSwitchFull).toHaveAttribute("aria-checked", "true");
+    }
     await ownerPage.goto("/desk/settings?section=notifications");
+    await ownerPage.getByRole("button", { name: /Spanish wording/ }).click();
+    await expect(ownerPage.locator('form:has(input[name="kind"])').first()).toBeAttached();
     const sources=await ownerPage.locator('form:has(input[name="kind"])').evaluateAll(forms=>forms.map(form=>{
       const value=(name:string)=>(form.querySelector(`[name="${name}"]`) as HTMLInputElement|HTMLTextAreaElement).value;
       return {kind:value("kind"),key:value("key"),digest:value("digest"),spanish:value("spanish"),english:(form.querySelector('textarea[readonly]') as HTMLTextAreaElement).value};
@@ -90,6 +110,8 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
         update:{englishDigest:source.digest,spanishText:spanish}});
     }
     await ownerPage.reload();
+    // AR-8: the reload starts the page fresh, so the panel is closed again.
+    await ownerPage.getByRole("button", { name: /Spanish wording/ }).click();
     const digest=await ownerPage.locator('input[name="expectedDigest"]').inputValue();
     const evidence={copyDigest:digest,reviewerName:"SYNTHETIC CI ONLY",reviewReference:"Not actual fluent approval",reviewedAt:new Date(),legalReviewerName:"SYNTHETIC CI ONLY",legalReviewReference:"Not actual counsel approval",legalReviewedAt:new Date(),publishedAt:new Date(),publishedByUserId:owner.id};
     await prisma.customerLanguageReview.upsert({where:{language:"es"},create:{language:"es",...evidence},update:evidence});
@@ -131,7 +153,7 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
     expect(signed.informationalTerms).toEqual([{english:englishTerms,spanish:"Condiciones informativas de finalización para la prueba W-26."}]);
     await expect(prisma.signatureRecord.update({where:{id:signatureId},data:{interfaceLanguage:"en"}})).rejects.toThrow("Historical signed language evidence");
     await page.goto("/account?signingPayment=processing");await expect(page.getByRole("status").filter({hasText:"no confirma el pago"})).toBeVisible();
-    await ownerPage.goto("/desk/settings?section=notifications");await expect(ownerPage.getByRole("button",{name:"Record fluent review"})).toBeVisible();
+    await ownerPage.goto("/desk/settings?section=notifications");await ownerPage.getByRole("button",{name:/Spanish wording/}).click();await expect(ownerPage.getByRole("button",{name:"Record fluent review"})).toBeVisible();
     // Withdrawing approval changes only new UI/dispatch, never signed history or saved preference.
     await prisma.customerLanguageReview.update({where:{language:"es"},data:{publishedAt:null}});
     await page.goto("/account/settings");await expect(page.getByText(/English remains the controlling agreement/)).toBeVisible();

@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import type { McpScope } from "@/mcp/scopes";
+import { listRepairCases, getRepairCase } from "@/domains/agent-control/repair-cases";
 import { previewAgentOperation, executeAgentOperation, getAgentOperation } from "@/domains/agent-control/operations";
 import {
   checkMcpActor, healthOverview, issuesList, issueGet, automationRuns,
@@ -213,13 +214,62 @@ export function buildMcpServer(context: AgentContext): McpServer {
     }), annotations: readOnly,
   }, async ({ id }) => read("decisions:read", () => decisionGet(context, id)));
 
+  // Repairs contain no customer report text, raw GitHub response, or internal
+  // actor ID. Even the detail tool explicitly chooses safe, bounded fields.
+  server.registerTool("appliance_repair_list_cases", {
+    title: "Repair cases", description: "Read safe repair stages and evidence status.",
+    inputSchema: z.strictObject({ limit: z.number().int().min(1).max(10).default(10) }),
+    outputSchema: z.object({ cases: z.array(z.object({
+      id: z.string(), number: z.number(), title: z.string(), sourceKind: z.string(),
+      stage: z.string(), blocker: z.string().nullable(), prNumber: z.number().nullable(),
+      updatedUtc: z.string(), verifiedUtc: utc,
+    })) }), annotations: readOnly,
+  }, async ({ limit }) => read("ops:read", async () => ({ cases:
+    (await listRepairCases(context.userId, limit)).map(record => ({
+      id: record.id, number: record.number, title: record.title,
+      sourceKind: record.sourceKind, stage: record.stage, blocker: record.blocker,
+      prNumber: record.prNumber, updatedUtc: record.updatedAt.toISOString(),
+      verifiedUtc: record.verifiedAt?.toISOString() ?? null,
+    })),
+  })));
+
+  server.registerTool("appliance_repair_get_case", {
+    title: "Repair details", description: "Read one repair and its independently checked stages.",
+    inputSchema: z.strictObject({ id: z.string().regex(/^c[a-z0-9]{10,50}$/i) }),
+    outputSchema: z.object({ found: z.boolean(), repair: z.object({
+      id: z.string(), number: z.number(), title: z.string(), sourceKind: z.string(),
+      stage: z.string(), expectedBehavior: z.string(), howToCheck: z.string(),
+      blocker: z.string().nullable(), prNumber: z.number().nullable(),
+      verifiedUtc: utc, baselineRevision: z.string(), mergeSha: z.string().nullable(),
+      deployedRevision: z.string().nullable(),
+    }).nullable() }), annotations: readOnly,
+  }, async ({ id }) => read("ops:read", async () => {
+    const record = await getRepairCase(context.userId, id);
+    return { found: Boolean(record), repair: record ? {
+      id: record.id, number: record.number, title: record.title,
+      sourceKind: record.sourceKind, stage: record.stage,
+      expectedBehavior: record.expectedBehavior, howToCheck: record.howToCheck,
+      blocker: record.blocker, prNumber: record.prNumber,
+      verifiedUtc: record.verifiedAt?.toISOString() ?? null,
+      baselineRevision: record.baselineRevision, mergeSha: record.mergeSha,
+      deployedRevision: record.deployedRevision,
+    } : null };
+  }));
+
   const writePolicy = {
     readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false,
   } as const;
   const actionName = z.enum([
     "RUN_DIAGNOSTIC_SWEEP", "RETRY_DATABASE_BACKUP", "RETRY_MEDIA_COPY",
     "PAUSE_AUTOMATION", "RESUME_AUTOMATION", "VERIFY_RECOVERY_ARTIFACT", "APPLY_DECISION_ANSWERS",
+    "REPAIR_CREATE_CASE", "REPAIR_LINK_EVIDENCE", "REPAIR_CHECK_CASE",
   ]);
+  const previewResult = z.object({
+    previewId: z.string(), state: z.string(), summary: z.string(),
+    changes: z.array(z.object({ label: z.string(), now: z.string(), after: z.string() })),
+    costNote: z.string().nullable(), approval: z.string(), expiresAt: z.string(),
+  });
+  const requestKeySchema = z.string().min(12).max(128).regex(/^[a-zA-Z0-9_-]+$/);
   const operationResult = z.object({
     id: z.string(), state: z.string(), action: z.string(), targetRef: z.string().nullable(),
     failureCode: z.string().nullable(), safeResult: z.unknown().nullable(),
@@ -250,15 +300,48 @@ export function buildMcpServer(context: AgentContext): McpServer {
       action: actionName, args: z.record(z.string(), z.unknown()),
       requestKey: z.string().min(12).max(128).regex(/^[a-zA-Z0-9_-]+$/),
     }),
-    outputSchema: z.object({
-      previewId: z.string(), state: z.string(), summary: z.string(),
-      changes: z.array(z.object({ label: z.string(), now: z.string(), after: z.string() })),
-      costNote: z.string().nullable(), approval: z.string(), expiresAt: z.string(),
-    }),
+    outputSchema: previewResult,
     annotations: writePolicy,
   }, async ({ action, args, requestKey }) => actionCall(
-    action === "APPLY_DECISION_ANSWERS" ? "decisions:apply" : "ops:maintain",
+    action.startsWith("REPAIR_") ? "repairs:write" :
+      action === "APPLY_DECISION_ANSWERS" ? "decisions:apply" : "ops:maintain",
     () => previewAgentOperation(context, { action, args, requestKey }),
+  ));
+
+  // Every repair mutation is an MCP-5 journal PREVIEW, never a direct write.
+  // Only the owner can approve the durable operation in the Assistant Activity
+  // screen. Execute requires the original preview ID and request key.
+  server.registerTool("appliance_repair_create_case", {
+    title: "Propose a repair case", description: "Prepare a source-linked repair for owner approval. Does not create the case yet.",
+    inputSchema: z.strictObject({
+      sourceKind: z.enum(["SYSTEM_ISSUE", "FEEDBACK"]),
+      sourceId: z.string().min(10).max(128).regex(/^[a-zA-Z0-9_-]+$/),
+      expectedBehavior: z.string().min(1).max(2000), howToCheck: z.string().min(1).max(2000),
+      requestKey: requestKeySchema,
+    }), outputSchema: previewResult, annotations: writePolicy,
+  }, async ({ sourceKind, sourceId, expectedBehavior, howToCheck, requestKey }) => actionCall(
+    "repairs:write", () => previewAgentOperation(context, { action: "REPAIR_CREATE_CASE",
+      args: { sourceKind, sourceId, expectedBehavior, howToCheck }, requestKey }),
+  ));
+
+  server.registerTool("appliance_repair_link_evidence", {
+    title: "Propose pull request evidence", description: "Record a candidate PR only after owner approval. GitHub verification is separate.",
+    inputSchema: z.strictObject({
+      caseId: z.string().min(12).max(100), kind: z.literal("PR"),
+      ref: z.string().regex(/^[1-9]\d{0,9}$/), requestKey: requestKeySchema,
+    }), outputSchema: previewResult, annotations: writePolicy,
+  }, async ({ caseId, kind, ref, requestKey }) => actionCall(
+    "repairs:write", () => previewAgentOperation(context, { action: "REPAIR_LINK_EVIDENCE",
+      args: { caseId, kind, ref }, requestKey }),
+  ));
+
+  server.registerTool("appliance_repair_check", {
+    title: "Propose a fresh repair check", description: "Verify public GitHub, live revision and a later health run only after owner approval.",
+    inputSchema: z.strictObject({ caseId: z.string().min(12).max(100), requestKey: requestKeySchema }),
+    outputSchema: previewResult, annotations: writePolicy,
+  }, async ({ caseId, requestKey }) => actionCall(
+    "repairs:write", () => previewAgentOperation(context, { action: "REPAIR_CHECK_CASE",
+      args: { caseId }, requestKey }),
   ));
 
   server.registerTool("appliance_action_execute", {

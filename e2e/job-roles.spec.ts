@@ -12,6 +12,8 @@ test.beforeEach(() => {
 
 test("the owner sees the four starting job roles", async ({ page }) => {
   await page.goto("/desk/settings?section=staff");
+  // AR-8: the job-roles editor opens from its panel row on Team & access.
+  await page.getByRole("button", { name: /Job roles/ }).click();
   await expect(page.getByRole("heading", { name: "Job roles" })).toBeVisible();
   for (const name of ["Driver / technician", "Office", "Bookkeeper", "Manager"]) {
     // Scoped to the Job roles section: the same names also appear as choices in the people's drop-downs.
@@ -21,6 +23,8 @@ test("the owner sees the four starting job roles", async ({ page }) => {
 
 test("a new staff job role cannot include money screens", async ({ page }) => {
   await page.goto("/desk/settings?section=staff");
+  // AR-8: the job-roles editor opens from its panel row on Team & access.
+  await page.getByRole("button", { name: /Job roles/ }).click();
   await page.getByRole("button", { name: "New job role" }).click();
   const screens = page.getByRole("group", { name: "Screens this job role can open" });
   await expect(screens.getByLabel("Money, revenue, reports and fleet")).toBeDisabled();

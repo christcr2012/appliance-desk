@@ -71,7 +71,7 @@ test("AR-12 jargon applies only to migrated screens and kit; accountant pages ar
   assert.deepEqual(findViolations("src/app/desk/billing/page.tsx", "<p>rental agreement</p>"), []);
   assert.equal(isEverydayScreen("src/app/desk/billing/page.tsx"), true);
   assert.equal(isEverydayScreen("src/app/desk/jobs/page.tsx"), false);
-  for (const folder of ["reports", "exports", "export", "closing", "assets"]) {
+  for (const folder of ["reports", "exports", "export", "closing", "assets", "accountant"]) {
     const path = "src/app/desk/books/" + folder + "/page.tsx";
     assert.equal(isEverydayScreen(path), false);
     assert.deepEqual(findViolations(path, '<Field label="invoice" />'), []);

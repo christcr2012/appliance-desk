@@ -20,6 +20,8 @@ test.describe("owner invites a team member", () => {
   test("the invitation is saved and listed, and the screen says honestly when the email was not sent", async ({ page }) => {
     const tag = `acc2-${process.pid}-${Date.now()}`;
     await page.goto("/desk/settings?section=staff");
+    // AR-8: the team editor opens from its panel row on the Team & access section.
+    await page.getByRole("button", { name: /Team members/ }).click();
     await expect(page.getByRole("heading", { name: "Invite a team member" })).toBeVisible();
     await page.getByLabel("Name", { exact: true }).fill("Casey Invitee");
     await page.getByLabel("Email", { exact: true }).fill(`${tag}-invitee@example.test`);

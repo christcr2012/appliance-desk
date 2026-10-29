@@ -1,3 +1,37 @@
+## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
+
+#733's branch was built through snapshot pushes, so its remote ancestry never contained the
+merges of main its tree includes and GitHub computed it as permanently conflicted. #733 is
+closed with the reason recorded; this PR's branch was recreated from current main (cad8f9cd)
+with the identical verified tree (all 41 changed files checked byte-for-byte after the push).
+The test-only fix batches from #733's CI runs ride along (navigation assertions scoped to the
+tab strip; the axe test waits for the streamed heading; the staff-refusal test tolerates the
+streamed redirect's ERR_ABORTED and now also asserts the settled URL left the Books path), and
+the tree now sits on a main that carries the Oct 29 budget-test date fix. CI at the exact head
+decides, then auto-merge.
+Next: AR-7b (Taxes) under the same packet, then AR-10.
+
+## October 28 — AR-7a Books on the kit: PR #733 open (Lane 4)
+
+AR-7 splits into Books (AR-7a, this build) and Taxes (AR-7b, next) under one execution packet.
+Books gets a sub-tab strip (Overview, Month by month, Reports, Equipment value, For your
+accountant, plus Money set aside when budgets are on), a new Overview home with this month's
+numbers and what needs attention, a Month by month list, Reports regrouped into four views (the
+old closing page moves in), an Equipment value page without the manual forms, and a For your
+accountant page holding the full journal and account forms unchanged. No accounting rules change.
+PR #733 is open. First CI run at cf0802d1 failed one browser spec (books-reports: the unscoped
+"Reports" link matched both the tab strip and the Overview task card); a fix batch riding with
+this note scopes both Books navigation assertions (Reports, Equipment value) to the tab strip.
+Local proof: preflight checks, fresh typecheck and lint green; related tests 554/555 (the one
+failure, scenario-16 serialization under parallel load, passes alone on a disposable database);
+the local browser build is blocked by the repo's resource guard after an out-of-memory kill on
+this 8 GB box, so CI at the new head is the browser proof. That run cleared both navigation
+specs; one failure remained, in this card's own axe test (ar7-books-taxes): page-has-heading-one
+on the streamed Books pages, with the first failing page varying between runs while the sibling
+books-workspace spec (which waits for the heading) passes on the same page — the test analyzed a
+half-streamed document. A second fix batch riding with this note makes the axe test wait for the
+page heading before analyzing; the axe assertion is unchanged. CI green at the exact head, then auto-merge.
+
 ## October 28 — MCP-7 monitoring build (in progress)
 
 Building owner-configured system monitoring on ai/chatgpt/mcp-7-monitoring while MCP-6 PR #738 completes CI. MCP-7 additive schema, disabled-by-default owner checks, owner screen, /api/health, bounded alert/recovery issue and automatic cron invocation are implemented locally. Ten isolated PostgreSQL/policy tests passed (including review corrections for acknowledged incidents and recently answered feedback) (two-worker daily dedupe, alert threshold, cooldown, recovery, failed owner email, active-owner edit and DST). Pending: standing MCP-5 delegated auto actions (separate security boundary), exact-head CI, browser accessibility and review; not complete. Scope split MCP-7a alert/owner controls vs MCP-7b durable delegated writes is required so no automatic action ships without full permission and revocation evidence.
@@ -7,9 +41,29 @@ Building owner-configured system monitoring on ai/chatgpt/mcp-7-monitoring while
 Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:
 measured locally, most browser tests run at 50–85% of 30s, so CI contention pushed the longest ones over
 the timeout and Playwright's context teardown made the failures look like browser crashes, rotating across
-shards and branches. `playwright.config.ts` now sets 60s / 10s; no test or assertion changed. AR-8
+shards and branches. (Correction after #739's run: the two failures that kept landing on AR-8's branch —
+the delivery-zones save flow and the W-26 language review — were not timing at all; both were settings-frame
+defects from the AR-8 rebuild, fixed on #739. The budget raise stands for the general suite.) `playwright.config.ts` now sets 60s / 10s; no test or assertion changed. AR-8
 (PR #732, review complete and green) is held unmerged by the owner's decision until this fix is proven
 across repeated green CI runs, then it lands by the normal rule.
+
+## October 28 — MCP-6 PR #738 CI correction (not merged)
+
+Published MCP-6 repair cases on `ai/chatgpt/mcp-6-repair-cases`, PR #738.
+First full CI found two real failures: missing RepairCase/RepairEvidence backup export decisions
+and an accessibility browser-test route type. Both corrected; the independent backup
+regression passed all 11 tests locally, with changed-file lint green. Full exact-head
+GitHub CI and review remain required. PR targets main per release policy, with MCP-5
+#717 as an implementation prerequisite; no release or real-provider claim.
+
+## October 28 — MCP-5 / MCP-6 completion work (Lane 2; not merged)
+
+MCP-5 PR #717: branch `ai/chatgpt/mcp-5-action-journal` at `dfd26b11` reconciles updated main;
+sandbox quick check could not finish typecheck (3 GiB heap OOM), so published through the approved
+transfer workflow for exact-head CI/review. GitHub required-check merge refusal remains unresolved.
+MCP-6 branch `ai/chatgpt/mcp-6-repair-cases`: implementation reconciled with revised card,
+30 focused unit/database tests pass on isolated local PostgreSQL; browser and exact-head CI
+are outstanding. Next: finish MCP-5 CI/review/merge, publish and validate MCP-6, no new lane item.
 
 ## October 28 — Implementation guidance repair (in progress, not merged)
 
@@ -74,6 +128,16 @@ the approvals page imports everything back and behaves exactly as before. New
 tests/approval-actions.test.ts pins the contract (domain spies, both revalidations,
 inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
 adds optimistic task completion with Undo.
+
+## October 28 — AR-8 Settings rebuild: in review (successor PR #739 of #732, itself successor of #726/#724)
+
+Fix round on #739 after its first CI run: two settings-frame defects the browser suite caught — the
+section navigation lost the old page's "Settings sections" landmark (restored), and the Spanish wording
+panel lost the "Draft translations" card title (restored); the W-26 spec now switches the Spanish
+documents feature on first, the AR-12 path an owner uses (the panel is feature-gated by design).
+
+Three fix rounds after CI and Codex review, all batched: the catalog also covers AR-4a's rentalEndReasons; the settings frame lives on the catalog page only (settings sub-pages keep their own headings); the driving-origin panel is wired to the verified-origin writer; undo enforces the catalog's owner-only rule and the delivery-window cross-field rule; the three domain-writer row saves check the page revision inside their locked writes; the service-area panel renders its own section editor again (cities/ZIPs); the row save keeps the public email's validation; refused undos are surfaced instead of swallowed; mobile section pages show their section title (the frame header is desktop-only). Specs that drive editors behind panel rows open the panel first — including after a reload, which starts the page fresh — and the settings-history preview/stale-save tests exercise the row Change sheet, where those guarantees now live. Two browser suites (Spanish drafts, delivery zones) repeatedly lost their browser mid-test on this branch's heads in CI — never on an assertion — while main stayed green; the response cuts the per-load cost this rebuild added: the last-change audit walk now stops once every visible row has its newest change instead of JSON-diffing up to 300 audit rows per page load, and the service-area panel has a dedicated two-field editor (saved against its own section revision) instead of mounting the full profile form a second time. Codex's review of that head added two fixes: the flat late fee is bound to its own decision (LATE-FEE-AMOUNT) instead of the IN-84 wording-review card whose "AS_BUILT" recommendation leaked in through a legacy alias (grace days and percent keep their own starting values; decision resolution now prefers an exact id over an alias claim), and panel/link rows carry the `row-…` anchor that settings search and the command palette link to. A third review round fixed three more: tenant contact retention can no longer be set below the 1-month floor the erasure job enforces; percent rows refuse fractions with the reason (both percent fields are whole-number columns, and the editor steps by 1 now); and a domain-writer row's History now includes its writer's own audit events, normalized into the row's change (the trusted-device row also names its audit action for last-change attribution). Card `docs/pr-cards/AR-8.md`; packet `docs/pr-cards/execution/AR-8.json`.
+
 
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
@@ -3771,3 +3835,38 @@ approval, execution journal and readback tools. This integration resolves
 the tool registry and read test alongside newer app routes. Exact-head CI
 and review are required again; no live provider actions or production data
 were changed.
+
+## October 28 — MCP-6 repair-case implementation checkpoint (in progress)
+
+The acceptance plan is committed. Local worktree `ai/chatgpt/mcp-6-repair-cases`
+has additive case/evidence models, fixed-repository verification, System health
+Repairs UI and 8 passing focused tests (four bounded-evidence unit tests, four
+disposable-PostgreSQL integration tests). Browser build ran out of the sandbox's
+4 GB memory; this is not accepted proof. MCP tools, consent/journaling, remaining
+workflow tests and CI are still unfinished. See `docs/pr-cards/MCP-6.md`.
+
+MCP-6 safety checkpoint (Oct 28): an active source-row lock and PostgreSQL
+partial unique index now prevent two live repairs for one issue. Six
+disposable-PostgreSQL tests passed, including twelve competing creates
+and fake GitHub/health evidence transitions;
+full MCP write tools and hosted CI are still pending.
+
+MCP-6 read-only transport checkpoint (Oct 28): bounded scoped repair list
+and detail tools have 3 passing SDK tests; secure write/approval support
+and final CI remain unfinished.
+
+MCP-6 journal checkpoint (October 28): MCP-5 reconciled branch; new
+`repairs:write` OAuth consent, 3 owner-approved journal action previews, and
+17+2 passing transport/unit tests. Three real-database tests verified owner
+approval, replay idempotency, revoked grants, and unverified PR preservation.
+Feedback human check, automated source workflow, and full CI are pending.
+
+MCP-6 feedback consent correction (Oct 28): fixed the actual `ALLOWED`
+consent state, plus fresh consent checks before candidate PR linking or
+external evidence reads. Seven real PostgreSQL case tests passed, including
+withdrawal/deletion refusal; no feedback case is auto-marked verified.
+
+MCP-6 feedback verification (Oct 28): added owner-only confirmation after
+verified deployment and resolved, consented feedback. Eight disposable-DB
+tests passed with repeat-submit and role checks. Full CI and automatic
+discovery/reminders are not yet complete.

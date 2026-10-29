@@ -17,7 +17,7 @@ for(const width of [360,1280]){
 test("K-CASH owner can navigate from Books; staff never sees private bank evidence",async({page,browser})=>{
  await page.goto("/desk/settings/features");
  const switchedOn=(await page.getByRole("switch",{name:"Bank statements"}).getAttribute("aria-checked"))==="true";
- await page.goto("/desk/books");
+ await page.goto("/desk/books/accountant");
  const link=page.getByRole("link",{name:"Bank statements and cash records"});
  await expect(link).toHaveCount(switchedOn?1:0);
  if(switchedOn) await expect(link).toHaveAttribute("href","/desk/books/cash");
