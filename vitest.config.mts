@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/books-home-integration.test.ts", // AR-7 changes and restores the shared books start date and books problem counters.
   "tests/ops8-continuity-integration.test.ts", // OPS-8 changes and restores the shared continuity details and the charges-paused switch.
   "tests/ops3-vehicle-integration.test.ts", // OPS-3 changes and restores the shared mileage method and medical-card setting.
   "tests/ops4-insurance-integration.test.ts", // OPS-4 changes and restores the shared insurance reminder days and workers' compensation status.

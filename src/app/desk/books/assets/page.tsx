@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getBookAssets } from "@/domains/books/fixed-assets";
-import { lastCompletedMonth } from "@/domains/books/depreciation";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { ScreenHeader, StatStrip, StatusPill, Toaster } from "@/components/kit";
@@ -24,9 +23,6 @@ export default async function EquipmentValuePage({ searchParams }: { searchParam
   const owner = session.user.role === "OWNER";
   const data = await getBookAssets(session.user.id);
   const notice = (await searchParams).notice?.slice(0, 350);
-  const recordedThrough = lastCompletedMonth(new Date());
-  const totalCost = data.assets.reduce((sum, a) => sum + a.costCents, 0);
-  const totalWorth = data.assets.reduce((sum, a) => sum + a.bookCarryingCents, 0);
   const field = "mt-1 w-full rounded-field border border-line bg-surface px-3 py-2";
 
   return (
@@ -40,9 +36,9 @@ export default async function EquipmentValuePage({ searchParams }: { searchParam
       <p className="text-sm text-ink-soft">Book value is not tax value. Your CPA confirms tax classification and allowed depreciation.</p>
 
       <StatStrip items={[
-        { label: "Cost", value: formatMoney(totalCost) },
-        { label: "Worth on your books now", value: formatMoney(totalWorth) },
-        { label: "Recorded through", value: monthLabel(recordedThrough) },
+        { label: "Cost", value: formatMoney(data.totals.costCents) },
+        { label: "Worth on your books now", value: formatMoney(data.totals.worthCents) },
+        { label: "Recorded through", value: data.recordedThroughMonth ? monthLabel(data.recordedThroughMonth) : "Not recorded yet" },
       ]} />
 
       {data.candidates.length > 0 ? (
@@ -66,7 +62,7 @@ export default async function EquipmentValuePage({ searchParams }: { searchParam
           <p className="text-sm text-ink-soft">Nothing is on your books yet.</p>
         ) : data.assets.map((asset) => {
           const placedKey = businessDateKey(asset.placedInServiceOn).slice(0, 7);
-          const monthsLeft = Math.max(0, asset.lifeMonths - Math.max(0, monthDiff(placedKey, recordedThrough)));
+          const monthsLeft = Math.max(0, asset.lifeMonths - (asset.lastDepreciationMonth ? Math.max(0, monthDiff(placedKey, asset.lastDepreciationMonth)) : 0));
           const pill = asset.disposedOn
             ? { label: `Sold ${formatBusinessDate(asset.disposedOn)}`, tone: "neutral" as const }
             : asset.retiredOn

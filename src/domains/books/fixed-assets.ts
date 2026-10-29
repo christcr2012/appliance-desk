@@ -302,7 +302,7 @@ export async function getBookAssets(userId:string) {
     orderBy:{createdAt:"desc"},take:100,select:{id:true,assetNumber:true,acquisitionCostCents:true,purchaseDate:true}}),
   ]);
   const journal=await tx.journalEntry.findMany({where:{
-   sourceType:"APPLIANCE",sourceId:{in:assets.map(x=>x.applianceId)},
+   sourceType:"APPLIANCE",
    eventKind:{startsWith:"DEPRECIATION:"},
   },include:{lines:{include:{ledgerAccount:{select:{systemRole:true}}}}}});
   const byAsset=new Map<string,number>();
@@ -310,7 +310,21 @@ export async function getBookAssets(userId:string) {
    const cents=entry.lines.filter(l=>l.ledgerAccount.systemRole==="DEPRECIATION").reduce((sum,l)=>sum+l.debitCents,0);
    byAsset.set(entry.sourceId,(byAsset.get(entry.sourceId)??0)+cents);
   }
-  return {settings,candidates,assets:assets.map(asset=>({
+  // AR-7 review: fleet-wide totals and posting coverage cover EVERY book asset, not just the
+  // newest 100 shown in the list — the summary stats must never silently understate the fleet.
+  const [allAssets,coverageMin,unpostedActive]=await Promise.all([
+   tx.bookAsset.findMany({select:{applianceId:true,costCents:true,disposedOn:true}}),
+   tx.bookAsset.aggregate({where:{retiredOn:null,disposedOn:null},_min:{lastDepreciationMonth:true},_count:{_all:true}}),
+   tx.bookAsset.count({where:{retiredOn:null,disposedOn:null,lastDepreciationMonth:null}}),
+  ]);
+  const totals={
+   costCents:allAssets.reduce((sum,a)=>sum+a.costCents,0),
+   worthCents:allAssets.reduce((sum,a)=>sum+(a.disposedOn?0:a.costCents-(byAsset.get(a.applianceId)??0)),0),
+  };
+  const recordedThroughMonth=coverageMin._count._all===0
+   ?lastCompletedMonth()
+   :unpostedActive>0?null:coverageMin._min.lastDepreciationMonth;
+  return {settings,candidates,totals,recordedThroughMonth,assets:assets.map(asset=>({
    ...asset,postedDepreciationCents:byAsset.get(asset.applianceId)??0,
    bookCarryingCents:asset.disposedOn?0:asset.costCents-(byAsset.get(asset.applianceId)??0),
    isPendingDisposition:!!asset.retiredOn&&!asset.disposedOn,

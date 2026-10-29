@@ -29,7 +29,7 @@ export default async function BooksReportsPage({searchParams}:{searchParams:Prom
  const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
  const q=await searchParams,today=businessDateKey(new Date());
  // AR-7: views replace the old kind param (legacy kind links keep working, mapped here).
- const legacyKind=q.kind==="own-owe"?"own-owe":q.kind;
+ const legacyKind=q.kind==="balance"?"own-owe":q.kind;
  const view=["profit","own-owe","payback","cash-and-customers","trends"].includes(q.view??"")
   ?q.view!:["profit","own-owe","payback","trends"].includes(legacyKind??"")?legacyKind!:"profit";
  if(view==="trends")return <div className="space-y-5"><ScreenHeader title="Reports"/><ReportsViewSwitch view={view}/><MoneyTrendsSection userId={session.user.id} query={q}/></div>;
