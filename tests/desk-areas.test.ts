@@ -9,12 +9,12 @@ const match = (path: string, qs = "") =>
   activeArea(path, new URLSearchParams(qs), visibleAreas("OWNER", null, all));
 
 describe("AR-1 five desk areas", () => {
-  it("keeps exactly five areas, their 22 named tabs and ten profile destinations", () => {
+  it("keeps exactly five areas, their 24 named tabs and ten profile destinations", () => {
     expect(DESK_AREAS.map(area => area.key)).toEqual(["today", "customers", "schedule", "equipment", "money"]);
     expect(DESK_AREAS.map(area => area.tabs.map(tab => tab.key))).toEqual([
-      ["inbox", "tasks"], ["leads", "customers", "quotes", "rentals", "messages"],
+      ["inbox", "tasks"], ["leads", "customers", "quotes", "rentals", "messages", "insights"],
       ["board", "visits", "route", "repairs"],
-      ["fleet", "purchases", "parts", "suppliers", "retired"],
+      ["fleet", "purchases", "parts", "suppliers", "retired", "insights"],
       ["overview", "bills", "payments", "expenses", "books", "taxes"],
     ]);
     expect(PROFILE_LINKS.map(link => link.href)).toEqual([
@@ -27,7 +27,8 @@ describe("AR-1 five desk areas", () => {
     // AR-3: the Money overview tab now lives at /desk/money; /desk/revenue remains a finance-only
     // destination under it (a matches entry and a header-menu link), not a tab href of its own.
     for (const path of ["/desk/billing", "/desk/money", "/desk/sales-tax", "/desk/leads",
-      "/desk/estimates", "/desk/purchases", "/desk/suppliers", "/desk/inventory/retired"]) {
+      "/desk/estimates", "/desk/purchases", "/desk/suppliers", "/desk/inventory/retired",
+      "/desk/customers/insights", "/desk/inventory/insights"]) {
       expect(hrefs("STAFF")).not.toContain(path);
       expect(hrefs("OWNER")).toContain(path);
     }
@@ -58,6 +59,14 @@ describe("AR-1 five desk areas", () => {
     expect(match("/desk/billing/customer/abc")).toEqual({ area: "money", tab: "bills" });
     expect(match("/desk/inventory/retired")).toEqual({ area: "equipment", tab: "retired" });
     expect(match("/desk/inventory/abc")).toEqual({ area: "equipment", tab: "fleet" });
+    // AR-9: the Insights tabs are current on their own routes and on the old
+    // routes they replaced; a record id never resolves to Insights.
+    expect(match("/desk/customers/insights")).toEqual({ area: "customers", tab: "insights" });
+    expect(match("/desk/growth")).toEqual({ area: "customers", tab: "insights" });
+    expect(match("/desk/customers/abc")).toEqual({ area: "customers", tab: "customers" });
+    expect(match("/desk/inventory/insights")).toEqual({ area: "equipment", tab: "insights" });
+    expect(match("/desk/fleet")).toEqual({ area: "equipment", tab: "insights" });
+    expect(match("/desk/money/income")).toEqual({ area: "money", tab: "overview" });
     expect(match("/desk/inventory-other")).toBeNull();
     expect(match("/desk/settings")).toBeNull();
   });
