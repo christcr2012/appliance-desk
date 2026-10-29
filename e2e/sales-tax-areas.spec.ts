@@ -15,11 +15,11 @@ test.describe("sales tax areas and exemption navigation", () => {
     test.skip(!fs.existsSync(owner), "Authenticated owner fixture required");
     await page.setViewportSize({ width: 360, height: 780 });
     await page.goto("/desk/sales-tax/areas");
-    await expect(page.getByRole("heading", { name: "Tax areas and official rate sources" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Areas & rates" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Official rate review and undo" })).toBeVisible();
     await page.getByRole("navigation", { name: "Taxes sections" }).getByRole("link", { name: "Setup" }).click();
     await page.getByRole("link", { name: "Customers who don't pay tax" }).click();
-    await expect(page.getByRole("heading", { name: "Customers who don't pay tax" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Exemptions" })).toBeVisible();
     await expect(page.getByText(/existing customer tax exemptions panel/i)).toBeVisible();
   });
   test("official provider failure is visible and never shown as verified", async ({ page }) => {

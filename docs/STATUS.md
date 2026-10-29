@@ -1,3 +1,13 @@
+## October 29 — AR-7b Taxes on the kit: PR #746 open (Lane 4)
+
+AR-7a merged to main as the squash commit 60090f41 (CI run 40838554175 green at the exact head,
+review-gate green, auto-merge). AR-7b (Taxes) is built under the same AR-7 packet and open as
+PR #746: the Taxes frame moves to the spec's six sub-tabs (Overview · Returns · Areas &
+rates · Exemptions · Use tax · Setup), the Overview gets its StatStrip/InboxCard layout with the
+DEC-1 decisions count, and every Taxes page joins migrated-pages.json (kit guards 42/42, plain-words
+pass after rewording seven pre-existing jargon strings — labels only, stored values unchanged).
+No tax calculation, filing or evidence behavior changes — layout, words and read-only summaries only.
+
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
 #733's branch was built through snapshot pushes, so its remote ancestry never contained the

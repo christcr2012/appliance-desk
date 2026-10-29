@@ -1,11 +1,14 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { prisma } from "@/lib/prisma";
 
-// AR-7 (docs/build-specs/screens/BOOKS-TAXES.md): the Books pages on the kit. AR-7a covers the
-// Books slice: the Overview with its four task cards, every old Books URL rendering inside the
-// new sub-tab frame, Month by month, the Reports views (legacy kind links included), Equipment
-// value, and staff refusal. The Taxes slice extends this file in AR-7b.
+// AR-7 (docs/build-specs/screens/BOOKS-TAXES.md): the Books and Taxes pages on the kit. AR-7a
+// covers the Books slice: the Overview with its four task cards, every old Books URL rendering
+// inside the new sub-tab frame, Month by month, the Reports views (legacy kind links included),
+// Equipment value, and staff refusal. AR-7b adds the Taxes slice below: the six sub-tabs, the
+// Overview stat strip with the DEC-1 decisions count, and every Taxes URL inside the frame.
 const owner = "e2e/.auth/owner.json";
 const staff = "e2e/.auth/staff.json";
 const ready = () => process.env.CI === "true" && fs.existsSync(owner);
@@ -89,6 +92,85 @@ test.describe("Books on the kit (AR-7a)", () => {
   }
 });
 
+test.describe("Taxes on the kit (AR-7b)", () => {
+  test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
+
+  test("the overview shows the six sub-tabs and the stat strip", async ({ page }) => {
+    test.skip(!ready(), "Disposable Postgres and a saved owner session required.");
+    await page.goto("/desk/sales-tax", { waitUntil: "load" });
+    await expect(page.getByRole("heading", { name: "Taxes", exact: true })).toBeVisible();
+    const nav = page.getByRole("navigation", { name: "Taxes sections" });
+    for (const tab of ["Overview", "Returns", "Areas & rates", "Exemptions", "Use tax", "Setup"]) {
+      await expect(nav.getByRole("link", { name: tab, exact: true })).toBeVisible();
+    }
+    await expect(nav.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByText("Next return due", { exact: true })).toBeVisible();
+    await expect(page.getByText("Decisions open", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Needs your attention" })).toBeVisible();
+  });
+
+  test("a desktop row click on Returns opens the guided return", async ({ page }) => {
+    // The test creates its own filing period (the mcp-repair-cases pattern): the seed
+    // creates none, so the old version skipped whenever no other spec had happened to
+    // create one yet — and a skipped test fails CI's skip guard. The period's due date
+    // is in 2020 so it sorts first in the list.
+    const account = await prisma.taxFilingAccount.create({
+      data: { name: `Row-click test ${randomUUID()}` },
+    });
+    const period = await prisma.taxFilingPeriod.create({
+      data: {
+        filingAccountId: account.id,
+        periodStart: new Date("2019-12-01T12:00:00.000Z"),
+        periodEnd: new Date("2019-12-31T12:00:00.000Z"),
+        dueOn: new Date("2020-01-20T12:00:00.000Z"),
+      },
+    });
+    try {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto("/desk/sales-tax/returns");
+      await expect(page.locator("h1").first()).toBeVisible();
+      const firstRow = page.locator("tbody tr").first();
+      await firstRow.locator("a").first().click();
+      await expect(page).toHaveURL(new RegExp(`/desk/sales-tax/returns/${period.id}$`));
+      await expect(page.locator("h1").first()).toBeVisible();
+    } finally {
+      await prisma.taxFilingPeriod.delete({ where: { id: period.id } });
+      await prisma.taxFilingAccount.delete({ where: { id: account.id } });
+    }
+  });
+
+  test("every Taxes tab page renders inside the frame with its tab current", async ({ page }) => {
+    test.skip(!ready(), "Disposable Postgres and a saved owner session required.");
+    for (const [path, tab] of [
+      ["/desk/sales-tax/returns", "Returns"],
+      ["/desk/sales-tax/areas", "Areas & rates"],
+      ["/desk/sales-tax/exemptions", "Exemptions"],
+      ["/desk/sales-tax/use-tax", "Use tax"],
+      ["/desk/sales-tax/setup", "Setup"],
+    ] as const) {
+      await page.goto(path, { waitUntil: "load" });
+      const nav = page.getByRole("navigation", { name: "Taxes sections" });
+      await expect(nav, `${path} should render inside the Taxes frame`).toBeVisible();
+      await expect(nav.getByRole("link", { name: tab, exact: true })).toHaveAttribute("aria-current", "page");
+    }
+  });
+
+  for (const width of [360, 1280]) {
+    test(`taxes overview and returns pass axe at ${width}`, async ({ page }) => {
+      test.skip(!ready(), "Disposable Postgres and a saved owner session required.");
+      await page.setViewportSize({ width, height: 900 });
+      for (const path of ["/desk/sales-tax", "/desk/sales-tax/returns", "/desk/sales-tax/exemptions"]) {
+        await page.goto(path, { waitUntil: "load" });
+        // Same streaming race as the Books axe tests above: wait for the real
+        // heading before analyzing; the axe assertion itself is unchanged.
+        await expect(page.locator("h1").first()).toBeVisible();
+        expect((await new AxeBuilder({ page }).analyze()).violations, `${path} at ${width}`).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
+      }
+    });
+  }
+});
+
 test.describe("Books on the kit for staff (AR-7a)", () => {
   test.use({ storageState: fs.existsSync(staff) ? staff : undefined });
 
@@ -110,6 +192,24 @@ test.describe("Books on the kit for staff (AR-7a)", () => {
       await expect(page).not.toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}($|[?#])`));
       await expect(page.getByRole("heading", { name: "Books", exact: true })).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "For your accountant", exact: true })).toHaveCount(0);
+    }
+  });
+});
+
+test.describe("Taxes on the kit for staff (AR-7b)", () => {
+  test.use({ storageState: fs.existsSync(staff) ? staff : undefined });
+
+  test("staff are refused the taxes pages", async ({ page }) => {
+    test.skip(process.env.CI !== "true" || !fs.existsSync(staff), "Disposable Postgres and a saved staff session required.");
+    for (const path of ["/desk/sales-tax", "/desk/sales-tax/returns", "/desk/sales-tax/setup"]) {
+      await page.goto(path, { waitUntil: "load" }).catch((error) => {
+        // Same streamed-redirect race as the Books staff test above: swallow only
+        // ERR_ABORTED; the assertions below still prove the refusal.
+        if (!String(error).includes("ERR_ABORTED")) throw error;
+      });
+      await page.waitForLoadState("load");
+      await expect(page).not.toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}($|[?#])`));
+      await expect(page.getByRole("heading", { name: "Taxes", exact: true })).toHaveCount(0);
     }
   });
 });
