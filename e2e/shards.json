@@ -126,7 +126,8 @@
       "mcp-repair-cases.spec.ts",
       "navigation.spec.ts",
       "rentals.spec.ts",
-      "today-inline.spec.ts"
+      "today-inline.spec.ts",
+      "mcp-monitoring.spec.ts"
     ]
   }
 }

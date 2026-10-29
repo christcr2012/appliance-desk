@@ -405,6 +405,10 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 **If it fails.** An email marked Needs review may be in progress; check Resend's sending activity before resending anything and do not reset the sequence. "Sent" means the provider accepted it, not that it reached an inbox.
 
+## System health — Monitoring (MCP-7 daily checks)
+
+Open **Desk → More → System health → Monitoring** to see the nightly check heartbeat and each optional owner-controlled monitor. Each check starts **off**, with an alert after two failed days in a row, a 24-hour repeat delay, and owner email off. Turn on only the checks that matter, set how many failures you tolerate, and save. A confirmed alert appears as **one system issue** on Today; a later successful source check marks it recovered. Email can send only when both the monitor and the separate email controls allow it. The built-in heartbeat shows whether the daily sweep ran; it cannot detect the entire app being down. The public `/api/health` route is for an optional external uptime checker and returns no customer information. Monitoring does not grant an assistant permission to fix things automatically; delegated repair requires a separately reviewed owner-authorization feature.
+
 ## System health — Assistant activity and approvals (MCP-5, pending checked merge)
 
 Open **Desk → More → System health → Assistant activity** to see the requests

@@ -32,6 +32,10 @@ books-workspace spec (which waits for the heading) passes on the same page — t
 half-streamed document. A second fix batch riding with this note makes the axe test wait for the
 page heading before analyzing; the axe assertion is unchanged. CI green at the exact head, then auto-merge.
 
+## October 28 — MCP-7 monitoring build (in progress)
+
+Building owner-configured system monitoring on ai/chatgpt/mcp-7-monitoring while MCP-6 PR #738 completes CI. MCP-7 additive schema, disabled-by-default owner checks, owner screen, /api/health, bounded alert/recovery issue and automatic cron invocation are implemented locally. Ten isolated PostgreSQL/policy tests passed (including review corrections for acknowledged incidents and recently answered feedback) (two-worker daily dedupe, alert threshold, cooldown, recovery, failed owner email, active-owner edit and DST). Pending: standing MCP-5 delegated auto actions (separate security boundary), exact-head CI, browser accessibility and review; not complete. Scope split MCP-7a alert/owner controls vs MCP-7b durable delegated writes is required so no automatic action ships without full permission and revocation evidence.
+
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 
 Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:

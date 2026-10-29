@@ -7076,6 +7076,34 @@ model AgentOperation {
   @@index([actorUserId, createdAt])
 }
 
+// MCP-7: owner-configurable daily checks. Disabled by default; no provider or live action is implied.
+model MonitorRule {
+  id String @id @default(cuid())
+  key String @unique @db.VarChar(60)
+  enabled Boolean @default(false)
+  failuresBeforeAlert Int @default(2)
+  cooldownHours Int @default(24)
+  notifyEmail Boolean @default(false)
+  autoAction String? @db.VarChar(60)
+  autoActionConnectionId String?
+  version Int @default(1)
+  updatedAt DateTime @updatedAt
+}
+
+model MonitorRun {
+  id String @id @default(cuid())
+  ruleKey String @db.VarChar(60)
+  slot String @db.VarChar(20)
+  state String @db.VarChar(12)
+  consecutiveFailures Int
+  notifiedAt DateTime?
+  operationId String?
+  emailErrorCode String? @db.VarChar(60)
+  createdAt DateTime @default(now())
+  @@unique([ruleKey, slot])
+  @@index([ruleKey, createdAt])
+}
+
 // MCP-6: repair progress is evidence-backed, never a caller-supplied success claim.
 enum RepairStage {
   PROPOSED

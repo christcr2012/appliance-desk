@@ -24,6 +24,8 @@ export const BACKUP_MODEL_POLICY = {
   McpConnection: "mcpConnection",
   // Operation attempts are durable business audit evidence, not active consent.
   AgentOperation: "agentOperation",
+  MonitorRule: "monitorRule",
+  MonitorRun: "monitorRun",
   // MCP-6: keep repair provenance and verification evidence in backup/restore.
   RepairCase: "repairCase",
   RepairEvidence: "repairEvidence",
