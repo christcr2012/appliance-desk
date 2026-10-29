@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import {
   createEstimateDraft,
+  createEstimateDraftForLead,
   createEstimateDraftForNewLead,
   addEstimateLineItem,
   removeEstimateLineItem,
@@ -100,6 +101,58 @@ const newLeadForEstimateSchema = z.object({
  * first, then the estimate against it — see
  * createEstimateDraftForNewLead's own comment for what happens once the
  * customer actually approves it. */
+const newEstimateForLeadSchema = z.object({
+  phoneOrder: z.boolean().optional(),
+  leadId: z.string().trim().min(1, "Choose a lead."),
+  title: z.string().trim().min(1, "Give this estimate a short internal title.").max(200),
+  clientMessage: z.string().trim().max(2000).optional().or(z.literal("")),
+  internalNotes: z.string().trim().max(2000).optional().or(z.literal("")),
+  depositDollars: z.coerce.number().min(0).max(100000).optional(),
+  validUntil: z.string().trim().optional().or(z.literal("")),
+});
+
+/** AR-4b: the "quote for an existing lead" path on /desk/estimates/new?leadId=. */
+export async function createEstimateForLeadAction(
+  raw: Record<string, unknown>,
+): Promise<{ status: "success"; estimateId: string } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN");
+
+  const parsed = newEstimateForLeadSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
+    };
+  }
+  const data = parsed.data;
+  const validUntil = parseEstimateValidUntil(data.validUntil);
+  if (!validUntil.ok) {
+    return { status: "error", message: INVALID_VALID_UNTIL_MESSAGE };
+  }
+
+  let estimate;
+  try {
+    estimate = await createEstimateDraftForLead(session.user.id, data.leadId, {
+      title: data.title,
+      clientMessage: data.clientMessage || undefined,
+      internalNotes: data.internalNotes || undefined,
+      depositCents: data.depositDollars ? dollarsToCents(data.depositDollars) : 0,
+      validUntil: validUntil.value,
+      phoneOrder: data.phoneOrder === true,
+    });
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't create this estimate.",
+    };
+  }
+
+  revalidatePath("/desk/estimates");
+  revalidatePath("/desk/leads");
+  revalidatePath(`/desk/leads/${data.leadId}`);
+  redirect(`/desk/estimates/${estimate.id}`);
+}
+
 export async function createEstimateForNewLeadAction(
   raw: Record<string, unknown>,
 ): Promise<{ status: "success"; estimateId: string } | { status: "error"; message: string }> {
