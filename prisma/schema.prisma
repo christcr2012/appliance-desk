@@ -98,6 +98,8 @@ model User {
   assignedJobs          Job[]           @relation("JobAssignedTo")
 
   @@index([role])
+  // CU-1 (AR-4c): trigram search over customer names for the Customers list.
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "User_name_trgm")
 
   // COM-L2 additive communication lineage.
   initiatedMessageDeliveries MessageDelivery[] @relation("MessageDeliveryActor")
@@ -222,6 +224,10 @@ model Customer {
   custodyEpisodes ApplianceCustodyEpisode[]
 
   phone           String?
+  // CU-1 (AR-4c): digits-only phone key for exact phone search, maintained by
+  // customerContactKeys (src/domains/customers/keys.ts) at every write that
+  // sets phone — the LD-1 lead pattern. Backfilled by the migration.
+  phoneDigits     String?
   isBusiness      Boolean  @default(false)
   isPropertyManager Boolean @default(false)
   companyName     String?
@@ -292,6 +298,8 @@ model Customer {
   archivedAt DateTime?
 
   @@index([isPropertyManager])
+  @@index([phoneDigits])
+  @@index([companyName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_companyName_trgm")
 
   // COM-L2 additive communication lineage.
   contactBindings ContactBinding[]
@@ -338,6 +346,9 @@ model ServiceAddress {
   id         String   @id @default(cuid())
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
+  // CU-1 (AR-4c): trigram search over address text for the Customers list.
+  @@index([line1(ops: raw("gin_trgm_ops"))], type: Gin, map: "ServiceAddress_line1_trgm")
+  @@index([city(ops: raw("gin_trgm_ops"))], type: Gin, map: "ServiceAddress_city_trgm")
 
   line1   String
   line2   String?
@@ -1467,6 +1478,7 @@ model RentalAgreement {
 
   @@index([customerId])
   @@index([status])
+  @@index([customerId, status], map: "RentalAgreement_customerId_status_idx")
   @@index([continuityRootId])
   @@index([serviceAddressId])
   @@index([sourceEstimateId])
@@ -1982,6 +1994,7 @@ model Job {
   @@index([status])
   @@index([scheduledAt])
   @@index([customerId])
+  @@index([customerId, status, scheduledAt], map: "Job_customerId_status_scheduledAt_idx")
   @@index([serviceAddressId])
   @@index([agreementId])
   @@index([maintenanceRequestId])
@@ -2779,6 +2792,7 @@ model Invoice {
 
   @@index([status])
   @@index([customerId])
+  @@index([customerId, status, dueDate], map: "Invoice_customerId_status_dueDate_idx")
   @@index([agreementId])
   @@index([issuedAt])
   // Owner billing lists sort newest first with stable ID tie-breaker.

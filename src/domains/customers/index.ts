@@ -10,6 +10,7 @@ import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/activ
 import { sendCustomerActivationEmail } from "@/domains/leads";
 import { generateUniqueReferralCode } from "@/domains/referrals";
 import { locateServiceAddress } from "@/domains/tax/locations";
+import { customerContactKeys } from "./keys";
 
 export { getCustomerTimeline, getCustomerContacts } from "./timeline";
 export type { TimelineEntry } from "./timeline";
@@ -189,6 +190,7 @@ export async function createCustomerDirectly(
       data: {
         userId: account.id,
         phone: input.phone || null,
+        ...customerContactKeys({ phone: input.phone }),
         isBusiness: input.isBusiness,
         isPropertyManager: input.isPropertyManager,
         companyName: input.companyName || null,
