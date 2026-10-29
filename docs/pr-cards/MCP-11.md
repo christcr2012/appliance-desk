@@ -14,3 +14,22 @@ reports whose author allowed it.
 
 ## Progress
 Not started.
+
+## Implementation route (reconciled October 28, 2026)
+
+This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
+only when absent; inspect the final prerequisite exports once before coding.
+
+1. Start with current `src/domains/feedback/index.ts` (`getMyFeedback`, `replyToReporter`, `addInternalNote`,
+   `setFeedbackState`), `src/mcp/scopes.ts` and MCP-5’s final operation dispatcher; do not create a second feedback
+   store. New fields/links follow FEEDBACK-AGENT section 3 and existing backup/privacy conventions.
+2. Implement the reporter-only locked `setFeedbackAiReview` write and events before content tools. Fixture:
+   HUMAN_ONLY with both scopes → metadata only; ALLOWED without content scope → metadata only; ALLOWED with
+   both → approved text; WITHDRAWN or content removed → text absent on the next read.
+3. Test withdrawal between preview and execution cancels the queued operation. No cached content/result
+   handles, screenshots, attachment URLs or duplicate-case links may bypass the report’s live permission.
+4. Wire journaled replies/state/link actions to existing writers. Replies are labelled ASSISTANT; internal
+   notes never appear on the reporter view; RESOLVED requires MCP-6 VERIFIED evidence. Feed prompt-injection
+   text and assert it creates zero operations and grants zero scopes.
+5. Run the spec’s two new integration suites plus existing feedback privacy tests; add the reporter permission
+   browser journey. Keep the existing feedback service functional if assistant permission is never enabled.

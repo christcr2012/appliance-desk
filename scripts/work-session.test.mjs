@@ -151,6 +151,7 @@ test('drift includes unstaged, staged, untracked and predecessor changes; prompt
     const prompt = continuation(f.packet, f.git('rev-parse', 'HEAD'));
     assert.ok(prompt.includes('not proof of GitHub merge or CI'));
     assert.ok(prompt.includes('bundle workload'));
+    assert.ok(prompt.includes('work -- start A-1'));
     assert.throws(() => continuation(f.packet, 'unknown'), /Invalid local head/);
   } finally { f.cleanup(); }
 });
@@ -177,5 +178,34 @@ test('numbered reads expose only bounded context around a checked integration an
     assert.equal(output[0], excerpt);
     f.packet.references = Array(13).fill(f.packet.references[0]);
     assert.throws(() => validatePacket(f.packet, f.root), /bounded/);
+  } finally { f.cleanup(); }
+});
+
+
+test('explicit numbered reads stay on the selected lane and reject unknown packets', () => {
+  const f = fixture(); try {
+    f.write('docs/pr-cards/B.md', '# Other lane');
+    f.write('src/other.ts', 'export function otherLaneOnly() {}');
+    const other = structuredClone(f.packet);
+    other.id = 'B-1'; other.parent = 'B'; other.card = 'docs/pr-cards/B.md';
+    other.references = [{ path: 'src/other.ts', anchor: 'otherLaneOnly', purpose: 'Other lane' }];
+    f.write('docs/pr-cards/execution/B-1.json', JSON.stringify(other));
+    f.index.cards.push({ id: 'B' });
+    f.index.executionPackets.push({ id: 'B-1', path: 'docs/pr-cards/execution/B-1.json' });
+    f.save();
+    const output = [];
+    const neverExecute = () => { throw new Error('Read must not execute checks'); };
+    main(['read', '1', 'B-1'], f.root, neverExecute, s => output.push(s));
+    assert.ok(output.join('\n').includes('otherLaneOnly'));
+    assert.ok(!output.join('\n').includes('storedFact'));
+    assert.throws(() => main(['read', '1', 'MISSING'], f.root, neverExecute), /Unknown execution packet/);
+    assert.equal(JSON.parse(readFileSync(join(f.root, 'docs/pr-cards/work-index.json'), 'utf8')).activeExecution, 'A-1');
+    output.length = 0;
+    main(['start'], f.root, neverExecute, s => output.push(s));
+    assert.match(output[0], /not a lane assignment/);
+    output.length = 0;
+    main(['start', 'B-1'], f.root, neverExecute, s => output.push(s));
+    assert.ok(output[0].startsWith('Execution B-1'));
+    assert.ok(output[0].includes('work read <number> B-1'));
   } finally { f.cleanup(); }
 });

@@ -2,7 +2,7 @@
   "version": 1,
   "auditedBase": "91f7d34d",
   "updated": "2026-10-27",
-  "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
+  "process": "Just-in-time cards from approved contracts; AGENTS.md owns rules and SESSION-START owns the session procedure. Choose explicit packet IDs per lane; activeExecution is a shared legacy fallback, not an assignment. Outcome-led PR scope, no numeric quota; meaningful focused checks plus exact-head CI and review. Source, merge, deployment and external acceptance are separate.",
   "cards": [
     {
       "id": "T-6D1",
@@ -4118,7 +4118,7 @@
         "e2e/books-home.spec.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/BA-4.md"
+      "plannedCard": "docs/pr-cards/AR-7.md"
     },
     {
       "id": "BA-5",
@@ -4142,7 +4142,7 @@
         "tests/ba5-equipment-value.test.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/BA-5.md"
+      "plannedCard": "docs/pr-cards/AR-7.md"
     },
     {
       "id": "BA-6",
@@ -4164,7 +4164,7 @@
         "tests/ba6-no-link-lists.test.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/BA-6.md"
+      "plannedCard": "docs/pr-cards/AR-10.md"
     },
     {
       "id": "LD-1",
@@ -4218,7 +4218,7 @@
         "e2e/leads-queue.spec.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/LD-2.md"
+      "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
       "id": "LD-3",
@@ -4242,7 +4242,7 @@
         "e2e/lead-detail.spec.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/LD-3.md"
+      "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
       "id": "LD-4",
@@ -4265,7 +4265,7 @@
         "tests/ld4-lead-insights.test.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/LD-4.md"
+      "plannedCard": "docs/pr-cards/AR-9.md"
     },
     {
       "id": "CU-1",
@@ -4312,7 +4312,7 @@
         "e2e/customer-record.spec.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/CU-2.md"
+      "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
       "id": "CU-3",
@@ -4337,7 +4337,7 @@
         "tests/cu3-customers-area.test.ts"
       ],
       "readiness": "SUPERSEDED",
-      "plannedCard": "docs/pr-cards/CU-3.md"
+      "plannedCard": "docs/pr-cards/AR-9.md"
     },
     {
       "id": "AR-0",
@@ -4408,7 +4408,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PRs #727, #728, #729 (source; external acceptance separate)",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4847,7 +4847,7 @@
       "title": "System health that tells the truth: one state list, real schedules, bounded reads, typed failures",
       "batch": "MCP",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #602 (source; external acceptance separate)",
       "migration": "additive (AutomationRun/SystemIssue failure fields, BusinessSettings.automationLateGraceMinutes, index)",
       "budget": 450,
       "units": [
@@ -4872,7 +4872,7 @@
       "dependencies": [
         "MCP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #611 (source; external acceptance separate)",
       "migration": "additive (BackupArtifact, BusinessSettings.backupRetentionDays)",
       "budget": 650,
       "units": [
@@ -4897,7 +4897,7 @@
       "dependencies": [
         "MCP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #692 (source; external acceptance separate)",
       "migration": "additive (OAuth provider tables, jwks, McpConnection)",
       "budget": 600,
       "units": [
@@ -4924,7 +4924,7 @@
         "MCP-2",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #704 (source; external acceptance separate)",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -5239,7 +5239,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #646 (source; professional/provider acceptance separate)",
       "migration": "additive (LegalRuleObservation, watch rows activated)",
       "budget": 450,
       "units": [
@@ -5739,7 +5739,7 @@
         "CMP-2",
         "ACCT-1"
       ],
-      "status": "IN PROGRESS — branch ai/vivienne/taxben-2 (2026-10-27); packet registered, building",
+      "status": "MERGED — PR #714; review fixes #715 (source; CPA acceptance separate)",
       "migration": "none",
       "budget": 250,
       "units": [
@@ -5839,7 +5839,7 @@
       "title": "Service area map, delivery zones detected from the address, pickup always offered",
       "batch": "FEETAX",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #604 (source; hosted acceptance separate)",
       "migration": "additive (ServiceAddress coordinates, deliveryZones/zoneCenter/zoneDistanceMethod settings)",
       "budget": 500,
       "units": [

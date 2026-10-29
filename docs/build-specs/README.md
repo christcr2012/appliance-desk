@@ -27,16 +27,19 @@ layout, spacing) is not a decision: use the KIT tokens and the nearest existing 
   (`e2e/` — add each new spec to a group in `e2e/shards.json`).
 - The kit guards (KIT.md section 9) pass with no new allow-list entries.
 - The plain-words check passes (`npm run lint`).
-- No business behavior changed: the same server actions and domain functions are called with the same arguments.
-  If a screen needs new data, add a **read-only** query function in the named domain file, with a unit test.
+- Preserve existing business behavior except the fixes explicitly approved in the screen spec (for example
+  staff DTO filtering and the Retired guard in EQUIPMENT section 1). Reuse existing actions for money.
+  New display data uses a read-only domain query with meaningful role and result tests.
 - Every old URL still works (the page itself, or a redirect listed in the card).
 - STATUS has a short top entry. The card's "Progress" section says what was done and what was not.
 
 ## How to work through a card
 
 1. Branch `ai/<tool>/<card-id>` from current `main`.
-2. Do the card's steps **in order**. Each step names the files to create or change. Do not touch files the card
-   does not name unless a type error forces it (then say so in the PR).
+2. Follow the card’s integration order. Named paths are an inspected starting point, not an exhaustive allow-list.
+   Update necessary callers, fakes, role maps, route/shard registries and tests in the same PR; explain material
+   drift in that card. Do not expand product scope. Existing kit exports and current permissions take precedence
+   over stale sample imports or role lists; a sample is never authority to remove accountant access.
 3. Write the tests the step lists while you build that step.
 4. Run the cheap checks locally (`npx vitest run <changed tests>`, `npm run lint`, `npx tsc --noEmit`), push once,
    let CI run the full suites (AGENTS section 8).

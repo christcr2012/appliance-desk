@@ -24,7 +24,8 @@ This recipe does not bypass the acceptance accounting or final closeout procedur
 
 ## Step 0a — Checked work packet
 
-Run `npm run work -- start` and `npm run work -- doctor`. Use `route <unit>` for a later unit's bounded discovery
+Select your assigned packet with `npm run work -- start <ID>` and run `npm run work -- doctor`.
+The shared fallback is not a lane assignment; use MASTER-ROADMAP’s current execution map. Use `route <unit>` for a later unit's bounded discovery
 anchors. `plan` prints exact selectors and missing proposed files without executing tests; `verify` uses the packet's
 validated selectors and the normal preflight. See [packet authoring](pr-cards/README.md). No packet result proves
 GitHub merge, real-provider acceptance or dependency eligibility. Diagnose a small failing DB spec with `probe`,
