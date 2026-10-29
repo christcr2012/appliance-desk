@@ -37,7 +37,7 @@ async function connect(context: AgentContext) {
 afterEach(() => vi.clearAllMocks());
 
 describe("MCP-4 diagnostic tool registry", () => {
-  it("publishes nine diagnostic reads, one operation read and two guarded write actions", async () => {
+  it("publishes read tools alongside approved actions with accurate annotations", async () => {
     const { client, close } = await connect(actor("owner", ["ops:read", "decisions:read"]));
     try {
       const { tools } = await client.listTools();
@@ -47,11 +47,15 @@ describe("MCP-4 diagnostic tool registry", () => {
         "appliance_configuration_get_readiness", "appliance_decisions_get",
         "appliance_decisions_list", "appliance_health_get_issue",
         "appliance_health_get_overview", "appliance_health_list_issues",
-        "appliance_operation_get", "appliance_whoami",
+        "appliance_operation_get", "appliance_repair_check", "appliance_repair_create_case",
+        "appliance_repair_get_case", "appliance_repair_link_evidence", "appliance_repair_list_cases",
+        "appliance_whoami",
       ]);
       for (const tool of tools) {
         expect(tool.annotations).toMatchObject({
-          readOnlyHint: !["appliance_action_execute", "appliance_action_preview"].includes(tool.name),
+          readOnlyHint: !["appliance_action_preview", "appliance_action_execute",
+            "appliance_repair_check", "appliance_repair_create_case",
+            "appliance_repair_link_evidence"].includes(tool.name),
           destructiveHint: false, idempotentHint: true,
         });
         expect(tool.inputSchema.type).toBe("object");
