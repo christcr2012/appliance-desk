@@ -64,6 +64,53 @@ describe("MCP-7 disposable-PostgreSQL monitoring slots", () => {
     expect(issue.status).toBe("RESOLVED");
     expect(issue.occurrences).toBe(1);
   });
+  it("keeps an acknowledged incident active for cooldown and recovery", async () => {
+    await enable(1, 72);
+    await runMonitors(now("2026-11-03T18:00:00Z"), { evaluate: failing });
+    await prisma.systemIssue.update({
+      where: { fingerprint: issueKey }, data: { status: "ACKNOWLEDGED" },
+    });
+    const next = await runMonitors(now("2026-11-04T18:00:00Z"), { evaluate: failing });
+    expect(next.alerted).toBe(0);
+    const recovered = await runMonitors(now("2026-11-05T18:00:00Z"), { evaluate: healthy });
+    expect(recovered.recovered).toBe(1);
+    expect((await prisma.systemIssue.findUniqueOrThrow({
+      where: { fingerprint: issueKey },
+    })).status).toBe("RESOLVED");
+  });
+  it("times overdue feedback from its latest customer response, not the original report", async () => {
+    const feedbackKey = "feedback-waiting-3-days";
+    const reportId = "monitor-feedback-" + id;
+    await prisma.monitorRule.create({ data: {
+      key: feedbackKey, enabled: true, failuresBeforeAlert: 1,
+    } });
+    await prisma.feedbackReport.create({ data: {
+      id: reportId, reporterUserId: ownerId, reporterRole: "OWNER",
+      kind: "BUG", title: "Test only", description: "Synthetic feedback",
+      routeTemplate: "/desk/today", safeContext: {}, requestKey: "monitor-" + id,
+      createdAt: now("2026-10-01T18:00:00Z"),
+    } });
+    try {
+      await prisma.feedbackReport.update({ where: { id: reportId }, data: {
+        updatedAt: now("2026-11-05T18:00:00Z"),
+      } });
+      await runMonitors(now("2026-11-06T18:00:00Z"));
+      const first = await prisma.monitorRun.findUniqueOrThrow({
+        where: { ruleKey_slot: { ruleKey: feedbackKey, slot: "2026-11-06" } },
+      });
+      expect(first.state).toBe("OK");
+      await runMonitors(now("2026-11-10T18:00:00Z"));
+      const late = await prisma.monitorRun.findUniqueOrThrow({
+        where: { ruleKey_slot: { ruleKey: feedbackKey, slot: "2026-11-10" } },
+      });
+      expect(late.state).toBe("ALERT");
+    } finally {
+      await prisma.monitorRun.deleteMany({ where: { ruleKey: feedbackKey } });
+      await prisma.monitorRule.deleteMany({ where: { key: feedbackKey } });
+      await prisma.systemIssue.deleteMany({ where: { fingerprint: "monitor:" + feedbackKey } });
+      await prisma.feedbackReport.deleteMany({ where: { id: reportId } });
+    }
+  });
   it("email failure never starts a second incident or repeats a sent notification", async () => {
     await enable(1,72,true);
     let attempted = 0;

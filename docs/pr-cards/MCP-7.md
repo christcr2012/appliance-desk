@@ -44,3 +44,5 @@ only when absent; inspect the final prerequisite exports once before coding.
    the database or monitoring is healthy. Keep the external uptime step as optional owner acceptance.
 5. Implement the named monitoring integration/policy tests and the settings browser journey. Add each actual
    setting/control to the AR-8/MCP-8 catalog integration when that export is available.
+
+MCP-7a review correction (Oct 28): treat ACKNOWLEDGED incidents as active across cooldown/recovery and time feedback waits from the newest unanswered update. Two new disposable-PostgreSQL regressions passed; 10/10 focused total. Initial full GitHub CI passed at 32e24511, while the corrected head still requires exact-head CI/review.

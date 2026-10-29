@@ -114,7 +114,7 @@ async function readSignal(key: MonitorKey, now: Date): Promise<MonitorSignal> {
     case "feedback-waiting-3-days": {
       const until = new Date(now.getTime() - 3 * 24 * 60 * 60_000);
       const count = await prisma.feedbackReport.count({
-        where: { awaitingTeam: true, createdAt: { lte: until },
+        where: { awaitingTeam: true, updatedAt: { lte: until },
           state: { notIn: ["RESOLVED", "DUPLICATE", "DECLINED", "CLOSED"] } },
       });
       return { failed: count > 0, detail: "An app problem report has waited more than three days for a team response." };
@@ -151,7 +151,7 @@ export async function runMonitors(now = new Date(), input?: {
       const failures = signal.failed ? (prior?.consecutiveFailures ?? 0) + 1 : 0;
       const issueKey = "monitor:" + key;
       const issue = await tx.systemIssue.findUnique({ where: { fingerprint: issueKey } });
-      const wasOpen = issue?.status === "OPEN";
+      const wasOpen = Boolean(issue && issue.status !== "RESOLVED");
       const lastNotification = await tx.monitorRun.findFirst({
         where: { ruleKey: key, notifiedAt: { not: null } },
         orderBy: [{ notifiedAt: "desc" }, { id: "desc" }], select: { notifiedAt: true },
