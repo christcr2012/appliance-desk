@@ -134,6 +134,9 @@ export async function mergeLeads(actorId: string, keepId: string, mergeId: strin
         ...(followUpChanged ? { version: { increment: 1 } } : {}),
         status,
         lostReason: status === "LOST" ? kept.lostReason : null,
+        // AR-9: if the merge reopens the kept lead (LOST -> CONTACTED), its
+        // close date clears; a kept lead staying LOST keeps its own.
+        closedAt: status === "LOST" ? kept.closedAt : null,
         score: scored.score,
         scoreReasons: scored.reasons,
         isHighValue: scored.isHighValue,
@@ -149,6 +152,8 @@ export async function mergeLeads(actorId: string, keepId: string, mergeId: strin
         mergedIntoLeadId: keepId,
         mergedAt: new Date(),
         status: "LOST",
+        // AR-9: a merged-away lead is closed as lost at the merge.
+        closedAt: new Date(),
         lostReason: "Merged into another lead",
         possibleDuplicateOfLeadId: null,
       },
