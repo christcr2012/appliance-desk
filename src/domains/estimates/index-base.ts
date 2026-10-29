@@ -11,7 +11,7 @@ import {
   recordReadinessOverrideInTx,
 } from "@/domains/tax/delivery-readiness";
 import {
-  createLeadManually,
+  createLeadManuallyInTx,
   convertLeadToCustomerInTx,
   sendCustomerActivationEmail,
   type ManualLeadInput,
@@ -126,30 +126,80 @@ export async function createEstimateDraftForNewLead(
   leadInput: ManualLeadInput,
   estimateInput: NewEstimateForLeadInput,
 ) {
-  const lead = await createLeadManually(userId, leadInput);
-  const estimate = await prisma.estimate.create({
-    data: {
-      leadId: lead.id,
-      title: estimateInput.title,
-      clientMessage: estimateInput.clientMessage || null,
-      internalNotes: estimateInput.internalNotes || null,
-      depositCents: estimateInput.depositCents ?? 0,
-      validUntil: estimateInput.validUntil ?? null,
-      createdByUserId: userId,
-      ...(estimateInput.phoneOrder ? {phoneEnteredByUserId:userId,phoneEnteredAt:new Date()} : {}),
-    },
-  });
+  // AR-4b: ONE transaction — the lead, the estimate and the audit row land
+  // together or not at all (before, a failed estimate left a lead behind).
+  return prisma.$transaction(async (tx) => {
+    const lead = await createLeadManuallyInTx(tx, userId, leadInput);
+    const estimate = await tx.estimate.create({
+      data: {
+        leadId: lead.id,
+        title: estimateInput.title,
+        clientMessage: estimateInput.clientMessage || null,
+        internalNotes: estimateInput.internalNotes || null,
+        depositCents: estimateInput.depositCents ?? 0,
+        validUntil: estimateInput.validUntil ?? null,
+        createdByUserId: userId,
+        ...(estimateInput.phoneOrder ? {phoneEnteredByUserId:userId,phoneEnteredAt:new Date()} : {}),
+      },
+    });
 
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "estimate.create",
-      entityType: "Estimate",
-      entityId: estimate.id,
-      newValue: { leadId: lead.id, title: estimateInput.title },
-    },
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "estimate.create",
+        entityType: "Estimate",
+        entityId: estimate.id,
+        newValue: { leadId: lead.id, title: estimateInput.title },
+      },
+    });
+    return estimate;
   });
-  return estimate;
+}
+
+/**
+ * AR-4b (LEADS.md 3.6): a quote for a lead that already exists — the flow
+ * the desk was missing. One transaction: the lead row is locked, the actor
+ * re-checked, and a closed (converted / lost / merged) lead is refused.
+ * The estimate is created exactly like the new-lead flow's, audit included.
+ */
+export async function createEstimateDraftForLead(
+  userId: string,
+  leadId: string,
+  estimateInput: NewEstimateForLeadInput,
+) {
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<{ id: string; status: string; mergedIntoLeadId: string | null }[]>`
+      SELECT "id", "status", "mergedIntoLeadId" FROM "Lead" WHERE "id" = ${leadId} FOR UPDATE`;
+    const lead = locked[0];
+    if (!lead) throw new Error("That lead no longer exists.");
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    if (lead.mergedIntoLeadId || lead.status === "CONVERTED" || lead.status === "LOST") {
+      throw new Error("This lead is closed. Reopen it or use the customer's record.");
+    }
+    const estimate = await tx.estimate.create({
+      data: {
+        leadId: lead.id,
+        title: estimateInput.title,
+        clientMessage: estimateInput.clientMessage || null,
+        internalNotes: estimateInput.internalNotes || null,
+        depositCents: estimateInput.depositCents ?? 0,
+        validUntil: estimateInput.validUntil ?? null,
+        createdByUserId: userId,
+        ...(estimateInput.phoneOrder ? {phoneEnteredByUserId:userId,phoneEnteredAt:new Date()} : {}),
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "estimate.create",
+        entityType: "Estimate",
+        entityId: estimate.id,
+        newValue: { leadId: lead.id, title: estimateInput.title },
+      },
+    });
+    return estimate;
+  });
 }
 
 export type NewEstimateLineItemInput = {

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma, type LeadStatus } from "@prisma/client";
 import {
   businessDateEnd,
   businessDateKey,
@@ -36,6 +36,8 @@ export type LeadQueueParams = {
   created?: LeadDatePreset;
   hasQuote?: boolean;
   follow?: "today" | "week";
+  /** AR-4b: the built-in "Property managers" view. */
+  pm?: boolean;
   sort: LeadQueueSort;
   cursor?: string;
 };
@@ -51,12 +53,16 @@ export type LeadRow = {
   score: number;
   scoreReasons: string[];
   stage: LeadStage;
+  status: LeadStatus;
   assignedTo: { id: string; name: string; initials: string } | null;
   phone: string;
   email: string | null;
   nextFollowUpOn: Date | null;
   createdAt: Date;
   firstContactedAt: Date | null;
+  lostReason: string | null;
+  /** The follow-up compare-and-set version (LD-1). */
+  version: number;
   applianceSummary: string;
   desiredTerm: string | null;
   openQuote: { status: string; sentAt: Date | null; viewedAt: Date | null } | null;
@@ -116,6 +122,7 @@ function queueWherePrisma(p: LeadQueueParams, now: Date): Prisma.LeadWhereInput 
   if (p.area === "in") and.push({ inServiceArea: true });
   if (p.area === "out") and.push({ inServiceArea: false });
   if (p.highValue) and.push({ isHighValue: true });
+  if (p.pm) and.push({ isPropertyManager: true });
   if (p.appliance?.length) {
     and.push({ applianceRequests: { some: { applianceTypeId: { in: p.appliance } } } });
   }
@@ -185,6 +192,7 @@ function queueWhereSql(p: LeadQueueParams, now: Date): Prisma.Sql {
   if (p.area === "in") parts.push(Prisma.sql`l."inServiceArea" = TRUE`);
   if (p.area === "out") parts.push(Prisma.sql`l."inServiceArea" = FALSE`);
   if (p.highValue) parts.push(Prisma.sql`l."isHighValue" = TRUE`);
+  if (p.pm) parts.push(Prisma.sql`l."isPropertyManager" = TRUE`);
   if (p.appliance?.length) {
     parts.push(
       Prisma.sql`EXISTS (SELECT 1 FROM "LeadApplianceRequest" r WHERE r."leadId" = l."id" AND r."applianceTypeId" = ANY(${p.appliance}))`,
@@ -256,6 +264,8 @@ const ROW_SELECT = {
   phone: true,
   email: true,
   nextFollowUpOn: true,
+  lostReason: true,
+  version: true,
   createdAt: true,
   lastRealContactAt: true,
   desiredTerm: true,
@@ -309,6 +319,7 @@ function toRow(lead: SelectedLead): LeadRow {
       firstContactedAt: lead.firstContactedAt,
       openQuote: lead.estimates.length > 0,
     }),
+    status: lead.status,
     assignedTo: lead.assignedTo
       ? {
           id: lead.assignedTo.id,
@@ -319,6 +330,8 @@ function toRow(lead: SelectedLead): LeadRow {
     phone: lead.phone,
     email: lead.email,
     nextFollowUpOn: lead.nextFollowUpOn,
+    lostReason: lead.lostReason,
+    version: lead.version,
     createdAt: lead.createdAt,
     firstContactedAt: lead.firstContactedAt,
     applianceSummary: summarizeApplianceRequests(lead.applianceRequests),
@@ -530,6 +543,23 @@ export async function getLeadQueue(
   if (p.sort === "next-up") return getNextUpQueue(p, now);
   if (p.sort === "value") return getValueQueue(p, now);
   return getPrismaQueue(p, p.sort, now);
+}
+
+/** AR-4b: the CSV export's rows — the same filters as the queue, one big
+ * window (the on-screen queue caps at 500 for paging; an export is meant
+ * for a spreadsheet, so it takes up to `limit` rows, newest first). */
+export async function getLeadsForExport(
+  p: Omit<LeadQueueParams, "sort" | "cursor">,
+  limit: number,
+): Promise<LeadRow[]> {
+  const where = queueWherePrisma({ ...p, sort: "newest" }, new Date());
+  const fetched = await prisma.lead.findMany({
+    where,
+    select: ROW_SELECT,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit,
+  });
+  return fetched.map(toRow);
 }
 
 /** One count per stage, with the same search and filters (but no stage).

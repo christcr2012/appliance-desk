@@ -33,8 +33,10 @@ export const BUILT_IN_VIEWS: Record<ListKey, BuiltInView[]> = {
     { id:"not-scheduled", label:"Not scheduled", params:{when:"none"}, pending:true },
   ],
   leads: [
-    { id:"new", label:"New", params:{stage:"new"}, pending:true },
-    { id:"follow-up-today", label:"Follow up today", params:{follow:"today"}, pending:true },
+    { id:"new", label:"New", params:{stage:"new"} },
+    { id:"follow-up-today", label:"Follow up today", params:{follow:"today"} },
+    { id:"my-new-leads", label:"My new leads", params:{stage:"new", owner:"me"} },
+    { id:"property-managers", label:"Property managers", params:{pm:"1"}, feature:"propertyManagers" },
   ],
 };
 export const LIST_HREF: Record<ListKey,string> = {

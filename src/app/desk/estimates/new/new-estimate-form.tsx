@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { createEstimateAction, createEstimateForNewLeadAction } from "../actions";
+import { createEstimateAction, createEstimateForLeadAction, createEstimateForNewLeadAction } from "../actions";
 
 type CustomerOption = {
   id: string;
@@ -19,20 +19,23 @@ type CustomerOption = {
 // ordinary /desk/leads pipeline right away) and starts the estimate
 // against that instead — see createEstimateDraftForNewLead's own
 // comment for what happens once they approve it.
-type Mode = "existing" | "new";
+type Mode = "existing" | "new" | "lead";
 
 export function NewEstimateForm({
   customers,
   initialCustomerId,
   phoneMode = false,
+  lead,
 }: {
   customers: CustomerOption[];
   initialCustomerId?: string;
   phoneMode?: boolean;
+  /** AR-4b: quoting an existing lead (?leadId=) — read-only recipient. */
+  lead?: { id: string; contactName: string; prefillTitle: string };
 }) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<Mode>(
-    customers.length === 0 ? "new" : "existing",
+    lead ? "lead" : customers.length === 0 ? "new" : "existing",
   );
   const [customerId, setCustomerId] = useState(initialCustomerId ?? "");
   const [contactName, setContactName] = useState("");
@@ -41,7 +44,7 @@ export function NewEstimateForm({
   const [leadCompanyName, setLeadCompanyName] = useState("");
   const [leadIsBusiness, setLeadIsBusiness] = useState(false);
   const [leadIsPropertyManager, setLeadIsPropertyManager] = useState(false);
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(lead?.prefillTitle ?? "");
   const [clientMessage, setClientMessage] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [depositDollars, setDepositDollars] = useState("");
@@ -60,7 +63,17 @@ export function NewEstimateForm({
     setError(null);
     startTransition(async () => {
       const result =
-        mode === "existing"
+        mode === "lead" && lead
+          ? await createEstimateForLeadAction({
+              leadId: lead.id,
+              phoneOrder: phoneMode,
+              title,
+              clientMessage,
+              internalNotes,
+              depositDollars,
+              validUntil,
+            })
+          : mode === "existing"
           ? await createEstimateAction({
               customerId,
               phoneOrder:phoneMode,
@@ -100,6 +113,17 @@ export function NewEstimateForm({
         next screen. The customer must review, sign and pay using their own secure link.
         Never enter card numbers, passwords or verbal signatures here.
       </div>}
+      {mode === "lead" && lead ? (
+        <div className="rounded-md border border-line p-3">
+          <span className="block text-sm font-medium text-ink-soft">Who&apos;s this for?</span>
+          <p className="mt-1 text-sm text-ink">
+            Quote for{" "}
+            <Link href={`/desk/leads/${lead.id}`} className="font-semibold underline">
+              {lead.contactName}
+            </Link>
+          </p>
+        </div>
+      ) : (
       <div>
         <span className="block text-sm font-medium text-ink-soft">Who&apos;s this for?</span>
         <div className="mt-1 flex gap-2">
@@ -133,8 +157,9 @@ export function NewEstimateForm({
           </p>
         )}
       </div>
+      )}
 
-      {mode === "existing" ? (
+      {mode === "lead" ? null : mode === "existing" ? (
         <div>
           <label htmlFor="customerId" className="block text-sm font-medium text-ink-soft">
             Customer

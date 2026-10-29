@@ -199,6 +199,21 @@ export type ManualLeadInput = {
 
 /** Lets staff add a phone/walk-in/manual lead. */
 export async function createLeadManually(userId: string, input: ManualLeadInput) {
+  // LD-1: one transaction, so the owner choice and the lead are never split
+  // (in ROTATE mode the settings-row lock also keeps concurrent creates apart).
+  return prisma.$transaction((tx) => createLeadManuallyInTx(tx, userId, input));
+}
+
+/**
+ * The manual-lead create inside a caller-owned transaction (AR-4b: quoting
+ * a brand-new lead creates the lead and its estimate in ONE transaction, so
+ * a failed estimate never leaves a lead without its quote).
+ */
+export async function createLeadManuallyInTx(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  input: ManualLeadInput,
+) {
   const scoringPolicy = await getLeadScoringPolicy();
   const { score, reasons, isHighValue } = scoreLead(
     {
@@ -210,9 +225,7 @@ export async function createLeadManually(userId: string, input: ManualLeadInput)
     scoringPolicy,
   );
 
-  // LD-1: one transaction, so the owner choice and the lead are never split
-  // (in ROTATE mode the settings-row lock also keeps concurrent creates apart).
-  return prisma.$transaction(async (tx) => {
+  {
     // LD-1: serialize creation on the settings row BEFORE the duplicate
     // check, so a concurrent create of the same phone/email cannot slip
     // past it — the second check runs after the first create commits.
@@ -272,7 +285,7 @@ export async function createLeadManually(userId: string, input: ManualLeadInput)
     }
 
     return lead;
-  });
+  }
 }
 
 const ALL_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "CONVERTED", "LOST"];
@@ -383,6 +396,125 @@ export async function updateLeadStatus(
   });
 }
 
+const leadDetailsSchema = z.object({
+  contactName: z.string().trim().min(2, "Enter their name").max(200),
+  companyName: z.string().trim().max(200).nullish(),
+  isBusiness: z.boolean(),
+  isPropertyManager: z.boolean(),
+  phone: z.string().trim().min(7, "Enter a valid phone number").max(20),
+  email: z.string().trim().email("Enter a valid email address").nullish().or(z.literal("")),
+  bestTimeToContact: z.string().trim().max(200).nullish(),
+  howHeard: z.string().trim().max(200).nullish(),
+  desiredTerm: z.enum(["month-to-month", "6-month", "12-month"]).nullish(),
+  desiredStartDate: z.string().trim().nullish(),
+  quantity: z.number().int().min(1, "Quantity must be at least 1").max(50),
+  addressLine1: z.string().trim().max(300).nullish(),
+  city: z.string().trim().max(100).nullish(),
+  zip: z.string().trim().max(10).nullish(),
+  notes: z.string().trim().max(2000).nullish(),
+});
+
+export type LeadDetailsInput = z.input<typeof leadDetailsSchema>;
+
+/**
+ * AR-4b (LEADS.md 3.7): edit what a lead wants — the lead record's "What
+ * they want" sheet. One transaction: row locked, actor re-checked, a
+ * converted lead refused (merged leads are refused by the lock). Contact
+ * keys are rewritten, the service-area answer is recomputed when the city
+ * or zip changes (the same town/zone rule createLead uses), and the score
+ * is recomputed under the current policy. The audit row (`lead.details`)
+ * carries only the fields that actually changed. Appliance requests are
+ * edited in the quote, not here.
+ */
+export async function updateLeadDetails(
+  actorId: string,
+  leadId: string,
+  rawInput: LeadDetailsInput,
+): Promise<void> {
+  const input = leadDetailsSchema.parse(rawInput);
+  const settings = await getBusinessSettings();
+  const scoringPolicy = await getLeadScoringPolicy();
+
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "STAFF"]);
+    const locked = await lockLiveLeadInTx(tx, leadId);
+    if (locked.status === "CONVERTED") {
+      throw new Error("This lead has already been converted to a customer.");
+    }
+    // The lock helper returns a narrow row; the diff below needs every field.
+    const current = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
+
+    const next = {
+      contactName: input.contactName,
+      companyName: input.companyName?.trim() || null,
+      isBusiness: input.isBusiness,
+      isPropertyManager: input.isPropertyManager,
+      phone: input.phone,
+      email: input.email?.trim() || null,
+      bestTimeToContact: input.bestTimeToContact?.trim() || null,
+      howHeard: input.howHeard?.trim() || null,
+      desiredTerm: input.desiredTerm || null,
+      desiredStartDate: input.desiredStartDate ? new Date(input.desiredStartDate) : null,
+      quantity: input.quantity,
+      addressLine1: input.addressLine1?.trim() || null,
+      city: input.city?.trim() || null,
+      zip: input.zip?.trim() || null,
+      notes: input.notes?.trim() || null,
+    };
+
+    const changed: Record<string, { from: unknown; to: unknown }> = {};
+    for (const key of Object.keys(next) as (keyof typeof next)[]) {
+      const from = current[key] instanceof Date ? (current[key] as Date).toISOString() : (current[key] ?? null);
+      const to = next[key] instanceof Date ? (next[key] as Date).toISOString() : (next[key] ?? null);
+      if (from !== to) changed[key] = { from, to };
+    }
+
+    let inServiceArea = current.inServiceArea;
+    if (changed.city || changed.zip) {
+      const town = townByName(next.city);
+      inServiceArea = town
+        ? zoneForPoint({ lat: town.lat, lon: town.lon }, readZoneSettings(settings)).kind === "ZONE"
+        : null;
+    }
+
+    const { score, reasons, isHighValue } = scoreLead(
+      {
+        desiredTerm: next.desiredTerm,
+        quantity: next.quantity,
+        isPropertyManager: next.isPropertyManager,
+        isBusiness: next.isBusiness,
+      },
+      scoringPolicy,
+    );
+
+    await tx.lead.update({
+      where: { id: leadId },
+      data: {
+        ...next,
+        ...leadContactKeys({ phone: next.phone, email: next.email }),
+        inServiceArea,
+        score,
+        scoreReasons: reasons,
+        isHighValue,
+        scoringPolicyVersion: scoringPolicy.version,
+      },
+    });
+
+    if (Object.keys(changed).length > 0) {
+      await tx.auditLog.create({
+        data: {
+          userId: actorId,
+          action: "lead.details",
+          entityType: "Lead",
+          entityId: leadId,
+          oldValue: Object.fromEntries(Object.entries(changed).map(([k, v]) => [k, v.from])) as Record<string, string | number | boolean | null>,
+          newValue: Object.fromEntries(Object.entries(changed).map(([k, v]) => [k, v.to])) as Record<string, string | number | boolean | null>,
+        },
+      });
+    }
+  });
+}
+
 export async function getLeadNotes(leadId: string) {
   return prisma.leadNote.findMany({
     where: { leadId },
@@ -422,6 +554,10 @@ export async function logLeadContact(
   actorId: string,
   leadId: string,
   body: string,
+  // AR-4b: the Log-a-contact sheet can plan the next follow-up in the same
+  // save. The date rides this transaction (the lead is contacted by it, so
+  // it is follow-up eligible); omitting it leaves the date untouched.
+  followUpOn?: Date | null,
 ): Promise<void> {
   const trimmed = body.trim();
   if (!trimmed) {
@@ -430,12 +566,71 @@ export async function logLeadContact(
   const now = new Date();
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "STAFF"]);
-    await lockLiveLeadInTx(tx, leadId);
+    const locked = await lockLiveLeadInTx(tx, leadId);
     await tx.leadNote.create({
       data: { leadId, authorId: actorId, body: trimmed, kind: "CONTACTED" },
     });
     await markFirstContactInTx(tx, leadId, now);
     await recordRealContactInTx(tx, leadId, now);
+    if (followUpOn !== undefined) {
+      await setFollowUpInTx(tx, actorId, leadId, locked.nextFollowUpOn, followUpOn);
+    }
+  });
+}
+
+/**
+ * AR-4b: "Tried, no answer" — a kind ATTEMPT note. An attempt is not a
+ * contact: it never sets firstContactedAt and never moves the stage, so a
+ * new lead stays new. The sheet's optional follow-up date is the one way a
+ * NEW lead can carry a planned follow-up (planning a call without reaching
+ * anyone), so it is allowed here even though setLeadFollowUp is not.
+ */
+export async function logLeadAttempt(
+  actorId: string,
+  leadId: string,
+  body: string,
+  followUpOn?: Date | null,
+): Promise<void> {
+  const trimmed = body.trim();
+  if (!trimmed) {
+    throw new Error("Write what happened before logging the attempt.");
+  }
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "STAFF"]);
+    const locked = await lockLiveLeadInTx(tx, leadId);
+    await tx.leadNote.create({
+      data: { leadId, authorId: actorId, body: trimmed, kind: "ATTEMPT" },
+    });
+    if (followUpOn !== undefined) {
+      await setFollowUpInTx(tx, actorId, leadId, locked.nextFollowUpOn, followUpOn);
+    }
+  });
+}
+
+/** Shared by the contact/attempt logs: move the follow-up date inside the
+ * caller's transaction, advancing the version on a real change (the same
+ * rule updateLeadStatus keeps) and auditing like setLeadFollowUp does. */
+async function setFollowUpInTx(
+  tx: Prisma.TransactionClient,
+  actorId: string,
+  leadId: string,
+  before: Date | null,
+  followUpOn: Date | null,
+): Promise<void> {
+  if ((before?.getTime() ?? null) === (followUpOn?.getTime() ?? null)) return;
+  await tx.lead.update({
+    where: { id: leadId },
+    data: { nextFollowUpOn: followUpOn, version: { increment: 1 } },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId: actorId,
+      action: "lead.follow_up_set",
+      entityType: "Lead",
+      entityId: leadId,
+      oldValue: { nextFollowUpOn: before?.toISOString() ?? null },
+      newValue: { nextFollowUpOn: followUpOn?.toISOString() ?? null },
+    },
   });
 }
 
