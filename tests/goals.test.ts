@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  computePace, validateIdleDays, validateTarget, validateUtilizationPercent, isGoalMetric, PACE_QUIET_DAYS,
+  computePace, validateGoalBehindPercent, validateGoalQuietDays, validateIdleDays, validateTarget, validateUtilizationPercent, isGoalMetric, PACE_QUIET_DAYS,
 } from "@/domains/goals/pace";
 
 describe("goal pace", () => {
@@ -24,6 +24,23 @@ describe("goal pace", () => {
   });
   it("rounds the percent down so 99.9% never reads as 100%", () => {
     expect(computePace({ target: 1000, actual: 999, dayOfMonth: 20, daysInMonth: 30 }).percentOfTarget).toBe(99);
+  });
+  it("AR-9: the owner pace settings are parameters, not constants", () => {
+    // quietDays 0: no quiet period at all.
+    expect(computePace({ ...base, actual: 0, dayOfMonth: 1, quietDays: 0 }).status).toBe("BEHIND");
+    // quietDays 15: still quiet on day 10.
+    expect(computePace({ ...base, actual: 0, dayOfMonth: 10, quietDays: 15 }).status).toBe("TOO_EARLY");
+    // behindPercent 50: 600 of an expected 1000 is on pace; at the default 75 it is behind.
+    expect(computePace({ ...base, actual: 600, dayOfMonth: 10, behindPercent: 50 }).status).toBe("ON_PACE");
+    expect(computePace({ ...base, actual: 600, dayOfMonth: 10 }).status).toBe("BEHIND");
+    // behindPercent 100: anything under the straight-line expectation is behind.
+    expect(computePace({ ...base, actual: 999, dayOfMonth: 10, behindPercent: 100 }).status).toBe("BEHIND");
+    expect(validateGoalQuietDays(0)).toBeNull();
+    expect(validateGoalQuietDays(15)).toBeNull();
+    expect(validateGoalQuietDays(16)).not.toBeNull();
+    expect(validateGoalBehindPercent(50)).toBeNull();
+    expect(validateGoalBehindPercent(100)).toBeNull();
+    expect(validateGoalBehindPercent(49)).not.toBeNull();
   });
 });
 
