@@ -50,16 +50,19 @@ export function ReporterActions({
   }
 
   function changeAiPermission(next: boolean) {
+    // Update the controlled checkbox immediately; server confirmation remains
+    // authoritative, and a rejected/version-stale write rolls this back.
+    const previous = allowAi;
+    setAllowAi(next);
     setError(null);
     setNotice(null);
     startTransition(async () => {
       const result = await setFeedbackAiReviewAction(id, version, next);
       if (result.status !== "success") {
         setError(result.message);
-        setAllowAi(aiReview === "ALLOWED");
+        setAllowAi(previous);
         return;
       }
-      setAllowAi(next);
       setNotice(next ? "You allowed your assistant to review this report." :
         "Your assistant can no longer read this report.");
       router.refresh();

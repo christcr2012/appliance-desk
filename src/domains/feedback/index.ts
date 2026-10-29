@@ -20,7 +20,7 @@ import {
 // improvement and follow their own reports; only the owner and admins read everyone's reports and answer them.
 // Every function re-reads the signed-in person. STAFF and CUSTOMER only ever reach their OWN reports: every reporter
 // query filters on reporterUserId = the signed-in person, and "not yours" looks exactly like "not found".
-// No AI or ops tool reads this module (tests/feedback-no-ai.test.ts); every report is HUMAN_ONLY.
+// New reports are HUMAN_ONLY; only the reporter may opt into the separately scoped MCP-11 feedback bridge.
 
 export { FeedbackError } from "./rules";
 
