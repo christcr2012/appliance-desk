@@ -100,7 +100,7 @@ export function renderPacket(packet) {
   const sections = [
     `Execution ${packet.id} (${packet.parent}) — ${packet.outcome}`,
     `Inspected baseline: ${packet.baseline}\nCard: ${packet.card}\nRisk: ${packet.risk}`,
-    'Read only these integration points (work read <number>):\n' + packet.references.map((r, i) => `${i + 1}. ${r.path} :: ${r.anchor} — ${r.purpose}`).join('\n'),
+    `Read only these integration points (work read <number> ${packet.id}):\n` + packet.references.map((r, i) => `${i + 1}. ${r.path} :: ${r.anchor} — ${r.purpose}`).join('\n'),
     'Preserve:\n' + packet.invariants.map(s => '- ' + s).join('\n'),
     'Implement together:\n' + packet.sequence.map((s, i) => `${i + 1}. ${s}`).join('\n'),
     'Prove:\n' + packet.acceptance.map(s => '- ' + s).join('\n'),

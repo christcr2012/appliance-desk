@@ -2,6 +2,7 @@ import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { sweepSystemIssues } from "@/domains/system-issues/sources";
+import { reconcileAgentOperations } from "@/domains/agent-control/operations";
 import { automationCounts } from "@/domains/automation/counts";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
 import { checkBankPaymentsInFlight } from "@/domains/billing/in-flight-check";
@@ -101,7 +102,12 @@ export async function GET(request: Request): Promise<NextResponse> {
   // Run this after business obligations so diagnostics cannot delay reconciliation.
   const systemIssues = await runAutomation({
     ruleKey: "system-issues-sweep",
-    work: async () => ({ counts: automationCounts(await sweepSystemIssues(new Date(), 100)) }),
+    work: async () => {
+      const issues = await sweepSystemIssues(new Date(), 100);
+      // Readback-only: uncertain assistant operations never dispatch a second effect.
+      const assistants = await reconcileAgentOperations(new Date(), 10);
+      return { counts: automationCounts({ ...issues, ...assistants }) };
+    },
   });
   return NextResponse.json({ systemIssues, providerOps, bankInFlight, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });
 }
