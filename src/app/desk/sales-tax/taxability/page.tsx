@@ -23,7 +23,7 @@ export default async function TaxabilityMatrixPage() {
     },
     orderBy: [{ level: "asc" }, { name: "asc" }], take: 75,
   });
-  return <main className="space-y-5">
+  return <div className="space-y-5">
     <ScreenHeader title="What gets taxed" />
     <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and tax area. Undecided items stay undecided.</p>
     {session.user.role === "OWNER" ? <TaxActionForm
@@ -83,7 +83,7 @@ export default async function TaxabilityMatrixPage() {
       </div>
     </TaxActionForm>}
     <section className="space-y-3">
-      <h3 className="font-semibold">Reviewed area matrix</h3>
+      <h2 className="font-semibold">Reviewed area matrix</h2>
       <div tabIndex={0} role="region" aria-label="Taxability rule matrix" className="overflow-x-auto rounded border border-border">
         <table className="min-w-full divide-y divide-border text-left text-sm">
           <thead className="bg-muted"><tr><th className="p-3">Tax area</th><th className="p-3">Category</th><th className="p-3">Status</th><th className="p-3">CPA date</th></tr></thead>
@@ -105,6 +105,6 @@ export default async function TaxabilityMatrixPage() {
         </table>
       </div>
     </section>
-  </main>;
+  </div>;
 }
 

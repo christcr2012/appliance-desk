@@ -29,7 +29,7 @@ export default async function UseTaxWorksheetsPage({
   });
   type Row = (typeof periods)[number];
   return (
-    <main className="space-y-5">
+    <div className="space-y-5">
       <div className="flex items-start gap-1.5">
         <ScreenHeader title="Use tax" />
         <span className="pt-1.5"><InfoTip term="use-tax" /></span>
@@ -55,6 +55,6 @@ export default async function UseTaxWorksheetsPage({
           </div>
         )}
       />
-    </main>
+    </div>
   );
 }

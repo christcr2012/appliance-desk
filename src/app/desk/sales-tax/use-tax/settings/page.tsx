@@ -28,7 +28,7 @@ export default async function UseTaxThresholdPage() {
   await requireRole("OWNER");
   const cents = await getUseTaxThreshold();
   return (
-    <main className="mx-auto max-w-2xl space-y-5">
+    <div className="mx-auto max-w-2xl space-y-5">
       <ScreenHeader title="Use-tax threshold" back={{ href: "/desk/inventory", label: "Back to inventory" }} />
       <p className="text-sm text-ink-soft">
         Owner-only setting. The annual-to-monthly decision uses cumulative yearly use tax due, not the purchase value.
@@ -59,6 +59,6 @@ export default async function UseTaxThresholdPage() {
       <Link href="/desk/sales-tax/use-tax" className="underline">
         View private use-tax worksheets
       </Link>
-    </main>
+    </div>
   );
 }

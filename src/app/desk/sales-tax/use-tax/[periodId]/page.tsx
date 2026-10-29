@@ -29,7 +29,7 @@ export default async function UseTaxWorksheetPage({
       filingAccount: { select: { kind: true } } },
   });
   if (!period || period.filingAccount.kind !== "USE_TAX_RETURN") {
-    return <main><ScreenHeader title="Use-tax worksheet unavailable" back={{ href: "/desk/sales-tax/use-tax", label: "Back to use-tax periods" }} /><p>No consumer use-tax period was found.</p></main>;
+    return <div><ScreenHeader title="Use-tax worksheet unavailable" back={{ href: "/desk/sales-tax/use-tax", label: "Back to use-tax periods" }} /><p>No consumer use-tax period was found.</p></div>;
   }
   const result = await loadFilingPacket(periodId);
   const worksheet = result.status === "READY" ? buildUseTaxWorksheet(result.packet) : null;
@@ -43,7 +43,7 @@ export default async function UseTaxWorksheetPage({
       }))
     : undefined;
   return (
-    <main className="mx-auto max-w-3xl space-y-5 print:max-w-none">
+    <div className="mx-auto max-w-3xl space-y-5 print:max-w-none">
       <div className="print:hidden">
         <ScreenHeader
           title={result.status === "READY" ? worksheet!.heading : "Use-tax worksheet"}
@@ -86,6 +86,6 @@ export default async function UseTaxWorksheetPage({
           <p className="text-sm">Print using your browser’s print command. Verify every entry against the official filing portal.</p>
         </section>
       )}
-    </main>
+    </div>
   );
 }

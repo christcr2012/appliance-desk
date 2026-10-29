@@ -6,7 +6,7 @@ import { FilingCopyField } from "../../returns/filing-copy-field";
 export function FileNowPanel({ steps, periodId, filed, formYear }: { steps: FileNowStep[]; periodId: string; filed: boolean; formYear: number | null }) {
   return (
     <section aria-labelledby="file-now-heading" className="print:hidden space-y-3 rounded-md border border-border p-4">
-      <h3 id="file-now-heading" className="text-lg font-semibold">File now</h3>
+      <h2 id="file-now-heading" className="text-lg font-semibold">File now</h2>
       {filed ? (
         <p className="text-sm">This return is filed and paid. The numbers are kept here for your records.</p>
       ) : (
