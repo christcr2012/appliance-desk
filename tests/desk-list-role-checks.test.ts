@@ -8,15 +8,15 @@ vi.mock("@/lib/prisma", () => ({
   prisma: new Proxy({}, { get: () => new Proxy({}, { get: () => (...args: unknown[]) => { touched(...args); return Promise.resolve([]); } }) }),
 }));
 
-import { getCustomersCount, getCustomersPage } from "@/domains/customers";
+import { getCustomerList, getCustomerSegmentCounts } from "@/domains/customers/list";
 import { getMaintenanceRequestsCount, getMaintenanceRequestsPage } from "@/domains/maintenance";
 import { getAllPartRecords } from "@/domains/inventory";
 import { getLowStockParts } from "@/domains/purchasing";
 
 describe("desk list reads refuse anyone the session check refuses", () => {
   it.each([
-    ["getCustomersCount", () => getCustomersCount()],
-    ["getCustomersPage", () => getCustomersPage(0, 25)],
+    ["getCustomerSegmentCounts", () => getCustomerSegmentCounts({})],
+    ["getCustomerList", () => getCustomerList({})],
     ["getMaintenanceRequestsCount", () => getMaintenanceRequestsCount()],
     ["getMaintenanceRequestsPage", () => getMaintenanceRequestsPage(undefined, 0, 25)],
     ["getAllPartRecords", () => getAllPartRecords()],

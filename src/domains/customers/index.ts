@@ -10,6 +10,7 @@ import { getActiveApplianceOptionsForCustomer } from "@/domains/agreements/activ
 import { sendCustomerActivationEmail } from "@/domains/leads";
 import { generateUniqueReferralCode } from "@/domains/referrals";
 import { locateServiceAddress } from "@/domains/tax/locations";
+import { customerContactKeys } from "./keys";
 
 export { getCustomerTimeline, getCustomerContacts } from "./timeline";
 export type { TimelineEntry } from "./timeline";
@@ -21,6 +22,12 @@ export type { TimelineEntry } from "./timeline";
  * Customer relationship inside the same business transaction.
  */
 export async function getCustomers() {
+  // CU-1 note: the CUSTOMERS spec proposed requireRole("OWNER","ADMIN")
+  // here, believing the export route was the only caller. On current main
+  // five picker pages (agreements/new, estimates/new, jobs/new,
+  // phone-orders/new, inventory/[id]) also call it, and staff use those
+  // flows — the role check would break them, so it stays ungated here;
+  // the export route enforces OWNER/ADMIN itself before calling.
   return prisma.customer.findMany({
     where: { archivedAt: null, isWalkIn: false },
     include: {
@@ -32,46 +39,9 @@ export async function getCustomers() {
   });
 }
 
-/** How many (non-archived) customers exist — used to clamp the page
- * number before fetching that page's rows (src/domains/pagination.ts). */
-/** Same rows the list shows (the hidden built-in walk-in customer is not counted). */
-export type CustomerListFilters = { q?: string; status?: "active"; kind?: "pm" };
-/** One access-controlled list predicate shared by count and page, so pagination never lies about its result set. */
-export function customerListWhere(filters: CustomerListFilters = {}): Prisma.CustomerWhereInput {
-  const q = filters.q?.trim().slice(0, 80);
-  return {
-    archivedAt: null,
-    isWalkIn: false,
-    ...(filters.status === "active" ? { rentalAgreements: { some: { status: "ACTIVE" as const } } } : {}),
-    ...(filters.kind === "pm" ? { isPropertyManager: true } : {}),
-    ...(q ? { OR: [
-      { user: { name: { contains: q, mode: "insensitive" as const } } },
-      { user: { email: { contains: q, mode: "insensitive" as const } } },
-      { companyName: { contains: q, mode: "insensitive" as const } },
-    ] } : {}),
-  };
-}
-
-export async function getCustomersCount(filters: CustomerListFilters = {}): Promise<number> {
-  await requireRole("OWNER", "ADMIN", "STAFF");
-  return prisma.customer.count({ where: customerListWhere(filters) });
-}
-
-/** Paginated variant for /desk/customers's own list. */
-export async function getCustomersPage(skip: number, pageSize: number, filters: CustomerListFilters = {}) {
-  await requireRole("OWNER", "ADMIN", "STAFF");
-  return prisma.customer.findMany({
-    where: customerListWhere(filters),
-    include: {
-      user: { select: { name: true, email: true } },
-      serviceAddresses: true,
-      _count: { select: { rentalAgreements: true } },
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    skip,
-    take: pageSize,
-  });
-}
+/* CU-1 retired the old offset-paged list helpers (customerListWhere,
+ * getCustomersCount, getCustomersPage): /desk/customers now reads through
+ * src/domains/customers/list.ts over the customer_list_v1 view. */
 
 export async function getCustomerById(id: string) {
   await requireRole("OWNER", "ADMIN");
@@ -189,6 +159,7 @@ export async function createCustomerDirectly(
       data: {
         userId: account.id,
         phone: input.phone || null,
+        ...customerContactKeys({ phone: input.phone }),
         isBusiness: input.isBusiness,
         isPropertyManager: input.isPropertyManager,
         companyName: input.companyName || null,

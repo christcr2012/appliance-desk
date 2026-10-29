@@ -556,7 +556,7 @@ export async function fulfillPrivacyDeletion(
     });
     await tx.customer.update({
       where: { id: customer.id },
-      data: { phone: null, companyName: null, smsOptInAt: null, archivedAt: now },
+      data: { phone: null, phoneDigits: null, companyName: null, smsOptInAt: null, archivedAt: now },
     });
     await tx.addressTaxLocation.updateMany({
       where: { serviceAddress: { customerId: customer.id } },
