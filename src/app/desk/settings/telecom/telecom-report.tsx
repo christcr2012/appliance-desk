@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCents } from "@/domains/pricing";
 import { telecomReportPeriods } from "@/domains/messaging/telecom-periods";
@@ -58,9 +57,6 @@ export async function TelecomReportSection({actorUserId}:{actorUserId:string}) {
         provider usage, and verified statements are different evidence layers and
         must never be added together. No communications expense is posted here.
       </p>
-      <Link href="/desk/settings/telecom" className="mt-2 inline-block text-sm underline">
-        View provider setup and private statements
-      </Link>
     </div>
     {service && <article aria-labelledby="telecom-service" className="rounded-card border border-line p-4">
       <h3 id="telecom-service" className="font-semibold">Service numbers and cost per customer</h3>
