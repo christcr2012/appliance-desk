@@ -1,8 +1,11 @@
 // AR-9 (INSIGHTS section 8): the one chart in the kit. Vertical bars for up
 // to two series, 120px tall, with the same numbers in a visually hidden
-// table for screen readers. No library. Value labels appear on hover and
-// on keyboard focus (each bar is focusable). Server component: callers
-// pass a plain format function.
+// table for screen readers. No library. Value labels appear on hover. The
+// visual chart is aria-hidden, so nothing inside it may be focusable (an
+// earlier version made each bar focusable for a focus-reveal, which put
+// keyboard focus inside an aria-hidden subtree — an axe failure on any
+// page whose chart had real values). Server component: callers pass a
+// plain format function.
 export type MiniBarsSeries = { label: string; values: number[] };
 
 export function MiniBars({
@@ -26,12 +29,11 @@ export function MiniBars({
               return (
                 <div
                   key={s.label}
-                  tabIndex={0}
                   title={`${label} — ${s.label}: ${format(value)}`}
                   className={`group relative w-full max-w-8 rounded-t ${barTone[si] ?? "bg-ink-soft"}`}
                   style={{ height: `${Math.max(value > 0 ? 4 : 0, (value / max) * 112)}px` }}
                 >
-                  <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[11px] whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus:opacity-100">
+                  <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[11px] whitespace-nowrap opacity-0 group-hover:opacity-100">
                     {format(value)}
                   </span>
                 </div>
