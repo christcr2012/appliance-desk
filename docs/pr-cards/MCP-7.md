@@ -14,8 +14,16 @@ services.
 ## Owner checklist
 "Optional: free uptime check" (spec section 3). Never blocks merging.
 
+## Acceptance plan — October 28
+
+1. Built-in monitor rules are owner-configurable and disabled by default; one slot per Denver date is claimed durably so two concurrent workers never run the same rule twice.
+2. Two consecutive failures trigger one problem/To do incident; cooldown, recovery and Denver DST are tested on disposable PostgreSQL.
+3. Owner-assigned standing authorization never bypasses MCP-5 or revocation; revoked or disabled actions do nothing.
+4. Owner email starts off and observes existing live switches; delivery failure cannot generate another incident.
+5. The existing sweep does the work, with owner controls, heartbeat, HTTP health probe, mobile/dark UI and full CI.
+
 ## Progress
-Not started.
+Building on the MCP-7 monitoring branch; no tests or CI claimed yet.
 
 ## Implementation route (reconciled October 28, 2026)
 

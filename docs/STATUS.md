@@ -1,3 +1,7 @@
+## October 28 — MCP-7 monitoring build (in progress)
+
+Building owner-configured system monitoring on ai/chatgpt/mcp-7-monitoring while MCP-6 PR #738 completes CI. No MCP-7 behavior or tests have been verified yet.
+
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 
 Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:
