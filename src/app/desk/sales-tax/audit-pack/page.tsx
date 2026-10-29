@@ -4,7 +4,8 @@ import { buildAuditPack, parseAuditRange } from "@/domains/tax/tax-proof";
 import { formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { PrintDocumentButton } from "@/components/print-document-button";
-import { Button, Field, PageHeader } from "@/components/ui";
+import { Button, Field } from "@/components/ui";
+import { InfoTip, ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Audit pack", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -18,11 +19,13 @@ export default async function AuditPackPage({ searchParams }: { searchParams: Pr
   const to = "error" in range ? query.to ?? "" : range.to;
   return (
     <div>
-      <PageHeader
-        title="Audit pack"
-        description="Every appliance and part you bought in a date range, with the seller, price, tax paid or use tax reported, the return and its confirmation number, and the receipt."
-        secondaryActions={<div className="print:hidden"><PrintDocumentButton /></div>}
-      />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-1.5">
+          <ScreenHeader title="Audit pack" />
+          <span className="pt-1.5"><InfoTip term="audit-pack" /></span>
+        </div>
+        <div className="print:hidden"><PrintDocumentButton /></div>
+      </div>
       <form method="get" className="mb-6 flex flex-wrap items-end gap-4 print:hidden">
         <Field id="from" name="from" label="From" type="date" defaultValue={from} required />
         <Field id="to" name="to" label="To" type="date" defaultValue={to} required />

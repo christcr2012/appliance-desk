@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import {
   deliveryTaxReadiness,
   listCheckableAddresses,
@@ -10,6 +8,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "../setup/forms";
 import { saveReadinessAction } from "./actions";
+import { InfoTip, ScreenHeader } from "@/components/kit";
 
 const formatRate = (v: number | null) =>
   v === null ? "No rate on file" : `${(v / 1000).toFixed(3)}%`;
@@ -68,19 +67,9 @@ export default async function DeliveryAreaPage({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold">Delivery area</h2>
-        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          A delivery address can only be quoted, ordered and scheduled when
-          every taxing place for it is set up here: its rental tax rule is
-          decided, and where the city requires a license, the license is on
-          file in{" "}
-          <Link href="/desk/paperwork" className="underline">
-            Business records
-          </Link>
-          . Places outside this list work the same way — the first address
-          there shows up as “not set up” until it is reviewed here.
-        </p>
+      <div className="flex items-start gap-1.5">
+        <ScreenHeader title="Delivery area" />
+        <span className="pt-1.5"><InfoTip term="delivery-area" /></span>
       </div>
 
       <section aria-labelledby="check-heading" className="space-y-3">

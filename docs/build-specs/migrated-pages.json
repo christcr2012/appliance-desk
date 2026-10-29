@@ -1,16 +1,114 @@
 [
-  { "file": "src/app/desk/settings/decisions/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/settings/decisions/import/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/today/page.tsx", "kind": "other" },
-  "src/app/desk/billing/page.tsx",
-  { "file": "src/app/desk/money/page.tsx", "kind": "other" },
-  "src/app/desk/payments/page.tsx",
-  "src/app/desk/billing/customer/[id]/invoice/[invoiceId]/page.tsx",
-  "src/app/desk/customers/[id]/page.tsx",
-  { "file": "src/app/desk/sales-tax/rules/page.tsx", "kind": "list" },
-  { "file": "src/app/desk/books/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/books/accountant/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/books/months/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/books/reports/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/books/assets/page.tsx", "kind": "other" }
+ {
+  "file": "src/app/desk/settings/decisions/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/settings/decisions/import/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/today/page.tsx",
+  "kind": "other"
+ },
+ "src/app/desk/billing/page.tsx",
+ {
+  "file": "src/app/desk/money/page.tsx",
+  "kind": "other"
+ },
+ "src/app/desk/payments/page.tsx",
+ "src/app/desk/billing/customer/[id]/invoice/[invoiceId]/page.tsx",
+ "src/app/desk/customers/[id]/page.tsx",
+ {
+  "file": "src/app/desk/sales-tax/rules/page.tsx",
+  "kind": "list"
+ },
+ {
+  "file": "src/app/desk/books/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/books/accountant/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/books/months/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/books/reports/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/books/assets/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/returns/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/returns/[periodId]/page.tsx",
+  "kind": "record"
+ },
+ {
+  "file": "src/app/desk/sales-tax/returns/[periodId]/amend/page.tsx",
+  "kind": "record"
+ },
+ {
+  "file": "src/app/desk/sales-tax/areas/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/area/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/audit-pack/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/benefits/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/delivery-fees/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/exemptions/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/record-retention/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/setup/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/setup/accounts/[id]/page.tsx",
+  "kind": "record"
+ },
+ {
+  "file": "src/app/desk/sales-tax/taxability/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/use-tax/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/use-tax/[periodId]/page.tsx",
+  "kind": "other"
+ },
+ {
+  "file": "src/app/desk/sales-tax/use-tax/settings/page.tsx",
+  "kind": "other"
+ }
 ]

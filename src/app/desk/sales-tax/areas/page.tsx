@@ -5,6 +5,7 @@ import { getTaxAreasPage } from "@/domains/tax/workspace-queries";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import { TaxActionForm } from "../setup/forms";
 import { acknowledgeSource, reviewOfficialRate, undoOfficialRate, confirmAddressAction } from "./actions";
+import { InfoTip, ScreenHeader, StatusTabs } from "@/components/kit";
 
 const formatRate = (v: number) => (v / 1000).toFixed(3) + "%";
 type Query = { cursor?: string; status?: string };
@@ -30,19 +31,22 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
   if (status) next.set("status", status);
   if (areas.nextCursor) next.set("cursor", areas.nextCursor);
   return <main className="space-y-8">
-    <h2 className="text-xl font-semibold">Tax areas and official rate sources</h2>
-    <p className="text-sm text-muted-foreground">Current service-address tax matches and owner-reviewed tax-area rules. If a provider cannot confirm an address or a rate, keep it in review instead of treating an unknown result as verified.</p>
-    <nav className="flex flex-wrap gap-3 text-sm underline" aria-label="Tax areas sections">
-      <a href="#addresses">Address review</a><a href="#rates">Rate decisions</a>
-      <a href="#sources">Source status</a><a href="#jurisdictions">Tax areas</a>
-    </nav>
+    <div className="flex items-start gap-1.5">
+      <ScreenHeader title="Areas & rates" />
+      <span className="pt-1.5"><InfoTip term="tax-areas" /></span>
+    </div>
+    <p className="text-sm text-muted-foreground">Current service-address tax matches and owner-reviewed tax-area rules.</p>
     <section id="addresses" className="space-y-3">
       <h3 className="font-semibold">Service-address tax review</h3>
-      <nav aria-label="Filter tax areas" className="flex flex-wrap gap-3 text-sm">
-        <Link href="/desk/sales-tax/areas">All current</Link>
-        <Link href="/desk/sales-tax/areas?status=REVIEW">Needs review</Link>
-        <Link href="/desk/sales-tax/areas?status=VERIFIED">Verified</Link>
-      </nav>
+      <StatusTabs
+        label="Filter tax areas"
+        current={status ?? "ALL"}
+        items={[
+          { value: "ALL", label: "All current" },
+          { value: "REVIEW", label: "Needs review" },
+          { value: "VERIFIED", label: "Verified" },
+        ]}
+      />
       <ul className="divide-y divide-border rounded-lg border border-border">
         {areas.rows.map(row => <li key={row.id} className="flex flex-wrap justify-between gap-3 p-3">
           <div className="min-w-0 space-y-1">
@@ -65,7 +69,8 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
                     <option key={j.id} value={j.id}>{j.name}</option>)}
                 </select>
               </label>
-              <p className="text-xs text-muted-foreground">Compare your selection with the official Colorado source before confirming. This action records your identity and overrides unknown provider results.</p>
+              <p className="text-xs text-muted-foreground">Compare your selection with the official Colorado source before confirming.</p>
+              <p className="text-xs text-muted-foreground">This action records your identity and overrides unknown provider results.</p>
             </TaxActionForm>}
           </div>
         </li>)}
@@ -120,6 +125,11 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
         </li>)}
       </ul>
       <Link href="/desk/sales-tax/taxability" className="text-sm underline">Review owner-confirmed taxability and manual rate history</Link>
+    </section>
+    <section id="delivery-fees" className="space-y-3">
+      <h3 className="font-semibold">Delivery fees</h3>
+      <p className="text-sm text-muted-foreground">Deliveries waiting on a fee decision or this year&rsquo;s fee amount.</p>
+      <Link href="/desk/sales-tax/delivery-fees" className="text-sm underline">Open delivery fees waiting on you</Link>
     </section>
   </main>;
 }

@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "../setup/forms";
 import { saveElectionsAction, saveWriteOffSettingsAction, signPolicyAction } from "./actions";
+import { ScreenHeader } from "@/components/kit";
 
 type Query = { year?: string };
 
@@ -91,11 +92,9 @@ export default async function TaxBenefitsPage({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold">Tax benefits {year}</h2>
+        <ScreenHeader title={`Tax benefits ${year}`} />
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-          Every write-off and benefit the app can find in your books, your
-          fleet and your business facts — worked out fresh each time you open
-          this page. These are estimates: your CPA confirms every one.
+          Every write-off and benefit the app can find in your books — estimates your CPA confirms.
         </p>
         <p className="mt-2 text-sm">
           Tentative profit for {year}:{" "}
@@ -200,7 +199,7 @@ export default async function TaxBenefitsPage({
       </TaxActionForm>
 
       {canUseSettings ? (
-      <TaxActionForm action={saveWriteOffSettingsAction} title="Write-off settings" submitLabel="Save settings">
+      <TaxActionForm action={saveWriteOffSettingsAction} title="Your deduction answers" submitLabel="Save settings">
         <p className="text-sm text-muted-foreground">
           The answers only you can give. They are remembered, and every
           number on this page follows them.
@@ -242,13 +241,13 @@ export default async function TaxBenefitsPage({
           </span>
         </label>
         <label className="block text-sm">
-          <span className="font-medium">How capitalized equipment is written off</span>
+          <span className="font-medium">How you claim the cost of equipment</span>
           <select
             name="capitalizationPreference"
             defaultValue={settings?.capitalizationPreference ?? "BONUS"}
             className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2"
           >
-            <option value="BONUS">Bonus depreciation (the starting value)</option>
+            <option value="BONUS">Bonus deduction up front (the starting value)</option>
             <option value="SECTION179">Section 179 expensing, if my CPA prefers it</option>
           </select>
         </label>
