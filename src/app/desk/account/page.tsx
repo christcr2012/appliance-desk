@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/session";
-import { PageHeader } from "@/components/ui";
+import { ScreenHeader } from "@/components/kit";
 import { getMyAccount } from "@/domains/account";
 import { listOwnSessions } from "@/domains/security/sessions";
 import { listOwnKnownDevices } from "@/domains/security/trusted-devices";
@@ -21,7 +21,10 @@ export default async function MyAccountPage({ searchParams }: { searchParams: Pr
   ]);
   return (
     <div className="max-w-2xl space-y-5">
-      <PageHeader title="My account" description="Your own sign-in details. Changes here are recorded and you are emailed about them." />
+      <div>
+        <ScreenHeader title="My account" />
+        <p className="-mt-2 text-sm text-ink-soft">Your own sign-in details. Changes here are recorded and you are emailed about them.</p>
+      </div>
       {params.email === "confirmed" && (
         <p role="status" className="rounded-control border border-line p-3 text-sm text-success">Your sign-in email was changed.</p>
       )}

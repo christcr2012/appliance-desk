@@ -5,7 +5,8 @@ import { SystemIssuesSection } from "./system-issues-section";
 import { listOpsAgentKeys } from "@/domains/system-issues/ops-auth";
 import { OpsKeyPanel } from "./ops-key-panel";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
-import { Button, PageHeader } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { ScreenHeader } from "@/components/kit";
 import { saveLateGraceAction, setAutomationPausedAction, saveBackupRetentionAction, retryBackupAction } from "./actions";
 import { getBackupDashboard } from "@/domains/backup/dashboard";
 import { HealthLegend, HealthRow } from "./health-row";
@@ -42,10 +43,13 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
 
   return (
     <div className="max-w-5xl">
-      <PageHeader
-        title="System health"
-        description="Each row is one nightly job. A job only shows Working after it finished on time; late, failed, unsure, paused and missing setup stay visible."
-      />
+      <div>
+        <ScreenHeader title="System health" />
+        <p className="-mt-2 text-sm text-ink-soft">
+          Each row is one nightly job. A job only shows Working after it finished on time;
+          late, failed, unsure, paused and missing setup stay visible.
+        </p>
+      </div>
 
       <SystemIssuesSection issues={issueList.rows} nextCursor={issueList.nextCursor} canManage={canPause} />
       <RepairCasesSection rows={repairCases} canManage={canPause} />
@@ -88,7 +92,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
           </form>
           {backup.allowManualRetry ? <form action={retryBackupAction} className="mt-3">
             <Button type="submit" variant="secondary">Run the backup again</Button>
-            <p className="mt-1 text-xs text-ink-soft">Available only after today&apos;s backup failed or ended without a clear result. A second click while one is running won&apos;t start another.</p>
+            <p className="mt-1 text-xs text-ink-soft">Available only after today&apos;s backup failed or ended without a clear result. A second click won&apos;t start another while one runs.</p>
           </form> : <p className="mt-3 text-sm text-ink-soft">A manual retry is offered after today&apos;s backup fails or has an uncertain result.</p>}
           {["verified","busy","failed","unavailable"].includes((await searchParams)?.backupMessage ?? "") ?
             <p role="status" className="mt-2 text-sm text-ink">{{

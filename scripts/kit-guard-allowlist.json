@@ -1,1 +1,14 @@
-{ "entries": [] }
+{
+  "entries": [
+    {
+      "file": "src/app/desk/vault/[id]/page.tsx",
+      "rule": 3,
+      "reason": "Legal warning shown before an emergency vault reveal; the exact legal wording must stay in one piece."
+    },
+    {
+      "file": "src/app/desk/recalls/[recallId]/page.tsx",
+      "rule": 3,
+      "reason": "Legal text quoting the CPSC recall reporting duty; the legal wording must stay in one piece."
+    }
+  ]
+}

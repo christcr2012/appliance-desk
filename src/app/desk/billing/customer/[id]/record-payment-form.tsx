@@ -131,7 +131,7 @@ export function RecordPaymentForm({
             defaultValue=""
             className="mt-1 w-full rounded-md border border-line-strong px-3 py-1.5 text-sm"
           >
-            <option value="">All open invoices, oldest first</option>
+            <option value="">All open bills, oldest first</option>
             {openInvoices.map((inv) => (
               <option key={inv.id} value={inv.id}>
                 Invoice #{inv.invoiceNumber} — {formatCents(inv.balanceCents)} owed

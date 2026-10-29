@@ -1,8 +1,38 @@
-import { expect, type Page } from "@playwright/test";
+import fs from "node:fs";
+import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AccessibilityRoute } from "./route-inventory";
 
+const FIXTURES_PATH = "e2e/.fixtures.json";
+let fixtureIds: Record<string, string> | null | undefined;
+
+/**
+ * Automated fixtures may reference records global setup created on the CI
+ * database as {key} (ids live in e2e/.fixtures.json). Returns null when a
+ * referenced id is unavailable, so the scan skips instead of visiting a
+ * literal template URL.
+ */
+export function resolveFixtureUrl(fixture: string): string | null {
+  if (!fixture.includes("{")) return fixture;
+  if (fixtureIds === undefined) {
+    fixtureIds = fs.existsSync(FIXTURES_PATH)
+      ? (JSON.parse(fs.readFileSync(FIXTURES_PATH, "utf8")) as Record<string, string>)
+      : null;
+  }
+  if (!fixtureIds) return null;
+  let missing = false;
+  const url = fixture.replace(/\{(\w+)\}/g, (_match, key: string) => {
+    const value = fixtureIds?.[key];
+    if (!value) missing = true;
+    return value ?? "";
+  });
+  return missing ? null : url;
+}
+
 const DEFAULT_VIEWPORTS = [360, 1440] as const;
+// AR-10 §3: desk routes are also scanned at 390 px (a common phone width the
+// 360/1440 pair skipped); public and portal routes keep the original pair.
+const DESK_VIEWPORTS = [360, 390, 1440] as const;
 const THEMES = ["light", "dark"] as const;
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] as const;
 
@@ -32,14 +62,21 @@ export async function waitForBreakpointLayout(page: Page): Promise<void> {
 export async function scanAccessibilityRoute(
   page: Page,
   route: AccessibilityRoute,
-  viewports: readonly number[] = DEFAULT_VIEWPORTS,
+  viewports: readonly number[] = route.fixture.startsWith("/desk")
+    ? DESK_VIEWPORTS
+    : DEFAULT_VIEWPORTS,
 ) {
+  const url = resolveFixtureUrl(route.fixture);
+  test.skip(
+    url === null,
+    `Global setup did not write fixture ids for ${route.path} (e2e/.fixtures.json).`,
+  );
   await page.setViewportSize({ width: viewports[0] ?? 360, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   // Next.js server components and background requests can keep networkidle
   // pending indefinitely even after the page has rendered. Wait for the
   // actual load event, then inspect the visible DOM/axe state below.
-  await page.goto(route.fixture, { waitUntil: "load" });
+  await page.goto(url!, { waitUntil: "load" });
   await expect(page.locator("body")).toBeVisible();
   // Controls such as "Save schedule" stay disabled (and dimmed) until React hydrates. Scanning mid-switch makes axe
   // read a half-dimmed button (seen twice in CI at /desk/jobs/[id], 360px). Wait, bounded, for hydration to settle;

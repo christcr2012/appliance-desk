@@ -9,7 +9,7 @@ import { PrintDocumentButton } from "@/components/print-document-button";
 import { Button, ButtonLink } from "@/components/ui";
 import { isPayNowEligible } from "@/domains/portal/pay-now";
 
-export const metadata = { title: "Invoice" };
+export const metadata = { title: "Bill" };
 
 const FINAL_INVOICE_STATUSES = new Set(["PAID", "VOID", "WRITTEN_OFF", "REFUNDED"]);
 

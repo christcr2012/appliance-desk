@@ -5,10 +5,9 @@ import { requireRole } from "@/lib/session";
 import { getCustomerStatement } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing/money";
 import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status-labels";
-import { ExportCsvLink } from "@/components/export-csv-link";
 import { StatusBadge } from "@/components/status-badge";
 import { StatementReconciliationCard } from "@/components/billing/statement-reconciliation";
-import { Toaster } from "@/components/kit";
+import { RecordHeader, Toaster } from "@/components/kit";
 import { RecordPaymentSheet } from "../../record-payment-sheet";
 import { WriteOffButton } from "./write-off-button";
 
@@ -45,25 +44,18 @@ export default async function CustomerStatementPage({
       {/* The record-payment sheet reports its result with a toast; the Toaster mounts per page,
           first, so its live region does not shadow the page's own status messages. */}
       <Toaster />
-      <Link
-        href={`/desk/customers/${statement.customerId}`}
-        className="text-sm text-ink-soft hover:underline"
-      >
-        &larr; Back to customer
-      </Link>
-
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{statement.customerName}</h1>
-          {statement.companyName && (
-            <p className="text-sm text-ink-soft">{statement.companyName}</p>
-          )}
-        </div>
-        <ExportCsvLink
-          href={`/desk/billing/customer/${statement.customerId}/export`}
-          label="Export statement (CSV)"
-        />
-      </div>
+      <RecordHeader
+        title={statement.customerName}
+        subtitle={statement.companyName ?? undefined}
+        back={{ href: `/desk/customers/${statement.customerId}`, label: "Customer" }}
+        actions={[
+          {
+            kind: "link",
+            label: "Export statement (CSV)",
+            href: `/desk/billing/customer/${statement.customerId}/export`,
+          },
+        ]}
+      />
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-line bg-white p-4">
@@ -87,8 +79,8 @@ export default async function CustomerStatementPage({
       </div>
 
       <p className="mt-4 text-sm text-ink-soft">
-        These totals summarize invoice amounts and recorded payments, including
-        any deposits, fees and tax; draft and voided invoices are left out. They
+        These totals summarize bill amounts and recorded payments, including
+        any deposits, fees and tax; draft and voided bills are left out. They
         are not a measure of rental revenue. Payment status reflects the last
         recorded update.
       </p>
@@ -104,7 +96,7 @@ export default async function CustomerStatementPage({
       </div>
 
       {statement.properties.length === 0 ? (
-        <p className="mt-6 text-sm text-ink-soft">No invoices on file yet.</p>
+        <p className="mt-6 text-sm text-ink-soft">No bills on file yet.</p>
       ) : (
         <div className="mt-6 space-y-6">
           {statement.properties.map((property) => (

@@ -4684,7 +4684,7 @@
         "AR-8",
         "AR-9"
       ],
-      "status": "IN PROGRESS — AR-10b permissions audit started (Lane 4, 2026-10-29)",
+      "status": "IN PROGRESS — AR-10b COMPLETE (PR #757, merged 2026-10-29); AR-10a sweep in progress (Lane 4)",
       "migration": "none",
       "budget": 700,
       "units": [

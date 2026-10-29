@@ -22,7 +22,7 @@ export function SetupFeeOverrideForm({ agreementId, addressId, currentCents,
         className="min-w-0 w-full max-w-full rounded-control border border-line p-2"
         placeholder="Why is this fee adjusted or waived?" />
     </label>
-    <p className="text-xs text-ink-soft">An adjustment applies once per delivery location across all linked draft agreements. Saving invalidates prepared, unpaid charge snapshots. Signed amounts stay frozen.</p>
+    <p className="text-xs text-ink-soft">An adjustment applies once per delivery location across all linked draft rentals. Saving invalidates prepared, unpaid charge snapshots. Signed amounts stay frozen.</p>
     <div className="flex flex-wrap gap-2">
       <button type="submit" disabled={pending} className="rounded-control bg-action px-3 py-2 text-on-action disabled:opacity-50">
         Save reviewed amount

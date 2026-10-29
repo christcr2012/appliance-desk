@@ -59,7 +59,7 @@ export default async function EndingDecisionPage({ params, searchParams }: { par
           <Link href={"/desk/agreements/" + encodeURIComponent(id)} className="font-medium underline">&larr; Back to the rental</Link>
         </p>
       )}
-      <Link href={"/desk/agreements/" + encodeURIComponent(id)} className="text-sm underline">Back to the agreement</Link>
+      <Link href={"/desk/agreements/" + encodeURIComponent(id)} className="text-sm underline">Back to the rental</Link>
       <h1 className="text-xl font-semibold">{name}&apos;s rental is ending{a.endDate ? " on " + businessDateKey(a.endDate) : ""}</h1>
       {!decidable ? (
         <p className="text-sm">Nothing to decide here: this rental is not an active fixed-term rental, or an ending is already set.</p>
