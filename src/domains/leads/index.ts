@@ -352,6 +352,9 @@ export async function updateLeadStatus(
       data: {
         status,
         lostReason: status === "LOST" ? lostReason!.trim() : null,
+        // AR-9: losing a lead closes it; any other move (including a reopen)
+        // clears the close date.
+        closedAt: status === "LOST" ? now : null,
         nextFollowUpOn,
         ...(followUpChanged ? { version: { increment: 1 } } : {}),
       },
@@ -513,10 +516,13 @@ export async function convertLeadToCustomerInTx(
   }
   const email = normalizeAccountEmail(effectiveEmail as string);
 
+  const closedAt = new Date();
   const claim = await tx.lead.updateMany({
     where: { id: lead.id, status: lead.status },
     data: {
       status: "CONVERTED",
+      // AR-9: converting closes the lead as won.
+      closedAt,
       ...(options.emailOverride
         ? { email: email, ...leadContactKeys({ email, phone: lead.phone }) }
         : {}),
@@ -589,6 +595,7 @@ export async function convertLeadToCustomerInTx(
     where: { id: lead.id },
     data: {
       status: "CONVERTED",
+      closedAt,
       convertedCustomerId: customerRow.id,
       ...(options.emailOverride
         ? { email: email, ...leadContactKeys({ email, phone: lead.phone }) }
@@ -645,16 +652,20 @@ export type LeadSourceBreakdownRow = {
 };
 
 export async function getLeadSourceBreakdown(): Promise<LeadSourceBreakdownRow[]> {
-  const leads = await prisma.lead.findMany({
-    select: { howHeard: true, status: true },
+  // AR-9 (INSIGHTS section 1): one grouped query instead of loading every
+  // lead; the trim/blank -> "Not given" rule is applied after grouping, and
+  // the return shape is unchanged.
+  const grouped = await prisma.lead.groupBy({
+    by: ["howHeard", "status"],
+    _count: true,
   });
 
   const groups = new Map<string, { total: number; converted: number }>();
-  for (const lead of leads) {
-    const source = lead.howHeard?.trim() || "Not given";
+  for (const row of grouped) {
+    const source = row.howHeard?.trim() || "Not given";
     const group = groups.get(source) ?? { total: 0, converted: 0 };
-    group.total += 1;
-    if (lead.status === "CONVERTED") group.converted += 1;
+    group.total += row._count;
+    if (row.status === "CONVERTED") group.converted += row._count;
     groups.set(source, group);
   }
 
