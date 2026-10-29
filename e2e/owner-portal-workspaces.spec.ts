@@ -172,6 +172,8 @@ for (const role of ["owner", "customer"] as const) {
         // ZONE-1: the service-area section is now the delivery zones form. Change only the last zone's end-of-rental
         // pickup price (nothing else reads it in the browser suite) and put it back.
         await page.goto("/desk/settings?section=service-area");
+        // AR-8: the zones form opens from its panel row on Business profile.
+        await page.getByRole("button", { name: /Delivery zones/ }).click();
         const pickup = page.getByLabel("End-of-rental pickup ($)").last();
         const saved = page.getByText(/Delivery zones saved/);
         await expect(pickup).toBeEditable();
@@ -182,17 +184,24 @@ for (const role of ["owner", "customer"] as const) {
           await page.getByRole("button", { name: "Save delivery zones" }).click();
           await expect(saved).toBeVisible();
           await page.reload();
+          // The reload starts the page fresh, so the panel is closed again.
+          await page.getByRole("button", { name: /Delivery zones/ }).click();
           await expect(pickup).toHaveValue(changed);
           await page
             .getByRole("navigation", { name: "Settings sections" })
             .getByRole("link", { name: "Business profile", exact: true })
             .click();
-          await expect(page).toHaveURL(/section=profile$/);
+          await expect(page).toHaveURL(/section=business$/);
           await page.goBack();
           await expect(page).toHaveURL(/section=service-area$/);
+          // Back may restore the page as it was (panel open) or reload it
+          // fresh (panel closed) — open it only if it is closed.
+          const zonesButton = page.getByRole("button", { name: /Delivery zones/ });
+          if ((await zonesButton.getAttribute("aria-expanded")) !== "true") await zonesButton.click();
           await expect(pickup).toBeVisible();
         } finally {
           await page.goto("/desk/settings?section=service-area");
+          await page.getByRole("button", { name: /Delivery zones/ }).click();
           await expect(pickup).toBeEditable();
           await pickup.fill(original);
           await page.getByRole("button", { name: "Save delivery zones" }).click();
