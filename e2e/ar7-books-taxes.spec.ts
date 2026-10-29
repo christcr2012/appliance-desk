@@ -105,7 +105,9 @@ test.describe("Books on the kit for staff (AR-7a)", () => {
         if (!String(error).includes("ERR_ABORTED")) throw error;
       });
       await page.waitForLoadState("load");
-      expect(page.url()).not.toContain(path);
+      // Retrying assertion on purpose: the streamed redirect can land just after
+      // the load event, so a one-shot page.url() read still shows the Books path.
+      await expect(page).not.toHaveURL(new RegExp(`${path.replaceAll("/", "\\/")}($|[?#])`));
       await expect(page.getByRole("heading", { name: "Books", exact: true })).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "For your accountant", exact: true })).toHaveCount(0);
     }
