@@ -53,7 +53,9 @@ identical tree plus all fixes — the successor pattern, same as AR-7a's
 Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:
 measured locally, most browser tests run at 50–85% of 30s, so CI contention pushed the longest ones over
 the timeout and Playwright's context teardown made the failures look like browser crashes, rotating across
-shards and branches. `playwright.config.ts` now sets 60s / 10s; no test or assertion changed. AR-8
+shards and branches. (Correction after #739's run: the two failures that kept landing on AR-8's branch —
+the delivery-zones save flow and the W-26 language review — were not timing at all; both were settings-frame
+defects from the AR-8 rebuild, fixed on #739. The budget raise stands for the general suite.) `playwright.config.ts` now sets 60s / 10s; no test or assertion changed. AR-8
 (PR #732, review complete and green) is held unmerged by the owner's decision until this fix is proven
 across repeated green CI runs, then it lands by the normal rule.
 
@@ -138,6 +140,16 @@ the approvals page imports everything back and behaves exactly as before. New
 tests/approval-actions.test.ts pins the contract (domain spies, both revalidations,
 inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
 adds optimistic task completion with Undo.
+
+## October 28 — AR-8 Settings rebuild: in review (successor PR #739 of #732, itself successor of #726/#724)
+
+Fix round on #739 after its first CI run: two settings-frame defects the browser suite caught — the
+section navigation lost the old page's "Settings sections" landmark (restored), and the Spanish wording
+panel lost the "Draft translations" card title (restored); the W-26 spec now switches the Spanish
+documents feature on first, the AR-12 path an owner uses (the panel is feature-gated by design).
+
+Three fix rounds after CI and Codex review, all batched: the catalog also covers AR-4a's rentalEndReasons; the settings frame lives on the catalog page only (settings sub-pages keep their own headings); the driving-origin panel is wired to the verified-origin writer; undo enforces the catalog's owner-only rule and the delivery-window cross-field rule; the three domain-writer row saves check the page revision inside their locked writes; the service-area panel renders its own section editor again (cities/ZIPs); the row save keeps the public email's validation; refused undos are surfaced instead of swallowed; mobile section pages show their section title (the frame header is desktop-only). Specs that drive editors behind panel rows open the panel first — including after a reload, which starts the page fresh — and the settings-history preview/stale-save tests exercise the row Change sheet, where those guarantees now live. Two browser suites (Spanish drafts, delivery zones) repeatedly lost their browser mid-test on this branch's heads in CI — never on an assertion — while main stayed green; the response cuts the per-load cost this rebuild added: the last-change audit walk now stops once every visible row has its newest change instead of JSON-diffing up to 300 audit rows per page load, and the service-area panel has a dedicated two-field editor (saved against its own section revision) instead of mounting the full profile form a second time. Codex's review of that head added two fixes: the flat late fee is bound to its own decision (LATE-FEE-AMOUNT) instead of the IN-84 wording-review card whose "AS_BUILT" recommendation leaked in through a legacy alias (grace days and percent keep their own starting values; decision resolution now prefers an exact id over an alias claim), and panel/link rows carry the `row-…` anchor that settings search and the command palette link to. A third review round fixed three more: tenant contact retention can no longer be set below the 1-month floor the erasure job enforces; percent rows refuse fractions with the reason (both percent fields are whole-number columns, and the editor steps by 1 now); and a domain-writer row's History now includes its writer's own audit events, normalized into the row's change (the trusted-device row also names its audit action for last-change attribution). Card `docs/pr-cards/AR-8.md`; packet `docs/pr-cards/execution/AR-8.json`.
+
 
 ## October 28 — AR-4a Rentals: kit list and record, End sheet, why-it-ended (PR #723, successor of #722)
 
