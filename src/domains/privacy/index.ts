@@ -536,6 +536,33 @@ export async function fulfillPrivacyDeletion(
     const now = new Date();
     const deletedEmail = `deleted-${customer.userId}@invalid`;
 
+    // AR-13: notifications about this customer name them in plain words, so they are deleted with the
+    // rest of the person's data. Entity ids are collected BEFORE the lead update below pseudonymizes
+    // the email the lead lookup matches on. Approval-request notifications name no customer and stay.
+    const [privacyLeads, privacyEstimates, privacyAgreements, privacyInvoices] = await Promise.all([
+      tx.lead.findMany({
+        where: {
+          OR: [
+            { convertedCustomerId: customer.id },
+            { email: { equals: customer.user.email, mode: "insensitive" } },
+          ],
+        },
+        select: { id: true },
+      }),
+      tx.estimate.findMany({ where: { customerId: customer.id }, select: { id: true } }),
+      tx.rentalAgreement.findMany({ where: { customerId: customer.id }, select: { id: true } }),
+      tx.invoice.findMany({ where: { customerId: customer.id }, select: { id: true } }),
+    ]);
+    const privacyEntityIds = [
+      ...privacyLeads.map((row) => row.id),
+      ...privacyEstimates.map((row) => row.id),
+      ...privacyAgreements.map((row) => row.id),
+      ...privacyInvoices.map((row) => row.id),
+    ];
+    if (privacyEntityIds.length > 0) {
+      await tx.notification.deleteMany({ where: { entityId: { in: privacyEntityIds } } });
+    }
+
     await tx.session.deleteMany({ where: { userId: customer.userId } });
     // ACC-6: device rows are per-person identifiers, so they go with the rest of the person's sign-in data.
     await tx.knownDevice.deleteMany({ where: { userId: customer.userId } });

@@ -44,6 +44,9 @@ model User {
   oauthaccesstokens OauthAccessToken[]
   oauthconsents OauthConsent[]
   workspacePreference OwnerWorkspacePreference?
+  // AR-13: the person's bell notifications and their per-kind channel choices.
+  notifications Notification[] @relation("NotificationRecipient")
+  notificationPreferences NotificationPreference[] @relation("NotificationPreferences")
   budgetPublishedPlans BudgetPlanVersion[] @relation("BudgetPlanPublisher")
   budgetReviewSnapshots BudgetReviewSnapshot[] @relation("BudgetReviewCreator")
   budgetMoves BudgetMove[]
@@ -3600,6 +3603,9 @@ model BusinessSettings {
   // because the first week of a month is too early to judge a goal.
   goalQuietDays Int @default(7)
   goalBehindPercent Int @default(75)
+  // AR-13: how long read notifications are kept, in days (owner setting, 30-365). Starting value 90:
+  // long enough to look back on a season, short enough to keep the list small. Unread never expire.
+  notificationKeepDays Int @default(90)
   // OPS-3: how the owner claims vehicle costs. Starting value: the standard mileage rate in the first year (keeps both options open).
   mileageMethod MileageMethod @default(STANDARD_RATE)
   // OPS-3: a medical card is asked for from this vehicle weight up (starting value: required from 16,001 lb; not confirmed).
@@ -7168,4 +7174,44 @@ model RepairEvidence {
   createdAt DateTime   @default(now())
 
   @@index([caseId, createdAt])
+}
+
+// AR-13: in-app notifications (docs/build-specs/engines/NOTIFICATIONS.md section 2). A notification is a
+// short "this just happened" message to one person; To do stays the record of what needs action.
+enum NotificationKind {
+  LEAD_NEW
+  QUOTE_VIEWED
+  SIGNATURE_DONE
+  PAYMENT_FAILED
+  APPROVAL_REQUESTED
+}
+
+model Notification {
+  id         String         @id @default(cuid())
+  userId     String // recipient
+  user       User           @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  kind       NotificationKind
+  title      String         @db.VarChar(160)
+  body       String         @db.VarChar(300)
+  href       String         @db.VarChar(400) // must start with "/desk/" (checked on write)
+  entityType String         @db.VarChar(40)
+  entityId   String
+  dedupeKey  String         @db.VarChar(200) // e.g. "LEAD_NEW:{leadId}"
+  createdAt  DateTime       @default(now())
+  readAt     DateTime?
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt, createdAt])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  userId    String
+  user      User             @relation("NotificationPreferences", fields: [userId], references: [id], onDelete: Cascade)
+  kind      NotificationKind
+  inApp     Boolean          @default(true)
+  email     Boolean          @default(false)
+  updatedAt DateTime         @updatedAt
+
+  @@id([userId, kind])
 }
