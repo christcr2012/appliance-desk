@@ -12,8 +12,16 @@ reports whose author allowed it.
 - [ ] Prompt-injection text in a report causes no action (test).
 - [ ] `ci` green at the exact head; every review comment read.
 
+## Acceptance plan — October 28
+
+1. Reporter-owned consent starts off, can be withdrawn at any time, and every change is version-checked and recorded without exposing pictures.
+2. MCP triage and content reads are independently scoped and re-check live consent for every content retrieval, including queued operation rechecks.
+3. Journal-approved reply, state and repair-case linking use the existing feedback service, never unrestricted database write or a caller's claim of a fix; verified case is required to call a report fixed.
+4. Assistant author labels, internal-only notes, privacy/backup coverage, and cross-customer isolation are exercised with disposable-database tests and browser checks.
+5. All tests, exact-head full CI, reviewed findings and squash merge are required; no live customer messages enabled.
+
 ## Progress
-Not started.
+Implementation in progress on ai/chatgpt/mcp-11-feedback, stacked on MCP-6; no verification claimed yet.
 
 ## Implementation route (reconciled October 28, 2026)
 

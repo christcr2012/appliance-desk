@@ -1,3 +1,7 @@
+## October 28 — MCP-11 agent feedback implementation (in progress)
+
+MCP-11 privacy-gated in-app feedback tools and reporter consent are being implemented on ai/chatgpt/mcp-11-feedback, stacked on MCP-6. No MCP-11 tests or CI passed yet.
+
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 
 Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:
