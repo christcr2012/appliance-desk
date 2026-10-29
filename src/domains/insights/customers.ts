@@ -252,7 +252,7 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
     }),
     prisma.rentalAgreement.findMany({
       where: activeAtEndWhere,
-      select: { customerId: true, stripeSubscriptionId: true, serviceAddress: { select: { city: true } } },
+      select: { id: true, customerId: true, stripeSubscriptionId: true, serviceAddress: { select: { city: true } } },
     }),
   ]);
 
@@ -323,9 +323,24 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
       : null;
 
   // Collected per customer: receipts minus CASH refunds (the collectedBetween
-  // rules — refunds kept as account credit are not money back out).
+  // rules — refunds kept as account credit are not money back out). The
+  // cohort is customers who have ever had a rental: recurring-billing start
+  // is the usual evidence, but a paid-in-full-in-advance agreement never
+  // starts recurring billing (checkout returns early for it), so prepaid
+  // rentals count from their start instead. A pre-delivery cancellation
+  // never became a rental and stays out either way.
   const everActive = await prisma.rentalAgreement.findMany({
-    where: { billingStartedAt: { not: null } },
+    where: {
+      OR: [
+        { billingStartedAt: { not: null } },
+        {
+          paidInFullInAdvance: true,
+          startDate: { lte: now },
+          status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] },
+        },
+      ],
+      preDeliveryCancellation: { is: null },
+    },
     select: { customerId: true },
     distinct: ["customerId"],
   });
@@ -362,6 +377,23 @@ export async function getCustomerInsights(now = new Date()): Promise<CustomerIns
   const autopayCustomers = new Set(
     activeAgreements.filter((a) => a.stripeSubscriptionId).map((a) => a.customerId),
   );
+  // A renewal moves the subscription id from the old agreement to the new
+  // one. For a past period the cohort holds the old agreement, which then
+  // reads as not-on-autopay even though the customer's automatic payments
+  // never stopped — so membership also counts when a started renewal out
+  // of a cohort agreement carries the subscription.
+  const cohortIdsWithoutSub = activeAgreements.filter((a) => !a.stripeSubscriptionId).map((a) => a.id);
+  if (cohortIdsWithoutSub.length > 0) {
+    const renewals = await prisma.rentalAgreement.findMany({
+      where: {
+        renewedFromAgreementId: { in: cohortIdsWithoutSub },
+        stripeSubscriptionId: { not: null },
+        status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] },
+      },
+      select: { customerId: true },
+    });
+    for (const renewal of renewals) autopayCustomers.add(renewal.customerId);
+  }
   const lateInvoices = activeIds.size
     ? await prisma.invoice.findMany({
         where: { ...pastDueInvoiceWhere(now), customerId: { in: [...activeIds] } },

@@ -48,7 +48,17 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
         appliances: { create: { applianceId: ids[0] } },
       },
     });
-    await page.goto("/desk/fleet?costs=missing");
+    // /desk/fleet streams its redirect to Equipment › Insights; the
+    // initial navigation can surface as ERR_ABORTED even though the
+    // redirect lands (the same streamed-redirect behavior AR-7a's
+    // staff-refusal test tolerates). Tolerate the abort on goto, then
+    // prove the settled URL and the page content as before.
+    const gotoFleet = async () => {
+      await page.goto("/desk/fleet?costs=missing").catch((err: unknown) => {
+        if (!String(err).includes("ERR_ABORTED")) throw err;
+      });
+    };
+    await gotoFleet();
     for (const width of [360, 768, 1440]) {
       for (const theme of ["light", "dark"]) {
         await page.setViewportSize({ width, height: 900 });
@@ -56,7 +66,7 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
           (mode) => localStorage.setItem("theme", mode),
           theme,
         );
-        await page.goto("/desk/fleet?costs=missing");
+        await gotoFleet();
         // AR-9: /desk/fleet redirects to Equipment › Insights, keeping the
         // page and costs params; the fleet report lives there now.
         await expect(page).toHaveURL(/\/desk\/inventory\/insights\?costs=missing/);

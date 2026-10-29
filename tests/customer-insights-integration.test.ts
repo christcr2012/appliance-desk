@@ -5,6 +5,7 @@ vi.mock("@/lib/session", () => ({
 }));
 import { prisma } from "@/lib/prisma";
 import { getCustomerInsights } from "@/domains/insights/customers";
+import { MIN_RENTALS } from "@/domains/insights/thresholds";
 import { businessMonthBounds } from "@/lib/business-date";
 
 // AR-9 / CU-3: customer insights against fixed fixtures (March 2027, a
@@ -70,6 +71,32 @@ describe.skipIf(!enabled)("customer insights (AR-9 / CU-3)", () => {
     // Receipts for the two active customers (collected-per-customer inputs).
     await prisma.receipt.create({ data: { customerId: a, amountCents: 12000, source: "MANUAL", method: "card", receivedOn: utc(2027, 3, 2) } });
     await prisma.receipt.create({ data: { customerId: b, amountCents: 6000, source: "MANUAL", method: "card", receivedOn: utc(2027, 3, 3) } });
+    // A prepaid customer: paid in full in advance, so recurring billing
+    // never started — still a customer who has had a rental, with money
+    // collected (PR #745 review finding).
+    const e = await makeCustomer(4);
+    await makeAgreement(e, { paidInFullInAdvance: true, startDate: utc(2027, 1, 20) });
+    await prisma.receipt.create({ data: { customerId: e, amountCents: 3000, source: "MANUAL", method: "card", receivedOn: utc(2027, 3, 4) } });
+    // A renewal pair: the old agreement ended in March when the renewal
+    // started and took over the subscription (the old row's
+    // stripeSubscriptionId is cleared by the renewal, as in production).
+    const f = await makeCustomer(5);
+    const oldId = await makeAgreement(f, {
+      status: "ENDED", startDate: utc(2026, 11, 1), endDate: utc(2027, 3, 10),
+      closedAt: utc(2027, 3, 10), billingStartedAt: utc(2026, 11, 1), stripeSubscriptionId: null,
+    });
+    await makeAgreement(f, {
+      startDate: utc(2027, 3, 10), billingStartedAt: utc(2027, 3, 10),
+      stripeSubscriptionId: `sub_renew_${tag}`, renewedFromAgreementId: oldId,
+    });
+    // Five more plain January starters: they lift the February cohort and
+    // the ever-had set past the MIN_RENTALS gate on fixture customers
+    // alone, so the prepaid and renewal assertions below discriminate
+    // regardless of what else shares the test database.
+    for (let i = 6; i <= 10; i++) {
+      const extra = await makeCustomer(i);
+      await makeAgreement(extra, { startDate: utc(2027, 1, 15), billingStartedAt: utc(2027, 1, 15) });
+    }
   });
 
   afterAll(async () => {
@@ -115,5 +142,85 @@ describe.skipIf(!enabled)("customer insights (AR-9 / CU-3)", () => {
       0,
     );
     expect(insights.avgMonthlyRentCents).toBe(Math.round(cohortRent / insights.activeNow));
+  });
+
+  it("collected per customer includes prepaid rentals in the ever-had cohort", async () => {
+    const insights = await getCustomerInsights(NOW);
+    // Independent recomputation: the ever-had-a-rental customer set is
+    // recurring-billing starters PLUS started prepaid agreements (minus
+    // pre-delivery cancellations); the average is their net collected
+    // (receipts minus refunds not kept as credit) over that set.
+    const everHad = await prisma.rentalAgreement.findMany({
+      where: {
+        OR: [
+          { billingStartedAt: { not: null } },
+          {
+            paidInFullInAdvance: true,
+            startDate: { lte: NOW },
+            status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] },
+          },
+        ],
+        preDeliveryCancellation: { is: null },
+      },
+      select: { customerId: true },
+      distinct: ["customerId"],
+    });
+    const ids = everHad.map((r) => r.customerId);
+    const [receiptSums, refunds] = await Promise.all([
+      prisma.receipt.groupBy({ by: ["customerId"], _sum: { amountCents: true } }),
+      prisma.refund.findMany({ select: { id: true, amountCents: true, invoice: { select: { customerId: true } } } }),
+    ]);
+    const creditIds = new Set(
+      (
+        await prisma.customerCredit.findMany({
+          where: { sourceType: "REFUND_TO_CREDIT", sourceId: { in: refunds.map((r) => r.id) } },
+          select: { sourceId: true },
+        })
+      ).map((c) => c.sourceId),
+    );
+    const net = new Map<string, number>();
+    for (const row of receiptSums) net.set(row.customerId, row._sum.amountCents ?? 0);
+    for (const refund of refunds) {
+      if (creditIds.has(refund.id)) continue;
+      net.set(refund.invoice.customerId, (net.get(refund.invoice.customerId) ?? 0) - refund.amountCents);
+    }
+    const values = ids.map((id) => net.get(id) ?? 0);
+    const expected =
+      values.length >= MIN_RENTALS ? Math.round(values.reduce((s, n) => s + n, 0) / values.length) : null;
+    expect(insights.avgCollectedPerCustomerCents).toBe(expected);
+  });
+
+  it("autopay share for a past month keeps members whose subscription moved to a renewal", async () => {
+    // February 2027 view: the fixture renewal started in March, so at
+    // February's end the cohort holds the OLD agreement — whose
+    // subscription id the renewal has since taken over.
+    const febNow = new Date("2027-02-15T18:00:00Z");
+    const insights = await getCustomerInsights(febNow);
+    const { end } = businessMonthBounds(febNow);
+    const cohort = await prisma.rentalAgreement.findMany({
+      where: {
+        startDate: { lt: end },
+        OR: [{ closedAt: null }, { closedAt: { gte: end } }],
+        status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] },
+      },
+      select: { id: true, customerId: true, stripeSubscriptionId: true },
+    });
+    const cohortCustomers = new Set(cohort.map((a) => a.customerId));
+    const autopay = new Set(cohort.filter((a) => a.stripeSubscriptionId).map((a) => a.customerId));
+    const withoutSub = cohort.filter((a) => !a.stripeSubscriptionId).map((a) => a.id);
+    if (withoutSub.length > 0) {
+      const renewals = await prisma.rentalAgreement.findMany({
+        where: {
+          renewedFromAgreementId: { in: withoutSub },
+          stripeSubscriptionId: { not: null },
+          status: { notIn: ["DRAFT", "AWAITING_SIGNATURE", "SCHEDULED"] },
+        },
+        select: { customerId: true },
+      });
+      for (const r of renewals) autopay.add(r.customerId);
+    }
+    const expected =
+      cohortCustomers.size >= MIN_RENTALS ? autopay.size / cohortCustomers.size : null;
+    expect(insights.autopayShare).toBe(expected);
   });
 });
