@@ -38,6 +38,24 @@ describe("job role screens", () => {
     }
   });
 
+  it("AR-9: the Insights addresses keep the screens their old pages had", () => {
+    // Customers > Insights was Growth (management): Customers access alone must not open it.
+    expect(screenForPath("/desk/customers/insights")).toBe("management");
+    expect(jobRoleAllowsPath(["customers"], "/desk/customers/insights")).toBe(false);
+    expect(jobRoleAllowsPath(["customers"], "/desk/customers")).toBe(true);
+    expect(jobRoleAllowsPath(["customers", "management"], "/desk/customers/insights")).toBe(true);
+    // Equipment > Insights was Fleet (billing): Equipment access alone must not open it.
+    expect(screenForPath("/desk/inventory/insights")).toBe("billing");
+    expect(jobRoleAllowsPath(["inventory"], "/desk/inventory/insights")).toBe(false);
+    expect(jobRoleAllowsPath(["inventory"], "/desk/inventory")).toBe(true);
+    expect(jobRoleAllowsPath(["inventory", "billing"], "/desk/inventory/insights")).toBe(true);
+    // Money > Income was Revenue (billing); the rest of Money was already billing.
+    expect(screenForPath("/desk/money/income")).toBe("billing");
+    expect(screenForPath("/desk/money")).toBe("billing");
+    // A customer record whose id happens to be "insights"-like still resolves by first segment.
+    expect(screenForPath("/desk/customers/some-id")).toBe("customers");
+  });
+
   it("every screen address in the menu belongs to a known screen", () => {
     const links = [...deskNavigation("OWNER").flatMap((g) => g.links), ...deskMoreLinks("OWNER")];
     for (const link of links) expect(screenForPath(link.href), link.href).not.toBeNull();
