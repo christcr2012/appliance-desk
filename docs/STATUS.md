@@ -1,3 +1,13 @@
+## October 29 — AR-9 Insights: MERGED (PR #749, Lane 5)
+
+AR-9 is on main (squash merge 3c73bd3b): Customers › Insights and Equipment › Insights as kit
+pages, Money Overview rent health and goals, Money › Income replacing the Revenue ledger, the
+redirects, the additive Lead.closedAt migration, goal pace settings, and the Equipment Insights
+side panel. The PR chain (#734/#736/#740/#745/#747) is recorded on #749; all Codex findings across
+the chain were fixed with tests, including the prepaid-cohort and renewal-autopay corrections and
+the desktop side panel. Lane 5's AR share is complete. Next for Lane 5: the telecom-settings
+browser diagnosis (COM line), then the MASTER-ROADMAP.
+
 ## October 29 — AR-7b Taxes on the kit: PR #750 open, successor of #746 (Lane 4)
 
 AR-7a merged to main as the squash commit 60090f41 (CI run 40838554175 green at the exact head,
@@ -10,6 +20,8 @@ No tax calculation, filing or evidence behavior changes — layout, words and re
 PR #746 went fully green (CI run 40872209100) but main had advanced and a merge-tree check found one
 genuine conflict — migrated-pages.json, resolved as a union (32 entries) — so the identical tree,
 merged with current main, is open as PR #750 and #746 is closed unmerged with the reason recorded.
+A second union merge with main 3744b569 (the AR-9 close-out, #751) resolved the STATUS,
+registry and glossary overlaps the same way later on October 29.
 
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
@@ -44,6 +56,22 @@ on the streamed Books pages, with the first failing page varying between runs wh
 books-workspace spec (which waits for the heading) passes on the same page — the test analyzed a
 half-streamed document. A second fix batch riding with this note makes the axe test wait for the
 page heading before analyzing; the axe assertion is unchanged. CI green at the exact head, then auto-merge.
+## October 29 — AR-9 Insights: successor PR (branch ai/vivienne/ar-9-v4, Lane 5)
+
+One PR per the card: Customers › Insights and Equipment › Insights tabs
+(LD-4/CU-3 and the fleet report, rebuilt as kit pages over a new
+OWNER/ADMIN-only insights domain), Money Overview gains rent health,
+goals and under-paying rentals, the Revenue ledger becomes Money › Income
+details, and Growth/Fleet/Revenue/Reports/Dashboard are redirects (AR-10
+retires them later). Additive migration: `Lead.closedAt` (backfilled from
+audit history) plus the two goal-pace settings. PRs #734 and #736 went
+dirty against moved main and were closed with pointers; #740 (branch
+ai/vivienne/ar-9-v3) carried the tree through review and four CI fix
+rounds, then main advanced by MCP-6 and AR-7a (including the Oct 29
+budget-test date fix), so this branch merges current main with the
+identical tree plus all fixes — the successor pattern, same as AR-7a's
+#733 → #744.
+
 
 ## October 28 — MCP-7 monitoring build (in progress)
 

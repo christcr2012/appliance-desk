@@ -30,5 +30,8 @@
   { "file": "src/app/desk/sales-tax/taxability/page.tsx", "kind": "other" },
   { "file": "src/app/desk/sales-tax/use-tax/page.tsx", "kind": "other" },
   { "file": "src/app/desk/sales-tax/use-tax/[periodId]/page.tsx", "kind": "other" },
-  { "file": "src/app/desk/sales-tax/use-tax/settings/page.tsx", "kind": "other" }
+  { "file": "src/app/desk/sales-tax/use-tax/settings/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/customers/insights/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/inventory/insights/page.tsx", "kind": "other" },
+  { "file": "src/app/desk/money/income/page.tsx", "kind": "list" }
 ]
