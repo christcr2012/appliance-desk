@@ -1,4 +1,11 @@
-## October 29 — AR-4c Customers list (CU-1): building (Lane 5)
+## October 29 — AR-4c Customers list (CU-1): checkpointed — awaiting workspace move (PR #759, Lane 5)
+
+PR #759 is open at head ba5d417e (remote snapshot f6821403, tree-identical — verified by
+fetch + zero-line tree diff). CI at that head: 4 runs attached, Performance Baselines in
+progress, PR mergeable. State: checkpointed — awaiting workspace move (Chris's instruction:
+sessions restart in the new Dokploy-hosted GitHub workspace; Lane 5 is the pilot). S1–S5 are
+committed; what remains after the move is the CI verdict at the exact head, any fix batch,
+the self-review, and the merge.
 
 AR-4c is underway on branch ai/vivienne/ar-4c (packet docs/pr-cards/execution/AR-4C.json,
 baseline c9924f06): the CU-1 engine — Customer.phoneDigits, the customer_list_v1 live view,
