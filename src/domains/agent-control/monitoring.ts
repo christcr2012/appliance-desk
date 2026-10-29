@@ -1,9 +1,13 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { getAutomationHealth } from "@/domains/automation/health";
 import { sendOwnerAlert } from "@/domains/messaging/owner-alerts";
+import { previewAgentOperation, executeAgentOperation } from "./operations";
+import type { AgentContext } from "./authorization";
+import type { JournalAction } from "./journal";
 
 export const MONITOR_KEYS = [
   "jobs-late-or-failing", "backup-not-verified-today", "photo-copy-not-paired",
@@ -24,6 +28,21 @@ export const RECOMMENDED_MONITOR = {
   enabled: false, failuresBeforeAlert: 2, cooldownHours: 24,
   notifyEmail: false, autoAction: null, autoActionConnectionId: null,
 } as const;
+/** Only zero-argument MCP-5 operations can be delegated by the initial monitoring rules. */
+export const MONITOR_ACTIONS = [
+  { value: "RUN_DIAGNOSTIC_SWEEP", label: "Check system problems again" },
+  { value: "RETRY_DATABASE_BACKUP", label: "Retry an eligible failed database backup" },
+] as const;
+export type MonitorAction = (typeof MONITOR_ACTIONS)[number]["value"];
+const allowedAction = (value: string): value is MonitorAction =>
+  MONITOR_ACTIONS.some(option => option.value === value);
+
+export async function listMonitorConnections(ownerId: string) {
+  return prisma.mcpConnection.findMany({
+    where: { userId: ownerId, revokedAt: null, scopes: { has: "ops:maintain" } },
+    select: { id: true, label: true }, orderBy: { label: "asc" },
+  });
+}
 export const RULE_FAILURE_MIN = 1;
 export const RULE_FAILURE_MAX = 10;
 export const RULE_COOLDOWN_MAX = 168;
@@ -42,9 +61,12 @@ export function validateMonitorSettings(input: {
       input.cooldownHours > RULE_COOLDOWN_MAX) {
     throw new Error("Choose between 1 and 168 hours before repeating an alert.");
   }
-  // Never save an unimplemented standing write permission: a delegated assistant
-  // can only be enabled after the same MCP-5 pre-dispatch checks are integrated.
-  if (input.autoAction || input.autoActionConnectionId) throw new Error("Automatic assistant actions are not enabled for this check.");
+  if (Boolean(input.autoAction) !== Boolean(input.autoActionConnectionId)) {
+    throw new Error("Choose both an assistant action and its active connection, or neither.");
+  }
+  if (input.autoAction && !allowedAction(input.autoAction)) {
+    throw new Error("This assistant action is not permitted for monitoring.");
+  }
 }
 export async function listMonitorRules() {
   const rows = await prisma.monitorRule.findMany();
@@ -57,15 +79,26 @@ export async function listMonitorRules() {
 export async function saveMonitorRule(actorId: string, input: {
   key: string; enabled: boolean; failuresBeforeAlert: number; cooldownHours: number;
   notifyEmail: boolean; expectedVersion: number | null; restore?: boolean;
+  autoAction?: string | null; autoActionConnectionId?: string | null;
 }) {
   const next = input.restore ? { ...RECOMMENDED_MONITOR } : {
     enabled: input.enabled, failuresBeforeAlert: input.failuresBeforeAlert,
     cooldownHours: input.cooldownHours, notifyEmail: input.notifyEmail,
-    autoAction: null, autoActionConnectionId: null,
+    autoAction: input.autoAction || null,
+    autoActionConnectionId: input.autoActionConnectionId || null,
   };
   validateMonitorSettings({ key: input.key, ...next });
   await prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    if (next.autoActionConnectionId) {
+      const selected = await tx.mcpConnection.findUnique({
+        where: { id: next.autoActionConnectionId },
+        select: { userId: true, scopes: true, revokedAt: true },
+      });
+      if (!selected || selected.userId !== actorId || selected.revokedAt ||
+          !selected.scopes.includes("ops:maintain"))
+        throw new Error("This assistant connection is no longer authorized for maintenance.");
+    }
     await tx.$queryRaw`SELECT "id" FROM "MonitorRule" WHERE "key" = ${input.key} FOR UPDATE`;
     const current = await tx.monitorRule.findUnique({ where: { key: input.key } });
     if ((current?.version ?? null) !== input.expectedVersion) throw new Error("These monitoring settings changed. Reload and try again.");
@@ -128,6 +161,44 @@ async function readSignal(key: MonitorKey, now: Date): Promise<MonitorSignal> {
  * waits for this transaction, then sees the slot and does nothing. Repeated
  * failures share ONE open issue fingerprint; a recovery closes that issue.
  */
+/**
+ * Preview, link and execute through MCP-5. This never calls a domain writer directly.
+ * The linked operation ID and the tool's rule revision form an immutable receipt.
+ */
+async function executeMonitoringAction(
+  key: MonitorKey, slot: string, version: number, action: MonitorAction, connectionId: string,
+) {
+  const connection = await prisma.mcpConnection.findUnique({
+    where: { id: connectionId },
+    include: { user: { select: { id: true, role: true, archivedAt: true, name: true } } },
+  });
+  if (!connection || connection.revokedAt || connection.user.archivedAt ||
+      connection.user.role !== "OWNER" || !connection.scopes.includes("ops:maintain"))
+    throw new Error("MONITORING_GRANT_REVOKED");
+  const ctx: AgentContext = {
+    userId: connection.userId, name: connection.user.name ?? "Owner",
+    role: "OWNER", connectionId: connection.id, connectionLabel: connection.label,
+    scopes: ["ops:maintain"],
+  };
+  const requestKey = "monitor_" + createHash("sha256").update(key + ":" + slot).digest("hex").slice(0, 28);
+  const preview = await previewAgentOperation(ctx, {
+    action, args: {}, requestKey, monitor: { ruleKey: key, ruleVersion: version },
+  });
+  const linked = await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "MonitorRule" WHERE "key" = ${key} FOR UPDATE`;
+    const rule = await tx.monitorRule.findUnique({ where: { key } });
+    if (!rule?.enabled || rule.version !== version ||
+        rule.autoAction !== action || rule.autoActionConnectionId !== connectionId)
+      return false;
+    const updated = await tx.monitorRun.updateMany({
+      where: { ruleKey: key, slot, state: "ALERT", operationId: null },
+      data: { operationId: preview.previewId },
+    });
+    return updated.count === 1;
+  });
+  if (linked) await executeAgentOperation(ctx, { previewId: preview.previewId, requestKey });
+}
+
 export async function runMonitors(now = new Date(), input?: {
   evaluate?: (key: MonitorKey, now: Date) => Promise<MonitorSignal>;
   notify?: (key: MonitorKey, slot: string) => Promise<void>;
@@ -181,12 +252,26 @@ export async function runMonitors(now = new Date(), input?: {
           version: { increment: 1 },
         } });
       }
-      return { state, notify: shouldAlert && liveRule.notifyEmail };
+      return {
+        state, notify: shouldAlert && liveRule.notifyEmail,
+        action: shouldAlert && liveRule.autoAction && allowedAction(liveRule.autoAction)
+          ? liveRule.autoAction : null,
+        connectionId: shouldAlert ? liveRule.autoActionConnectionId : null,
+        ruleVersion: liveRule.version,
+      };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
     if (!receipt) continue;
     checked++;
     if (receipt.state === "RECOVERED") recovered++;
     if (receipt.state === "ALERT") alerted++;
+    if (receipt.action && receipt.connectionId) {
+      try {
+        await executeMonitoringAction(key, slot, receipt.ruleVersion, receipt.action, receipt.connectionId);
+      } catch {
+        // The ALERT is still durable. Never retry a possibly started operation automatically.
+        // An operation that reached the journal remains visible in Assistant activity.
+      }
+    }
     if (receipt.notify) {
       try {
         if (input?.notify) await input.notify(key, slot);
