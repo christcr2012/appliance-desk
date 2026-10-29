@@ -1,15 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DataTable, EmptyState, InfoTip, ScreenHeader } from "@/components/kit";
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
 export default async function FilingReturnsPage({
   searchParams,
-}: { searchParams: Promise<{ cursor?: string }> }) {
+}: { searchParams: Promise<{ cursor?: string; open?: string }> }) {
   await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
-  const { cursor } = await searchParams;
+  const { cursor, open } = await searchParams;
+  // The kit table's desktop row click sets ?open=<id> (its side-panel convention).
+  // Returns have no side panel — the guided return IS the destination, as it was
+  // before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/sales-tax/returns/${encodeURIComponent(open)}`);
   if (cursor && !/^[A-Za-z0-9_-]{5,128}$/.test(cursor)) notFound();
   const records = await prisma.taxFilingPeriod.findMany({
     take: 26,

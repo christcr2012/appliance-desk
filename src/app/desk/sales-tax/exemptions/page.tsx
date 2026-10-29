@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/session";
+import { redirect } from "next/navigation";
 import { getTaxExemptionsPage } from "@/domains/tax/workspace-queries";
 import { DataTable, EmptyState, ScreenHeader } from "@/components/kit";
 
@@ -6,9 +7,13 @@ const day = (d: Date) => d.toISOString().slice(0, 10);
 
 export default async function TaxExemptionsPage({
   searchParams,
-}: { searchParams: Promise<{ cursor?: string }> }) {
+}: { searchParams: Promise<{ cursor?: string; open?: string }> }) {
   const session = await requireRole("OWNER", "ADMIN");
-  const cursor = (await searchParams).cursor;
+  const { cursor, open } = await searchParams;
+  // The kit table's desktop row click sets ?open=<id> (its side-panel convention).
+  // Certificates have no side panel — the certificate page IS the destination, as
+  // it was before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/sales-tax/exemptions/${encodeURIComponent(open)}`);
   const records = await getTaxExemptionsPage(session.user.id, { cursor, limit: 25 });
   type Row = (typeof records.rows)[number];
   const validity = (row: Row) =>

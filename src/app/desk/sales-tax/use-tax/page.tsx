@@ -1,12 +1,20 @@
 import { requireRole } from "@/lib/session";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
 import { DataTable, EmptyState, InfoTip, ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Use-tax worksheets", robots: { index: false, follow: false } };
 
-export default async function UseTaxWorksheetsPage() {
+export default async function UseTaxWorksheetsPage({
+  searchParams,
+}: { searchParams: Promise<{ open?: string }> }) {
   await requireRole("OWNER", "ADMIN");
+  const { open } = await searchParams;
+  // The kit table's desktop row click sets ?open=<id> (its side-panel convention).
+  // Worksheets have no side panel — the worksheet page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/sales-tax/use-tax/${encodeURIComponent(open)}`);
   const periods = await prisma.taxFilingPeriod.findMany({
     where: { filingAccount: { kind: "USE_TAX_RETURN" } },
     select: {

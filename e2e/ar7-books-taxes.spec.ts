@@ -107,6 +107,17 @@ test.describe("Taxes on the kit (AR-7b)", () => {
     await expect(page.getByRole("heading", { name: "Needs your attention" })).toBeVisible();
   });
 
+  test("a desktop row click on Returns opens the guided return", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/desk/sales-tax/returns");
+    await expect(page.locator("h1").first()).toBeVisible();
+    const firstRow = page.locator("tbody tr").first();
+    test.skip((await firstRow.count()) === 0, "No seeded returns to click.");
+    await firstRow.locator("a").first().click();
+    await expect(page).toHaveURL(/\/desk\/sales-tax\/returns\/[^/?]+$/);
+    await expect(page.locator("h1").first()).toBeVisible();
+  });
+
   test("every Taxes tab page renders inside the frame with its tab current", async ({ page }) => {
     test.skip(!ready(), "Disposable Postgres and a saved owner session required.");
     for (const [path, tab] of [
