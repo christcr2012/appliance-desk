@@ -17,7 +17,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { prisma } from "@/lib/prisma";
 import { fieldsRevision } from "@/domains/settings/preview";
-import { saveSettingRowAction, undoSettingRowAction } from "@/app/desk/settings/row-actions";
+import { saveServiceAreaAction, saveSettingRowAction, undoSettingRowAction } from "@/app/desk/settings/row-actions";
 
 const target = (() => { try { return new URL(process.env.DATABASE_URL ?? ""); } catch { return null; } })();
 const enabled = process.env.CI === "true" && !!target && ["localhost", "127.0.0.1"].includes(target.hostname)
@@ -41,6 +41,8 @@ describe.skipIf(!enabled)("AR-8 row save on real Postgres", () => {
     session.role = "OWNER";
     const s = await row();
     snapshot = {
+      serviceAreaCities: s.serviceAreaCities,
+      serviceAreaZips: s.serviceAreaZips,
       relocationFeeCents: s.relocationFeeCents,
       oneTimeDeliveryFeeCents: s.oneTimeDeliveryFeeCents,
       deliveryMorningStartHour: s.deliveryMorningStartHour,
@@ -151,5 +153,18 @@ describe.skipIf(!enabled)("AR-8 row save on real Postgres", () => {
     expect((await row()).trustedDeviceDays).toBe(15);
     const restored = await saveSettingRowAction("trustedDeviceDays", before, await revFor("trustedDeviceDays"));
     expect(restored.status).toBe("success");
+  });
+
+  it("saves the service area as stored lists and refuses a stale revision", async () => {
+    const fresh = fieldsRevision(await row(), ["serviceAreaCities", "serviceAreaZips"]);
+    const ok = await saveServiceAreaAction("Greeley, Evans", "80631, 80634", fresh);
+    expect(ok.status).toBe("success");
+    const stored = await row();
+    expect(stored.serviceAreaCities).toEqual(["Greeley", "Evans"]);
+    expect(stored.serviceAreaZips).toEqual(["80631", "80634"]);
+    const stale = await saveServiceAreaAction("Nowhere", "00000", fresh);
+    expect(stale.status).toBe("error");
+    if (stale.status === "error") expect(stale.message).toMatch(/Someone else changed/);
+    expect((await row()).serviceAreaCities).toEqual(["Greeley", "Evans"]);
   });
 });

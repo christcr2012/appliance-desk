@@ -15,6 +15,29 @@ import { SettingsValidationError } from "@/domains/settings/cross-fields";
 import { SettingsUndoError, listSettingsHistory, previewSettingsUndo, undoSettingsChange } from "@/domains/settings/history";
 import { dollarsToCents } from "@/domains/pricing";
 
+/** The service-area panel's own save: just the cities and ZIPs, checked
+ * against the service-area section revision (SETTINGS spec section 4). */
+export async function saveServiceAreaAction(cities: string, zips: string, revision: string): Promise<RowSaveState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  const parsedCities = z.string().trim().safeParse(cities);
+  const parsedZips = z.string().trim().safeParse(zips);
+  if (!parsedCities.success || !parsedZips.success) return { status: "error", message: "Enter the cities and ZIP codes as text." };
+  // The stored fields are JSON lists; the editor works in comma-separated text.
+  const toList = (text: string) => text.split(",").map((part) => part.trim()).filter(Boolean);
+  try {
+    await updateBusinessSettings(session.user.id, {
+      serviceAreaCities: toList(parsedCities.data),
+      serviceAreaZips: toList(parsedZips.data),
+    }, { expectedRevision: { keys: ["serviceAreaCities", "serviceAreaZips"], value: revision } });
+  } catch (error) {
+    if (error instanceof SettingsConflictError) return { status: "error", message: error.message };
+    if (error instanceof SettingsValidationError) return { status: "error", message: error.message };
+    return GENERIC;
+  }
+  revalidatePath("/desk/settings");
+  return { status: "success" };
+}
+
 export type RowSaveState =
   | { status: "success"; auditId?: string }
   | { status: "error"; message: string };

@@ -60,6 +60,7 @@ import { getMethodSettings, twilioKeysPresent } from "@/domains/security/second-
 import { EMAIL_WEAKER_WARNING, METHOD_LABEL } from "@/domains/security/second-step-rules";
 import { DeliveryZonesForm } from "./delivery-zones-form";
 import { DrivingOriginForm } from "./driving-origin-form";
+import { ServiceAreaForm } from "./service-area-form";
 import { ServiceAreaMap } from "@/components/site/service-area-map";
 import { readZoneSettings } from "@/domains/delivery/zone";
 import { townsWithZones } from "@/domains/delivery/towns";
@@ -181,13 +182,16 @@ export default async function DeskSettingsPage({
     panels["hoursPanel"] = profileForm;
     panels["socialLinksPanel"] = profileForm;
     panels["logoPanel"] = profileForm;
-    // The service-area cities/ZIPs render only in the form's service-area
-    // section, with that section's own revision (AR-8 review round 3).
+    // The service-area panel has its own small editor for just the cities
+    // and ZIPs, saved against that section's revision (AR-8 review round 3
+    // restored the editor; the weight pass stopped mounting the full
+    // profile form a second time for it).
     panels["serviceAreaPanel"] = (
-      <SettingsForm
-        section="service-area"
+      <ServiceAreaForm
+        cities={Array.isArray(settings.serviceAreaCities) ? (settings.serviceAreaCities as string[]).join(", ") : ""}
+        zips={Array.isArray(settings.serviceAreaZips) ? (settings.serviceAreaZips as string[]).join(", ") : ""}
         revision={sectionRevision(settings, "service-area")}
-        defaultValues={profileDefaults}
+        canEdit
       />
     );
     const zones = readZoneSettings(settings);

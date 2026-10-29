@@ -80,14 +80,23 @@ export async function getSettingsPage(sectionId: SettingsSectionId): Promise<Set
   const actionToKey = new Map<string, string>();
   for (const def of visible) for (const a of def.auditActions ?? []) actionToKey.set(a, def.key);
   const lastChangeByKey = new Map<string, { by: string; at: Date }>();
+  // Rows arrive newest-first and only the newest change per key is kept, so
+  // the walk (and its per-row JSON diffing) stops as soon as every visible
+  // row has one — a settings page load must not diff hundreds of audit rows.
+  const unresolved = new Set(visible.map((def) => def.key));
   for (const r of auditRows) {
+    if (unresolved.size === 0) break;
     const by = r.user?.name || r.user?.email || "Someone";
     const domainKey = actionToKey.get(r.action);
     if (domainKey && !lastChangeByKey.has(domainKey)) {
       lastChangeByKey.set(domainKey, { by, at: r.createdAt });
+      unresolved.delete(domainKey);
     }
     for (const change of describeSettingsChange(r.oldValue, r.newValue)) {
-      if (!lastChangeByKey.has(change.key)) lastChangeByKey.set(change.key, { by, at: r.createdAt });
+      if (!lastChangeByKey.has(change.key)) {
+        lastChangeByKey.set(change.key, { by, at: r.createdAt });
+        unresolved.delete(change.key);
+      }
     }
   }
 
