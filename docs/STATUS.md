@@ -1,3 +1,18 @@
+## October 29 — AR-4c Customers list (CU-1): building (Lane 5)
+
+AR-4c is underway on branch ai/vivienne/ar-4c (packet docs/pr-cards/execution/AR-4C.json,
+baseline c9924f06): the CU-1 engine — Customer.phoneDigits, the customer_list_v1 live view,
+pure segments with matching SQL fragments, a role-shaped cursor-paged list query — and the
+KIT 5.1 Customers screen at the same /desk/customers URL. Drift check passed against current
+main: every file, symbol and enum the CUSTOMERS spec names exists; the migration stamp
+20261026040000 is free and pg_trgm is already in from LD-1. The telecom-settings ERR_ABORTED
+fix (PR #754) is merged ahead of this branch point. AR-4d stays queued behind 4c.
+S1–S4 are committed (schema/view/keys; segments/list/export with the tab = rule proof on
+30 fixtures; the screen with tabs, pills, side panel and both exports). One spec drift was
+found and recorded in the packet: getCustomers() keeps no role gate — five staff-used
+picker pages call it on current main, so the spec's proposed requireRole would have broken
+them; the export route enforces OWNER/ADMIN itself. S5 (capacity + browser proof) is next.
+
 ## October 29 — AR-9 Insights: MERGED (PR #749, Lane 5)
 
 AR-9 is on main (squash merge 3c73bd3b): Customers › Insights and Equipment › Insights as kit
