@@ -79,15 +79,6 @@
     "reason": "Static form shell: renders no data; submissions go through guarded server actions."
   },
   {
-    "page": "src/app/desk/leads/page.tsx",
-    "reads": [
-      {
-        "name": "getLeadWorkspace",
-        "guard": "requireRole"
-      }
-    ]
-  },
-  {
     "page": "src/app/desk/maintenance/page.tsx",
     "reads": [
       {
