@@ -27,6 +27,22 @@ current main and #750 is closed unmerged with the reason recorded. The one remai
 is not in this PR: the telecom-settings browser failure in PR-triggered CI, which Lane 5 is
 diagnosing by the owner's decision.
 
+## October 29 — AR-4b Leads built (PR #756; #752/#755 closed unmerged — pull_request CI events stopped firing); AR-8 merged
+
+AR-8 (Settings rebuild) is MERGED via PR #743 (squash 7a691f9d; successor chain #724 → #726 → #732 →
+#739 → #743). This PR builds AR-4b (Leads) on branch `ai/vivienne/ar-4b-leads` from the execution
+packet Lane 5 prepared (AR-4B.json, cherry-picked; the work-index registration conflict was resolved
+keeping both sides' entries): the `/desk/leads` queue on the kit (stage tabs with counts, filters,
+five sorts, built-in views, cursor Load more), row sheets (follow-up with undo, assign, log a
+contact, mark lost, convert), a bulk bar (assign / follow-up / lost / export selected), a board view
+with drag and menu moves, CSV export of the filtered list, the lead record on the kit (stepper,
+next-step card, duplicate/merge, customer-match and merged banners, Activity / What they want /
+Quotes / Tasks tabs), quote-for-an-existing-lead (`/desk/estimates/new?leadId=`, and the new-lead
+quote flow is now one transaction), and lead editing with a changed-fields-only audit row. This PR
+also carries AR-8's paperwork close-out: the merged wording below and the owner's vault-successor
+answer filed as DQ-CONT-SUCCESSOR in docs/OWNER-INPUTS.md. Next in Lane 6's queue: AR-4c
+(Customers list), then AR-13 notifications.
+
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
 #733's branch was built through snapshot pushes, so its remote ancestry never contained the
@@ -174,7 +190,7 @@ tests/approval-actions.test.ts pins the contract (domain spies, both revalidatio
 inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
 adds optimistic task completion with Undo.
 
-## October 28 — AR-8 Settings rebuild: in review (successor PR #739 of #732, itself successor of #726/#724)
+## October 28 — AR-8 Settings rebuild: MERGED 2026-10-29 via PR #743 (successor of #739/#732/#726/#724)
 
 Fix round on #739 after its first CI run: two settings-frame defects the browser suite caught — the
 section navigation lost the old page's "Settings sections" landmark (restored), and the Spanish wording

@@ -14,6 +14,10 @@ const m = vi.hoisted(() => ({
   createLeadManually: vi.fn(),
   addLeadNote: vi.fn(),
   logLeadContact: vi.fn(),
+  logLeadAttempt: vi.fn(),
+  setLeadFollowUp: vi.fn(),
+  reassignLead: vi.fn(),
+  bulkUpdateLeads: vi.fn(),
   recordRealContact: vi.fn(),
   tx: vi.fn(),
   revalidate: vi.fn(),
@@ -36,11 +40,15 @@ vi.mock("@/domains/leads", () => ({
   createLeadManually: m.createLeadManually,
   addLeadNote: m.addLeadNote,
   logLeadContact: m.logLeadContact,
+  logLeadAttempt: m.logLeadAttempt,
 }));
 vi.mock("@/domains/leads/contact", () => ({ recordRealContact: m.recordRealContact }));
 vi.mock("@/domains/leads/follow-up", () => ({
   parseFollowUpKey: () => new Date("2026-02-01T00:00:00Z"),
+  setLeadFollowUp: m.setLeadFollowUp,
 }));
+vi.mock("@/domains/leads/assignment", () => ({ reassignLead: m.reassignLead }));
+vi.mock("@/domains/leads/bulk", () => ({ bulkUpdateLeads: m.bulkUpdateLeads }));
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: m.tx } }));
 vi.mock("next/cache", () => ({ revalidatePath: m.revalidate }));
 
@@ -67,6 +75,10 @@ beforeEach(() => {
   });
   m.addLeadNote.mockResolvedValue(undefined);
   m.logLeadContact.mockResolvedValue(undefined);
+  m.logLeadAttempt.mockResolvedValue(undefined);
+  m.setLeadFollowUp.mockResolvedValue(undefined);
+  m.reassignLead.mockResolvedValue(undefined);
+  m.bulkUpdateLeads.mockResolvedValue({ done: 1, failed: [] });
   m.recordRealContact.mockResolvedValue(undefined);
   m.tx.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
     callback({
@@ -93,7 +105,7 @@ describe("lead actions check the Leads screen, not the request address", () => {
     await expect(addLeadNoteAction("lead-1", "Called them")).rejects.toThrow(
       /does not include this screen/,
     );
-    await expect(logLeadContactAction("lead-1", "Called them")).rejects.toThrow(
+    await expect(logLeadContactAction("lead-1", "CONTACTED", "Called them")).rejects.toThrow(
       /does not include this screen/,
     );
     await expect(addLeadEmailAction("lead-1", "ada@example.com")).rejects.toThrow(
