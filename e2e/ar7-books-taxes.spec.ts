@@ -1,6 +1,8 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { prisma } from "@/lib/prisma";
 
 // AR-7 (docs/build-specs/screens/BOOKS-TAXES.md): the Books and Taxes pages on the kit. AR-7a
 // covers the Books slice: the Overview with its four task cards, every old Books URL rendering
@@ -108,14 +110,33 @@ test.describe("Taxes on the kit (AR-7b)", () => {
   });
 
   test("a desktop row click on Returns opens the guided return", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/desk/sales-tax/returns");
-    await expect(page.locator("h1").first()).toBeVisible();
-    const firstRow = page.locator("tbody tr").first();
-    test.skip((await firstRow.count()) === 0, "No seeded returns to click.");
-    await firstRow.locator("a").first().click();
-    await expect(page).toHaveURL(/\/desk\/sales-tax\/returns\/[^/?]+$/);
-    await expect(page.locator("h1").first()).toBeVisible();
+    // The test creates its own filing period (the mcp-repair-cases pattern): the seed
+    // creates none, so the old version skipped whenever no other spec had happened to
+    // create one yet — and a skipped test fails CI's skip guard. The period's due date
+    // is in 2020 so it sorts first in the list.
+    const account = await prisma.taxFilingAccount.create({
+      data: { name: `Row-click test ${randomUUID()}` },
+    });
+    const period = await prisma.taxFilingPeriod.create({
+      data: {
+        filingAccountId: account.id,
+        periodStart: new Date("2019-12-01T12:00:00.000Z"),
+        periodEnd: new Date("2019-12-31T12:00:00.000Z"),
+        dueOn: new Date("2020-01-20T12:00:00.000Z"),
+      },
+    });
+    try {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto("/desk/sales-tax/returns");
+      await expect(page.locator("h1").first()).toBeVisible();
+      const firstRow = page.locator("tbody tr").first();
+      await firstRow.locator("a").first().click();
+      await expect(page).toHaveURL(new RegExp(`/desk/sales-tax/returns/${period.id}$`));
+      await expect(page.locator("h1").first()).toBeVisible();
+    } finally {
+      await prisma.taxFilingPeriod.delete({ where: { id: period.id } });
+      await prisma.taxFilingAccount.delete({ where: { id: account.id } });
+    }
   });
 
   test("every Taxes tab page renders inside the frame with its tab current", async ({ page }) => {
