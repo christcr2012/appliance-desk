@@ -10,6 +10,7 @@ import { saveLateGraceAction, setAutomationPausedAction, saveBackupRetentionActi
 import { getBackupDashboard } from "@/domains/backup/dashboard";
 import { HealthLegend, HealthRow } from "./health-row";
 import { AssistantConnections } from "./assistant-connections";
+import { AssistantActivity } from "./assistant-activity";
 
 export const metadata = { title: "System health" };
 
@@ -26,9 +27,10 @@ function hoursAndMinutes(minutes: number): string {
   return [hours, mins].filter(Boolean).join(" ") || "0 minutes";
 }
 
-export default async function AutomationsPage({ searchParams }: { searchParams?: Promise<{ issuesCursor?: string; backupMessage?: string }> } = {}) {
+export default async function AutomationsPage({ searchParams }: { searchParams?: Promise<{ issuesCursor?: string; backupMessage?: string; activityCursor?: string }> } = {}) {
   const session = await requireRole("OWNER", "ADMIN");
-  const cursor = (await searchParams)?.issuesCursor;
+  const query = await searchParams;
+  const cursor = query?.issuesCursor;
   const [health, issueList, backup] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard()]);
   const canPause = session.user.role === "OWNER";
   const keys = canPause ? await listOpsAgentKeys(session.user.id) : [];
@@ -49,6 +51,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
       }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
 
       <AssistantConnections userId={session.user.id} canSeeAll={session.user.role === "OWNER"} />
+      <AssistantActivity userId={session.user.id} canSeeAll={canPause} cursor={query?.activityCursor} />
       <section id="backup-settings" aria-labelledby="backup-settings-heading" className="mb-6 rounded-card border border-line bg-surface p-4">
         <h2 id="backup-settings-heading" className="text-base font-bold text-ink">Backup and recovery</h2>
         <p className="mt-1 text-sm text-ink-soft">

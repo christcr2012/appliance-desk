@@ -302,6 +302,17 @@ async function restore(file: string, target: string): Promise<void> {
           row.revokedReason = "Restored from backup — connect again";
         }
       }
+      if (table === "agentOperation") {
+        const terminal = new Set(["SUCCEEDED", "FAILED", "DENIED", "CANCELLED", "EXPIRED"]);
+        for (const row of data) {
+          if (!terminal.has(String(row.state))) {
+            row.state = "CANCELLED";
+            row.failureCode = "RESTORED";
+            row.leaseToken = null;
+            row.leaseExpiresAt = null;
+          }
+        }
+      }
       // A database backup may contain a parent DATABASE row and later a
       // MEDIA_MANIFEST referencing it. Self-references need parent-first order.
       if (table === "backupArtifact") data.sort((a,b) =>

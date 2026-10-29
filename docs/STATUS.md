@@ -3757,3 +3757,13 @@ findings were answered and resolved; GitHub's exact-source CI and review-gate
 passed. This status note is deliberately kept outside the top-of-file latest
 updates so other lane agents can prepend their new work without creating the
 same merge conflict. Merge and deployed acceptance remain separate from checks.
+
+## October 28 — MCP-5 integration after MCP-4 merged (PR #717)
+
+MCP-4 merged under protected green checks as PR #704, squash `f11608ea`.
+MCP-5 action-journal now integrates the merged diagnostics and current main
+into its feature branch, preserving the approved MCP-5 scopes, preview/owner
+approval, execution journal and readback tools. This integration resolves
+the tool registry and read test alongside newer app routes. Exact-head CI
+and review are required again; no live provider actions or production data
+were changed.

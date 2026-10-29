@@ -3,6 +3,7 @@ export type SystemIssueInput =
   | { kind: "AUTOMATION_FAILED"; ruleKey: string; runId: string; startedAt: Date; errorName: string; errorCode?: string;
       /** MCP-1 typed failure: a FAILURE_CODES key, the step, and the random reference on the server log line. */
       failure?: { code: string; stage: string; correlationId: string } }
+  | { kind: "ASSISTANT_ACTION_UNCERTAIN"; operationId: string }
   | { kind: "BACKUP_RETENTION_ATTENTION" }
   | { kind: "AUTOMATION_STALE"; ruleKey: string; lastSuccessAt: Date | null; dueAt: Date; graceMinutes: number }
   | { kind: "PROVIDER_OPERATION_STUCK"; operationKind: string; count: number; oldestSince: Date }
