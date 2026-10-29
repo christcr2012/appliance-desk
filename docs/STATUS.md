@@ -31,6 +31,22 @@ on the streamed Books pages, with the first failing page varying between runs wh
 books-workspace spec (which waits for the heading) passes on the same page — the test analyzed a
 half-streamed document. A second fix batch riding with this note makes the axe test wait for the
 page heading before analyzing; the axe assertion is unchanged. CI green at the exact head, then auto-merge.
+## October 29 — AR-9 Insights: successor PR (branch ai/vivienne/ar-9-v4, Lane 5)
+
+One PR per the card: Customers › Insights and Equipment › Insights tabs
+(LD-4/CU-3 and the fleet report, rebuilt as kit pages over a new
+OWNER/ADMIN-only insights domain), Money Overview gains rent health,
+goals and under-paying rentals, the Revenue ledger becomes Money › Income
+details, and Growth/Fleet/Revenue/Reports/Dashboard are redirects (AR-10
+retires them later). Additive migration: `Lead.closedAt` (backfilled from
+audit history) plus the two goal-pace settings. PRs #734 and #736 went
+dirty against moved main and were closed with pointers; #740 (branch
+ai/vivienne/ar-9-v3) carried the tree through review and four CI fix
+rounds, then main advanced by MCP-6 and AR-7a (including the Oct 29
+budget-test date fix), so this branch merges current main with the
+identical tree plus all fixes — the successor pattern, same as AR-7a's
+#733 → #744.
+
 
 ## October 28 — MCP-7 monitoring build (in progress)
 
