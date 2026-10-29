@@ -1,0 +1,166 @@
+{
+  "acceptance": [
+    "Old URLs keep working: legacy ?status=NEW|CONTACTED|CONVERTED|LOST and ?view=awaiting-reply / ?view=no-next-task map to stages, ?page= ignored (params tests)",
+    "Leads queue per LEADS spec: stage tabs with counts, filters (owner/source/area/high/appliance/created/quote), follow=today|week stage interplay, five sorts, growing cursor window, built-in views incl. Property managers (pm param)",
+    "leadNextStep pure function: every row of both next-step tables unit-tested, incl. response-days target across a weekend",
+    "Row actions call existing or LD-1 actions only: set follow-up (contacted leads only; a new lead cannot be moved to contacted by scheduling; set+undo leaves status and firstContactedAt untouched), assign, log contact (CONTACTED sets firstContactedAt once; ATTEMPT/NOTE never), mark lost (shared lost-reasons list), convert behind the spec's confirmation",
+    "Bulk actions: per-id transactions, partial failures reported { done, failed[] }, 200-id cap, OWNER/ADMIN only (integration tests)",
+    "Board view (?layout=board): drag New to Contacted uses the status action, any column to Lost opens Mark lost, Quote sent and Won refuse drops with the spec's hint text; every move also exists in the card menu (keyboard alternative)",
+    "Lead record per spec: RecordHeader, stage Stepper (Lost as a red pill), next-step card, duplicate/merged/customer-match banners, tabs Activity / What they want / Quotes / Tasks; quote list uses the word Quote and plain status words, never Estimate #n or stored codes",
+    "Quote for an existing lead (spec 3.6): createEstimateDraftForLead refuses CONVERTED/LOST/merged with the spec's message, writes the estimate.create audit in the same transaction; createEstimateDraftForNewLead is one transaction (forced estimate failure leaves no lead); /desk/estimates/new?leadId= shows 'Quote for {name}' and prefills the title",
+    "Lead editing (spec 3.7): updateLeadDetails validates like the new-lead form, refuses CONVERTED/merged, recomputes inServiceArea and score (with scoringPolicyVersion), audits lead.details with changed fields only (integration tests)",
+    "CSV export route /desk/leads/export: OWNER/ADMIN, current filtered list, same columns as the table, max 10,000 rows",
+    "Roles unchanged: leads stay OWNER/ADMIN only, filtered at the query boundary",
+    "ci green at the exact head; every review comment read; axe + 5 sizes in the browser spec"
+  ],
+  "baseline": "51c33173aadac3a4a2b8b8e143f043ee20ea5bf9",
+  "card": "docs/pr-cards/AR-4.md",
+  "checks": {
+    "browser": [
+      "e2e/leads.spec.ts"
+    ],
+    "db": [
+      "tests/lead-bulk-integration.test.ts",
+      "tests/lead-contact-log-integration.test.ts",
+      "tests/lead-quote-for-lead-integration.test.ts",
+      "tests/lead-details-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/leads-params.test.ts",
+      "tests/lead-next-step.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "AR-4B",
+  "invariants": [
+    "No lead rule changes beyond LD-1: every button calls an existing (or LD-1) server action; new actions are thin wrappers with the domain function's own locking and actor checks",
+    "Roles OWNER/ADMIN only, filtered at the query/DTO boundary \u2014 staff gain nothing",
+    "Writes lock the row first and re-check the actor (assertActiveTeamActor); bulk writes run each id in its own transaction",
+    "Money is integer cents; times stored UTC, shown America/Denver; follow-up 'today' means on or before today's Denver date",
+    "Migrations additive only; none expected \u2014 LD-1 already shipped stage/owner/firstContactedAt/contact keys/scoring version fields"
+  ],
+  "next": "AR-4c \u2014 Customers list (CUSTOMERS.md) on the CU-1 engine.",
+  "outcome": "The Leads queue and lead record are rebuilt to the LEADS screen spec on the LD-1 engine: a cursor-paged queue at /desk/leads with stage tabs, the full filter set, built-in views, per-lead next-step lines, row sheets (follow-up, assign, log contact, mark lost, convert), multi-select bulk actions with per-id reporting, a desktop board view, and a CSV export of the filtered list; the record at /desk/leads/[id] gains a RecordHeader, stage Stepper, next-step card, duplicate/merge banners and Activity / What they want / Quotes / Tasks tabs. Two missing capabilities are built: quoting an existing lead (createEstimateDraftForLead, and createEstimateDraftForNewLead becomes one transaction) and editing what a lead wants (updateLeadDetails with score/area recompute and a changed-fields-only audit).",
+  "parent": "AR-4",
+  "proposedFiles": [
+    "docs/STATUS.md",
+    "docs/pr-cards/AR-4.md",
+    "docs/pr-cards/execution/AR-4B.json",
+    "docs/pr-cards/work-index.json",
+    "e2e/leads.spec.ts",
+    "e2e/shards.json",
+    "src/app/desk/estimates/actions.ts",
+    "src/app/desk/estimates/new/page.tsx",
+    "src/app/desk/leads/[id]/lead-actions-panel.tsx",
+    "src/app/desk/leads/[id]/lead-record-client.tsx",
+    "src/app/desk/leads/[id]/page.tsx",
+    "src/app/desk/leads/actions.ts",
+    "src/app/desk/leads/export/route.ts",
+    "src/app/desk/leads/leads-queue-client.tsx",
+    "src/app/desk/leads/page.tsx",
+    "src/app/desk/leads/params.ts",
+    "src/domains/estimates/index-base.ts",
+    "src/domains/leads/index.ts",
+    "src/domains/leads/lost-reasons.ts",
+    "src/domains/leads/next-step.ts",
+    "src/lib/glossary.ts",
+    "tests/lead-bulk-integration.test.ts",
+    "tests/lead-contact-log-integration.test.ts",
+    "tests/lead-details-integration.test.ts",
+    "tests/lead-next-step.test.ts",
+    "tests/lead-quote-for-lead-integration.test.ts",
+    "tests/leads-params.test.ts"
+  ],
+  "references": [
+    {
+      "anchor": "Built in **AR-4b**",
+      "path": "docs/build-specs/screens/LEADS.md",
+      "purpose": "The AR-4b spec: fixes, queue params/layout, row actions, bulk and board rules, record structure, next-step tables, quote-for-a-lead (3.6), lead editing (3.7), exact words, named tests"
+    },
+    {
+      "anchor": "AR-4b \u2014 Leads",
+      "path": "docs/pr-cards/AR-4.md",
+      "purpose": "The parent card's split and hand-offs: AR-4b is Leads, after LD-1"
+    },
+    {
+      "anchor": "export type LeadQueueParams = {",
+      "path": "src/domains/leads/queue.ts",
+      "purpose": "LD-1 queue query: LeadQueueParams and the row shape the queue page renders"
+    },
+    {
+      "anchor": "export async function setLeadFollowUp(",
+      "path": "src/domains/leads/follow-up.ts",
+      "purpose": "LD-1 follow-up write the Set follow-up sheet calls (locks the row, date-only, never moves stage)"
+    },
+    {
+      "anchor": "export async function mergeLeads(",
+      "path": "src/domains/leads/merge.ts",
+      "purpose": "LD-1 merge the Compare and merge sheet calls"
+    },
+    {
+      "anchor": "export async function reassignLead(",
+      "path": "src/domains/leads/assignment.ts",
+      "purpose": "LD-1 reassignment and the assignable-owners list for the Assign sheet and owner filter"
+    }
+  ],
+  "version": 1,
+  "risk": "Permissions and customer-data adjacent: leads hold contact details and convert into customer accounts. The conservative direction is structural: leads stay OWNER/ADMIN only, every write runs through an existing or LD-1 domain function with its own row lock and actor check, bulk actions isolate each lead in its own transaction and report partial failures instead of hiding them, and the two new capabilities (quote-for-a-lead, lead editing) refuse closed or merged leads. No migration is expected; no lead rule changes beyond LD-1.",
+  "sequence": [
+    "S1 params + leadNextStep + lost-reasons move + glossary lead-score",
+    "S2 queue page (tabs/filters/views/cursor) + export route + queue client (sheets, bulk, board, side panel)",
+    "S3 thin actions: setLeadFollowUpAction, reassignLeadAction, logLeadContactAction, bulkLeadAction",
+    "S4 lead record page (header/stepper/next-step/banners/tabs) + merge sheet",
+    "S5 quote-for-an-existing-lead (domain + estimates/new leadId + one-transaction new-lead flow) + updateLeadDetails",
+    "S6 tests (unit/db/browser) + docs + STATUS"
+  ],
+  "slices": [
+    {
+      "id": "AR-4B-S1",
+      "title": "Params, next-step and shared words: leads params.ts (legacy mapping, follow interplay, pm), pure leadNextStep, lost-reasons moved to the leads domain, glossary lead-score",
+      "acceptance": [
+        "tests/leads-params.test.ts green: defaults, legacy status/view mapping, follow without stage",
+        "tests/lead-next-step.test.ts green: every table row, weekend response target"
+      ]
+    },
+    {
+      "id": "AR-4B-S2",
+      "title": "Queue page on the kit: stage tabs with counts, toolbar filters, built-in views, phone cards, desktop table + SidePanel, bulk bar, board view, CSV export route",
+      "acceptance": [
+        "Queue reads go through LD-1 getLeadQueue with parsed params; counts respect follow",
+        "Export returns the filtered list as CSV, OWNER/ADMIN, 10,000-row cap"
+      ]
+    },
+    {
+      "id": "AR-4B-S3",
+      "title": "Thin lead actions over LD-1: follow-up (contacted only), reassign, log contact, bulk with per-id results",
+      "acceptance": [
+        "tests/lead-contact-log-integration.test.ts green: CONTACTED sets firstContactedAt once, ATTEMPT/NOTE never",
+        "tests/lead-bulk-integration.test.ts green: per-id transactions, partial failure list, 200 cap"
+      ]
+    },
+    {
+      "id": "AR-4B-S4",
+      "title": "Lead record on the kit: header, stage stepper, next-step card, duplicate/merged/customer-match banners with merge sheet, Activity / What they want / Quotes / Tasks tabs",
+      "acceptance": [
+        "Quotes tab says Quote #n with plain status words; the status sentence is gone from the header (spec fixes)"
+      ]
+    },
+    {
+      "id": "AR-4B-S5",
+      "title": "Quote for an existing lead + lead editing: createEstimateDraftForLead, estimates/new ?leadId=, one-transaction createEstimateDraftForNewLead, updateLeadDetails",
+      "acceptance": [
+        "tests/lead-quote-for-lead-integration.test.ts green: refusals, audit row, rollback leaves no lead",
+        "tests/lead-details-integration.test.ts green: validation, changed-fields audit, score/area recompute, closed refused"
+      ]
+    },
+    {
+      "id": "AR-4B-S6",
+      "title": "Browser spec + docs: leads.spec (tabs, Call/Email, follow-up undo, mark lost, convert, merge, board + keyboard, axe + 5 sizes); STATUS + card progress",
+      "acceptance": [
+        "e2e/leads.spec.ts registered in e2e/shards.json and green in CI",
+        "STATUS top entry names the PR; AR-4 card progress updated"
+      ]
+    }
+  ]
+}

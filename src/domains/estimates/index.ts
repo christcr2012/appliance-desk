@@ -13,6 +13,7 @@ export type {
 } from "./index-base";
 export {
   createEstimateDraft,
+  createEstimateDraftForLead,
   createEstimateDraftForNewLead,
   addEstimateLineItem,
   removeEstimateLineItem,
