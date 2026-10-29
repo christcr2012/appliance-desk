@@ -15,11 +15,13 @@ test("draft and reserved line survive refresh with discounted pricing and one ch
 }, info) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 360, height: 900 });
-  await page.goto("/desk/customers");
-  const customerRow = page
-    .locator("main tr:visible, main li:visible")
-    .filter({ hasText: process.env.TEST_CUSTOMER_EMAIL! })
-    .first();
+  // CU-1 (AR-4c): the Customers list opens on the Active segment and its rows
+  // no longer print the customer's email, so find the CI customer through the
+  // list's own search across all segments (the search matches email).
+  await page.goto(
+    `/desk/customers?segment=all&q=${encodeURIComponent(process.env.TEST_CUSTOMER_EMAIL!)}`,
+  );
+  const customerRow = page.locator("main tr:visible, main li:visible").first();
   await expect(customerRow).toBeVisible();
   await customerRow.getByRole("link").first().click();
   // AR-0b: on the customer record, "New rental" is in the ⋯ menu at the top.
