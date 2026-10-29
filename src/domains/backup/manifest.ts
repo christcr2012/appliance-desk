@@ -260,6 +260,7 @@ export const BACKUP_MODEL_POLICY = {
   // MCP-10a: app feedback reports, their conversation, screenshots (file records) and history are business records.
   FeedbackReport: "feedbackReport",
   FeedbackEntry: "feedbackEntry",
+  FeedbackCaseLink: "feedbackCaseLink",
   FeedbackAttachment: "feedbackAttachment",
   FeedbackEvent: "feedbackEvent",
   // BILL-1: "the bank is confirming a payment" flags. Business state (a bill shows "Being confirmed" and gets no late fee while one is open), restored after bills and agreements.

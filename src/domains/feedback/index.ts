@@ -20,7 +20,7 @@ import {
 // improvement and follow their own reports; only the owner and admins read everyone's reports and answer them.
 // Every function re-reads the signed-in person. STAFF and CUSTOMER only ever reach their OWN reports: every reporter
 // query filters on reporterUserId = the signed-in person, and "not yours" looks exactly like "not found".
-// No AI or ops tool reads this module (tests/feedback-no-ai.test.ts); every report is HUMAN_ONLY.
+// New reports are HUMAN_ONLY; only the reporter may opt into the separately scoped MCP-11 feedback bridge.
 
 export { FeedbackError } from "./rules";
 
@@ -261,11 +261,38 @@ export async function listMyFeedback(cursor?: string | null): Promise<Page<MyFee
   };
 }
 
+/**
+ * Reporter alone controls whether assistants may read this report.
+ * Every consent change uses the same owner-only report lock as other reporter
+ * writes, so a concurrent withdrawal and version change cannot be lost.
+ */
+export async function setFeedbackAiReview(id: string, expectedVersion: number, allowed: boolean): Promise<void> {
+  const actor = await reporterActor();
+  if (typeof allowed !== "boolean") throw new FeedbackError("Choose whether to allow assistant review.");
+  await prisma.$transaction(async tx => {
+    await lockReporter(tx, actor.id);
+    const report = await lockReport(tx, id, actor.id);
+    checkVersion(report, expectedVersion);
+    const previous = await tx.feedbackReport.findUniqueOrThrow({
+      where: { id }, select: { aiReview: true },
+    });
+    const next = allowed ? "ALLOWED" : previous.aiReview === "HUMAN_ONLY" ? "HUMAN_ONLY" : "WITHDRAWN";
+    if (previous.aiReview === next) return;
+    await tx.feedbackReport.update({
+      where: { id }, data: { aiReview: next, version: { increment: 1 } },
+    });
+    await tx.feedbackEvent.create({ data: {
+      reportId: id, actorUserId: actor.id, action: "AI_PERMISSION_CHANGED",
+      reason: previous.aiReview + "->" + next,
+    } });
+  });
+}
+
 export type ConversationEntry = { id: string; who: string; mine: boolean; body: string; at: Date };
 export type MyFeedbackDetail = {
   id: string; number: number; version: number; kind: "BUG" | "IMPROVEMENT"; title: string; description: string;
   expected: string | null; steps: string | null; state: FeedbackStateName; createdAt: Date; updatedAt: Date;
-  closedAt: Date | null; entries: ConversationEntry[]; attachments: { id: string; width: number; height: number }[];
+  closedAt: Date | null; aiReview: "HUMAN_ONLY" | "ALLOWED" | "WITHDRAWN"; entries: ConversationEntry[]; attachments: { id: string; width: number; height: number }[];
   canReopen: boolean; canAddPictures: boolean; picturesLeft: number;
 };
 
@@ -281,12 +308,12 @@ export async function getMyFeedback(id: string): Promise<MyFeedbackDetail> {
     where: { id, reporterUserId: actor.id, contentRemovedAt: null },
     select: {
       id: true, number: true, version: true, kind: true, title: true, description: true, expected: true, steps: true,
-      state: true, createdAt: true, updatedAt: true, closedAt: true,
+      state: true, aiReview: true, createdAt: true, updatedAt: true, closedAt: true,
       // Only what the reporter may see: REPORTER entries (never internal notes), live pictures.
       entries: {
         where: { visibility: "REPORTER" },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        select: { id: true, body: true, createdAt: true, authorUserId: true, author: { select: { name: true } } },
+        select: { id: true, body: true, createdAt: true, authorUserId: true, authorKind: true, author: { select: { name: true } } },
       },
       attachments: { where: { deletedAt: null }, orderBy: { createdAt: "asc" }, select: { id: true, width: true, height: true } },
     },
@@ -297,11 +324,11 @@ export async function getMyFeedback(id: string): Promise<MyFeedbackDetail> {
   return {
     id: report.id, number: report.number, version: report.version, kind: report.kind, title: report.title,
     description: report.description, expected: report.expected, steps: report.steps, state: report.state,
-    createdAt: report.createdAt, updatedAt: report.updatedAt, closedAt: report.closedAt,
+    createdAt: report.createdAt, updatedAt: report.updatedAt, closedAt: report.closedAt, aiReview: report.aiReview,
     entries: report.entries.map((entry) => ({
       id: entry.id,
       mine: entry.authorUserId === actor.id,
-      who: entry.authorUserId === actor.id ? "You" : `${firstName(entry.author.name)} at ${BUSINESS_NAME}`,
+      who: entry.authorUserId === actor.id ? "You" : entry.authorKind === "ASSISTANT" ? "Chris’s AI assistant" : `${firstName(entry.author.name)} at ${BUSINESS_NAME}`,
       body: entry.body,
       at: entry.createdAt,
     })),

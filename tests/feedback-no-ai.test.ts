@@ -2,9 +2,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// MCP-10a: no AI or ops route can reach app feedback content in this unit. Reports are people-only (HUMAN_ONLY);
-// the AI opt-in and agent tools are MCP-11. This is a source check, so a later change that wires feedback into an ops
-// or MCP path fails here until it is reviewed on purpose.
+// MCP-10a never lets generic ops or unrelated MCP tools read customer
+// feedback. MCP-11 introduces exactly one reviewed, scoped MCP bridge, with
+// separate reporter consent. Guard against any second unreviewed data path.
 
 function sourceFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -20,15 +20,21 @@ const FEEDBACK_REFERENCE = /domains\/feedback|feedbackReport|feedbackEntry|feedb
 // A database read of a feedback table, or an import of the feedback domain.
 const FEEDBACK_READ = /domains\/feedback|\.feedback(?:Report|Entry|Attachment|Event)\b/;
 
-describe("app feedback stays out of AI and ops tools", () => {
-  it("no ops or MCP module imports the feedback domain or reads feedback tables", () => {
+describe("app feedback has one reviewed, consent-scoped MCP bridge", () => {
+  it("only the dedicated MCP server bridge may import feedback, and it never reads its database tables directly", () => {
     const offenders = AGENT_AREAS.flatMap(sourceFiles).filter((file) => FEEDBACK_REFERENCE.test(readFileSync(file, "utf8")));
-    expect(offenders).toEqual([]);
+    expect(offenders).toEqual([join("src", "mcp", "server.ts")]);
+    const server = readFileSync(join("src", "mcp", "server.ts"), "utf8");
+    expect(server).toMatch(/listFeedbackForAgent, getFeedbackForAgent/);
+    expect(server).toMatch(/read\("feedback:triage"/);
+    expect(server).not.toMatch(/\.feedback(?:Report|Entry|Attachment|Event)\b/);
+    expect(server).not.toMatch(/feedbackAttachment|attachmentUrl|screenshotUrl/);
   });
 
-  it("no file anywhere that mentions an MCP tool or ops agent key reads feedback content", () => {
+  it("no other MCP or ops agent file opens a feedback content path", () => {
     const offenders = sourceFiles("src")
       .filter((file) => !file.includes(join("domains", "feedback")))
+      .filter((file) => file !== join("src", "mcp", "server.ts"))
       .filter((file) => {
         const text = readFileSync(file, "utf8");
         return /opsAgentKey|OpsAgentKey|McpServer|registerTool\(/.test(text) && FEEDBACK_READ.test(text);
@@ -36,11 +42,19 @@ describe("app feedback stays out of AI and ops tools", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("every report is stored HUMAN_ONLY and nothing in the app sets another value", () => {
+  it("reporters alone can opt in, and report text requires a separate live content grant", () => {
     const domain = readFileSync("src/domains/feedback/index.ts", "utf8");
     expect(domain).toMatch(/aiReview: "HUMAN_ONLY"/);
-    const writers = sourceFiles("src").filter((file) => /aiReview\s*:\s*"(ALLOWED|WITHDRAWN)"/.test(readFileSync(file, "utf8")));
-    expect(writers).toEqual([]);
+    expect(domain).toMatch(/export async function setFeedbackAiReview/);
+    expect(domain).toMatch(/const actor = await reporterActor\(\)/);
+    expect(domain).toMatch(/await lockReport\(tx, id, actor\.id\)/);
+    expect(domain).toMatch(/previous\.aiReview === "HUMAN_ONLY" \? "HUMAN_ONLY" : "WITHDRAWN"/);
+    expect(domain).toMatch(/action: "AI_PERMISSION_CHANGED"/);
+    const bridge = readFileSync("src/domains/feedback/agent.ts", "utf8");
+    expect(bridge).toMatch(/ctx\.scopes\.includes\("feedback:content"\)/);
+    expect(bridge).toMatch(/row\.aiReview === "ALLOWED"/);
+    expect(bridge).toMatch(/row\.contentRemovedAt === null/);
+    expect(bridge).not.toMatch(/feedbackAttachment|attachmentUrl|screenshotUrl/);
     const migration = readFileSync("prisma/migrations/20261027020000_feedback/migration.sql", "utf8");
     expect(migration).toMatch(/"aiReview" "FeedbackAiReview" NOT NULL DEFAULT 'HUMAN_ONLY'/);
   });

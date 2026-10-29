@@ -1,3 +1,7 @@
+## October 29 — MCP-11 assistant feedback, PR #748 (Lane 2)
+
+Consent-scoped feedback assistant reads, reporter withdrawal, journaled assistant replies/state changes and verified repair-case linkage are implemented on #748. Previous 0fbdba4 exact-head `ci` passed and 24 focused disposable-PostgreSQL tests were recorded as passing; after merging latest main, local lint and four no-AI privacy tests passed. Local TypeScript checks ran out of memory in the 4 GiB sandbox, so the new merged head requires GitHub CI. Codex review quota is exhausted; self-review and the required `review-gate` remain pending. Hosted connection and owner UI acceptance are separately pending. No live messaging.
+
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 
 AR-10 is split by risk: AR-10b (the §5 permissions audit) first, AR-10a (the redesign sweep)
