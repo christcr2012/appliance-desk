@@ -71,6 +71,31 @@ const SORTS = [
 
 const SHEETS: SheetKind[] = ["followup", "assign", "log", "lost", "convert"];
 
+function ContactButtons({ row, step }: { row: LeadRow; step: { tone: string } }) {
+  return (
+    <span className="mt-1 flex gap-2">
+      <a
+        href={`tel:${row.phone}`}
+        className={`inline-flex min-h-10 items-center rounded-field px-3 text-sm font-bold ${
+          row.stage === "new" || step.tone === "attention"
+            ? "bg-primary text-on-primary"
+            : "bg-tint text-ink"
+        }`}
+      >
+        Call
+      </a>
+      {row.email ? (
+        <a
+          href={`mailto:${row.email}`}
+          className="inline-flex min-h-10 items-center rounded-field bg-tint px-3 text-sm font-bold text-ink"
+        >
+          Email
+        </a>
+      ) : null}
+    </span>
+  );
+}
+
 export default async function LeadsPage({
   searchParams,
 }: {
@@ -245,7 +270,16 @@ export default async function LeadsPage({
   const nextStep = (row: LeadRow) => leadNextStep({ ...row, responseDays }, now);
 
   const columns: Column<LeadRow>[] = [
-    { key: "name", header: "Name", cell: (row) => row.contactName },
+    {
+      key: "name",
+      header: "Name",
+      cell: (row) => (
+        <span className="flex flex-col items-start gap-1">
+          <span>{row.contactName}</span>
+          <ContactButtons row={row} step={nextStep(row)} />
+        </span>
+      ),
+    },
     {
       key: "wants",
       header: "Wants",
@@ -440,26 +474,7 @@ export default async function LeadsPage({
                         )}
                       </span>
                     </span>
-                    <span className="mt-1 flex gap-2">
-                      <a
-                        href={`tel:${row.phone}`}
-                        className={`inline-flex min-h-10 items-center rounded-field px-3 text-sm font-bold ${
-                          row.stage === "new" || step.tone === "attention"
-                            ? "bg-primary text-on-primary"
-                            : "bg-tint text-ink"
-                        }`}
-                      >
-                        Call
-                      </a>
-                      {row.email ? (
-                        <a
-                          href={`mailto:${row.email}`}
-                          className="inline-flex min-h-10 items-center rounded-field bg-tint px-3 text-sm font-bold text-ink"
-                        >
-                          Email
-                        </a>
-                      ) : null}
-                    </span>
+                    <ContactButtons row={row} step={step} />
                   </div>
                 );
               }}

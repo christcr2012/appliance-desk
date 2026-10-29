@@ -70,7 +70,7 @@ for (const width of [360, 768, 1440])
       }
       await page.goto("/desk/leads?view=no-next-task");
       await expect(
-        page.getByRole("heading", { name: "Leads", exact: true }),
+        page.getByRole("heading", { name: "Customers", exact: true }),
       ).toBeVisible();
       expect(
         (
