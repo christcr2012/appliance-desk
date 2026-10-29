@@ -7,6 +7,7 @@ import {
  enrollBookAsset,postBookDepreciation,retireBookAsset,setBookAssetPolicy,
  setBookDepreciationDefaults,addBookTaxEvidence,
 } from "@/domains/books/fixed-assets";
+import { runBooksAutopilot } from "@/domains/books/autopilot";
 
 const str=(f:FormData,key:string)=>String(f.get(key)??"").trim();
 const int=(f:FormData,key:string)=>Number(str(f,key));
@@ -26,6 +27,20 @@ async function finish(label:string,action:()=>Promise<unknown>){
  catch(error){notice=label+": "+(error instanceof Error?error.message:"Unable to change book evidence");}
  revalidatePath("/desk/books/assets");
  redirect("/desk/books/assets?notice="+encodeURIComponent(notice.slice(0,350)));
+}
+// AR-7 (BOOKS-TAXES 1.4): the Equipment page header action — the same bounded books autopilot
+// the nightly job and the overview's Update now run, shaped for the kit OverflowMenu (returns
+// a result instead of redirecting). Owner-only, like the other depreciation controls here.
+export async function recordMissingMonthsAction(): Promise<{ success?: string; error?: string }> {
+ await requireRole("OWNER");
+ try {
+  const counts = await runBooksAutopilot(new Date());
+  revalidatePath("/desk/books/assets");
+  revalidatePath("/desk/books");
+  return { success: `Books updated: ${counts.enrolled} enrolled, ${counts.depreciated} depreciation postings, ${counts.posted} entries posted.` };
+ } catch (error) {
+  return { error: error instanceof Error ? error.message.slice(0, 300) : "Unable to record the missing months." };
+ }
 }
 export async function enrollBookAssetAction(form:FormData){
  const user=(await requireRole("OWNER")).user;
