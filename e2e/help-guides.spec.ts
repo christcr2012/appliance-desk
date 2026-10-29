@@ -15,6 +15,9 @@ test("How do I has searchable 3-step answers, real links, keyboard and accessibl
     await page.setViewportSize({ width, height: width >= 820 ? 800 : 844 });
     await page.goto("/desk/help");
     await expect(page.getByRole("heading", { level: 1, name: "How do I…?" })).toBeVisible();
+    // Next.js streams page metadata after the visible content. Assert the
+    // actual accessible document title before axe reads the settled page.
+    await expect(page).toHaveTitle(/How do I/);
     const search = page.getByRole("searchbox", { name: "Search questions" });
     await search.fill("refund");
     const activeList = width < 1024
@@ -33,6 +36,9 @@ test("How do I has searchable 3-step answers, real links, keyboard and accessibl
     await page.keyboard.press("Escape");
     await expect(sheet).not.toBeVisible();
     await expect(question).toBeFocused();
+    // Closing the Sheet changes router state and can stream a fresh <title>.
+    // The accessibility audit must run after this second metadata transition.
+    await expect(page).toHaveTitle(/How do I/);
     const audit = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     expect(audit.violations).toEqual([]);
     if (width === 390 || width === 1280) {

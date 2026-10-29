@@ -15,7 +15,9 @@ for(const width of [360,1280]){
 test("fix-by-hand controls live on For your accountant",async({page})=>{
  await page.goto("/desk/books/accountant");
  await expect(page.getByRole("heading",{name:"Fix a book asset by hand"})).toBeVisible();
- await expect(page.getByRole("button",{name:"Enroll in book assets"})).toBeVisible();
+ // The enroll form (and its button) renders only when a priced, unenrolled appliance
+ // exists; the seeded business has none, so the section explains the automatic flow.
+ await expect(page.getByText("Enrollment and monthly entries are automatic")).toBeVisible();
 });
 test("Books links to management assets without granting staff finance access",async({page,browser})=>{
  await page.goto("/desk/books");

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { SIZES } from "./support/ar0b-fixtures";
+import { businessDateKey } from "../src/lib/business-date";
 
 // AR-2 slice 2: approval requests are decided from Today, in place —
 // the OWNER-only Sheet, always through the confirmation, with the shared
@@ -119,10 +120,14 @@ test("a due task is marked done in place, Undo brings it back, and Done again co
   const note = `Call the landlord about the gate code ${tag}`;
   const owner = await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } });
   const staff = await prisma.user.findFirstOrThrow({ where: { email: "ci-staff@example.test" } });
+  // Task deadlines are date-only UTC labels, compared with the Denver calendar day.
+  // Subtracting 24 hours from an instant can still store today after UTC midnight.
+  const overdueDay = new Date(`${businessDateKey(new Date())}T00:00:00Z`);
+  overdueDay.setUTCDate(overdueDay.getUTCDate() - 1);
   const task = await prisma.staffTask.create({
     data: {
       note,
-      dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      dueDate: overdueDay,
       assigneeUserId: staff.id,
       createdByUserId: owner.id,
     },

@@ -1,5 +1,9 @@
 # Execution cards — just in time
 
+First select your assigned card using the [current execution map](../MASTER-ROADMAP.md#current-execution-map--october-28-2026).
+Use explicit packet IDs (`work start <ID>`, `work read <number> <ID>`, `work plan <ID>`); the global
+`activeExecution` is a legacy fallback, not a lane lock or current assignment. Do not edit it merely to start work.
+
 **Starting a new card?** `npm run bundle:new -- <ID> --subsections A-1,A-2` writes the card and packet skeletons (every placeholder line must be replaced; `npm run bundle:preflight` rejects leftover placeholders). Procedure: [../AGENT-QUICKSTART.md](../AGENT-QUICKSTART.md).
 
 A card defines approved scope, not an automatic separate PR. A card may ship as one PR or as several independently
@@ -88,8 +92,8 @@ Historical slice logs go in `docs/archive/implementation-history/`; do not appen
 another long historical chapter to the active card. Parent acceptance stays open
 until the full workflow is proved. No automatic readiness inference from APPROVED.
 
-Register the packet in `work-index.json`'s `executionPackets` and select it with
-`activeExecution`. Reuse [W-22D12](W-22D12.md) and [its packet](execution/W-22D12.json)
+Register the packet in `work-index.json`'s `executionPackets` and select it explicitly with
+`work start <ID>` in concurrent sessions. Reuse [W-22D12](W-22D12.md) and [its packet](execution/W-22D12.json)
 as a worked example, changing actual contracts rather than copying its financial fixtures.
 The schema is implemented in `scripts/work-packet.mjs` and enforced by `check:work`/CI:
 

@@ -40,3 +40,21 @@ strings; Spanish stays off until the reviewed copy is re-recorded (existing IN-8
 
 ## Progress
 Not started.
+
+## Implementation route (reconciled October 28, 2026)
+
+This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
+only when absent; inspect the final prerequisite exports once before coding.
+
+1. Before the spec’s page conversion, inspect `src/app/account`, its existing isolation tests and dictionary
+   consumers. Make a finite table: page → current loader/action → changed English key → Spanish key → test.
+   Reuse kit exports and current customer-scoped queries; do not widen desk permissions to share a component.
+2. Implement the totals read helper and translated kit-word adapter first. Seed customer A and B with separate
+   rentals/bills/properties: every page, action and download must refuse the other customer’s IDs without writes.
+3. Convert the common shell, then Home/Rentals/Repairs/Bills/Properties/Account in the card’s specified single
+   coherent outcome. Buttons call the existing signing, renewal, ending, repair and Pay now paths.
+4. Use the specified priority fixtures for Needs you (late bill before unsigned rental before due-soon bill),
+   repair/pickup query links and sheet close/back navigation. Every new displayed key has an English/Spanish
+   value; no amounts are added in JSX. Translator review remains separate from development/merge.
+5. Extend current isolation/translation tests and run the spec’s portal browser journeys at its five widths,
+   light/dark, keyboard and axe. Keep Spanish activation under the existing review rule.
