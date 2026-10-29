@@ -12,7 +12,12 @@ this note scopes both Books navigation assertions (Reports, Equipment value) to 
 Local proof: preflight checks, fresh typecheck and lint green; related tests 554/555 (the one
 failure, scenario-16 serialization under parallel load, passes alone on a disposable database);
 the local browser build is blocked by the repo's resource guard after an out-of-memory kill on
-this 8 GB box, so CI at the new head is the browser proof. CI green at the exact head, then auto-merge.
+this 8 GB box, so CI at the new head is the browser proof. That run cleared both navigation
+specs; one failure remained, in this card's own axe test (ar7-books-taxes): page-has-heading-one
+on the streamed Books pages, with the first failing page varying between runs while the sibling
+books-workspace spec (which waits for the heading) passes on the same page — the test analyzed a
+half-streamed document. A second fix batch riding with this note makes the axe test wait for the
+page heading before analyzing; the axe assertion is unchanged. CI green at the exact head, then auto-merge.
 
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 

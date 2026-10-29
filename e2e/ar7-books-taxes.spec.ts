@@ -75,6 +75,13 @@ test.describe("Books on the kit (AR-7a)", () => {
       await page.setViewportSize({ width, height: 900 });
       for (const path of ["/desk/books", "/desk/books/assets", "/desk/books/accountant"]) {
         await page.goto(path, { waitUntil: "load" });
+        // The pages stream: "load" can fire while the shell is in and the page's own
+        // heading has not swapped in yet, and axe then reports page-has-heading-one on a
+        // half-rendered document (CI runs 40812280709 / 40826019685: the first failing
+        // page varied between runs, while books-workspace.spec.ts, which waits for the
+        // "For your accountant" heading, passes on the same page). Wait for the real
+        // heading before analyzing; the axe assertion itself is unchanged.
+        await expect(page.locator("h1").first()).toBeVisible();
         expect((await new AxeBuilder({ page }).analyze()).violations, `${path} at ${width}`).toEqual([]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
       }
