@@ -82,6 +82,19 @@ it.skipIf(!process.env.CI)(
         "Refund kept as account credit (no cash returned)",
       );
       expect(refunds.toCreditCents).toBeGreaterThanOrEqual(300);
+
+      // The Income page's Toolbar search: by customer email fragment, the
+      // counts and totals narrow to the matching customer only.
+      const searched = await getRevenueRecords("payments", true, "1", asOf, `revenue-${run}@`);
+      expect(searched.meta.totalCount).toBe(2);
+      expect(searched.totalCents).toBe(7000);
+      expect(searched.rows.every((r) => r.customerId === customerId)).toBe(true);
+      const searchedRefunds = await getRevenueRecords("refunds", true, "1", asOf, `revenue-${run}@`);
+      expect(searchedRefunds.meta.totalCount).toBe(2);
+      expect(searchedRefunds.toCreditCents).toBe(300);
+      const noMatch = await getRevenueRecords("payments", true, "1", asOf, `nobody-${run}@`);
+      expect(noMatch.meta.totalCount).toBe(0);
+      expect(noMatch.rows).toEqual([]);
     } finally {
       if (customerId) {
         await prisma.customerCredit.deleteMany({ where: { customerId } });
