@@ -1,17 +1,26 @@
-## October 29 — AR-4c Customers list (CU-1): building (Lane 5)
+## October 29 — AR-4c Customers list (CU-1): in review (successor PR, Lane 5)
 
-AR-4c is underway on branch ai/vivienne/ar-4c (packet docs/pr-cards/execution/AR-4C.json,
-baseline c9924f06): the CU-1 engine — Customer.phoneDigits, the customer_list_v1 live view,
-pure segments with matching SQL fragments, a role-shaped cursor-paged list query — and the
-KIT 5.1 Customers screen at the same /desk/customers URL. Drift check passed against current
-main: every file, symbol and enum the CUSTOMERS spec names exists; the migration stamp
-20261026040000 is free and pg_trgm is already in from LD-1. The telecom-settings ERR_ABORTED
-fix (PR #754) is merged ahead of this branch point. AR-4d stays queued behind 4c.
-S1–S4 are committed (schema/view/keys; segments/list/export with the tab = rule proof on
-30 fixtures; the screen with tabs, pills, side panel and both exports). One spec drift was
-found and recorded in the packet: getCustomers() keeps no role gate — five staff-used
-picker pages call it on current main, so the spec's proposed requireRole would have broken
-them; the export route enforces OWNER/ADMIN itself. S5 (capacity + browser proof) is next.
+AR-4c is built and in review as the successor to PR #759 (closed as superseded). Same card,
+same tree: the work was carried onto current main through the native GitHub workspace pilot
+(Lane 5 is the pilot lane) — branch ai/vivienne/ar-4c-ws, cherry-picked with real ancestry;
+the only conflict was this file, resolved as a union. What it delivers: the CU-1 engine
+(phoneDigits search key + trigram/composite indexes + the customer_list_v1 view), the
+segment/list/export domain (KIT 5.1 growing-window cursor, staff money shaping at the query
+boundary), and the rewritten Customers screen (StatusTabs segments, filters, saved views,
+row SidePanel, CSV export incl. bulk export of a selection). Defects the capacity-baselines
+job and the local perf run exposed, fixed in this PR: (1) the perf seed's raw timestamp
+literal failed to bind (P2010/22007) — the seed now uses Prisma.raw and drops a nonexistent
+RentalLine.updatedAt column, so the suite runs end to end; (2) a mixed text+digits search
+query matched nothing — the phone-digits branch now adds to the text branches instead of
+replacing them; (3) the list hydrates its per-row detail (next-visit duration, past-due sum,
+oldest open bill) only for the rows in the shown window (attention sort 2,181 → 1,477 ms
+locally). NAMED FOLLOW-UP (not hidden): on this VM the capacity suite's 150 ms budget is
+still missed — attention 1,477 ms, segment counts 779 ms, name search 1,276 ms at 20,000
+customers — because every call materializes the full lateral view before filtering. The
+perf workflow's verdict on this head is the environment-true number; if it confirms the
+miss, the fix is a query redesign that drives list/count/search from the base tables with
+pre-aggregated joins instead of the per-row lateral view. Remaining: CI, review, merge;
+AR-4d (Quotes and Messages) is next on this lane.
 
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 
@@ -81,6 +90,22 @@ registry and glossary overlaps the same way later on October 29; #750 still comp
 current main and #750 is closed unmerged with the reason recorded. The one remaining blocker
 is not in this PR: the telecom-settings browser failure in PR-triggered CI, which Lane 5 is
 diagnosing by the owner's decision.
+
+## October 29 — AR-4b Leads built (PR #760; #752/#755/#756/#758 closed unmerged along the way — the pull_request CI outage, then snapshot-branch merge conflicts); AR-8 merged
+
+AR-8 (Settings rebuild) is MERGED via PR #743 (squash 7a691f9d; successor chain #724 → #726 → #732 →
+#739 → #743). This PR builds AR-4b (Leads) on branch `ai/vivienne/ar-4b-leads` from the execution
+packet Lane 5 prepared (AR-4B.json, cherry-picked; the work-index registration conflict was resolved
+keeping both sides' entries): the `/desk/leads` queue on the kit (stage tabs with counts, filters,
+five sorts, built-in views, cursor Load more), row sheets (follow-up with undo, assign, log a
+contact, mark lost, convert), a bulk bar (assign / follow-up / lost / export selected), a board view
+with drag and menu moves, CSV export of the filtered list, the lead record on the kit (stepper,
+next-step card, duplicate/merge, customer-match and merged banners, Activity / What they want /
+Quotes / Tasks tabs), quote-for-an-existing-lead (`/desk/estimates/new?leadId=`, and the new-lead
+quote flow is now one transaction), and lead editing with a changed-fields-only audit row. This PR
+also carries AR-8's paperwork close-out: the merged wording below and the owner's vault-successor
+answer filed as DQ-CONT-SUCCESSOR in docs/OWNER-INPUTS.md. Next in Lane 6's queue: AR-4c
+(Customers list), then AR-13 notifications.
 
 ## October 29 — AR-7a Books on the kit: PR #744 open, successor of #733 (Lane 4)
 
@@ -229,7 +254,7 @@ tests/approval-actions.test.ts pins the contract (domain spies, both revalidatio
 inline vs redirect). Slice 2 adds the OWNER-only approvals Sheet on Today; slice 3
 adds optimistic task completion with Undo.
 
-## October 28 — AR-8 Settings rebuild: in review (successor PR #739 of #732, itself successor of #726/#724)
+## October 28 — AR-8 Settings rebuild: MERGED 2026-10-29 via PR #743 (successor of #739/#732/#726/#724)
 
 Fix round on #739 after its first CI run: two settings-frame defects the browser suite caught — the
 section navigation lost the old page's "Settings sections" landmark (restored), and the Spanish wording

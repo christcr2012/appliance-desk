@@ -5,6 +5,7 @@ vi.mock("@/lib/session", () => ({
 }));
 
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   getCustomerList,
@@ -24,36 +25,36 @@ describe.skipIf(!PERF_ENABLED)("CU-1 20,000-customer list capacity (isolated CI 
   const now = new Date();
 
   beforeAll(async () => {
-    const base = `TIMESTAMP '2026-01-01 00:00:00 UTC'`;
+    const base = Prisma.raw("TIMESTAMP '2026-01-01 00:00:00 UTC'");
     await prisma.$executeRaw`
       INSERT INTO "User" ("id", "name", "email", "role", "createdAt", "updatedAt")
       SELECT ${prefix} || 'u' || g, 'Perf ' || ${tag} || ' ' || g,
-        ${prefix} || g || '@example.test', 'CUSTOMER', ${base}::timestamp + (g || ' minutes')::interval,
-        ${base}::timestamp + (g || ' minutes')::interval
+        ${prefix} || g || '@example.test', 'CUSTOMER', ${base} + (g || ' minutes')::interval,
+        ${base} + (g || ' minutes')::interval
       FROM generate_series(1, ${CUSTOMERS}) g`;
     await prisma.$executeRaw`
       INSERT INTO "Customer" ("id", "userId", "referralCode", "phone", "phoneDigits", "createdAt", "updatedAt")
       SELECT ${prefix} || 'c' || g, ${prefix} || 'u' || g, ${prefix} || 'ref' || g,
         '970555' || lpad(g::text, 4, '0'), '970555' || lpad(g::text, 4, '0'),
-        ${base}::timestamp + (g || ' minutes')::interval, ${base}::timestamp + (g || ' minutes')::interval
+        ${base} + (g || ' minutes')::interval, ${base} + (g || ' minutes')::interval
       FROM generate_series(1, ${CUSTOMERS}) g`;
     await prisma.$executeRaw`
       INSERT INTO "ServiceAddress" ("id", "customerId", "line1", "city", "zip", "createdAt", "updatedAt")
       SELECT ${prefix} || 'a' || g || '-' || n, ${prefix} || 'c' || g,
         g || ' Perf Street', CASE WHEN g % 5 = 0 THEN 'Windsor' ELSE 'Greeley' END, '80631',
-        ${base}::timestamp, ${base}::timestamp
+        ${base}, ${base}
       FROM generate_series(1, ${CUSTOMERS}) g, generate_series(1, 3) n`;
     await prisma.$executeRaw`
       INSERT INTO "RentalAgreement" ("id", "customerId", "serviceAddressId", "status", "firstDeliveredOn", "createdAt", "updatedAt")
       SELECT ${prefix} || 'r' || g || '-' || n, ${prefix} || 'c' || g, ${prefix} || 'a' || g || '-1',
         CASE WHEN n = 2 THEN 'ENDED' WHEN g % 7 = 0 THEN 'SCHEDULED' ELSE 'ACTIVE' END::"RentalAgreementStatus",
-        ${base}::timestamp, ${base}::timestamp, ${base}::timestamp
+        ${base}, ${base}, ${base}
       FROM generate_series(1, ${CUSTOMERS}) g, generate_series(1, 2) n
       WHERE n = 1 OR g <= 10000`;
     await prisma.$executeRaw`
-      INSERT INTO "RentalLine" ("id", "agreementId", "label", "monthlyPriceCents", "createdAt", "updatedAt")
+      INSERT INTO "RentalLine" ("id", "agreementId", "label", "monthlyPriceCents", "createdAt")
       SELECT ${prefix} || 'l' || g || '-' || n, ${prefix} || 'r' || g || '-' || n,
-        'Washer', 6000 + (g % 5) * 500, ${base}::timestamp, ${base}::timestamp
+        'Washer', 6000 + (g % 5) * 500, ${base}
       FROM generate_series(1, ${CUSTOMERS}) g, generate_series(1, 2) n
       WHERE n = 1 OR g <= 10000`;
     await prisma.$executeRaw`
@@ -61,14 +62,14 @@ describe.skipIf(!PERF_ENABLED)("CU-1 20,000-customer list capacity (isolated CI 
       SELECT ${prefix} || 'i' || g || '-' || n, ${prefix} || 'c' || g,
         CASE WHEN n <= 4 THEN 'OPEN' WHEN n = 5 THEN 'DELINQUENT' ELSE 'PAID' END::"InvoiceStatus",
         12000, CASE WHEN n = 6 THEN 12000 ELSE 2000 END,
-        DATE '2026-10-01' + (g % 40), ${base}::timestamp, ${base}::timestamp
+        DATE '2026-10-01' + (g % 40), ${base}, ${base}
       FROM generate_series(1, ${CUSTOMERS}) g, generate_series(1, 6) n`;
     await prisma.$executeRaw`
       INSERT INTO "Job" ("id", "customerId", "type", "status", "scheduledAt", "createdAt", "updatedAt")
       SELECT ${prefix} || 'j' || g || '-' || n, ${prefix} || 'c' || g,
         CASE WHEN n = 1 THEN 'DELIVERY' ELSE 'REMOVAL' END::"JobType", 'SCHEDULED',
         TIMESTAMP '2026-11-05 15:00:00 UTC' + (g || ' minutes')::interval,
-        ${base}::timestamp, ${base}::timestamp
+        ${base}, ${base}
       FROM generate_series(1, ${CUSTOMERS}) g, generate_series(1, 2) n`;
     expect(await prisma.customer.count({ where: { id: { startsWith: prefix } } })).toBe(CUSTOMERS);
   }, 300_000);
