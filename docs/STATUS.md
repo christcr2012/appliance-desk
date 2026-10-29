@@ -1,3 +1,15 @@
+## October 29 — MCP-11 merged, MCP-7b delegated monitoring implementation under test (Lane 2)
+
+MCP-11 feedback PR #748 was merged after exact-head CI and the normal review-gate
+reevaluation cleared; no branch protections were bypassed. MCP-7b now has its own
+feature branch `ai/chatgpt/mcp-7b-monitor-actions` with a committed acceptance plan,
+owner-controlled assistant standing approvals, MCP-5 preview/claim/verification reuse,
+per-slot operation linkage, pre-dispatch revocation/version checks, and focused policy
+and disposable-PostgreSQL integration tests. Local policy tests are 3/3 green and
+focused ESLint found no errors. Full TypeScript check exhausted the 4 GB sandbox;
+exact-head CI, real-database integration, review, and merge are pending. MCP-8 and
+MCP-9 remain pending. No production provider or customer actions were enabled.
+
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 
 AR-10 is split by risk: AR-10b (the §5 permissions audit) first, AR-10a (the redesign sweep)
