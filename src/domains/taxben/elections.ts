@@ -260,7 +260,7 @@ export async function buildElectionStatements(
   const deMinimisText = deMinimisIncluded
     ? deMinimisStatementText({ ...identity, limitCents, year })
     : !electionOn
-      ? `Not applicable for ${year}: the de minimis safe harbor election is switched off for this year in Write-off settings, so no election statement is needed.`
+      ? `Not applicable for ${year}: the de minimis safe harbor election is switched off for this year in Your deduction answers, so no election statement is needed.`
       : `Not included for ${year} yet: the de minimis safe harbor statement rides on this packet once the year's capitalization policy is signed on Taxes > Tax benefits.`;
   const chosenOptions = options.filter((o) => chosen.includes(o.key));
   const electOutText = chosenOptions.length

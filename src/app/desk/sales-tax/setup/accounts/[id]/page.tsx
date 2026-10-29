@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
@@ -6,6 +5,7 @@ import { saveTaxAccountAction, markLicenseRenewedAction } from "../../actions";
 import { TaxActionForm } from "../../forms";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { nextLicenseExpiry } from "@/domains/tax/license-dates";
+import { RecordHeader } from "@/components/kit";
 const css="w-full rounded border border-input bg-background p-2 text-sm";
 const label="grid gap-1 text-sm font-medium";
 export default async function FilingAccountEditor({params}:{params:Promise<{id:string}>}) {
@@ -35,9 +35,14 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
     !account.firstPeriodStart && "First filing period",
     account.kind !== "RETAIL_DELIVERY_FEE_RETURN" && account.basis === "UNDECIDED" && "CPA-confirmed reporting basis",
   ].filter(Boolean);
-  return <main className="max-w-3xl space-y-5">
-    <Link href="/desk/sales-tax/setup" className="text-sm underline">Back to tax setup</Link>
-    <h2 className="text-xl font-semibold">Filing account: {account.name}</h2>
+  return <div className="max-w-3xl space-y-5">
+    <RecordHeader
+      back={{ href: "/desk/sales-tax/setup", label: "Back to tax setup" }}
+      title={`Filing account: ${account.name}`}
+      pills={missing.length > 0
+        ? [{ label: "Setup incomplete", tone: "attention" }]
+        : [{ label: "Setup complete", tone: "good" }]}
+    />
     {missing.length>0 && <div role="status" className="rounded border border-border p-3 text-sm">
       Setup incomplete: {missing.join("; ")}. Filing is not ready until the missing answers are entered.</div>}
     {session.user.role==="OWNER" ? <TaxActionForm title="Edit filing account" action={saveTaxAccountAction}>
@@ -50,7 +55,7 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
         <label className={label}>Frequency<select name="frequency" defaultValue={account.frequency} className={css}>
           <option value="MONTHLY">Monthly</option><option value="QUARTERLY">Quarterly</option><option value="ANNUAL">Annual</option></select></label>
         <label className={label}>Reporting basis<select name="basis" defaultValue={account.basis} className={css}>
-          <option value="UNDECIDED">Ask CPA</option><option value="CASH">Cash</option><option value="ACCRUAL">Accrual</option></select></label>
+          <option value="UNDECIDED">Ask CPA</option><option value="CASH">When paid</option><option value="ACCRUAL">When billed</option></select></label>
       </div>
       <label className={label}>Account/license number<input name="accountNumber" defaultValue={account.accountNumber??""} className={css}/></label>
       <label className={label}>Official filing HTTPS portal<input name="portalUrl" type="url" defaultValue={account.portalUrl??""} className={css}/></label>
@@ -66,7 +71,7 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
       </label>
       <fieldset className="space-y-3 rounded border border-border p-3">
         <legend className="font-semibold">SUTS portal fields and export capabilities</legend>
-        <p className="text-sm text-muted-foreground">Copy labels from your actual SUTS account. Leave an empty JSON object when the wording is not decided. SUTS credentials are never stored here.</p>
+        <p className="text-sm text-muted-foreground">Copy labels from your actual SUTS account. Leave an empty JSON object when the wording is not decided. SUTS credentials are never stored.</p>
         <label className={label}>Screen wording (JSON mapping of screen keys to labels)
           <textarea name="screenLabels" className={css} rows={3} defaultValue={mapping(account.screenLabels)} />
         </label>
@@ -87,7 +92,8 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
       </fieldset>
       {account.kind !== "RETAIL_DELIVERY_FEE_RETURN" && <fieldset className="space-y-3 rounded border border-border p-3">
         <legend className="font-semibold">Tax areas on this return</legend>
-        <p className="text-sm text-muted-foreground">Assign the areas shown on your filing screen and record their exact code, screen order and service-fee rate (milli-percent). Existing filed returns stay frozen; changing their assignments requires a separate review.</p>
+        <p className="text-sm text-muted-foreground">Assign the areas shown on your filing screen and record their exact code, screen order and service-fee rate (milli-percent).</p>
+        <p className="text-sm text-muted-foreground">Existing filed returns stay frozen; changing their assignments requires a separate review.</p>
         <input name="jurisdictionIdsPresent" type="hidden" value="yes" />
         <div className="space-y-3">{areas.map(row => {
           const assigned = account.kind === "SALES_RETURN"
@@ -121,6 +127,6 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
       <input type="hidden" name="id" value={account.id}/>
       <p className="text-sm">Renewed with Colorado? Mark it here and the expiration moves to {nextLicenseExpiry(account.licenseExpiresOn).toISOString().slice(0, 10)}, the end of the next odd year. The renewal reminders follow the new date.</p>
     </TaxActionForm>}
-  </main>;
+  </div>;
 }
 

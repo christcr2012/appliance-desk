@@ -93,7 +93,7 @@ test.describe("ACCT-1 accountant access", () => {
       await expect(acctPage).not.toHaveURL(/not-for-accountant/);
       // The overview reader behind the page must admit the role too, not just
       // the page gate (an error page would still satisfy the URL check).
-      await expect(acctPage.getByRole("heading", { name: "Tax overview" })).toBeVisible();
+      await expect(acctPage.getByRole("heading", { name: "Taxes" })).toBeVisible();
       await acctPage.goto("/desk/books/cash/checks");
       await expect(acctPage.getByRole("heading", { name: "Bank checks" })).toBeVisible();
       await acctPage.goto("/desk/books/cash");

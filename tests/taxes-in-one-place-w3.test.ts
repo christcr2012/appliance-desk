@@ -13,7 +13,7 @@ const pageExists = (route: string) => {
   return fs.existsSync(path.join(dir, "page.tsx")) || fs.existsSync(path.join(dir, "route.ts"));
 };
 
-describe("one Taxes menu entry with four tabs (W-3)", () => {
+describe("one Taxes menu entry with six tabs (W-3, tab set replaced by AR-7)", () => {
   it("replaces Sales tax in the menu for owners and admins only", () => {
     for (const role of ["OWNER", "ADMIN"]) {
       const links = deskNavigation(role).flatMap((group) => group.links);
@@ -22,25 +22,27 @@ describe("one Taxes menu entry with four tabs (W-3)", () => {
     }
     expect(deskNavigation("STAFF").flatMap((group) => group.links).some((link) => link.href === "/desk/sales-tax")).toBe(false);
   });
-  it("has exactly To file, Use tax, Rates & areas and Setup", () => {
-    expect(TAXES_TABS.map((tab) => tab.label)).toEqual(["To file", "Use tax", "Rates & areas", "Setup"]);
+  it("has exactly Overview, Returns, Areas & rates, Exemptions, Use tax and Setup (AR-7)", () => {
+    expect(TAXES_TABS.map((tab) => tab.label)).toEqual(["Overview", "Returns", "Areas & rates", "Exemptions", "Use tax", "Setup"]);
   });
   it.each([
-    ["/desk/sales-tax", "file"],
-    ["/desk/sales-tax/returns", "file"],
-    ["/desk/sales-tax/returns/abc/amend", "file"],
+    ["/desk/sales-tax", "overview"],
+    ["/desk/sales-tax/returns", "returns"],
+    ["/desk/sales-tax/returns/abc/amend", "returns"],
     ["/desk/sales-tax/use-tax", "use-tax"],
     ["/desk/sales-tax/use-tax/period1", "use-tax"],
-    ["/desk/sales-tax/use-tax/settings", "setup"],
-    ["/desk/sales-tax/areas", "rates"],
-    ["/desk/sales-tax/delivery-fees", "rates"],
+    ["/desk/sales-tax/use-tax/settings", "use-tax"],
+    ["/desk/sales-tax/areas", "areas"],
+    ["/desk/sales-tax/area", "areas"],
+    ["/desk/sales-tax/delivery-fees", "areas"],
     ["/desk/sales-tax/setup", "setup"],
     ["/desk/sales-tax/setup/accounts/x", "setup"],
-    ["/desk/sales-tax/exemptions", "setup"],
+    ["/desk/sales-tax/exemptions", "exemptions"],
     ["/desk/sales-tax/taxability", "setup"],
     ["/desk/sales-tax/audit-pack", "setup"],
     ["/desk/sales-tax/record-retention", "setup"],
     ["/desk/sales-tax/rules", "setup"],
+    ["/desk/sales-tax/benefits", "setup"],
     ["/desk/billing", null],
     ["/desk/sales-taxes", null],
   ])("puts %s on the %s tab", (pathname, tab) => {
