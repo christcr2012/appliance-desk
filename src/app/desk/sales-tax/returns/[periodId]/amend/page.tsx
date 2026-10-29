@@ -1,11 +1,11 @@
 import { moneyInputValue } from "@/lib/money-ui";
-import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import type { FilingAmendmentPacket } from "@/domains/tax/filing";
 import { TaxActionForm } from "../../../setup/forms";
 import { FilingCopyField } from "../../filing-copy-field";
 import { recordFiledAmendmentAction, recordAmendmentHandledAction } from "../../actions";
+import { RecordHeader } from "@/components/kit";
 
 function isAmendment(value: unknown): value is FilingAmendmentPacket {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -40,9 +40,12 @@ export default async function AmendmentPage({ params }: {
   });
   if (!period) throw new Error("Filing period not found.");
   return <main className="space-y-6">
-    <Link className="text-sm underline" href={"/desk/sales-tax/returns/" + periodId}>← Original return</Link>
-    <h2 className="text-xl font-semibold">Amendments — {period.filingAccount.name}</h2>
-    <p className="text-sm text-muted-foreground">Corrections never overwrite the filed worksheet. Additional tax must be handled through a real amendment; zero/credit adjustments have their own documented resolution option.</p>
+    <RecordHeader
+      back={{ href: "/desk/sales-tax/returns/" + periodId, label: "Original return" }}
+      title={`Amendments — ${period.filingAccount.name}`}
+    />
+    <p className="text-sm text-muted-foreground">Corrections never overwrite the filed worksheet.</p>
+    <p className="text-sm text-muted-foreground">Additional tax must be handled through a real amendment; zero/credit adjustments have their own documented resolution option.</p>
     {!owner && <p className="text-sm text-muted-foreground">View only — ask the owner to decide or file amendments.</p>}
     {!period.amendments.length && <p className="text-sm">No detected amendments for this period.</p>}
     {period.amendments.map(a => <section key={a.id} className="space-y-3 rounded-lg border border-border p-4">
@@ -82,10 +85,10 @@ export default async function AmendmentPage({ params }: {
         </section>}
         {a.status === "OPEN" && owner && <>
           {a.additionalTaxCents > 0 && <TaxActionForm title="Record amended filing and payment" submitLabel="Record amendment filed" action={recordFiledAmendmentAction}
-            confirmText="I already submitted this positive-tax amendment and paid the government outside Appliance Desk. I understand this records irreversible filing evidence.">
+            confirmText="I submitted this positive-tax amendment and paid outside Appliance Desk. This records irreversible filing evidence.">
             <input type="hidden" name="amendmentId" value={a.id} />
             <input type="hidden" name="periodId" value={periodId} />
-            <p className="text-sm text-muted-foreground">First file and settle the real amendment in the official portal. The ledger evidence is locked and audited.</p>
+            <p className="text-sm text-muted-foreground">First file and settle the real amendment in the official portal. The evidence in your records is locked and audited.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm">Filed date<input type="date" name="filedOn" required className={field} /></label>
               <label className="text-sm">Paid date<input type="date" name="paidOn" required className={field} /></label>

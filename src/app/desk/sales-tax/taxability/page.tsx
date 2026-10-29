@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { TaxChargeCategory } from "@prisma/client";
 import { TaxActionForm } from "../setup/forms";
 import { saveTaxCellAction, addManualRateAction } from "../setup/actions";
+import { ScreenHeader } from "@/components/kit";
 
 /** DEC-1a: a researched starting value runs (and calculates) before the CPA confirms it; say so next to it. */
 function ProvisionalNote() {
@@ -23,8 +24,8 @@ export default async function TaxabilityMatrixPage() {
     orderBy: [{ level: "asc" }, { name: "asc" }], take: 75,
   });
   return <main className="space-y-5">
-    <h2 className="text-xl font-semibold">What gets taxed</h2>
-    <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and tax area. Undecided items stay undecided; no automatic filing or billing bypass is implied.</p>
+    <ScreenHeader title="What gets taxed" />
+    <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and tax area. Undecided items stay undecided.</p>
     {session.user.role === "OWNER" ? <TaxActionForm
       title="Record a CPA-confirmed tax rule" action={saveTaxCellAction} submitLabel="Save tax rule">
       <div className="grid gap-3 md:grid-cols-2">
@@ -50,7 +51,8 @@ export default async function TaxabilityMatrixPage() {
             <option value="">Same as the decision above</option>
             <option value="TAXABLE">Taxable</option><option value="EXEMPT">Exempt</option>
           </select>
-          <span className="text-xs font-normal text-muted-foreground">Only matters for delivery, installation, pickup at the end and haul-away. Leaving it on the first choice settles the service with the decision above.</span>
+          <span className="block text-xs font-normal text-muted-foreground">Only matters for delivery, installation, pickup at the end and haul-away.</span>
+          <span className="block text-xs font-normal text-muted-foreground">Leaving it on the first choice settles the service with the decision above.</span>
         </label>
         <label className={label}>CPA confirmation date
           <input name="cpaConfirmedOn" type="date" required className={css} />

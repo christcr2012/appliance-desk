@@ -8,6 +8,7 @@ import { FilingCopyField } from "../filing-copy-field";
 import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 import { saveReturnProgressAction, recordFiledReturnAction } from "../actions";
 import { businessDateKey } from "@/lib/business-date";
+import { RecordHeader } from "@/components/kit";
 import { FileAndPayHeadline } from "../../file-and-pay-headline";
 import { getRuleTimingSettings } from "@/domains/rules/reads";
 import { fileAndPayOnDate } from "@/domains/rules/timing";
@@ -37,21 +38,23 @@ export default async function ReturnDetailPage({
   const saved = period.entryProgress && typeof period.entryProgress === "object" &&
     !Array.isArray(period.entryProgress) ? period.entryProgress as Record<string, unknown> : {};
   return <main className="space-y-6">
-    <Link className="text-sm underline" href="/desk/sales-tax/returns">← All returns</Link>
-    <header className="space-y-2">
-      <h2 className="text-xl font-semibold">{period.filingAccount.name}: {period.filingAccount.kind.replaceAll("_", " ")}</h2>
-      <p className="text-sm text-muted-foreground">
-        Period {period.periodStart.toISOString().slice(0, 10)} through {period.periodEnd.toISOString().slice(0, 10)}
-        {" · "}Legal deadline {(period.legalDueOn ?? period.dueOn).toISOString().slice(0, 10)}
-        {" · "}{period.status === "FILED" ? "Filed — worksheet frozen" : "Open — not yet filed"}
-      </p>
+    <RecordHeader
+      back={{ href: "/desk/sales-tax/returns", label: "All returns" }}
+      title={`${period.filingAccount.name}: ${period.filingAccount.kind.replaceAll("_", " ")}`}
+      subtitle={`Period ${period.periodStart.toISOString().slice(0, 10)} through ${period.periodEnd.toISOString().slice(0, 10)} · Legal deadline ${(period.legalDueOn ?? period.dueOn).toISOString().slice(0, 10)}`}
+      pills={[{
+        label: period.status === "FILED" ? "Filed — worksheet frozen" : "Open — not yet filed",
+        tone: period.status === "FILED" ? "good" : "attention",
+      }]}
+    />
+    <div className="space-y-2">
       {period.status === "FILED" && <p className="text-sm">
         Filed {period.filedOn?.toISOString().slice(0, 10) ?? "unknown"} · Paid {period.paidOn?.toISOString().slice(0, 10) ?? "unknown"}
         {" · "}Confirmation {period.confirmationNumber ?? "missing"} · Paid {"$"}{money(period.amountPaidCents ?? 0)}
       </p>}
       {period.amendments.some(a => a.status === "OPEN") && <Link className="text-sm underline" href={"/desk/sales-tax/returns/" + periodId + "/amend"}>Review outstanding amendment</Link>}
       {!owner && <p className="text-sm text-muted-foreground">Read-only for administrators. Ask the owner to file, pay or mark checklist steps.</p>}
-    </header>
+    </div>
     {result.status === "READY" && <FileAndPayHeadline
       kind={result.packet.account.kind}
       amountCents={result.packet.account.kind === "RETAIL_DELIVERY_FEE_RETURN" && result.packet.rdf ? result.packet.rdf.taxDueCents : result.packet.totals.remitCents}
@@ -135,9 +138,11 @@ export default async function ReturnDetailPage({
         </TaxActionForm> : <ol className="list-decimal space-y-2 pl-5 text-sm">{result.packet.steps.map((step,i) => <li key={i}>{step}</li>)}</ol>}
         {owner && <TaxActionForm action={recordFiledReturnAction} title="I filed and paid it"
           submitLabel="Save: filed and paid"
-          confirmText="I already filed this return and paid the government outside Appliance Desk. I understand that recording this will permanently freeze the original return and payment evidence.">
+          confirmText="I filed and paid this return outside Appliance Desk. Recording this permanently freezes the original return and payment evidence.">
           <input type="hidden" name="periodId" value={periodId} />
-          <p className="text-sm text-muted-foreground">Only after you have filed the return and paid on the official website. Enter the date you paid and the confirmation number it gave you; that is all that is needed. Recording this locks the return and marks the equipment tax on it as filed.</p>
+          <p className="text-sm text-muted-foreground">Only after you have filed the return and paid on the official website.</p>
+          <p className="text-sm text-muted-foreground">Enter the date you paid and the confirmation number it gave you; that is all that is needed.</p>
+          <p className="text-sm text-muted-foreground">Recording this locks the return and marks the equipment tax on it as filed.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>Date paid<input name="paidOn" type="date" required className={control} /></label>
             <label className={label}>Confirmation number from the website<input name="confirmationNumber" maxLength={300} required className={control} /></label>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { DataList, type DataListColumn } from "@/components/ui/data-list";
+import { DataTable, EmptyState, ScreenHeader, type Column } from "@/components/kit";
 import { TaxActionForm } from "../setup/forms";
 import { retryPendingDeliveryFees } from "./actions";
 
@@ -15,12 +15,11 @@ type WaitingRow = {
 
 const date = (value: Date | null) => value ? value.toISOString().slice(0, 10) : "Not recorded";
 
-const columns: DataListColumn<WaitingRow>[] = [
-  {
-    key: "customer", header: "Customer", primary: true,
-    cell: (row) => row.agreement?.customer.companyName || row.agreement?.customer.user.name ||
-      row.invoice?.customer.companyName || row.invoice?.customer.user.name || "Customer record",
-  },
+const customerName = (row: WaitingRow) => row.agreement?.customer.companyName || row.agreement?.customer.user.name ||
+  row.invoice?.customer.companyName || row.invoice?.customer.user.name || "Customer record";
+
+const columns: Column<WaitingRow>[] = [
+  { key: "customer", header: "Customer", cell: customerName },
   { key: "delivery", header: "Delivered", cell: (row) => date(row.deliveredOn) },
   { key: "sale", header: "Sale date", cell: (row) => date(row.saleOn) },
 ];
@@ -84,13 +83,11 @@ export default async function PendingDeliveryFeesPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold">Retail delivery fees waiting on you</h2>
-        <p className="text-sm text-muted-foreground">
-          Colorado charges a small fee on deliveries. These deliveries are recorded, but
-          the fee cannot be finished until you answer below.
-        </p>
-      </header>
+      <ScreenHeader title="Delivery fees" />
+      <p className="text-sm text-muted-foreground">
+        Colorado charges a small fee on deliveries. These deliveries are recorded, but
+        the fee cannot be finished until you answer below.
+      </p>
       {decision.count + rate.count === 0 ? (
         <p className="rounded-lg border border-border p-5">Nothing waiting.</p>
       ) : sections.map(section => (
@@ -101,8 +98,14 @@ export default async function PendingDeliveryFeesPage() {
             {section.stats.oldest ? " Oldest delivery: " + date(section.stats.oldest) + "." : ""}
           </p>
           <Link className="inline-block font-medium underline" href={section.href}>{section.label}</Link>
-          <DataList rows={section.rows} columns={columns}
-            caption={section.title} empty={<p>No records waiting in this group.</p>} />
+          <DataTable<WaitingRow> rows={section.rows} columns={columns} rowKey={(row) => row.id}
+            caption={section.title} empty={<EmptyState title="No records waiting in this group" />}
+            mobileCard={(row) => (
+              <div className="space-y-1">
+                <p className="font-semibold">{customerName(row)}</p>
+                <p className="text-sm text-muted-foreground">Delivered {date(row.deliveredOn)} · Sale date {date(row.saleOn)}</p>
+              </div>
+            )} />
           {section.stats.count > section.rows.length && (
             <p className="text-sm text-muted-foreground">
               Showing the oldest {section.rows.length} of {section.stats.count} records.
