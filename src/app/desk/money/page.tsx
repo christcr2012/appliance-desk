@@ -5,27 +5,32 @@ import { requireRole } from "@/lib/session";
 import { formatMoney } from "@/lib/money-ui";
 import { formatShortDate } from "@/lib/business-date";
 import { getMoneyOverview } from "@/domains/billing/money-overview";
+import { getRentHealth } from "@/domains/insights/money";
 import { getPayments } from "@/domains/billing/payments-list";
 import { paymentMethodWord, paymentPill } from "@/domains/billing/payment-tabs";
 import { getExceptionOverview } from "@/domains/exceptions";
 import { INBOX_GROUP, inboxActions, inboxEyebrow, inboxEyebrowTone } from "@/domains/exceptions/inbox";
-import { InboxCard, NextStepCard, ScreenHeader, StatStrip, StatusPill, type MenuItem } from "@/components/kit";
+import { InboxCard, InfoTip, MiniBars, NextStepCard, ScreenHeader, StatStrip, StatusPill, type MenuItem } from "@/components/kit";
+import { MetricHelp } from "@/components/desk/metric-stat";
 
 export const metadata = { title: "Money" };
 
 const OVERFLOW: MenuItem[] = [
-  { kind: "link", label: "Rental income details", href: "/desk/revenue" },
-  { kind: "link", label: "Reports", href: "/desk/reports" },
+  { kind: "link", label: "Income details", href: "/desk/money/income" },
+  { kind: "link", label: "Download transactions (CSV)", href: "/desk/reports/export" },
   { kind: "link", label: "Check against Stripe", href: "/desk/billing/reconciliation" },
 ];
+
+const PACE_WORDS = { MET: "Met", ON_PACE: "On pace", BEHIND: "Behind", TOO_EARLY: "Too early to tell" } as const;
 
 export default async function MoneyOverviewPage() {
   await requireRole("OWNER", "ADMIN");
   const now = new Date();
-  const [overview, exceptions, recent] = await Promise.all([
+  const [overview, exceptions, recent, rent] = await Promise.all([
     getMoneyOverview(now),
     getExceptionOverview(),
     getPayments({ status: "received", sort: "newest", pageSize: 5 }, now),
+    getRentHealth(now),
   ]);
   const decisions = exceptions.items.filter((item) => INBOX_GROUP[item.category] === "money").slice(0, 10);
 
@@ -121,6 +126,88 @@ export default async function MoneyOverviewPage() {
           actions={[{ kind: "link", label: "See failed payments", href: "/desk/payments?status=failed", primary: true }]}
         />
       ) : null}
+
+      {/* AR-9 (INSIGHTS section 6): rent health, goals and notable gaps. */}
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-1.5 text-base font-extrabold text-ink">
+          How rent is doing <InfoTip term="monthly-rent-now" />
+        </h2>
+        <p className="text-sm text-ink">
+          Monthly rent from active rentals <span className="font-extrabold">{formatMoney(rent.mrrCents)}</span>
+          {" · "}Over a year <span className="font-extrabold">{formatMoney(rent.arrCents)}</span>
+        </p>
+        <MetricHelp metric="revenue.mrr" />
+        <MiniBars
+          labels={rent.mrrTrend.map((p) => p.monthLabel)}
+          series={[{ label: "Monthly rent", values: rent.mrrTrend.map((p) => p.mrrCents) }]}
+          format={(v) => formatMoney(v)}
+        />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-1.5 text-base font-extrabold text-ink">
+            Goals <InfoTip term="goal-pace" />
+          </h2>
+          <Link href="/desk/settings/goals" className="text-sm font-bold text-primary hover:underline">
+            Change goals
+          </Link>
+        </div>
+        {rent.goals.every((g) => g.target === null) ? (
+          <p className="text-sm text-ink-soft">
+            No goals set.{" "}
+            <Link href="/desk/settings/goals" className="font-bold text-primary hover:underline">
+              Set a goal
+            </Link>
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {rent.goals
+              .filter((g) => g.target !== null)
+              .map((g) => (
+                <li key={g.metric} className="flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 text-sm">
+                  <span className="font-bold text-ink">{g.label}</span>
+                  <span className="text-ink-soft">
+                    {g.metric === "cash" ? formatMoney(g.actual) : g.actual} of{" "}
+                    {g.metric === "cash" ? formatMoney(g.target!) : g.target}
+                    {g.pace ? <> · {PACE_WORDS[g.pace.status]}</> : null}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-extrabold text-ink">Rentals paying less than agreed</h2>
+        <p className="text-sm text-ink">
+          Estimated rent <span className="font-extrabold">{formatMoney(rent.earningsTotals.estimatedCents)}</span>
+          {" · "}Rent collected <span className="font-extrabold">{formatMoney(rent.earningsTotals.actualCents)}</span>
+          {" · "}Gap <span className="font-extrabold">{formatMoney(rent.earningsTotals.gapCents)}</span>
+        </p>
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          <MetricHelp metric="reports.estimatedEarnings" />
+          <MetricHelp metric="reports.collected" />
+          <MetricHelp metric="reports.gap" />
+        </div>
+        {rent.notableGaps.length === 0 ? (
+          <p className="text-sm text-ink-soft">Nothing is behind right now.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {rent.notableGaps.map((row) => (
+              <li key={row.agreementId} className="flex items-center justify-between gap-3 rounded-card bg-surface px-4 py-3 text-sm">
+                <Link href={`/desk/customers/${row.customerId}`} className="font-bold text-ink hover:underline">
+                  {row.customerName}
+                </Link>
+                <span className="text-ink-soft">
+                  Agreed {formatMoney(row.estimatedCents)} · paying {formatMoney(row.actualCents)} ·{" "}
+                  <span className="font-bold text-ink">gap {formatMoney(row.gapCents)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
