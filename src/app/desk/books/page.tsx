@@ -40,6 +40,32 @@ export default async function BooksOverviewPage({ searchParams }: { searchParams
             <p className="text-sm text-ink-soft">Ask the owner to set up the books</p>
           )}
         </div>
+        <section className="grid gap-3 sm:grid-cols-2">
+          <TaskCard
+            title="Month by month"
+            href="/desk/books/months"
+            info="Do this once a month: check, send to your accountant, lock."
+            status={{ label: "Starts with your books setup", tone: "neutral" }}
+          />
+          <TaskCard
+            title="Reports"
+            href="/desk/books/reports"
+            info="Use this when you want to know how the business is doing: profit, what you own and owe, which appliances have paid for themselves, cash coming up, who pays on time."
+            status={{ label: "Starts with your books setup", tone: "neutral" }}
+          />
+          <TaskCard
+            title="Equipment value"
+            href="/desk/books/assets"
+            info="Use this to see what your rental appliances are worth on paper. The app keeps it up to date."
+            status={{ label: "Starts with your books setup", tone: "neutral" }}
+          />
+          <TaskCard
+            title="For your accountant"
+            href="/desk/books/accountant"
+            info="Use this when your accountant asks for something."
+            status={{ label: "Nothing new", tone: "neutral" }}
+          />
+        </section>
       </div>
     );
   }

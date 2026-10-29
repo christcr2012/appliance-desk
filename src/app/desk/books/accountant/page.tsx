@@ -53,7 +53,7 @@ export default async function BooksAccountantPage({ searchParams }: { searchPara
   });
   const selected = params.month ?? new Date().toISOString().slice(0, 7);
   const notice = params.notice?.slice(0, 200);
-  const assets = model.settings?.booksStartDate ? await getBookAssets(session.user.id) : null;
+  const assets = await getBookAssets(session.user.id);
   const now = new Date().toISOString().slice(0, 10);
 
   return (
@@ -93,7 +93,8 @@ export default async function BooksAccountantPage({ searchParams }: { searchPara
           <p>You can correct an opening balance later without changing the original record.</p>
           {owner ? <Link href="/desk/books/setup" className={button}>Set up my books</Link> : <p>Ask the owner to set up the books. Your existing access stays unchanged.</p>}
         </section>
-      ) : (
+      ) : null}
+      {model.settings?.booksStartDate ? (
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">Full journal</h2>
@@ -167,47 +168,48 @@ export default async function BooksAccountantPage({ searchParams }: { searchPara
               ))}</ul>
             </section>
           ) : null}
-
-          <section className="rounded-card border border-line bg-surface p-4 space-y-3">
-            <h2 className="text-lg font-semibold">Accounts and QuickBooks/Xero names</h2>
-            <p className="text-sm text-ink-soft">Accounts are the buckets your money is sorted into (cash, what customers owe you, rent income, expenses and so on).</p>
-            <p className="text-sm text-ink-soft">You can rename them or match them to QuickBooks or Xero. Renaming never changes past entries.</p>
-            <div className="space-y-2">{model.accounts.map((a) => (
-              <div className="grid gap-2 border-t border-line py-3 sm:grid-cols-3" key={a.id}>
-                <div>
-                  <p className="font-semibold">{a.name}</p>
-                  <p className="text-xs text-ink-soft">{TYPE_WORDS[a.type] ?? a.type} · {a.description}</p>
-                  <p className="font-medium">Net change so far: {formatMoney((model.balances.find((row) => row.ledgerAccountId === a.id)?._sum.debitCents ?? 0) - (model.balances.find((row) => row.ledgerAccountId === a.id)?._sum.creditCents ?? 0))}</p>
-                </div>
-                {owner ? (
-                  <form action={renameAccountAction} className="flex gap-2 items-end">
-                    <input type="hidden" name="accountId" value={a.id} />
-                    <label className="flex-1">Account name<input className={input} name="name" defaultValue={a.name} maxLength={120} /></label>
-                    <button className={button}>Save</button>
-                  </form>
-                ) : <p>{a.name}</p>}
-                {owner || accountant ? (
-                  <form action={mapExportAccountAction} className="flex flex-wrap gap-2 items-end">
-                    <input type="hidden" name="accountId" value={a.id} />
-                    <label>Export to<select name="target" className={input}><option value="GENERIC_JOURNAL_CSV">Generic CSV</option><option value="QBO_JOURNAL_CSV">QuickBooks</option><option value="XERO_JOURNAL_CSV">Xero</option><option value="CASH_MOVEMENTS_CSV">Cash movements</option></select></label>
-                    <label className="flex-1">External account<input name="externalName" className={input} placeholder="Account name or code" required /></label>
-                    <label>Xero tax rate (optional)<input name="externalTaxRate" className={input} placeholder="Tax Exempt" maxLength={120} /></label>
-                    <button className={button}>Map</button>
-                  </form>
-                ) : <p>{a.mappings.length} saved export mappings</p>}
+        </>
+      ) : null}
+      <section className="rounded-card border border-line bg-surface p-4 space-y-3">
+        <h2 className="text-lg font-semibold">Accounts and QuickBooks/Xero names</h2>
+          <p className="text-sm text-ink-soft">Accounts are the buckets your money is sorted into (cash, what customers owe you, rent income, expenses and so on).</p>
+        <p className="text-sm text-ink-soft">You can rename them or match them to QuickBooks or Xero. Renaming never changes past entries.</p>
+        <div className="space-y-2">{model.accounts.map((a) => (
+            <div className="grid gap-2 border-t border-line py-3 sm:grid-cols-3" key={a.id}>
+              <div>
+                <p className="font-semibold">{a.name}</p>
+                <p className="text-xs text-ink-soft">{TYPE_WORDS[a.type] ?? a.type} · {a.description}</p>
+                <p className="font-medium">Net change so far: {formatMoney((model.balances.find((row) => row.ledgerAccountId === a.id)?._sum.debitCents ?? 0) - (model.balances.find((row) => row.ledgerAccountId === a.id)?._sum.creditCents ?? 0))}</p>
               </div>
-            ))}</div>
-            {owner ? (
-              <form action={createAccountAction} className="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
-                <h3 className="col-span-full font-semibold">Add an account</h3>
-                <label>Name<input className={input} name="name" required /></label>
-                <label>Description<input className={input} name="description" required /></label>
-                <label>Type<select className={input} name="type"><option value="ASSET">Something I own</option><option value="LIABILITY">Something I owe</option><option value="EXPENSE">A cost of doing business</option></select></label>
-                <label className="flex gap-2 items-center"><input type="checkbox" name="isPaymentSource" /> Can pay expenses from this account</label>
-                <button type="submit" className={button}>Add account</button>
-              </form>
-            ) : null}
-          </section>
+              {owner ? (
+                <form action={renameAccountAction} className="flex gap-2 items-end">
+                  <input type="hidden" name="accountId" value={a.id} />
+                  <label className="flex-1">Account name<input className={input} name="name" defaultValue={a.name} maxLength={120} /></label>
+                  <button className={button}>Save</button>
+                </form>
+              ) : <p>{a.name}</p>}
+              {owner || accountant ? (
+                <form action={mapExportAccountAction} className="flex flex-wrap gap-2 items-end">
+                  <input type="hidden" name="accountId" value={a.id} />
+                  <label>Export to<select name="target" className={input}><option value="GENERIC_JOURNAL_CSV">Generic CSV</option><option value="QBO_JOURNAL_CSV">QuickBooks</option><option value="XERO_JOURNAL_CSV">Xero</option><option value="CASH_MOVEMENTS_CSV">Cash movements</option></select></label>
+                  <label className="flex-1">External account<input name="externalName" className={input} placeholder="Account name or code" required /></label>
+                  <label>Xero tax rate (optional)<input name="externalTaxRate" className={input} placeholder="Tax Exempt" maxLength={120} /></label>
+                  <button className={button}>Map</button>
+                </form>
+              ) : <p>{a.mappings.length} saved export mappings</p>}
+            </div>
+        ))}</div>
+        {owner ? (
+            <form action={createAccountAction} className="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
+              <h3 className="col-span-full font-semibold">Add an account</h3>
+              <label>Name<input className={input} name="name" required /></label>
+              <label>Description<input className={input} name="description" required /></label>
+              <label>Type<select className={input} name="type"><option value="ASSET">Something I own</option><option value="LIABILITY">Something I owe</option><option value="EXPENSE">A cost of doing business</option></select></label>
+              <label className="flex gap-2 items-center"><input type="checkbox" name="isPaymentSource" /> Can pay expenses from this account</label>
+              <button type="submit" className={button}>Add account</button>
+            </form>
+        ) : null}
+      </section>
 
           {assets ? (
             <section className="rounded-card border border-line bg-surface p-4 space-y-3">
@@ -295,8 +297,6 @@ export default async function BooksAccountantPage({ searchParams }: { searchPara
               ))}
             </section>
           ) : null}
-        </>
-      )}
     </div>
   );
 }

@@ -327,7 +327,9 @@ export async function getRentals(
     }
     return {
       staff: true,
-      rows: ids.map((id) => byId.get(id) as StaffRentalRow),
+      // An agreement may be deleted between the ID-window and detail reads.
+      // Never return an undefined row in a customer-facing list.
+      rows: ids.map((id) => byId.get(id)).filter((row): row is StaffRentalRow => row !== undefined),
       nextCursor,
       capped,
     };
@@ -353,7 +355,7 @@ export async function getRentals(
   }
   return {
     staff: false,
-    rows: ids.map((id) => byId.get(id) as OwnerRentalRow),
+    rows: ids.map((id) => byId.get(id)).filter((row): row is OwnerRentalRow => row !== undefined),
     nextCursor,
     capped,
   };
