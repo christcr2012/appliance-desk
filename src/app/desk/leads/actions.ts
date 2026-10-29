@@ -3,6 +3,7 @@
 import { parseFollowUpKey } from "@/domains/leads/follow-up";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { jobRoleScreens, JobRoleScreenError } from "@/lib/job-role-guard";
@@ -12,7 +13,14 @@ import {
   createLeadManually,
   addLeadNote,
   logLeadContact,
+  logLeadAttempt,
+  updateLeadDetails,
+  type LeadDetailsInput,
 } from "@/domains/leads";
+import { setLeadFollowUp } from "@/domains/leads/follow-up";
+import { reassignLead } from "@/domains/leads/assignment";
+import { bulkUpdateLeads, type BulkLeadKind, type BulkLeadResult } from "@/domains/leads/bulk";
+import { mergeLeads } from "@/domains/leads/merge";
 import { recordRealContact } from "@/domains/leads/contact";
 import type { LeadStatus } from "@prisma/client";
 
@@ -197,16 +205,30 @@ export async function addLeadNoteAction(
   return { status: "success" };
 }
 
-/** LD-1: "Log a contact" — records a real outbound contact (call, visit, message sent outside the app). The lead leaves "New" and a follow-up date can then be set. No screen calls this yet; AR-4b wires the button. */
+/**
+ * AR-4b: "Log a contact…" — kind CONTACTED ("I reached them") records a real
+ * outbound contact: the lead leaves "New" and a follow-up date can then be
+ * set. Kind ATTEMPT ("Tried, no answer") never counts as contact, so a new
+ * lead stays new; its optional follow-up date is a plan, set in the same
+ * save. `followUpKey` (YYYY-MM-DD) is optional for both kinds.
+ */
 export async function logLeadContactAction(
   leadId: string,
+  kind: "CONTACTED" | "ATTEMPT",
   body: string,
+  followUpKey?: string | null,
 ): Promise<{ status: "success" } | { status: "error"; message: string }> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   await requireLeadsScreen(session);
 
   try {
-    await logLeadContact(session.user.id, leadId, body);
+    const followUpOn =
+      followUpKey === undefined ? undefined : followUpKey === null ? null : parseFollowUpKey(followUpKey, new Date());
+    if (kind === "ATTEMPT") {
+      await logLeadAttempt(session.user.id, leadId, body, followUpOn);
+    } else {
+      await logLeadContact(session.user.id, leadId, body, followUpOn);
+    }
   } catch (error) {
     return {
       status: "error",
@@ -218,6 +240,119 @@ export async function logLeadContactAction(
   revalidatePath("/desk/leads");
   revalidatePath("/desk/dashboard");
   return { status: "success" };
+}
+
+/** AR-4b: the follow-up sheet on a contacted lead (LD-1 setLeadFollowUp). Undo calls this again with the old date. */
+export async function setLeadFollowUpAction(
+  leadId: string,
+  expectedVersion: number,
+  dateKey: string | null,
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
+
+  try {
+    await setLeadFollowUp(session.user.id, leadId, expectedVersion, dateKey);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't save that follow-up date.",
+    };
+  }
+
+  revalidatePath(`/desk/leads/${leadId}`);
+  revalidatePath("/desk/leads");
+  revalidatePath("/desk/dashboard");
+  return { status: "success" };
+}
+
+/** AR-4b: "Assign to…" (LD-1 reassignLead; the domain keeps it owner/admin). */
+export async function reassignLeadAction(
+  leadId: string,
+  toUserId: string | null,
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
+
+  try {
+    await reassignLead(session.user.id, leadId, toUserId);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't assign that lead.",
+    };
+  }
+
+  revalidatePath(`/desk/leads/${leadId}`);
+  revalidatePath("/desk/leads");
+  return { status: "success" };
+}
+
+/** AR-4b: the lead record's "What they want" edit sheet (LEADS.md 3.7). */
+export async function updateLeadDetailsAction(
+  leadId: string,
+  input: LeadDetailsInput,
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
+
+  try {
+    await updateLeadDetails(session.user.id, leadId, input);
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error ? error.message : "Couldn't save those changes.",
+    };
+  }
+
+  revalidatePath(`/desk/leads/${leadId}`);
+  revalidatePath("/desk/leads");
+  return { status: "success" };
+}
+
+/** AR-4b: the duplicate banner's merge (LEADS.md 3.4) — lands on the kept lead. */
+export async function mergeLeadsAction(
+  keepId: string,
+  mergeId: string,
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN");
+  await requireLeadsScreen(session);
+
+  try {
+    await mergeLeads(session.user.id, keepId, mergeId);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't merge those leads.",
+    };
+  }
+
+  revalidatePath("/desk/leads");
+  revalidatePath(`/desk/leads/${mergeId}`);
+  redirect(`/desk/leads/${keepId}`);
+}
+
+/** AR-4b: the queue's bulk bar — each lead in its own transaction, per-lead failures reported. */
+export async function bulkLeadAction(
+  kind: BulkLeadKind,
+  ids: string[],
+  payload: { toUserId?: string | null; dateKey?: string | null; reason?: string },
+): Promise<{ status: "success"; result: BulkLeadResult } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
+
+  try {
+    const result = await bulkUpdateLeads(session.user.id, kind, ids, payload);
+    revalidatePath("/desk/leads");
+    revalidatePath("/desk/dashboard");
+    return { status: "success", result };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't update those leads.",
+    };
+  }
 }
 
 /** Supply the missing account email without overwriting existing identity. */
