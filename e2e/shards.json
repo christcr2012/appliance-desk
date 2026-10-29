@@ -105,6 +105,7 @@
       "revenue-records.spec.ts",
       "website-editor.spec.ts",
       "books-workspace.spec.ts",
+      "ar7-books-taxes.spec.ts",
       "my-account.spec.ts",
       "feedback.spec.ts",
       "fleet-report.spec.ts",
@@ -122,6 +123,7 @@
       "remembered-lists.spec.ts",
       "vault.spec.ts",
       "service-area-map.spec.ts",
+      "mcp-repair-cases.spec.ts",
       "navigation.spec.ts",
       "rentals.spec.ts",
       "today-inline.spec.ts"

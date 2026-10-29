@@ -25,17 +25,22 @@ test("Settings Features shows guarded controls at five sizes and passes accessib
 
 test("Books navigation follows the owner's feature choices without changing direct access", async ({ page }) => {
   await page.goto("/desk/settings/features");
-  const links = [
-    { name: "Files for your accountant", href: "/desk/books/exports", text: /Export to QuickBooks/ },
-    { name: "Bank statements", href: "/desk/books/cash", text: /Bank statements and cash records/ },
-    { name: "Budget envelopes", href: "/desk/books/budget", text: /Budget envelopes/ },
+  const gated = [
+    { name: "Files for your accountant", href: "/desk/books/exports", linkName: "Exports" },
+    { name: "Bank statements", href: "/desk/books/cash", linkName: "Bank statements and cash records" },
   ];
-  const choices = await Promise.all(links.map(async l => ({
+  const choices = await Promise.all(gated.map(async l => ({
     ...l, on: (await page.getByRole("switch", { name: l.name }).getAttribute("aria-checked")) === "true",
   })));
-  await page.goto("/desk/books");
-  const navigation = page.getByRole("navigation", { name: "More about your books" });
+  const budgetOn = (await page.getByRole("switch", { name: "Budget envelopes" }).getAttribute("aria-checked")) === "true";
+  await page.goto("/desk/books/accountant");
   for (const choice of choices) {
-    await expect(navigation.getByRole("link", { name: choice.text })).toHaveCount(choice.on ? 1 : 0);
+    const link = page.getByRole("link", { name: choice.linkName, exact: true });
+    await expect(link).toHaveCount(choice.on ? 1 : 0);
+    if (choice.on) await expect(link).toHaveAttribute("href", choice.href);
   }
+  await page.goto("/desk/books");
+  const budgetTab = page.getByRole("link", { name: "Money set aside", exact: true });
+  await expect(budgetTab).toHaveCount(budgetOn ? 1 : 0);
+  if (budgetOn) await expect(budgetTab).toHaveAttribute("href", "/desk/books/budget");
 });
