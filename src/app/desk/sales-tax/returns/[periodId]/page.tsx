@@ -8,6 +8,7 @@ import { FilingCopyField } from "../filing-copy-field";
 import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 import { saveReturnProgressAction, recordFiledReturnAction } from "../actions";
 import { businessDateKey } from "@/lib/business-date";
+import { RecordHeader } from "@/components/kit";
 import { FileAndPayHeadline } from "../../file-and-pay-headline";
 import { getRuleTimingSettings } from "@/domains/rules/reads";
 import { fileAndPayOnDate } from "@/domains/rules/timing";
@@ -36,22 +37,24 @@ export default async function ReturnDetailPage({
   const stepKeys = result.status === "READY" ? filingStepKeys(result.packet.steps) : [];
   const saved = period.entryProgress && typeof period.entryProgress === "object" &&
     !Array.isArray(period.entryProgress) ? period.entryProgress as Record<string, unknown> : {};
-  return <main className="space-y-6">
-    <Link className="text-sm underline" href="/desk/sales-tax/returns">← All returns</Link>
-    <header className="space-y-2">
-      <h2 className="text-xl font-semibold">{period.filingAccount.name}: {period.filingAccount.kind.replaceAll("_", " ")}</h2>
-      <p className="text-sm text-muted-foreground">
-        Period {period.periodStart.toISOString().slice(0, 10)} through {period.periodEnd.toISOString().slice(0, 10)}
-        {" · "}Legal deadline {(period.legalDueOn ?? period.dueOn).toISOString().slice(0, 10)}
-        {" · "}{period.status === "FILED" ? "Filed — worksheet frozen" : "Open — not yet filed"}
-      </p>
+  return <div className="space-y-6">
+    <RecordHeader
+      back={{ href: "/desk/sales-tax/returns", label: "All returns" }}
+      title={`${period.filingAccount.name}: ${period.filingAccount.kind.replaceAll("_", " ")}`}
+      subtitle={`Period ${period.periodStart.toISOString().slice(0, 10)} through ${period.periodEnd.toISOString().slice(0, 10)} · Legal deadline ${(period.legalDueOn ?? period.dueOn).toISOString().slice(0, 10)}`}
+      pills={[{
+        label: period.status === "FILED" ? "Filed — worksheet frozen" : "Open — not yet filed",
+        tone: period.status === "FILED" ? "good" : "attention",
+      }]}
+    />
+    <div className="space-y-2">
       {period.status === "FILED" && <p className="text-sm">
         Filed {period.filedOn?.toISOString().slice(0, 10) ?? "unknown"} · Paid {period.paidOn?.toISOString().slice(0, 10) ?? "unknown"}
         {" · "}Confirmation {period.confirmationNumber ?? "missing"} · Paid {"$"}{money(period.amountPaidCents ?? 0)}
       </p>}
       {period.amendments.some(a => a.status === "OPEN") && <Link className="text-sm underline" href={"/desk/sales-tax/returns/" + periodId + "/amend"}>Review outstanding amendment</Link>}
       {!owner && <p className="text-sm text-muted-foreground">Read-only for administrators. Ask the owner to file, pay or mark checklist steps.</p>}
-    </header>
+    </div>
     {result.status === "READY" && <FileAndPayHeadline
       kind={result.packet.account.kind}
       amountCents={result.packet.account.kind === "RETAIL_DELIVERY_FEE_RETURN" && result.packet.rdf ? result.packet.rdf.taxDueCents : result.packet.totals.remitCents}
@@ -63,12 +66,12 @@ export default async function ReturnDetailPage({
       actOnKey={actOnKey}
     />}
     {result.status === "BLOCKED" ? <section className="space-y-2 rounded-lg border border-destructive p-4">
-      <h3 className="font-semibold">Not ready to file</h3>
+      <h2 className="font-semibold">Not ready to file</h2>
       <ul className="list-disc space-y-1 pl-5 text-sm">{result.problems.map((p,i) => <li key={i}>{p}</li>)}</ul>
       <p className="text-sm">Do not rely on guessed totals. Correct the source evidence first.</p>
     </section> : <>
       <section className="space-y-4">
-        <h3 className="font-semibold">Tax return worksheet {period.status === "FILED" ? "(frozen original)" : "(live preview)"}</h3>
+        <h2 className="font-semibold">Tax return worksheet {period.status === "FILED" ? "(frozen original)" : "(live preview)"}</h2>
         <p className="text-sm">Basis: {result.packet.basis} · {result.packet.zeroReturn ? "Zero return; still requires filing" : "Tax return"}
           {" · "}<Link className="underline" href={"/desk/sales-tax/returns/" + periodId + "/csv"}>Download private CSV worksheet</Link>
         </p>
@@ -105,7 +108,7 @@ export default async function ReturnDetailPage({
         </section>}
       </section>
       {period.status === "OPEN" && <section className="space-y-3 rounded-lg border border-border p-4">
-        <h3 className="font-semibold">Copy exact values to the official filing screen</h3>
+        <h2 className="font-semibold">Copy exact values to the official filing screen</h2>
         {result.packet.account.accountNumber && <FilingCopyField label="Filing account number" value={result.packet.account.accountNumber} />}
         {result.packet.rows.map(r => <div key={r.jurisdictionId} className="rounded border border-border p-3">
           <p className="font-semibold">{r.name}</p>
@@ -124,7 +127,7 @@ export default async function ReturnDetailPage({
         <p className="text-xs text-muted-foreground">Copying values never files a form or pays the government.</p>
       </section>}
       {period.status === "OPEN" && <section className="space-y-4">
-        <h3 className="font-semibold">Step-by-step filing instructions</h3>
+        <h2 className="font-semibold">Step-by-step filing instructions</h2>
         {owner ? <TaxActionForm action={saveReturnProgressAction} title="Save checklist (not filing)" submitLabel="Save progress">
           <input type="hidden" name="periodId" value={periodId} />
           {result.packet.steps.map((step,i) => <label key={i} className="flex items-start gap-3 text-sm">
@@ -135,9 +138,11 @@ export default async function ReturnDetailPage({
         </TaxActionForm> : <ol className="list-decimal space-y-2 pl-5 text-sm">{result.packet.steps.map((step,i) => <li key={i}>{step}</li>)}</ol>}
         {owner && <TaxActionForm action={recordFiledReturnAction} title="I filed and paid it"
           submitLabel="Save: filed and paid"
-          confirmText="I already filed this return and paid the government outside Appliance Desk. I understand that recording this will permanently freeze the original return and payment evidence.">
+          confirmText="I filed and paid this return outside Appliance Desk. Recording this permanently freezes the original return and payment evidence.">
           <input type="hidden" name="periodId" value={periodId} />
-          <p className="text-sm text-muted-foreground">Only after you have filed the return and paid on the official website. Enter the date you paid and the confirmation number it gave you; that is all that is needed. Recording this locks the return and marks the equipment tax on it as filed.</p>
+          <p className="text-sm text-muted-foreground">Only after you have filed the return and paid on the official website.</p>
+          <p className="text-sm text-muted-foreground">Enter the date you paid and the confirmation number it gave you; that is all that is needed.</p>
+          <p className="text-sm text-muted-foreground">Recording this locks the return and marks the equipment tax on it as filed.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>Date paid<input name="paidOn" type="date" required className={control} /></label>
             <label className={label}>Confirmation number from the website<input name="confirmationNumber" maxLength={300} required className={control} /></label>
@@ -154,6 +159,6 @@ export default async function ReturnDetailPage({
         </TaxActionForm>}
       </section>}
     </>}
-  </main>;
+  </div>;
 }
 
