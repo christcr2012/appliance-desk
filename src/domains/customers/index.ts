@@ -22,6 +22,12 @@ export type { TimelineEntry } from "./timeline";
  * Customer relationship inside the same business transaction.
  */
 export async function getCustomers() {
+  // CU-1 note: the CUSTOMERS spec proposed requireRole("OWNER","ADMIN")
+  // here, believing the export route was the only caller. On current main
+  // five picker pages (agreements/new, estimates/new, jobs/new,
+  // phone-orders/new, inventory/[id]) also call it, and staff use those
+  // flows — the role check would break them, so it stays ungated here;
+  // the export route enforces OWNER/ADMIN itself before calling.
   return prisma.customer.findMany({
     where: { archivedAt: null, isWalkIn: false },
     include: {

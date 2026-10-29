@@ -29,7 +29,7 @@
   "invariants": [
     "No stored CustomerSummary table: facts are computed live in the customer_list_v1 SQL view (spec section 1 design change); a cache follow-up only if the capacity test fails its 150 ms budget, and only after a STATUS + card write-up",
     "Roles filtered at the query/DTO boundary: the STAFF select omits money columns entirely (two SQL selects); the page never renders money for staff",
-    "getCustomers() gains requireRole(\"OWNER\",\"ADMIN\") — its only callers are the OWNER/ADMIN export route and tests; the CSV export moves to the new list query (max 10,000 rows)",
+    "getCustomers() stays ungated: on current main five staff-used picker pages call it too (the spec assumed the export route was the only caller — drift, recorded in the S3 commit); the export route enforces OWNER/ADMIN itself and moves to the new list query (max 10,000 rows)",
     "Money is integer cents; times stored UTC, shown America/Denver (past-due uses start of today Denver, computed in the reading query, never in the view)",
     "Migrations additive only; Customer.phoneDigits maintained by every customer create/update that sets phone, following the leads contactKeys pattern",
     "Every money or irreversible action on the screen goes through its existing confirmation and existing actions (payPathFor target, jobs/new, estimates/new links only — no new write paths)"
