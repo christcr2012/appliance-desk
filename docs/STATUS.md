@@ -1,3 +1,11 @@
+## October 29 — Budget planning test date fix (Lane 4, tiny separate PR per the red-on-main rule)
+
+tests/budget-planning-integration.test.ts anchored a monthly cost plan to the 28th of the
+current month; on the 29th–31st that date is in the past and the (correct) domain rule "a new
+plan's original due day must be today or later" rejects it — the test went red fleet-wide at the
+Denver midnight into Oct 29 through no PR's fault. The anchor is now the next 28th on or after
+today. Test-only change; verified green locally on a disposable database before pushing.
+
 ## October 28 — CI browser timeouts sized for the suite; AR-8 held by owner decision
 
 Playwright's default budgets (30s per test, 5s per expect) were too small for this suite's long tests:

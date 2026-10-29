@@ -98,7 +98,10 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
   await expect(getBudgetPlanning(staff,d)).rejects.toThrow(/access/);
  });
  it("keeps a linked recurring plan in step with the existing Books source edit",async()=>{
-  const anchor=d.slice(0,8)+"28";
+  // The next 28th on or after today: a new plan's original due day must be today or
+  // later, so a fixed "28th of this month" anchor is in the past on the 29th–31st.
+  const anchor=Number(d.slice(8))<=28?d.slice(0,8)+"28"
+   :`${Number(d.slice(5,7))===12?Number(d.slice(0,4))+1:d.slice(0,4)}-${String(Number(d.slice(5,7))===12?1:Number(d.slice(5,7))+1).padStart(2,"0")}-28`;
   await prisma.recurringExpense.create({data:{id:sourceTemplate,name:"Current source",
    vendorName:"Source vendor",amountCents:4200,dayOfMonth:28,
    categoryId:category,paidFromAccountId:bankLedger}});
