@@ -5,11 +5,13 @@ import { listCredentials } from "@/domains/vault";
 import { getVaultUnlockStatus } from "@/domains/vault/unlock";
 import { getEmergencyOwnerView } from "@/domains/vault/emergency";
 import { getSecondStepView } from "@/domains/security/second-step";
-import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
+import { ButtonLink, Card, EmptyState } from "@/components/ui";
 import { createCredentialAction } from "./actions";
 import { CredentialForm } from "./credential-form";
 import { EmergencyPanel } from "./emergency-panel";
 import { UnlockForm } from "./unlock-form";
+
+import { ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Logins vault" };
 export const dynamic = "force-dynamic";
@@ -37,10 +39,11 @@ export default async function VaultPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Logins vault"
-        description="The logins the business runs on — Revenue Online, the bank, Stripe, your domain — kept encrypted, visible only to you, and only after a fresh sign-in code."
-      />
+      <ScreenHeader title="Logins vault" />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        The logins the business runs on — Revenue Online, the bank, Stripe, your domain — kept encrypted,
+        visible only to you, and only after a fresh sign-in code.
+      </p>
       <p className="rounded-control border border-line bg-subtle p-3 text-sm">
         Stored encrypted. For the most sensitive logins (your bank), a password manager is safer; you can keep
         just a note here.

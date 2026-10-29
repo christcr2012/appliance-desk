@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getShopSale, saleBuyerLabel } from "@/domains/sales";
-import { Card, PageHeader, StatusPill } from "@/components/ui";
+import { Card, StatusPill } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { formatMoney } from "@/lib/money-ui";
 import { businessDateKey } from "@/lib/business-date";
 import type { StatusTone } from "@/components/status-badge";
@@ -36,10 +36,10 @@ export default async function ShopSalePage({ params, searchParams }: { params: P
   const isOwner = session.user.role === "OWNER";
   return (
     <main className="space-y-6">
-      <PageHeader
+      <RecordHeader
         title={`Sale #${sale.invoiceNumber}`}
-        description={`${saleBuyerLabel(sale)} · ${sale.saleLocation === "DELIVERED" ? "Delivered" : "Picked up"} · ${sale.createdAt.toLocaleDateString("en-US", { timeZone: "America/Denver" })}`}
-        secondaryActions={<Link href="/desk/sales" className="text-sm underline">Back to all sales</Link>}
+        subtitle={`${saleBuyerLabel(sale)} · ${sale.saleLocation === "DELIVERED" ? "Delivered" : "Picked up"} · ${sale.createdAt.toLocaleDateString("en-US", { timeZone: "America/Denver" })}`}
+        back={{ href: "/desk/sales", label: "Sales" }}
       />
       {card === "paid" && <p role="status" className="rounded-md border border-line bg-surface-subtle p-3 text-sm">Card payment sent. This sale shows as paid as soon as Stripe confirms it (usually within seconds). Reload if it still says owed.</p>}
       {card === "cancelled" && <p role="status" className="rounded-md border border-line bg-surface-subtle p-3 text-sm">The card payment was not completed. Nothing was charged.</p>}

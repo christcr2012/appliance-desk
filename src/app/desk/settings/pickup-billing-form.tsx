@@ -133,7 +133,7 @@ export function PickupBillingForm({ defaultValues }: { defaultValues: PickupBill
         </legend>
         <p className="text-sm text-ink-soft">
           When one or more appliances on an agreement are not delivered on the visit that starts billing
-          (for example the dryer was back-ordered), the <strong>whole agreement</strong> is billed as normal
+          (for example the dryer was back-ordered), the <strong>whole rental</strong> is billed as normal
           from that first delivery date. When the missing appliance is delivered later, the customer gets a
           credit on their <strong>next</strong> bill for each day it was missing — from the original
           delivery date through the day before it arrived — shown as &ldquo;Credit – [appliance] delivered

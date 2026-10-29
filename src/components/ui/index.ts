@@ -5,8 +5,4 @@ export { StatCard } from "./stat-card";
 export { StatusPill } from "./status-pill";
 export { DataList, type DataListColumn } from "./data-list";
 export { Checkbox, Field, Select, Textarea } from "./form-controls";
-export { AttentionList, type AttentionGroup } from "./attention-list";
-export { VisitRow } from "./visit-row";
-export { DayTimeline, type TimelineVisit } from "./day-timeline";
-export { AppShell } from "./app-shell";
 export { BottomTabBar, type BottomTab } from "./bottom-tab-bar";

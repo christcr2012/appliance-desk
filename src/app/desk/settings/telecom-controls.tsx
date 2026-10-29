@@ -221,7 +221,7 @@ export function TelecomSettingsControls({accounts,statements,payAccounts,categor
           {row.state==="VERIFIED" && row.booked && <p className="mt-2 text-ink-soft">Booked on your books (one expense).</p>}
           {canEdit && row.state==="VERIFIED" && row.linkedPending && <p className="mt-2">
             Linked to an expense that is <strong>not on your books yet</strong> (for example books are not set up, or the purchase-tax address is unverified).{" "}
-            <button type="button" disabled={working} onClick={()=>finishPosting(row)} className="underline disabled:opacity-50">Try posting it again</button></p>}
+            <button type="button" disabled={working} onClick={()=>finishPosting(row)} className="underline disabled:opacity-50">Try sending it again</button></p>}
           {canEdit && row.state==="VERIFIED" && !row.booked && !row.linkedPending && row.currency==="USD" && row.cents>0 &&
             <form onSubmit={e=>book(e,row)} className="mt-3 grid gap-2 sm:grid-cols-2">
               <p className="col-span-full text-ink-soft">Nothing is on your books until you say when and from where you paid it.
