@@ -10,6 +10,8 @@ import { postBookSourceAfterCommit } from "@/domains/books/immediate";
 import { decideDepositRefund, issueInvoiceRefund, refundHeldPayment } from "@/domains/billing/refunds";
 import { applyCreditDecision, applyCreditDecisionInTx } from "@/domains/billing/money-decisions";
 import { HELD_PAYMENT_STATUS } from "@/domains/billing/payment-status";
+import { notifySafely } from "@/domains/notifications";
+import { formatMoney } from "@/lib/money-ui";
 
 /**
  * Approval limits (Batch O-3, design D-O3).
@@ -150,6 +152,21 @@ async function storeRequest(kind: ApprovalKindBuilt, args: { targetRef: string; 
         data: { userId: args.requestedBy, action: "approval.requested", entityType: "ApprovalRequest", entityId: created.id, newValue: { kind, amountCents: args.amountCents, targetRef: args.targetRef } },
       });
       return created;
+    });
+    // AR-13: the owner's bell notification, after the request has committed. The ALREADY_WAITING
+    // path below returns from the catch and never reaches this — a duplicate ask makes no noise.
+    const requester = await prisma.user.findUnique({
+      where: { id: args.requestedBy },
+      select: { name: true, email: true },
+    });
+    notifySafely({
+      kind: "APPROVAL_REQUESTED",
+      dedupeKey: `APPROVAL_REQUESTED:${row.id}`,
+      title: `Approval needed: ${args.summary}`,
+      body: `Asked by ${requester?.name ?? requester?.email ?? "A team member"} · ${formatMoney(args.amountCents)}.`,
+      href: "/desk/approvals",
+      entityType: "ApprovalRequest",
+      entityId: row.id,
     });
     return { status: "SENT_FOR_APPROVAL", requestId: row.id, message: "Sent to the owner for approval. Nothing has changed yet." };
   } catch (e) {

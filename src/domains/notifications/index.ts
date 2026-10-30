@@ -1,4 +1,5 @@
 import type { NotificationKind, Prisma, Role } from "@prisma/client";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { reportBackgroundError } from "@/lib/report-error";
 import { deliverMessage } from "@/domains/messaging/deliver";
@@ -122,6 +123,26 @@ export async function notify(event: NotificationEvent): Promise<void> {
     } catch (error) {
       await reportBackgroundError(error, `notify:email:${event.kind}`);
     }
+  }
+}
+
+/**
+ * The one way hooks fire a notification: after the response when a request scope exists (after()),
+ * otherwise as a plain fire-and-forget promise. Either way the error is reported, never thrown —
+ * the action that caused the event has already committed and must not fail because of a bell.
+ */
+export function notifySafely(event: NotificationEvent): void {
+  // The report is detached on purpose: reportBackgroundError waits up to ~2.5s for its error
+  // service to flush, and nothing on the caller's path (including after()'s drain) may pay that.
+  const report = (error: unknown) => {
+    void reportBackgroundError(error, `notify:${event.kind}`);
+  };
+  try {
+    after(async () => {
+      await notify(event).catch(report);
+    });
+  } catch {
+    void notify(event).catch(report);
   }
 }
 
