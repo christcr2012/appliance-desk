@@ -33,8 +33,8 @@ describe("AR-11 shared record titles", () => {
     expect(screen.getAllByText("Pat Customer")).toHaveLength(2);
   });
   it("keys the navigation transition by desk area, not by a child node", () => {
-    const source = readFileSync("src/components/ui/app-shell.tsx", "utf8");
-    expect(source).toContain('ViewTransition key={pathname?.split("/")[2] ?? "desk"}');
+    const source = readFileSync("src/components/kit/app-frame.tsx", "utf8");
+    expect(source).toContain('ViewTransition key={pathname.split("/")[2] ?? "desk"}');
     expect(source).not.toContain('<div key={pathname?.split("/")[2] ?? "desk"}');
   });
   it("uses exactly 180ms animations and disables all movement for reduced-motion", () => {
