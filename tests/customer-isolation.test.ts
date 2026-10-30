@@ -13,8 +13,14 @@ import {
   getPortalData,
   getPortalApplianceOptions,
   createMaintenanceRequestForUser,
+  getPortalMaintenanceCounts,
+  getPortalMaintenancePage,
 } from "@/domains/portal";
 import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
+import { getPayNowUrl } from "@/domains/portal/pay-now";
+import { setAutoRenew } from "@/domains/agreements/term";
+import { GET as statementRouteGET } from "@/app/api/documents/statement/[month]/route";
+import { businessDateKey } from "@/lib/business-date";
 
 // ---------------------------------------------------------------------------
 // The first real, database-backed integration test in this project (Phase
@@ -419,5 +425,133 @@ describe("customer data isolation (Phase 6A item 3)", () => {
     const invoice = await getInvoiceDetail(customerB.invoiceId);
     expect(invoice?.id).toBe(customerB.invoiceId);
     expect(invoice?.customer.id).toBe(customerB.customerId);
+  });
+});
+
+describe("customer data isolation — PORTAL-1 surfaces", () => {
+  it("maintenance tab pages and counts only ever return the signed-in customer's requests", async () => {
+    const requestA = await createMaintenanceRequestForUser(customerA.userId, {
+      problem: "PORTAL-1 tab isolation check (A)",
+      applianceId: customerA.applianceId,
+    });
+    const requestB = await createMaintenanceRequestForUser(customerB.userId, {
+      problem: "PORTAL-1 tab isolation check (B)",
+      applianceId: customerB.applianceId,
+    });
+
+    const openA = await getPortalMaintenancePage(customerA.userId, 1, "open");
+    expect(openA?.items.map((item) => item.id)).toContain(requestA.id);
+    expect(openA?.items.map((item) => item.id)).not.toContain(requestB.id);
+
+    const openB = await getPortalMaintenancePage(customerB.userId, 1, "open");
+    expect(openB?.items.map((item) => item.id)).toContain(requestB.id);
+    expect(openB?.items.map((item) => item.id)).not.toContain(requestA.id);
+
+    const countsA = await getPortalMaintenanceCounts(customerA.userId);
+    const countsB = await getPortalMaintenanceCounts(customerB.userId);
+    expect(countsA?.open).toBeGreaterThanOrEqual(1);
+    expect(countsB?.open).toBeGreaterThanOrEqual(1);
+    expect(countsA?.done).toBe(0);
+    expect(countsB?.done).toBe(0);
+
+    // Once A's request is resolved it moves to A's Done tab only.
+    await prisma.maintenanceRequest.update({
+      where: { id: requestA.id },
+      data: { status: "RESOLVED" },
+    });
+    const doneA = await getPortalMaintenancePage(customerA.userId, 1, "done");
+    expect(doneA?.items.map((item) => item.id)).toContain(requestA.id);
+    const openAAfter = await getPortalMaintenancePage(customerA.userId, 1, "open");
+    expect(openAAfter?.items.map((item) => item.id)).not.toContain(requestA.id);
+    const doneB = await getPortalMaintenancePage(customerB.userId, 1, "done");
+    expect(doneB?.items.map((item) => item.id)).not.toContain(requestA.id);
+  });
+
+  it("getPayNowUrl treats another customer's bill exactly like a missing one", async () => {
+    await expect(
+      getPayNowUrl(customerA.userId, customerB.invoiceId),
+    ).rejects.toThrow("We couldn't find that bill.");
+    // The same call with B's own bill gets past the lookup and fails
+    // later, at eligibility (a local, non-shop-sale invoice) — proving
+    // the not-found above is the ownership boundary, not a data error.
+    await expect(
+      getPayNowUrl(customerB.userId, customerB.invoiceId),
+    ).rejects.toThrow("This bill can't be paid online right now.");
+  });
+
+  it("setAutoRenew as customer A on customer B's rental throws the not-found message", async () => {
+    await expect(
+      setAutoRenew(
+        { userId: customerA.userId, kind: "customer" },
+        customerB.agreementId,
+        { enabled: false, termsVersion: "" },
+      ),
+    ).rejects.toThrow("Couldn't find that rental agreement.");
+  });
+
+  it("the statement route only ever mints an artifact for the signed-in customer", async () => {
+    const currentMonth = businessDateKey(new Date()).slice(0, 7);
+    const [year, month] = currentMonth.split("-").map(Number);
+    const previousMonth = new Date(Date.UTC(year, month - 2, 1))
+      .toISOString()
+      .slice(0, 7);
+    const artifactIds: string[] = [];
+    try {
+      for (const [own] of [[customerA], [customerB]] as const) {
+        session.mockResolvedValue({
+          user: { id: own.userId, role: "CUSTOMER" },
+        });
+        const response = await statementRouteGET(
+          new Request(`http://localhost/api/documents/statement/${previousMonth}`),
+          { params: Promise.resolve({ month: previousMonth }) },
+        );
+        expect(response.status).toBe(303);
+        const artifactId = response.headers
+          .get("location")
+          ?.split("/")
+          .filter(Boolean)
+          .pop();
+        expect(artifactId).toBeTruthy();
+        artifactIds.push(artifactId!);
+        const artifact = await prisma.documentArtifact.findUnique({
+          where: { id: artifactId! },
+        });
+        expect(artifact?.customerId).toBe(own.customerId);
+        expect(artifact?.subjectId).toBe(`${own.customerId}:${previousMonth}`);
+      }
+      expect(artifactIds[0]).not.toBe(artifactIds[1]);
+
+      // A staff session is refused outright, before any customer lookup.
+      session.mockResolvedValue({
+        user: { id: customerA.userId, role: "STAFF" },
+      });
+      const staffResponse = await statementRouteGET(
+        new Request(`http://localhost/api/documents/statement/${previousMonth}`),
+        { params: Promise.resolve({ month: previousMonth }) },
+      );
+      expect(staffResponse.status).toBe(404);
+    } finally {
+      await prisma.documentArtifact.deleteMany({
+        where: { id: { in: artifactIds } },
+      });
+    }
+  });
+
+  it("a STAFF user opening the portal has no account and sees no customer data", async () => {
+    const staffUser = await prisma.user.create({
+      data: {
+        email: `isolation-test-staff-${RUN_ID}@example.test`,
+        name: "Isolation Test Staff",
+        role: "STAFF",
+        emailVerified: true,
+      },
+    });
+    try {
+      expect(await getPortalData(staffUser.id)).toBeNull();
+      session.mockResolvedValue({ user: { id: staffUser.id } });
+      expect(await getPortalHome()).toBeNull();
+    } finally {
+      await prisma.user.delete({ where: { id: staffUser.id } });
+    }
   });
 });
