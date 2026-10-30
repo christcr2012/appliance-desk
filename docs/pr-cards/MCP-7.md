@@ -22,6 +22,31 @@ services.
 4. Owner email starts off and observes existing live switches; delivery failure cannot generate another incident.
 5. The existing sweep does the work, with owner controls, heartbeat, HTTP health probe, mobile/dark UI and full CI.
 
+## MCP-7b implementation evidence — October 29
+Feature branch: `ai/chatgpt/mcp-7b-monitor-actions`. The owner UI now pairs one of two
+zero-argument MCP-5 maintenance actions with an active maintenance-scoped owner connection.
+Automatic dispatch uses a durable one-per-Denver-day MonitorRun receipt linked to the
+MCP-5 AgentOperation journal; the operation records its authorizing rule version in the
+monitoring-specific tool name. Claims and immediate pre-dispatch both reject revoked
+connections, rule changes, disabled rules and deactivated owners. Assistant activity
+labels the source "Approved by your monitoring rule"; normal manual operation approval
+is unchanged. All rules/actions still start disabled by default.
+
+Evidence so far: focused ESLint zero errors (one unused import corrected), 3/3 focused
+monitoring policy tests passed. Four new disposable-PostgreSQL integration assertions
+cover owner grants, two-worker uniqueness, connection revocation and disabled rules.
+Full TypeScript check could not finish in the 4 GB Vercel Sandbox (heap OOM); GitHub CI
+must verify the complete suite and PostgreSQL cases. No production side effect was tested.
+The full MCP-7b acceptance remains open until those checks and review are green.
+
+## MCP-7b acceptance plan — delegated monitoring actions (October 29)
+
+- [ ] Only an active OWNER can grant, change or revoke standing approval for one allowlisted MCP-5 action and one live connection; the owner UI states the consequence before saving and starts with no action. Reject unknown actions, missing scopes, revoked connections and stale rule versions.
+- [ ] A qualifying ALERT claims at most one durable operation per unique (rule, Denver slot) even with two workers, and records its operation ID and the authorizing rule version on a permanent receipt. No direct native writer is called.
+- [ ] Before dispatch, re-read and lock the rule, connection and operation. Rule disable/version change, connection revoke/scope change or owner deactivation after preview must refuse side effects; queued work does not inherit a stale grant.
+- [ ] Reuse MCP-5 preview, approval and verified dispatch semantics with an explicit standing-rule authorization record. Owner activity labels these receipts "Approved by your monitoring rule". Uncertain effects never retry blindly.
+- [ ] Disposable-PostgreSQL tests exercise simultaneous workers, replays, revoked/changed authority before dispatch, exactly-once receipts and diagnostic failure. No live email, SMS or payment activation. Focused checks, exact-head CI and resolved review are required.
+
 ## Progress — MCP-7a independently usable monitor/owner alert boundary
 
 The daily checks, owner settings, one-incident To do alerts, cooldown/recovery, optional gated owner email, heartbeat and public liveness probe are implemented on ai/chatgpt/mcp-7-monitoring. Eight focused real-database/policy tests passed. This first PR is intentionally independent of delegated assistant writes: that boundary requires an MCP-5 approval/dispatch extension and separate revocation checks; permitting it before the extension would be a security regression. The automatic assistant-action acceptance remains unchecked and MCP-7 as a whole is not complete. Exact-head CI, browser test and review still pending.
