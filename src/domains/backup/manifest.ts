@@ -291,6 +291,10 @@ export const BACKUP_MODEL_POLICY = {
   OwnerInsurancePolicy: "ownerInsurancePolicy",
   InsuranceCertificateRequest: "insuranceCertificateRequest",
   TeamCertification: "teamCertification",
+  // AR-13: notifications are short-lived messages (nothing important is lost by leaving them out of
+  // backups); the per-kind channel preferences are restored like other personal settings.
+  Notification: null,
+  NotificationPreference: "notificationPreference",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

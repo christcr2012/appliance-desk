@@ -1,5 +1,10 @@
 /** Plain-language explanations shared by owner screens. */
 export const GLOSSARY = {
+  "notification-lead-new": { title: "New lead", description: "Created when a new lead comes in — from the website form, or added by hand by someone else on the team." },
+  "notification-quote-viewed": { title: "Quote opened", description: "Created when a customer opens a quote that was sent to them, the first time they open it." },
+  "notification-signature-done": { title: "Rental signed", description: "Created when a customer signs their rental agreement." },
+  "notification-payment-failed": { title: "Payment failed", description: "Created when a customer's payment for a bill does not go through." },
+  "notification-approval-requested": { title: "Approval needed", description: "Created when someone on the team asks the owner to approve something over their limit." },
   "texting-switch": {
     title: "Texting switch",
     description: "Texting with customers is turned on or off by the owner in Settings. Until it's on, conversations here can be read, but new texts aren't sent.",

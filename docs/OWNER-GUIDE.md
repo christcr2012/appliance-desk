@@ -180,6 +180,12 @@ Examples of what appears: a new lead ("Contact <name>"), a signed rental ("Sched
 
 **If a save or automation fails.** An item that cannot be fixed on its own stays on Today until the cause is fixed; nothing quietly disappears. A save that did not go through shows a red message and keeps what you typed — it never shows "Saved" unless the system confirmed it. If someone else saved a task first, your draft stays on screen; copy it, reload, and apply it.
 
+## The bell — what just happened
+
+The bell at the top of every desk screen is "what just happened", where To do is "what needs doing". It counts five things: a **new lead**, a **quote opened** by a customer, a **rental signed**, a **payment failed**, and an **approval needed** (owner only — only the owner decides). The red number is how many you haven't looked at; tap the bell, tap the item, and you land on the record. Looking at an item marks it read. **Mark all as read** clears the whole list at once. Read items are kept for the number of days in Settings → Advanced → "Days to keep read notifications" (starting value 90), then removed by the nightly clean-up; unread items are never removed by age.
+
+**Your choices.** Your account → Your notifications ("Choose what you get" under the bell takes you there) has one row per kind you can receive, each with **In the app** and **By email** switches. Email starts off for everything, so your inbox stays quiet; turn it on per kind for the ones you never want to miss. Texts aren't offered yet. Staff who can't receive any of the five yet see "You don't get notifications yet." — new kinds for staff would be a new decision. When someone's access is reduced, notifications they can no longer open are removed at that moment.
+
 ## Leads
 
 ![Leads](owner-guide/screenshots/leads.png)

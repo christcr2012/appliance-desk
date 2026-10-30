@@ -4,6 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { CAPABILITY_KEYS } from "@/domains/capabilities";
 import { noticeWarning } from "@/domains/account";
 import { JobRoleError, STARTER_JOB_ROLES, validateJobRole, type JobRoleLevel } from "./job-role-rules";
+import { purgeNotificationsForAccess } from "@/domains/notifications";
 export { JobRoleError } from "./job-role-rules";
 
 // ACC-5: job roles. A job role only NARROWS what an access level allows (it is a list of desk screens, plus for admins a
@@ -177,14 +178,18 @@ export async function assignJobRole(ownerId: string, targetId: string, jobRoleId
     if (target.role !== "STAFF" && target.role !== "ADMIN") throw new JobRoleError("Job roles are for staff and admins. Owners always have everything.");
     if ((target.jobRoleId ?? null) === jobRoleId) return;
     let limits: string[] = [];
+    let newScreens: string[] | null = null;
     if (jobRoleId) {
       const role = await assertJobRoleFits(tx, jobRoleId, target.role as Role);
       limits = strings(role.capabilityLimits);
+      newScreens = strings(role.screens);
       label = role.label;
     }
     await tx.user.update({ where: { id: targetId }, data: { jobRoleId } });
     if (limits.length > 0) await applyCapabilityLimits(tx, targetId, limits, ownerId);
     await tx.session.deleteMany({ where: { userId: targetId } });
+    // AR-13: notifications of kinds the new job role can no longer receive are deleted (audited by the purge).
+    await purgeNotificationsForAccess(tx, { actorId: ownerId, userId: targetId, role: target.role as Role, screens: newScreens });
     await tx.auditLog.create({
       data: { userId: ownerId, action: "team.job_role.assign", entityType: "User", entityId: targetId, oldValue: { jobRoleId: target.jobRoleId }, newValue: { jobRoleId } },
     });

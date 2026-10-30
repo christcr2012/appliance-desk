@@ -9,6 +9,7 @@ import { draftRequestId } from "./draft-request";
 import { ensurePickupDraftInTx } from "./pickup-draft";
 import { buildTermsSnapshot } from "./terms-snapshot";
 import { requireRole } from "@/lib/session";
+import { notifySafely } from "@/domains/notifications";
 import { fixedTermEndDate } from "@/lib/business-date";
 import {
   applySubscriptionEnds,
@@ -848,6 +849,16 @@ export async function signAgreement(
     return { agreementId: agreement.id, subscriptionEndIds };
   });
   await applySubscriptionEnds(local.subscriptionEndIds);
+  // AR-13: the bell notification, after the signing transaction has committed.
+  notifySafely({
+    kind: "SIGNATURE_DONE",
+    dedupeKey: `SIGNATURE_DONE:${local.agreementId}`,
+    title: `${input.signerName} signed their rental`,
+    body: "Next: schedule the delivery. It's on your To do list.",
+    href: `/desk/agreements/${local.agreementId}`,
+    entityType: "RentalAgreement",
+    entityId: local.agreementId,
+  });
   return local.agreementId;
 }
 

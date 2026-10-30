@@ -1,3 +1,7 @@
+## October 29 — AR-13 notifications (additive)
+
+Migration `20261217000000_notifications` adds `Notification` (one row per recipient per event: kind, title, body, in-app link, optional entity pointer, `dedupeKey`, `readAt`; unique on (`userId`, `dedupeKey`) so a replayed event can never double-notify; newest-first index on (`userId`, `createdAt`)) and `NotificationPreference` (per person per kind: `inApp`, `email`; unique on (`userId`, `kind`); no row = in app on, email off), plus `BusinessSettings.notificationKeepDays` (integer, default 90; how long read notifications are kept, edited in Settings › Advanced). Kinds: LEAD_NEW, QUOTE_VIEWED, SIGNATURE_DONE, PAYMENT_FAILED, APPROVAL_REQUESTED. Backup policy: notifications are left out of backups (`null` — short-lived, losing them loses nothing); preferences are backed up as `notificationPreference`. A privacy deletion removes the customer's notifications by their lead/estimate/agreement/invoice ids; an access reduction removes the kinds the person can no longer open.
+
 ## October 29 — CU-1 Customers list (AR-4c, additive migration 20261026040000_customer_list)
 
 `Customer.phoneDigits` (digits-only phone key, backfilled from `phone`, maintained by

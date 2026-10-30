@@ -8,6 +8,7 @@ import { Icon } from "./icons";
 import { OfflineBar } from "./offline-bar";
 import { RememberList, followRememberedClick } from "./remember-list";
 import { CommandBar } from "./command-bar";
+import { NotificationBell } from "./notification-bell";
 import { InboxCountPill } from "./inbox-count-beacon";
 import { ProfileMenu, type ProfileUser } from "./profile-menu";
 import { activeArea, areaHome, type Area, type ProfileLink } from "@/lib/desk-areas";
@@ -104,6 +105,7 @@ export function TopBar({ areas, active, profileLinks, user, jobRoleScreens, show
     <div className="flex shrink-0 items-center gap-3">
       <CommandBar areas={areas} role={user.role} screens={jobRoleScreens} profile={profileLinks}
         shown={shown} guides={helpGuides} />
+      <NotificationBell />
       <div className="lg:hidden">
         <ProfileMenu user={user} links={profileLinks} mobile />
       </div>

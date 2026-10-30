@@ -86,17 +86,15 @@ export async function scanAccessibilityRoute(
     .catch(() => undefined);
 
   for (const theme of THEMES) {
-    // Next may finish a server/client redirect immediately after load.
-    // If that single pending navigation destroys the JS context, wait for
-    // the actual destination to load and APPLY the theme there. We still run
-    // every theme/viewport/axe assertion; no failed assertion is ignored.
+    // Next may finish a server/client redirect after load — on a loaded runner the streamed shell
+    // can sit measurable for seconds before the redirect lands, so the navigation can destroy the
+    // JS context at ANY step of the pass (theme apply, layout wait, overflow measure, axe), not
+    // just the first evaluate this loop used to guard. If that single pending navigation destroys
+    // the context, wait for the actual destination to load and redo the whole theme pass there.
+    // We still run every theme/viewport/axe assertion; no failed assertion is ignored.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        await page.evaluate((mode) => {
-          localStorage.setItem("theme", mode);
-          document.documentElement.classList.toggle("dark", mode === "dark");
-          document.documentElement.style.colorScheme = mode;
-        }, theme);
+        await scanThemePass(page, route, viewports, theme);
         break;
       } catch (error) {
         if (attempt || !String(error).includes("Execution context was destroyed")) throw error;
@@ -104,6 +102,20 @@ export async function scanAccessibilityRoute(
         await expect(page.locator("body")).toBeVisible();
       }
     }
+  }
+}
+
+async function scanThemePass(
+  page: Page,
+  route: AccessibilityRoute,
+  viewports: readonly number[],
+  theme: (typeof THEMES)[number],
+) {
+    await page.evaluate((mode) => {
+      localStorage.setItem("theme", mode);
+      document.documentElement.classList.toggle("dark", mode === "dark");
+      document.documentElement.style.colorScheme = mode;
+    }, theme);
 
     await expect(page.locator("html")).toHaveClass(
       theme === "dark" ? /dark/ : /^(?!.*\bdark\b)/,
@@ -176,5 +188,4 @@ export async function scanAccessibilityRoute(
         `${route.path} should pass automated WCAG 2.2 AA engineering checks at ${width}px in ${theme} mode`,
       ).toEqual([]);
     }
-  }
 }

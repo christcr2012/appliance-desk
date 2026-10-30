@@ -18,6 +18,8 @@ import {
 } from "@/domains/leads";
 
 import { estimateExpiresAt, isEstimatePastValidity } from "./validity";
+import { notifySafely } from "@/domains/notifications";
+import { relativeBusinessDay } from "@/lib/business-date";
 import { snapshotLocation as zoneLocationOf } from "@/domains/delivery/snapshot";
 import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
 import { validatePreparedConversion, validateConvertedEstimateReplay } from "./prepared-conversion";
@@ -658,6 +660,24 @@ export async function getEstimateForApproval(id: string) {
       data: { status: "VIEWED", viewedAt },
     });
     if (claimed.count === 1) {
+      // AR-13: the bell notification for the one call that wins the SENT -> VIEWED claim. The
+      // claim has committed (a standalone update); the notification can never fail the view.
+      const viewerName =
+        estimate.customer?.companyName ??
+        estimate.customer?.user?.name ??
+        estimate.lead?.companyName ??
+        estimate.lead?.contactName ??
+        "A customer";
+      notifySafely({
+        kind: "QUOTE_VIEWED",
+        dedupeKey: `QUOTE_VIEWED:${id}`,
+        title: `${viewerName} opened quote #${estimate.estimateNumber}`,
+        body: `Sent ${relativeBusinessDay(estimate.sentAt ?? estimate.createdAt)}.`,
+        href: `/desk/estimates/${id}`,
+        entityType: "Estimate",
+        entityId: id,
+        creatorId: estimate.createdByUserId,
+      });
       return { ...estimate, status: "VIEWED" as EstimateStatus, viewedAt };
     }
     const current = await loadPublicEstimate(id);
