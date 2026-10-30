@@ -18,7 +18,8 @@ export async function POST(req: Request) {
         (args !== undefined && (!args || Array.isArray(args) || typeof args !== "object")))
       return rtcError("invalid_args");
     try { results.push(await rtcToolCall(auth.ctx, name, (args ?? {}) as Record<string, unknown>)); }
-    catch { return rtcError("refused_by_guard", 403); }
+    catch (error) { return error instanceof Error && error.message === "invalid_args"
+      ? rtcError("invalid_args", 400) : rtcError("refused_by_guard", 403); }
   }
   return rtcJson({ ok: true, result: { results } });
 }

@@ -3,6 +3,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildMcpServer } from "@/mcp/server";
 import { authenticateRtcPass } from "@/domains/agent-control/passes";
 import { storeRtcResult, readRtcResult } from "@/domains/agent-control/rtc-results";
+import { parseRtcReadInput, projectRtcRead } from "./rtc-projection";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 
 type ClientTool = Awaited<ReturnType<Client["listTools"]>>["tools"][number];
@@ -65,9 +66,10 @@ export async function rtcToolCall(ctx: AgentContext, name: string,
   args: Record<string, unknown> = {}) {
   const tool = (await rtcTools(ctx)).find(item => item.name === name);
   if (!tool) throw new Error("outside_scope");
-  const result = await mcpRead(ctx, client => client.callTool({ name, arguments: args }));
+  const { domainArgs, paths } = parseRtcReadInput(args);
+  const result = await mcpRead(ctx, client => client.callTool({ name, arguments: domainArgs }));
   if (result.isError) throw new Error("refused_by_guard");
-  const payload = result.structuredContent ?? { content: result.content };
+  const payload = projectRtcRead(result.structuredContent ?? { content: result.content }, paths);
   const serialized = JSON.stringify(payload);
   if (Buffer.byteLength(serialized, "utf8") <= 8192) return { ok: true, result: payload };
   // Keep the raw sanitized MCP output owned by this pass; never cut mid-JSON.

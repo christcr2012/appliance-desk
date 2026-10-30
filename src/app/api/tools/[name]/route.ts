@@ -23,5 +23,6 @@ export async function POST(req: Request, { params }: Context) {
   if ("confirm" in args || "dryRun" in args || "previewId" in args)
     return rtcError("refused_by_guard", 403); // read-only initial contract: no writes
   try { return rtcJson(await rtcToolCall(auth.ctx, name, args)); }
-  catch { return rtcError("refused_by_guard", 403); }
+  catch (error) { return error instanceof Error && error.message === "invalid_args"
+    ? rtcError("invalid_args", 400) : rtcError("refused_by_guard", 403); }
 }
