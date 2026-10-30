@@ -184,6 +184,10 @@ export const STARTING_VALUES: Record<string, StartingValue | NoSource> = {
   "ZONE-DISTANCE": { value: "AS_BUILT", why: "Chris chose a straight line from the center of Greeley on 2026-10-25, at " +
     "least for now: it needs no paid route service and every customer at the same distance pays the same.",
     sources: [CHRIS_DEC, ZONE_SPEC], kind: "CONFIRMED" },
+  // PORTAL-1 (docs/pr-cards/PORTAL-1.md).
+  "PORTAL-WORDING-2026-10-30": asBuilt("The redesigned portal's new English wording is live and the drafted Spanish sits beside it. " +
+    "Spanish shows only after the reviewed copy is recorded, so no customer ever sees an unreviewed translation.",
+    [{ title: "Customer portal redesign spec", url: "docs/build-specs/screens/PORTAL.md", checkedOn: "2026-10-30" }]),
 };
 
 function asBuilt(why: string, sources: DecisionSourceRef[]): StartingValue {
