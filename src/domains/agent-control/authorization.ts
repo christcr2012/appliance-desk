@@ -48,7 +48,7 @@ export async function authenticateMcpRequest(request: Request): Promise<AgentCon
   const connection = await prisma.mcpConnection.findUnique({
     where: { userId_oauthClientId: { userId, oauthClientId: clientId } },
   });
-  if (!connection || connection.revokedAt ||
+  if (!connection || connection.kind === "PASS" || connection.revokedAt ||
     typeof claims.appliance_connection_version !== "string" ||
     claims.appliance_connection_version !== connection.grantVersion) return reject(issuer);
   const user = await prisma.user.findUnique({
