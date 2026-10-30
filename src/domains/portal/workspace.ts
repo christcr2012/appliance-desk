@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "@/lib/session";
 import { ACTIVE_ASSIGNMENT_WHERE } from "@/domains/agreements/active-appliances";
+import { rentalMonthlyTotalCents } from "@/domains/agreements/totals";
 import { getNextBills } from "@/domains/portal/next-bill";
 /** Session identity is resolved here; URL property filters can only narrow
  * the signed-in customer's own records. Only customer-visible DTOs are read. */
@@ -44,6 +45,7 @@ export async function getPortalHome(rawAddressId?: string) {
     openRequestCount,
     openVisits,
     nextBills,
+    awaitingSignature,
   ] = await Promise.all([
     prisma.rentalAgreement.count({ where: rentalWhere }),
     prisma.job.count({ where: jobWhere }),
@@ -109,6 +111,11 @@ export async function getPortalHome(rawAddressId?: string) {
       select: { id: true, type: true, status: true, createdAt: true, scheduledAt: true, customerPickupHandoff: true },
     }),
     getNextBills(customer.id, addressId),
+    prisma.rentalAgreement.findMany({
+      where: { customerId: customer.id, status: "AWAITING_SIGNATURE" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, signature: { select: { id: true } } },
+    }),
   ]);
   return {
     customerId: customer.id,
@@ -117,8 +124,23 @@ export async function getPortalHome(rawAddressId?: string) {
     activeRentalCount,
     upcomingVisitCount,
     nextVisit,
-    rentals,
+    rentals: rentals.map((rental) => ({
+      ...rental,
+      monthlyTotalCents: rentalMonthlyTotalCents(rental.lines),
+    })),
     invoice,
+    // What the customer still owes on the first open bill (never below
+    // zero); pages format this, they never subtract in page code.
+    balanceCents: invoice
+      ? Math.max(0, invoice.amountDueCents - invoice.amountPaidCents)
+      : 0,
+    // Rentals waiting for this customer's signature, oldest first; the
+    // sign-in link uses the signature record's id (the /sign/[id] route).
+    signingWaiting: awaitingSignature.flatMap((agreement) =>
+      agreement.signature
+        ? [{ agreementId: agreement.id, signHref: `/sign/${agreement.signature.id}` }]
+        : [],
+    ),
     openRequestCount,
     openVisits,
     nextBills,

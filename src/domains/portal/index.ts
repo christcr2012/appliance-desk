@@ -11,6 +11,8 @@ import {
   getActiveApplianceOptionsForUser,
 } from "@/domains/agreements/active-appliances";
 
+import { rentalMonthlyTotalCents } from "@/domains/agreements/totals";
+
 import { customerSigningSummary } from "./signing-status";
 
 export const PORTAL_PAGE_SIZE = 20;
@@ -165,6 +167,7 @@ export async function getPortalData(userId: string) {
       // Do not advertise an unsigned/order-draft visit to the customer.
       // Existing scheduled visits keep their normal visibility.
       jobs: signature?.signedAt ? agreement.jobs : agreement.jobs.filter(job => job.scheduledAt !== null),
+      monthlyTotalCents: rentalMonthlyTotalCents(agreement.lines),
       signingPaymentSummary: customerSigningSummary(signingPaymentObligation, customer.id),
     })),
     jobs: customer.jobs.slice(0, PORTAL_PAGE_SIZE),
