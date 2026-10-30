@@ -2,6 +2,7 @@ import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { sweepSystemIssues } from "@/domains/system-issues/sources";
+import { cleanupOldNotifications } from "@/domains/notifications";
 import { reconcileAgentOperations } from "@/domains/agent-control/operations";
 import { runMonitors } from "@/domains/agent-control/monitoring";
 import { automationCounts } from "@/domains/automation/counts";
@@ -108,7 +109,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Readback-only: uncertain assistant operations never dispatch a second effect.
       const assistants = await reconcileAgentOperations(new Date(), 10);
       const monitors = await runMonitors(new Date());
-      return { counts: automationCounts({ ...issues, ...assistants, ...monitors }) };
+      // AR-13: the notifications clean-up rides this nightly sweep (no new cron) — read
+      // notifications past their keep-days are deleted, at most 5,000, counted in the run.
+      const notificationsRemoved = await cleanupOldNotifications(new Date());
+      return { counts: automationCounts({ ...issues, ...assistants, ...monitors, notificationsRemoved }) };
     },
   });
   return NextResponse.json({ systemIssues, providerOps, bankInFlight, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });

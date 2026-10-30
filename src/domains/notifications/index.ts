@@ -250,6 +250,30 @@ export async function setNotificationPreference(
 }
 
 /**
+ * The nightly clean-up (spec section 6): read notifications are kept for BusinessSettings'
+ * notificationKeepDays after they are read, then deleted — at most 5,000 per run, taken as one
+ * id batch. Unread notifications are never removed by age. Returns how many were deleted so the
+ * cron run can count them.
+ */
+export async function cleanupOldNotifications(now: Date = new Date()): Promise<number> {
+  const settings = await prisma.businessSettings.findUnique({
+    where: { id: "singleton" },
+    select: { notificationKeepDays: true },
+  });
+  const keepDays = settings?.notificationKeepDays ?? 90;
+  const cutoff = new Date(now.getTime() - keepDays * 86_400_000);
+  const stale = await prisma.notification.findMany({
+    where: { readAt: { not: null, lt: cutoff } },
+    select: { id: true },
+    orderBy: { readAt: "asc" },
+    take: 5000,
+  });
+  if (stale.length === 0) return 0;
+  const removed = await prisma.notification.deleteMany({ where: { id: { in: stale.map((row) => row.id) } } });
+  return removed.count;
+}
+
+/**
  * The access-change purge (spec section 5): when a person's access level or job role changes, the
  * notifications of kinds they can no longer receive are deleted in the caller's transaction, with
  * an audit row carrying the count. Re-promotion never brings deleted rows back.

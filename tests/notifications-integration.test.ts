@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
 import {
+  cleanupOldNotifications,
   getNotificationPreferences,
   getUnreadCount,
   listNotifications,
@@ -124,6 +125,27 @@ describe.skipIf(!enabled)("notifications domain (AR-13)", () => {
     // Re-promotion does not bring the deleted rows back.
     await changeAccessLevel(ownerId, adminId, "ADMIN");
     expect(await prisma.notification.count({ where: { userId: adminId, kind: "PAYMENT_FAILED" } })).toBe(0);
+  });
+
+  it("the nightly clean-up deletes read rows past the keep-days and keeps unread and recent rows", async () => {
+    const day = 86_400_000;
+    const mk = (suffix: string, readAt: Date | null, createdDaysAgo: number) =>
+      prisma.notification.create({
+        data: {
+          userId: adminId, kind: "LEAD_NEW", title: `Cleanup ${suffix}`, body: "Body",
+          href: "/desk/leads/fixture-lead", entityType: "Lead", entityId: `ar13-clean-${tag}-${suffix}`,
+          dedupeKey: `LEAD_NEW:ar13-clean-${tag}-${suffix}`,
+          readAt, createdAt: new Date(Date.now() - createdDaysAgo * day),
+        },
+      });
+    await mk("old-read", new Date(Date.now() - 100 * day), 120);
+    await mk("recent-read", new Date(Date.now() - 10 * day), 30);
+    await mk("old-unread", null, 400);
+    const removed = await cleanupOldNotifications(new Date());
+    expect(removed).toBeGreaterThanOrEqual(1);
+    expect(await prisma.notification.count({ where: { dedupeKey: `LEAD_NEW:ar13-clean-${tag}-old-read` } })).toBe(0);
+    expect(await prisma.notification.count({ where: { dedupeKey: `LEAD_NEW:ar13-clean-${tag}-recent-read` } })).toBe(1);
+    expect(await prisma.notification.count({ where: { dedupeKey: `LEAD_NEW:ar13-clean-${tag}-old-unread` } })).toBe(1);
   });
 
   it("narrowing a job role to remove leads deletes LEAD_NEW rows", async () => {
