@@ -1,3 +1,19 @@
+## October 29 — Lane 2: MCP-9 RTC read-only gateway in development
+
+MCP-9 branch `ai/chatgpt/mcp-9-rtc-contract` pins the upstream RTC 1
+contract at `Robinson-AI-Systems/robinsons-toolkit-hub`
+`e6cfb98266728ce0e986ab068569a5d1117a4334` (read-only reference).
+Digest-only 256-bit passes, separate OAuth/pass doors, revocation, owner-only
+one-time pass controls, 24-hour scoped result handles, shared database rate
+limits, and a first read-only HTTPS adapter reuse the real MCP SDK registry.
+Initial local/unit and disposable-PostgreSQL test cases are committed but
+**not yet executed**. The pinned upstream full conformance suite, two actual
+server processes, controlled write/confirmation contract, owner matrix and
+review remain pending; no RTC 1 compatibility is claimed yet. No real pass
+has been issued by development. MCP-8 PR #764 has full CI green at exact
+head `af074cef`, self-review recorded and guarded auto-merge armed, awaiting
+normal review-gate completion.
+
 ## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
 
 MCP-11 assistant feedback was merged in PR #748 after its exact-head CI and normal
