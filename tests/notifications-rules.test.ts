@@ -79,7 +79,9 @@ describe("allowedKindsFor", () => {
   });
 
   it("staff can read lead notifications only when their job role has the leads screen", () => {
-    expect(allowedKindsFor(staffOffice)).toEqual(["LEAD_NEW"]);
+    // Staff hold no standing kind (spec section 5: allowedKindsFor is section 3's recipient table;
+    // the assignee is an event-level addition, not a standing kind) — with or without leads access.
+    expect(allowedKindsFor(staffOffice)).toEqual([]);
     expect(allowedKindsFor(staffDriver)).toEqual([]);
   });
 

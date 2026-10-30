@@ -203,7 +203,9 @@ describe.skipIf(!enabled)("notification hooks (AR-13)", () => {
     const again = await submitWriteOff(adminA, invoice.id, `Fixture ${tag}`);
     expect(again.status).toBe("ALREADY_WAITING");
     await new Promise((r) => setTimeout(r, 300));
-    expect(await prisma.notification.count({ where: { kind: "APPROVAL_REQUESTED", entityId: result.requestId } })).toBe(1);
+    // Scoped to this suite's owner: on the shared CI database, other suites' owner fixtures are
+    // legitimate OWNER recipients of the same event, so an unscoped count races them.
+    expect(await prisma.notification.count({ where: { userId: ownerId, kind: "APPROVAL_REQUESTED", entityId: result.requestId } })).toBe(1);
   });
 
   it("PAYMENT_FAILED: a failed bill notifies once per Stripe event, replays add nothing", async () => {

@@ -39,11 +39,11 @@ const OWNER_OR_ADMIN: readonly Role[] = ["OWNER", "ADMIN"];
 export function allowedKindsFor(person: NotificationPerson): NotificationKind[] {
   if (person.archivedAt) return [];
   const kinds: NotificationKind[] = [];
-  // LEAD_NEW follows the leads screen: owners and admins by the table, staff when they can work leads
-  // (a staff member receives one as a lead's assignee, and must be able to read it back).
+  // LEAD_NEW follows section 3's standing table: OWNER and ADMIN whose job role allows the leads
+  // screen. The assignee is an event-level addition in recipientsFor, not a standing kind — section 5
+  // pins allowedKindsFor to the same table, and a staff member's preferences page is the empty state.
   if (
-    person.role !== "CUSTOMER" &&
-    person.role !== "ACCOUNTANT" &&
+    OWNER_OR_ADMIN.includes(person.role) &&
     jobRoleAllowsPath(person.screens, KIND_SCREEN_HREF.LEAD_NEW)
   ) {
     kinds.push("LEAD_NEW");
