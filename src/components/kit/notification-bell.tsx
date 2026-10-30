@@ -107,10 +107,6 @@ export function NotificationBell() {
       .catch(() => setRows([]));
   }, []);
 
-  useEffect(() => {
-    if (open) loadFirstPage();
-  }, [open, loadFirstPage]);
-
   const loadMore = () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
@@ -147,11 +143,18 @@ export function NotificationBell() {
 
   const unread = count ?? 0;
   const label = unread > 0 ? `Notifications, ${unread} unread` : "Notifications";
+  // The first page loads from the open gesture itself, not an effect (the panel starts empty
+  // every time it opens, and an effect would pay a synchronous setState on each open).
+  const openPanel = () => {
+    setOpen(true);
+    loadFirstPage();
+  };
+
   const bellButton = (
     <button
       type="button"
       aria-label={label}
-      onClick={desktop ? undefined : () => setOpen(true)}
+      onClick={desktop ? undefined : openPanel}
       className={BELL_BUTTON}
     >
       <Icon name="bell" />
@@ -247,7 +250,13 @@ export function NotificationBell() {
   }
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
+    <Popover.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) loadFirstPage();
+      }}
+    >
       <Popover.Trigger asChild>{bellButton}</Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

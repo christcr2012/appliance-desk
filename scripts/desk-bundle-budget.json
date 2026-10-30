@@ -1,5 +1,6 @@
 {
   "/desk/account": 310,
+  "/desk/account/notifications": 330,
   "/desk/activity": 310,
   "/desk/agreements": 310,
   "/desk/agreements/[id]": 320,
