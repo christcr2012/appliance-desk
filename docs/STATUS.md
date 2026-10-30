@@ -1,21 +1,20 @@
-## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
+## October 29 — Lane 2: MCP-11 and MCP-7b merged; MCP-8 observations and settings coverage in progress
 
-MCP-11 assistant feedback was merged in PR #748 after its exact-head CI and normal
-review-gate completed. MCP-7b PR #762 adds owner-only, default-off standing
-monitoring approvals for a narrowly allowlisted MCP-5 action and an active,
-maintenance-scoped owner connection; each qualifying alert links its permanent
-Denver-day receipt to the operation journal. The operation checks the exact
-rule version, owner access, connection and scope at claim and before dispatch,
-records owner grant changes in the audit log, and never blindly retries
-an uncertain action. The owner interface explains delegation and assistant
-activity attributes it to the monitoring rule.
+MCP-11 feedback PR #748 and MCP-7b delegated monitoring PR #762 are merged after
+their required exact-head CI and normal review gates cleared. MCP-7b protects
+owner-approved standing automation with maintenance-scoped connections, durable
+per-slot receipts, version and revocation checks, and pre-dispatch verification.
+No live provider or customer messaging was activated.
 
-Local focused ESLint passed with no errors and monitoring policy tests were 3/3
-green; GitHub's type-check, lint and repository-check job passed. The first
-GitHub CI run found synthetic audit-log teardown cleanup and a missing STATUS
-update; these were corrected for the next exact-head CI. Full database/browser
-CI and review remain required before merge. No live provider or customer
-communications were enabled. MCP-8 and MCP-9 remain outstanding.
+MCP-8 branch `ai/chatgpt/mcp-8-observations-settings` adds fixed-label sampled
+PAGE/ACTION/JOB/QUERY performance evidence, 30-day capped cleanup, percentile
+observations that refuse to guess below 30 samples, owner-only reversible
+improvement proposals, owner System health screen and scoped assistant lookup
+of settings generated from AR-8's final catalog and real control inventory.
+Prisma migration and unit/disposable-PostgreSQL tests are included. Focused
+unit tests (8/8) and ESLint passed locally; full CI, browser/database checks,
+review and merge remain pending. MCP-9 RTC conformance is not implemented yet.
+
 
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 
