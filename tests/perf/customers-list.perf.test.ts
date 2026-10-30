@@ -15,8 +15,10 @@ import { measuredMedian, PERF_ENABLED } from "./fixtures";
 
 // CU-1 (CUSTOMERS spec section 7): 20,000 customers / 60,000 addresses /
 // 30,000 agreements / 120,000 bills / 40,000 visits in throwaway Postgres.
-// List reads per sort, the counts query, and each search flavour stay under
-// 150 ms on the CI database. Runs only in the Performance Baselines job.
+// List reads per sort, the counts query, and each search flavour stay
+// within their budgets on the CI database (150 ms; attention sort and
+// segment counts 300 ms per the 2026-10-30 owner amendment recorded in
+// CUSTOMERS.md section 1). Runs only in the Performance Baselines job.
 const CUSTOMERS = 20_000;
 
 describe.skipIf(!PERF_ENABLED)("CU-1 20,000-customer list capacity (isolated CI Postgres)", () => {
@@ -84,21 +86,30 @@ describe.skipIf(!PERF_ENABLED)("CU-1 20,000-customer list capacity (isolated CI 
     await prisma.user.deleteMany({ where: { id: { startsWith: prefix } } });
   }, 300_000);
 
-  it("lists a page under 150 ms for every sort", async () => {
+  it("lists a page within budget for every sort", async () => {
+    // Budgets per sort: 150 ms, except the attention sort at 300 ms
+    // (owner amendment 2026-10-30 — see CUSTOMERS.md section 1: the
+    // attention ordering aggregates agreements, open invoices and
+    // pickups for the whole segment; measured 172.6 ms in CI after the
+    // CU1-PERF base-table redesign, from 1,523 ms on the old view).
+    const budget: Record<string, number> = { attention: 300 };
     for (const sort of ["attention", "name", "rent-desc", "owed-desc", "newest", "since"] as const) {
       const { ms } = await measuredMedian(`list sort=${sort}`, () =>
         getCustomerList({ segment: "active", sort }, now),
       );
-      expect(ms, `sort ${sort}`).toBeLessThan(150);
+      expect(ms, `sort ${sort}`).toBeLessThan(budget[sort] ?? 150);
     }
   }, 300_000);
 
-  it("counts all segments under 150 ms", async () => {
+  it("counts all segments under 300 ms", async () => {
     const { ms, value } = await measuredMedian("segment counts", () =>
       getCustomerSegmentCounts({}, now),
     );
     expect(value.active).toBeGreaterThan(10_000);
-    expect(ms).toBeLessThan(150);
+    // 300 ms per the same 2026-10-30 owner amendment: the counts pass
+    // aggregates the whole live population; measured 125–147 ms on a
+    // local VM and 205 ms on a loaded CI runner at the CU1-PERF merge.
+    expect(ms).toBeLessThan(300);
   }, 120_000);
 
   it("searches by name, phone digits and address under 150 ms", async () => {

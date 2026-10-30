@@ -35,4 +35,8 @@ AR-4c (Customers list) is merged (Lane 5, packet AR-4C, PR #761, squash
 One follow-up is named: "CU-1 perf: base-table query redesign". AR-4d
 (Quotes and Messages) is merged (Lane 5, packet AR-4D, PR #773, squash
 32263c85 — see the top STATUS entry). Its packet names the same CU-1 perf
-follow-up next.
+follow-up next. **That follow-up is now complete:** CU1-PERF merged (Lane 5,
+PR #776, squash fa170dbd) — the Customers list reads run on base tables;
+the two budgets the redesign could not meet at the 20,000-customer seed
+(attention sort, segment counts) were amended to 300 ms by the owner's
+2026-10-30 ruling (CUSTOMERS.md §1). See the top STATUS entry.
