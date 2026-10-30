@@ -1,8 +1,7 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { getSuppliers } from "@/domains/purchasing";
 import {
-  ButtonLink,
   EmptyState,
   StatusPill,
 } from "@/components/ui";
@@ -15,10 +14,15 @@ type SupplierRow = Awaited<ReturnType<typeof getSuppliers>>[number];
 export default async function SuppliersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string }>;
+  searchParams: Promise<{ archived?: string; open?: string }>;
 }) {
   await requireRole("OWNER", "ADMIN");
-  const showArchived = (await searchParams).archived === "1";
+  const suppliersParams = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Suppliers have no side panel — the record page IS the destination, as
+  // it was before the redesign — so an ?open= link goes straight there.
+  if (suppliersParams.open) redirect(`/desk/suppliers/${encodeURIComponent(suppliersParams.open)}`);
+  const showArchived = suppliersParams.archived === "1";
   const suppliers = await getSuppliers({ includeArchived: showArchived });
 
   const columns: Column<SupplierRow>[] = [
@@ -27,12 +31,7 @@ export default async function SuppliersPage({
       header: "Supplier",
       cell: (supplier) => (
         <div>
-          <Link
-            href={`/desk/suppliers/${supplier.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
-            {supplier.name}
-          </Link>
+          <span className="font-semibold text-ink">{supplier.name}</span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             {supplier.contactName ?? ""}
             {supplier.contactName && (supplier.phone || supplier.email)
@@ -82,6 +81,7 @@ export default async function SuppliersPage({
         rowKey={(supplier) => supplier.id}
         columns={columns}
         caption="Suppliers"
+        rowHref={(supplier) => `/desk/suppliers/${supplier.id}`}
         mobileCard={(supplier) => columns[0].cell(supplier)}
         empty={
           <EmptyState

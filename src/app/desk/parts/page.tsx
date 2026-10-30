@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getAllPartRecords } from "@/domains/inventory";
 import { getLowStockParts } from "@/domains/purchasing";
 import {
@@ -18,9 +18,14 @@ type PartRow = Awaited<ReturnType<typeof getAllPartRecords>>[number];
 export default async function PartsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string }>;
+  searchParams: Promise<{ archived?: string; open?: string }>;
 }) {
-  const showArchived = (await searchParams).archived === "1";
+  const partsParams = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Parts have no side panel — the record page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there.
+  if (partsParams.open) redirect(`/desk/parts/${encodeURIComponent(partsParams.open)}`);
+  const showArchived = partsParams.archived === "1";
   const [partRecords, lowStockParts] = await Promise.all([
     getAllPartRecords({ includeArchived: showArchived }),
     getLowStockParts(),
@@ -33,14 +38,11 @@ export default async function PartsPage({
       header: "Part",
       cell: (part) => (
         <div>
-          <Link
-            href={`/desk/parts/${part.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
+          <span className="font-semibold text-ink">
             {part.modelNumber}
             {part.manufacturer ? ` (${part.manufacturer})` : ""}
             {part.applianceType ? ` — ${part.applianceType.name}` : ""}
-          </Link>
+          </span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             Part {part.partNumber}
             {part.partName ? ` — ${part.partName}` : ""}
@@ -135,6 +137,7 @@ export default async function PartsPage({
         rowKey={(part) => part.id}
         columns={columns}
         caption="Parts"
+        rowHref={(part) => `/desk/parts/${part.id}`}
         mobileCard={(part) => columns[0].cell(part)}
         empty={
           <EmptyState

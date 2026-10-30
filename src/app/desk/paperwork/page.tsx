@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { listRecords, getPaperworkAdminKinds, recommendedAdminKinds } from "@/domains/paperwork/records";
 import {
@@ -11,7 +12,7 @@ import {
   type PaperworkStatusValue,
 } from "@/domains/paperwork/rules";
 import { businessDateKey } from "@/lib/business-date";
-import { Button, ButtonLink, Card, EmptyState, StatusPill } from "@/components/ui";
+import { Button, Card, EmptyState, StatusPill } from "@/components/ui";
 import { addStarterChecklistAction } from "./actions";
 import { updateAdminKindsAction } from "./record-actions";
 import { ExportPicker } from "./export-picker";
@@ -52,18 +53,78 @@ function matchesSearch(
   );
 }
 
+type RecordRow = {
+  record: Awaited<ReturnType<typeof listRecords>>[number];
+  state: ReturnType<typeof reminderState>;
+  isExpiry: boolean;
+};
+
+function recordMain({ record, state, isExpiry }: RecordRow) {
+  return (
+    <div className="min-w-0">
+      <span className="font-semibold text-ink">{record.title}</span>
+      <p className="text-sm text-ink-soft">
+        <span className="mr-2 inline-block rounded bg-accent px-1.5 py-0.5 text-xs font-semibold">{record.kindLabel}</span>
+        {record.status === "NOT_NEEDED" ? "Not needed / archived" : dueText(state, record.effectiveDate, isExpiry)}
+        {record.hasNumber ? ` · ${record.numberLabel ?? "Number"} ••••${record.numberLast4 ?? ""}` : ""}
+        {!record.hasNumber && record.referenceNumber ? ` · Number ${maskReference(record.referenceNumber)}` : ""}
+        {record.files.length > 0 ? ` · ${record.files.length} file${record.files.length === 1 ? "" : "s"}` : ""}
+      </p>
+    </div>
+  );
+}
+
+function recordPill({ record }: RecordRow) {
+  return (
+    <StatusPill
+      tone={record.status === "DONE" ? "success" : record.status === "IN_PROGRESS" ? "progress" : record.status === "NOT_NEEDED" ? "stopped" : "pending"}
+      label={PAPERWORK_STATUS_LABEL[record.status as PaperworkStatusValue]}
+    />
+  );
+}
+
+const recordColumns: Column<RecordRow>[] = [
+  { key: "record", header: "Record", cell: recordMain },
+  { key: "status", header: "Status", cell: recordPill },
+];
+
+function RecordsTable({ rows, caption }: { rows: RecordRow[]; caption: string }) {
+  return (
+    <DataTable
+      rows={rows}
+      rowKey={(row) => row.record.id}
+      columns={recordColumns}
+      caption={caption}
+      rowHref={(row) => `/desk/paperwork/${row.record.id}`}
+      mobileCard={(row) => (
+        <div className="space-y-1">
+          {recordMain(row)}
+          {recordPill(row)}
+        </div>
+      )}
+      empty={null}
+    />
+  );
+}
+
 export default async function PaperworkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; q?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; open?: string }>;
 }) {
   const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const isOwner = session.user.role === "OWNER";
   const isAccountant = session.user.role === "ACCOUNTANT";
-  const { tab: tabParam, q } = await searchParams;
+  const { tab: tabParam, q, open } = await searchParams;
   const tab: TabKey = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : "needs-you";
   const query = (q ?? "").trim();
   const all = await listRecords(session.user.role);
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Records have no side panel — the record page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there. The
+  // Files tab's rows carry file ids, not record ids, so only an id that
+  // names a real record redirects.
+  if (open && all.some((r) => r.id === open)) redirect(`/desk/paperwork/${encodeURIComponent(open)}`);
   const records = query ? all.filter((r) => matchesSearch(r, query)) : all;
   const now = new Date();
   const withState = records.map((record) => ({
@@ -84,47 +145,6 @@ export default async function PaperworkPage({
   );
   const adminKinds = isOwner ? await getPaperworkAdminKinds() : [];
   const recommended = recommendedAdminKinds();
-
-  const recordMain = ({ record, state, isExpiry }: (typeof withState)[number]) => (
-    <div className="min-w-0">
-      <Link href={`/desk/paperwork/${record.id}`} className="font-semibold text-action underline">
-        {record.title}
-      </Link>
-      <p className="text-sm text-ink-soft">
-        <span className="mr-2 inline-block rounded bg-accent px-1.5 py-0.5 text-xs font-semibold">{record.kindLabel}</span>
-        {record.status === "NOT_NEEDED" ? "Not needed / archived" : dueText(state, record.effectiveDate, isExpiry)}
-        {record.hasNumber ? ` · ${record.numberLabel ?? "Number"} ••••${record.numberLast4 ?? ""}` : ""}
-        {!record.hasNumber && record.referenceNumber ? ` · Number ${maskReference(record.referenceNumber)}` : ""}
-        {record.files.length > 0 ? ` · ${record.files.length} file${record.files.length === 1 ? "" : "s"}` : ""}
-      </p>
-    </div>
-  );
-  const recordPill = ({ record }: (typeof withState)[number]) => (
-    <StatusPill
-      tone={record.status === "DONE" ? "success" : record.status === "IN_PROGRESS" ? "progress" : record.status === "NOT_NEEDED" ? "stopped" : "pending"}
-      label={PAPERWORK_STATUS_LABEL[record.status as PaperworkStatusValue]}
-    />
-  );
-  const recordColumns: Column<(typeof withState)[number]>[] = [
-    { key: "record", header: "Record", cell: recordMain },
-    { key: "status", header: "Status", cell: recordPill },
-  ];
-  const RecordsTable = ({ rows, caption }: { rows: typeof withState; caption: string }) => (
-    <DataTable
-      rows={rows}
-      rowKey={(row) => row.record.id}
-      columns={recordColumns}
-      caption={caption}
-      rowHref={(row) => `/desk/paperwork/${row.record.id}`}
-      mobileCard={(row) => (
-        <div className="space-y-1">
-          {recordMain(row)}
-          {recordPill(row)}
-        </div>
-      )}
-      empty={null}
-    />
-  );
 
   return (
     <div className="space-y-6">
@@ -214,11 +234,31 @@ export default async function PaperworkPage({
                 </p>
               </div>
             );
+            // The desktop table's first cell sits inside the kit's row link,
+            // so it renders the same words without any link of its own; the
+            // download lives in its own column there. Phone cards keep the
+            // linked layout (no row link wraps them on this table).
+            const fileMain = ({ file, record }: (typeof fileRows)[number]) => (
+              <div className="min-w-0">
+                <span className="font-semibold text-ink">{file.label || file.fileName}</span>
+                <p className="text-sm text-ink-soft">
+                  On {record.title} · {(file.sizeBytes / 1024).toFixed(0)} KB · added {businessDateKey(file.uploadedAt)}
+                </p>
+              </div>
+            );
+            const fileDownload = ({ file }: (typeof fileRows)[number]) => (
+              <a href={`/api/records/files/${file.id}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-action underline">
+                Open file
+              </a>
+            );
             return withFiles.length > 0 ? (
               <DataTable
                 rows={fileRows}
                 rowKey={(row) => row.file.id}
-                columns={[{ key: "file", header: "File", cell: fileCell }]}
+                columns={[
+                  { key: "file", header: "File", cell: fileMain },
+                  { key: "download", header: "Download", cell: fileDownload },
+                ]}
                 caption="All files"
                 mobileCard={fileCell}
                 empty={null}

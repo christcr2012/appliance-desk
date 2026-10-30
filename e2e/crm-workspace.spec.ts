@@ -22,7 +22,11 @@ async function customerUrl(page: Page) {
   await expect(row).toBeVisible();
   const link = row.getByRole("link").first();
   await expect(link).toBeVisible();
-  return (await link.getAttribute("href"))!;
+  const href = (await link.getAttribute("href"))!;
+  // The kit table's desktop row link goes through ?open=<id> (the customers
+  // page sends that straight to the record); the phone card links directly.
+  const open = new URL(href, "http://localhost").searchParams.get("open");
+  return open ? `/desk/customers/${open}` : href;
 }
 for (const width of [360, 768, 1440])
   for (const theme of ["light", "dark"]) {

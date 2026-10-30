@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { listShopSales, saleBuyerLabel, SALE_LIST_LIMIT } from "@/domains/sales";
 import { EmptyState } from "@/components/ui";
@@ -20,9 +21,14 @@ const STATUS: Record<string, { label: string; tone: StatusTone }> = {
 
 type SaleRow = Awaited<ReturnType<typeof listShopSales>>[number];
 
-export default async function ShopSalesPage({ searchParams }: { searchParams: Promise<{ followUp?: string }> }) {
+export default async function ShopSalesPage({ searchParams }: { searchParams: Promise<{ followUp?: string; open?: string }> }) {
   const session = await requireRole("OWNER", "ADMIN");
-  const followUpOnly = (await searchParams).followUp === "1";
+  const params = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Sales have no side panel — the record page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there.
+  if (params.open) redirect(`/desk/sales/${encodeURIComponent(params.open)}`);
+  const followUpOnly = params.followUp === "1";
   const sales = await listShopSales(session.user.id, { followUpOnly });
 
   const columns: Column<SaleRow>[] = [
@@ -31,9 +37,9 @@ export default async function ShopSalesPage({ searchParams }: { searchParams: Pr
       header: "Sale",
       cell: (sale) => (
         <div>
-          <Link href={`/desk/sales/${sale.id}`} className="font-semibold text-ink underline-offset-4 hover:underline">
+          <span className="font-semibold text-ink">
             Sale #{sale.invoiceNumber} · {saleBuyerLabel(sale)}
-          </Link>
+          </span>
           <span className="block truncate text-sm font-normal text-ink-soft">
             {sale.lineItems.map((l) => l.description).join("; ") || "Delivery or installation only"}
           </span>
@@ -86,6 +92,7 @@ export default async function ShopSalesPage({ searchParams }: { searchParams: Pr
         rowKey={(sale) => sale.id}
         columns={columns}
         caption="Shop sales"
+        rowHref={(sale) => `/desk/sales/${sale.id}`}
         mobileCard={(sale) => {
           const status = STATUS[sale.status] ?? { label: sale.status, tone: "pending" as StatusTone };
           return (

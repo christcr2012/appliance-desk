@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { MaintenanceStatus } from "@prisma/client";
 import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domains/maintenance";
 import { parsePage, paginationMeta } from "@/domains/pagination";
@@ -52,9 +52,14 @@ type MaintenanceRow = Awaited<
 export default async function MaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; page?: string; open?: string }>;
 }) {
-  const { status: rawStatus, page: rawPage } = await searchParams;
+  const { status: rawStatus, page: rawPage, open } = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Maintenance requests have no side panel — the record page IS the
+  // destination, as it was before the redesign — so an ?open= link goes
+  // straight there.
+  if (open) redirect(`/desk/maintenance/${encodeURIComponent(open)}`);
   const status = isMaintenanceStatus(rawStatus) ? rawStatus : undefined;
   const filter = status ? { status } : undefined;
 
@@ -83,12 +88,9 @@ export default async function MaintenancePage({
       header: "Request",
       cell: (request) => (
         <div>
-          <Link
-            href={`/desk/maintenance/${request.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
+          <span className="font-semibold text-ink">
             {request.customer.user.name ?? request.customer.user.email}
-          </Link>
+          </span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             {request.appliance
               ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})`
@@ -139,6 +141,7 @@ export default async function MaintenancePage({
         rowKey={(request) => request.id}
         columns={columns}
         caption="Maintenance requests"
+        rowHref={(request) => `/desk/maintenance/${request.id}`}
         mobileCard={(request) => (
           <div className="space-y-1">
             {columns[0].cell(request)}

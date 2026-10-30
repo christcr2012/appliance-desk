@@ -41,7 +41,7 @@ test("OWNER allocates an exact commercial reserve once across two prepared renta
   try{
     await page.setViewportSize({width:390,height:844});
     await page.goto("/desk/estimates/"+estimate.id);
-    const prep=page.getByRole("region",{name:"Prepare estimate agreements"});
+    const prep=page.getByRole("region",{name:"Prepare estimate rentals"});
     await prep.getByRole("button",{name:"Prepare owned draft agreements"}).click();
     await expect(prep.getByText(/Prepared 2 draft agreement/)).toBeVisible();
     await page.reload();

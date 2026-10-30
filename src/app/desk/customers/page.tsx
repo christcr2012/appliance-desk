@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { getWorkspace, savedViewHref } from "@/domains/workspace";
 import { saveCustomerViewAction } from "@/app/desk/views/actions";
@@ -24,10 +25,14 @@ type CustomerRow = Awaited<ReturnType<typeof getCustomersPage>>[number];
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; kind?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; kind?: string; q?: string; open?: string }>;
 }) {
   const session = await requireRole("OWNER","ADMIN","STAFF");
-  const { page: rawPage, status, kind, q } = await searchParams;
+  const { page: rawPage, status, kind, q, open } = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Customers have no side panel — the record page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/customers/${encodeURIComponent(open)}`);
   const filters = { status: status === "active" ? "active" as const : undefined,
     kind: kind === "pm" ? "pm" as const : undefined,
     q: typeof q === "string" ? q.trim().slice(0,80) : undefined };
@@ -54,12 +59,7 @@ export default async function CustomersPage({
       header: "Customer",
       cell: (customer) => (
         <div>
-          <Link
-            href={`/desk/customers/${customer.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
-            <span>{customer.user.name ?? customer.user.email}</span>
-          </Link>
+          <span className="font-semibold text-ink">{customer.user.name ?? customer.user.email}</span>
           {customer.companyName && (
             <span className="mt-1 block text-sm font-normal text-ink-soft">
               {customer.companyName}

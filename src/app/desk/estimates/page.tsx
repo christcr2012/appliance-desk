@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import {
   getAllEstimates,
@@ -34,8 +35,17 @@ type EstimateRow = Awaited<ReturnType<typeof getAllEstimates>>[number];
  * building, and similar (2026-09-29, see docs/DECISIONS.md). Always
  * OWNER/ADMIN: an estimate is where custom pricing gets decided, same
  * access level as Billing/Settings. */
-export default async function EstimatesPage() {
+export default async function EstimatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string }>;
+}) {
   await requireRole("OWNER", "ADMIN");
+  const { open } = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Estimates have no side panel — the record page IS the destination, as
+  // it was before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/estimates/${encodeURIComponent(open)}`);
   const estimates = await getAllEstimates();
 
   const columns: Column<EstimateRow>[] = [
@@ -44,12 +54,9 @@ export default async function EstimatesPage() {
       header: "Estimate",
       cell: (estimate) => (
         <div>
-          <Link
-            href={`/desk/estimates/${estimate.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
+          <span className="font-semibold text-ink">
             #{estimate.estimateNumber} — {estimate.title}
-          </Link>
+          </span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             {estimate.customer ? (
               <>
@@ -124,6 +131,7 @@ export default async function EstimatesPage() {
         rowKey={(estimate) => estimate.id}
         columns={columns}
         caption="Estimates"
+        rowHref={(estimate) => `/desk/estimates/${estimate.id}`}
         mobileCard={(estimate) => (
           <div>
             {columns[0].cell(estimate)}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { countPurchases, listPurchases } from "@/domains/purchasing/purchases";
 import { formatBusinessDate } from "@/lib/business-date";
@@ -13,13 +13,18 @@ export const metadata = { title: "Purchases" };
 
 type Row = Awaited<ReturnType<typeof listPurchases>>[number];
 
-export default async function PurchasesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function PurchasesPage({ searchParams }: { searchParams: Promise<{ page?: string; open?: string }> }) {
   const session = await requireRole("OWNER", "ADMIN");
-  const meta = paginationMeta(await countPurchases(), parsePage((await searchParams).page));
+  const purchasesParams = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Purchases have no side panel — the record page IS the destination, as
+  // it was before the redesign — so an ?open= link goes straight there.
+  if (purchasesParams.open) redirect(`/desk/purchases/${encodeURIComponent(purchasesParams.open)}`);
+  const meta = paginationMeta(await countPurchases(), parsePage(purchasesParams.page));
   const purchases = await listPurchases({ skip: meta.skip, take: meta.pageSize });
   const columns: Column<Row>[] = [
     { key: "date", header: "Date", cell: (p) => (
-      <Link href={`/desk/purchases/${p.id}`} className="font-semibold underline-offset-4 hover:underline">{formatBusinessDate(p.purchasedOn)}</Link>) },
+      <span className="font-semibold">{formatBusinessDate(p.purchasedOn)}</span>) },
     { key: "seller", header: "Seller", cell: (p) => p.supplier?.name ?? p.sellerName ?? "—" },
     { key: "appliances", header: "Appliances", cell: (p) => String(p._count.appliances) },
     { key: "total", header: "Receipt total", cell: (p) => formatMoney(p.subtotalCents + p.sellerTaxCents + p.otherChargesCents) },
@@ -47,6 +52,7 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
         rowKey={(p) => p.id}
         columns={columns}
         caption="Purchases"
+        rowHref={(p) => `/desk/purchases/${p.id}`}
         mobileCard={(p) => (
           <div>
             {columns[0].cell(p)}

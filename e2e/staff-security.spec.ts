@@ -50,8 +50,13 @@ test.describe("staff permissions", () => {
     page,
   }) => {
     await page.goto("/desk/customers");
+    // The kit list renders each customer twice (phone cards + desktop
+    // table); click through the visible row, as the CRM workspace spec does.
     await page
-      .getByRole("link", { name: /Test Customer/ })
+      .locator("main tr:visible, main li:visible")
+      .filter({ hasText: "Test Customer" })
+      .first()
+      .getByRole("link")
       .first()
       .click();
     await expect(
@@ -66,7 +71,10 @@ test.describe("staff permissions", () => {
     );
     await page.goto("/desk/agreements");
     await page
-      .getByRole("link", { name: /Test Customer/ })
+      .locator("main tr:visible, main li:visible")
+      .filter({ hasText: "Test Customer" })
+      .first()
+      .getByRole("link")
       .first()
       .click();
     await expect(
@@ -81,7 +89,15 @@ test.describe("staff permissions", () => {
     test(`${route} keeps staff job access without offering scheduling`, async ({ page }) => {
       await page.goto(route);
       await expect(page.getByRole("link", { name: /schedule a job/i })).toHaveCount(0);
-      await expect(page.locator('a[href="/desk/jobs/ci-security-job"]').first()).toBeVisible();
+      // The job is listed and its row opens the job record: the jobs list's
+      // kit row link goes through ?open= (which that page sends straight to
+      // the record); the dispatch board links to the record directly.
+      const jobLink = page
+        .locator('main a[href="/desk/jobs/ci-security-job"]:visible, main a[href*="open=ci-security-job"]:visible')
+        .first();
+      await expect(jobLink).toBeVisible();
+      await jobLink.click();
+      await expect(page).toHaveURL(/\/desk\/jobs\/ci-security-job$/);
     });
   }
 

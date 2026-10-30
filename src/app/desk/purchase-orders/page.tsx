@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { getPurchaseOrders } from "@/domains/purchasing";
 import { formatCents } from "@/domains/pricing";
@@ -20,8 +20,17 @@ const STATUS_TONE: Record<string, StatusTone> = {
 
 type PurchaseOrderRow = Awaited<ReturnType<typeof getPurchaseOrders>>[number];
 
-export default async function PurchaseOrdersPage() {
+export default async function PurchaseOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string }>;
+}) {
   await requireRole("OWNER", "ADMIN");
+  const { open } = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Purchase orders have no side panel — the record page IS the destination,
+  // as it was before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/purchase-orders/${encodeURIComponent(open)}`);
   const orders = await getPurchaseOrders();
 
   const columns: Column<PurchaseOrderRow>[] = [
@@ -30,12 +39,7 @@ export default async function PurchaseOrdersPage() {
       header: "Purchase order",
       cell: (order) => (
         <div>
-          <Link
-            href={`/desk/purchase-orders/${order.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
-            {order.supplier.name}
-          </Link>
+          <span className="font-semibold text-ink">{order.supplier.name}</span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             {order.lines.length} {order.lines.length === 1 ? "line" : "lines"}
             {" · "}
@@ -97,6 +101,7 @@ export default async function PurchaseOrdersPage() {
         rowKey={(order) => order.id}
         columns={columns}
         caption="Purchase orders"
+        rowHref={(order) => `/desk/purchase-orders/${order.id}`}
         mobileCard={(order) => (
           <div>
             {columns[0].cell(order)}
