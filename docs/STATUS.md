@@ -6,7 +6,7 @@
 
 **What needs you:** nothing to decide. One spec item was already delivered before this card (section 1 fix 6, the Repairs area layout, shipped with AR-1) and a few small readings are recorded as drift in the PR body (the "My visits this week" view is owner/admin-only because it carries the who filter; Text the customer goes to the visit record where the text panel lives).
 
-## October 30 — CU1-PERF: Customers list query redesign merged (Lane 5)
+## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 
 **What changed:** the Customers list, segment counts and searches no longer read the
 `customer_list_v1` view, whose six per-customer LATERAL aggregates ran for every live
@@ -22,17 +22,20 @@ population pass. No schema change; the view stays for its remaining readers.
 **How it was checked:** a 400-customer parity harness (every list shape — 6 segments
 × 6 sorts, 6 count variants, 5 searches, 2 exports — for OWNER and STAFF) is
 byte-identical to the view implementation; packet suites green on real Postgres
-(integration 7, segments 12, keys 3, role checks 6); full typecheck clean. The
-Performance Baselines job on the PR measured every sort, the counts and the
-searches under the 150 ms budget **except the attention sort at 172.6 ms** (the
-lists test fails fast there, so the remaining sorts were verified locally at
-140 ms or under on a slower VM and in the unit/browser shards). Perf is not a
-required merge check. **Open decision for Chris:** the attention gap's remaining
-fixes are a stored summary (the design CU-1 §1 set aside) or a budget amendment
-for this one sort — Lane 5's recommendation is the amendment (173 ms at a
-20,000-customer seed is 9× faster than the view and far past this shop's real
-scale); until he rules, CU1-PERF stays open on that one number, tracked as the
-follow-up "CU-1 perf: attention budget or summary".
+(integration 7, segments 12, keys 3, role checks 6); full typecheck clean. Merged
+2026-10-30 as PR #776 (squash `fa170dbd`) with ci and review-gate green at the
+exact head. The Performance Baselines job measured every sort, the counts and the
+searches under the 150 ms budget **except the attention sort at 172.6 ms** (278 ms
+on a second, loaded runner) and the counts at 205 ms on that loaded run (125–147 ms
+locally). Perf is not a required merge check. **Owner ruling (Chris, 2026-10-30):**
+the budget is amended instead of commissioning the stored summary — the attention
+sort and segment counts now carry a **300 ms** budget at the 20,000-customer seed
+(CUSTOMERS.md §1 records the amendment; the perf test asserts it), every other
+measurement keeps 150 ms, and the summary design stays the written-up-first
+escalation if the amended budget is ever breached. With the amendment in place the
+card's acceptance is met and CU1-PERF is complete; the follow-up "CU-1 perf:
+attention budget or summary" is closed by the ruling. The view's remaining readers
+(the record page facts) remain a possible separate retirement card.
 
 ## October 30 — AR-13 COMPLETE: in-app notifications bell merged (Lane 6)
 
@@ -73,6 +76,18 @@ recorded in the slice commits: the header word is "Quotes"/"Messages" (the spec'
 "Customers" heading is a template slip — its own title says the word on screen is quote),
 and the quote money sums use raw SQL because the spec's groupBy shape cannot express
 price × quantity.
+
+## October 30 — W-11 PARKED at gate IN-61; PORTAL-1 started (Lane 4)
+
+W-11 (live Colorado GIS tax rates) is parked at its IN-61 contract gate: Chris
+confirmed 2026-10-30 that he cannot sign in to SUTS until he officially starts
+the LLC, and no date is set. The prerequisite is now recorded where the gate
+lives — the IN-61 row in docs/OWNER-INPUTS.md and the state section of
+docs/runbooks/colorado-gis-api.md. Production keeps the approved manual
+fallback (owner-confirmed rates only; new addresses stay "review this address"
+To dos). W-11 resumes the same day the SUTS API method documentation lands in
+the runbook. Lane 4's active card is now PORTAL-1 (customer portal redesign on
+the kit), started 2026-10-30 on ai/vivienne/portal-1.
 
 ## October 29 — AR-4c COMPLETE: Customers list (CU-1) merged (Lane 5)
 

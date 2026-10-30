@@ -6,6 +6,8 @@ This runbook controls how Appliance Desk may integrate Colorado's Sales & Use Ta
 
 As of 2026-10-06, Colorado publicly documents how to obtain a GIS API key, but the API method details are shown only on the authenticated SUTS screen where the key is obtained. Those authenticated method details have not been supplied to this repository.
 
+**Gate status (2026-10-30): W-11 is parked at this gate.** Chris confirmed he cannot sign in to SUTS until he officially starts the LLC — the business must exist before SUTS will issue the key and show the method documentation. No date is set for the LLC formation, so IN-61 stays open with that prerequisite named. Until then, production keeps the approved manual fallback below (owner-confirmed rates only; every new address is a "review this address" To do). W-11 resumes the same day the authenticated method documentation is recorded here.
+
 Therefore:
 
 - `COLORADO_GIS_API_KEY` is optional and absence must not break startup.
