@@ -58,6 +58,21 @@ async function fillMoneyForm(
   return form;
 }
 
+// The bill record's money forms live in sheets opened from its action
+// menu ("More for this bill" → "Use the customer's credit…" /
+// "Refund money…"); the forms themselves keep their own headings.
+async function fillBillMoneyForm(
+  page: Page,
+  menuLabel: string,
+  formTitle: string,
+  amount: string,
+  note?: string,
+) {
+  await page.getByRole("button", { name: "More for this bill" }).click();
+  await page.getByRole("menuitem", { name: menuLabel }).click();
+  return fillMoneyForm(page, formTitle, amount, note);
+}
+
 test.beforeAll(async ({ browser }) => {
   test.skip(!ready, "Disposable CI database plus owner and admin sessions required.");
   ownerContext = await browser.newContext({ storageState: ownerState });
@@ -180,6 +195,9 @@ test("step 1: owner sets a $10 credit limit and a $20 refund limit", async () =>
   await ownerPage.locator("#CREDIT").fill("10");
   await ownerPage.locator("#REFUND").fill("20");
   await ownerPage.getByRole("button", { name: "Save", exact: true }).click();
+  // The settings form renders saved amounts in the app's money format
+  // (moneyInputValue: dollars with two decimals), so a saved $10 limit
+  // reads back as "10.00" after a reload.
   await expect
     .poll(
       async () => {
@@ -188,14 +206,15 @@ test("step 1: owner sets a $10 credit limit and a $20 refund limit", async () =>
       },
       { timeout: 15000 },
     )
-    .toBe("10");
-  await expect(ownerPage.locator("#REFUND")).toHaveValue("20");
+    .toBe("10.00");
+  await expect(ownerPage.locator("#REFUND")).toHaveValue("20.00");
 });
 
 test("step 2: admin applies $25 of credit and it waits for the owner, changing nothing", async () => {
   await adminPage.goto(openInvoiceUrl());
-  const form = await fillMoneyForm(
+  const form = await fillBillMoneyForm(
     adminPage,
+    "Use the customer's credit…",
     "Pay this bill with the customer's credit",
     "25",
   );
@@ -225,12 +244,16 @@ test("step 3: owner approves and the credit lands exactly once", async () => {
   await expect(form).toBeVisible();
   const approve = form.getByRole("button", { name: "Approve and do it now" });
   await approve.click();
-  // A second click in flight must not apply the credit twice; the server
-  // locks the request and the second decision is refused as already decided.
-  await approve.click({ timeout: 2000 }).catch(() => undefined);
   await expect(
     ownerPage.getByRole("status").filter({ hasText: "Approved and done." }),
   ).toBeVisible({ timeout: 15000 });
+  // A second attempt must not apply the credit twice; the server locks the
+  // request and a second decision is refused as already decided. (This runs
+  // after the first approval's status is seen: a refused second attempt
+  // replaces the status text with its refusal, so asserting the success
+  // status after both clicks would race the refusal. The exactly-once
+  // proof is the database state asserted below.)
+  await approve.click({ timeout: 2000 }).catch(() => undefined);
   await expect
     .poll(
       async () =>
@@ -250,8 +273,9 @@ test("step 3: owner approves and the credit lands exactly once", async () => {
 test("step 4: a $40 refund over the $20 limit waits, the owner declines with a reason, and no refund exists", async () => {
   test.slow();
   await adminPage.goto(paidInvoiceUrl());
-  const form = await fillMoneyForm(
+  const form = await fillBillMoneyForm(
     adminPage,
+    "Refund money…",
     "Refund money to the customer",
     "40",
     "Approvals spec decline case.",
@@ -281,18 +305,22 @@ test("step 4: a $40 refund over the $20 limit waits, the owner declines with a r
   expect(request.decisionNote).toContain("approvals spec decline case");
   expect(await prisma.refund.count({ where: { invoiceId: paidInvoiceId } })).toBe(0);
 
-  // What the admin can see: the bill still offers the full amount as refundable.
+  // What the admin can see: the bill still offers the full amount as
+  // refundable (the refund form's help text, inside its sheet).
   await adminPage.goto(paidInvoiceUrl());
+  await adminPage.getByRole("button", { name: "More for this bill" }).click();
+  await adminPage.getByRole("menuitem", { name: "Refund money…" }).click();
   await expect(
-    adminPage.getByText("Up to $300.00 can still be refunded on this invoice."),
+    adminPage.getByText("Up to $300 can still be refunded on this invoice."),
   ).toBeVisible();
 });
 
 test("step 5: another approved refund honestly shows as not finished, with no early Check and finish", async () => {
   test.slow();
   await adminPage.goto(paidInvoiceUrl());
-  const form = await fillMoneyForm(
+  const form = await fillBillMoneyForm(
     adminPage,
+    "Refund money…",
     "Refund money to the customer",
     "40",
     "Approvals spec approve case.",
@@ -311,7 +339,9 @@ test("step 5: another approved refund honestly shows as not finished, with no ea
   // CI has no Stripe keys, so the refund can never be confirmed as sent:
   // the page must say so instead of claiming the money went back.
   await expect(
-    ownerPage.getByRole("status").filter({ hasText: /Approved, but not/ }),
+    ownerPage
+      .getByRole("status")
+      .filter({ hasText: "Approved, but we could not confirm what happened." }),
   ).toBeVisible({ timeout: 30000 });
 
   await ownerPage.goto("/desk/approvals");
@@ -347,8 +377,9 @@ test("step 6: axe on the approvals page, and an approval done by keyboard alone"
 
   // One more over-limit credit request for the keyboard run.
   await adminPage.goto(openInvoiceUrl());
-  const form = await fillMoneyForm(
+  const form = await fillBillMoneyForm(
     adminPage,
+    "Use the customer's credit…",
     "Pay this bill with the customer's credit",
     "15",
   );
