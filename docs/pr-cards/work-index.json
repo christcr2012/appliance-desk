@@ -5211,7 +5211,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "BUILT \u2014 branch ai/vivienne/tfa-2, main merged in at 50e265e (2026-10-26); PR, exact-head CI and merge next",
+      "status": "MERGED \u2014 on main as 05a9af10 (2026-10-26); original PR #629 closed unmerged; TFA-3 followed in PR #646 (status corrected 2026-10-30)",
       "migration": "additive (Invoice.replacementOfInvoiceId)",
       "budget": 500,
       "units": [
@@ -6157,10 +6157,6 @@
     {
       "id": "AR-4D",
       "path": "docs/pr-cards/execution/AR-4D.json"
-    },
-    {
-      "id": "CU1-PERF",
-      "path": "docs/pr-cards/execution/CU1-PERF.json"
     }
   ]
 }
