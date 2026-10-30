@@ -10,6 +10,7 @@ import { saveLateGraceAction, setAutomationPausedAction, saveBackupRetentionActi
 import { getBackupDashboard } from "@/domains/backup/dashboard";
 import { HealthLegend, HealthRow } from "./health-row";
 import { AssistantConnections } from "./assistant-connections";
+import { RtcPassConnections } from "./rtc-pass-connections";
 import { AssistantActivity } from "./assistant-activity";
 import { MonitoringSection } from "./monitoring-section";
 import { listMonitorRules, listMonitorConnections } from "@/domains/agent-control/monitoring";
@@ -57,6 +58,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
       }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
 
       <AssistantConnections userId={session.user.id} canSeeAll={session.user.role === "OWNER"} />
+      {canPause ? <RtcPassConnections ownerId={session.user.id} /> : null}
       <MonitoringSection rules={monitorRules} connections={monitorConnections} heartbeat={health.find((row) => row.ruleKey === "system-issues-sweep") ?? null} canManage={canPause} />
       <AssistantActivity userId={session.user.id} canSeeAll={canPause} cursor={query?.activityCursor} />
       <section id="backup-settings" aria-labelledby="backup-settings-heading" className="mb-6 rounded-card border border-line bg-surface p-4">

@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { getMcpIssuer } from "@/mcp/issuer";
 import { CreateRtcPassForm } from "./rtc-pass-create-form";
 import { revokeRtcPassAction } from "./rtc-pass-actions";
 
 export async function RtcPassConnections({ ownerId }: { ownerId: string }) {
+  const issuer = getMcpIssuer();
   const passes = await prisma.agentPass.findMany({
     where: { connection: { userId: ownerId } },
     select: { id: true, label: true, scopes: true, expiresAt: true, revokedAt: true },
@@ -17,6 +19,7 @@ export async function RtcPassConnections({ ownerId }: { ownerId: string }) {
       <p className="text-sm text-ink-soft">For compatible HTTP assistants and the optional Robinson hub.
         A pass is not the same as an MCP sign-in. The starting pass is read-only and
         cannot move money, send messages or change settings. You can revoke it here at any time.</p>
+      {issuer ? <p className="break-all text-sm text-ink-soft">HTTPS tool address: {issuer}/api/tools</p> : null}
       <CreateRtcPassForm />
       {passes.length > 0 && <ul className="space-y-2">
         {passes.map(pass => {
