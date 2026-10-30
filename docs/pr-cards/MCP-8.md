@@ -11,7 +11,7 @@ MCP-6. Risk: **extra database writes** (sampled, capped, pruned).
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Acceptance plan committed; implementation in progress on `ai/chatgpt/mcp-8-observations-settings`.
+Implementation is under review on PR #764. The first GitHub CI pass exposed missing backup policy and read-tool inventory fixtures; the root causes were reproduced and corrected together. Local focused observations/control tests are 8/8 green and backup/tool registry tests are 17/17 green; Prisma schema validation and focused ESLint passed. The full exact-head CI, browser tests, real-PostgreSQL suites and review gate must still pass before acceptance.
 
 ## MCP-8 acceptance plan — observations, proposals, and settings map (October 29)
 

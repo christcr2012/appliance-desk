@@ -50,16 +50,19 @@ describe("MCP-4 diagnostic tool registry", () => {
         "appliance_feedback_list_reports", "appliance_feedback_reply",
         "appliance_feedback_update_report", "appliance_health_get_issue",
         "appliance_health_get_overview", "appliance_health_list_issues",
-        "appliance_operation_get", "appliance_repair_check", "appliance_repair_create_case",
+        "appliance_operation_get",
+        "appliance_optimization_create_proposal", "appliance_optimization_get_observations",
+        "appliance_optimization_list_proposals", "appliance_repair_check", "appliance_repair_create_case",
         "appliance_repair_get_case", "appliance_repair_link_evidence", "appliance_repair_list_cases",
-        "appliance_whoami",
+        "appliance_where_is_setting", "appliance_whoami",
       ]);
       for (const tool of tools) {
         expect(tool.annotations).toMatchObject({
           readOnlyHint: !["appliance_action_preview", "appliance_action_execute",
             "appliance_repair_check", "appliance_repair_create_case",
             "appliance_repair_link_evidence", "appliance_feedback_reply",
-            "appliance_feedback_update_report", "appliance_feedback_link_case"].includes(tool.name),
+            "appliance_feedback_update_report", "appliance_feedback_link_case",
+            "appliance_optimization_create_proposal"].includes(tool.name),
           destructiveHint: false, idempotentHint: true,
         });
         expect(tool.inputSchema.type).toBe("object");
