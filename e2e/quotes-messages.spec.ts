@@ -230,7 +230,12 @@ test.describe("AR-4d quotes and messages as owner", () => {
       });
       await expect(unknownCard).toBeVisible();
       await expect(unknownCard).toContainText("Needs a reply");
+      // Quinn's thread is WAITING, so its card lives on the Waiting tab.
+      await page.getByRole("link", { name: /Waiting/ }).click();
       await expect(rowNamed(page, quinn.name)).toBeVisible();
+      await expect(rowNamed(page, quinn.name)).toContainText("Waiting on them");
+      await page.getByRole("link", { name: /Needs a reply/ }).click();
+      await expect(unknownCard).toBeVisible();
 
       // Into the thread, open the sheet, pick Quinn, link.
       await unknownCard.getByRole("link", { name: "Link to a person…" }).click();
