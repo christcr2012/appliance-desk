@@ -38,13 +38,15 @@ export const EVERYDAY_BANNED = [
   { pattern: /\bSKUs?\b|\basset numbers?\b/i, say: "item number / appliance number" },
 ];
 
-const migrated = JSON.parse(readFileSync("docs/build-specs/migrated-pages.json", "utf8"));
-const migratedPaths = new Set(migrated.map((item) => typeof item === "string" ? item : item.file));
+// AR-10: every owner-facing surface is held to the everyday list now — desk
+// pages, desk and kit components, the exceptions rules files and the customer
+// portal (src/app/account). The only exception is the accountant-only books
+// area, whose reports must keep their professional field names.
 export function isEverydayScreen(path) {
   const normalized = path.replaceAll("\\", "/");
   // Accountant-only books pages intentionally use specialized field labels.
   if (/^src\/app\/desk\/books\/(reports|exports?|closing|assets|accountant)(?:\/|$)/.test(normalized)) return false;
-  return normalized.startsWith("src/components/kit/") || migratedPaths.has(normalized);
+  return true;
 }
 
 const TEXT_PROPS = "title|label|description|placeholder|submitLabel|confirmText|aria-label|detail|summary|emptyMessage|heading|hint";
@@ -108,6 +110,7 @@ function main() {
     ...files("src/app/desk", [".tsx"]),
     ...files("src/components/desk", [".tsx"]),
     ...files("src/components/kit", [".ts", ".tsx"]),
+    ...files("src/app/account", [".tsx"]),
     "src/domains/exceptions/rules.ts",
     "src/domains/exceptions/money-turning-points.ts",
   ].filter(existsSync);

@@ -39,14 +39,14 @@
       "purpose": "Headline card"
     },
     {
-      "path": "src/components/ui/visit-row.tsx",
-      "anchor": "export function VisitRow",
-      "purpose": "Phone list the timeline degrades to"
+      "path": "src/components/kit/mobile-swipe-card.tsx",
+      "anchor": "export function MobileSwipeCard",
+      "purpose": "Phone list the timeline degrades to (AR-10a: the ui VisitRow was deleted as unused; the kit MobileSwipeCard is the living phone-row pattern)"
     },
     {
-      "path": "src/components/ui/attention-list.tsx",
-      "anchor": "export function AttentionList",
-      "purpose": "Severity stripe and word"
+      "path": "src/components/kit/status-pill.tsx",
+      "anchor": "export function StatusPill",
+      "purpose": "Severity stripe and word (AR-10a: the ui AttentionList was deleted as unused; the kit StatusPill carries tone and word now)"
     },
     {
       "path": "src/components/desk/metric-stat.tsx",
@@ -54,9 +54,9 @@
       "purpose": "Actual/Estimate tag"
     },
     {
-      "path": "src/components/global-search-box.tsx",
-      "anchor": "export function GlobalSearchBox",
-      "purpose": "Existing search the shortcut focuses"
+      "path": "src/app/desk/search/page.tsx",
+      "anchor": "const results = await searchAll(q ?? \"\");",
+      "purpose": "Existing search the shortcut focuses (AR-10a: GlobalSearchBox was deleted as unused; search lives on the /desk/search page over searchAll)"
     },
     {
       "path": "src/app/desk/today/page.tsx",

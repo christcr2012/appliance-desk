@@ -50,7 +50,7 @@ test("plain wording passes, and an allowlisted phrase needs a file, phrase and w
 });
 
 
-test("AR-12 jargon applies only to migrated screens and kit; accountant pages are exempt", () => {
+test("AR-10: the everyday list applies to every scanned surface; only the accountant books area is exempt", () => {
   const samples = [
     ["invoice", "bill"], ["accounts receivable", "money customers owe you"],
     ["accounts payable", "bills you owe"], ["journal entries", "your records"],
@@ -61,19 +61,33 @@ test("AR-12 jargon applies only to migrated screens and kit; accountant pages ar
     ["agreement", "rental"], ["SKU", "appliance number"],
   ];
   assert.equal(EVERYDAY_BANNED.length, samples.length);
+  // One probe per scanned root: a desk page (registered or not), a desk
+  // component, a kit component, a customer-portal page and the exceptions rules.
+  const everydayFiles = [
+    "src/app/desk/billing/page.tsx",
+    "src/app/desk/jobs/page.tsx",
+    "src/app/desk/agreements/[id]/delivery-offer-panel.tsx",
+    "src/components/desk/section-tabs.tsx",
+    "src/components/kit/toolbar.tsx",
+    "src/app/account/billing/page.tsx",
+    "src/domains/exceptions/rules.ts",
+  ];
   for (const [bad, good] of samples) {
-    for (const file of ["src/app/desk/billing/page.tsx", "src/components/kit/toolbar.tsx"]) {
+    for (const file of everydayFiles) {
       assert.ok(findViolations(file, '<Field label="' + bad + '" />').length >= 1, bad + " in " + file);
       assert.deepEqual(findViolations(file, '<Field label="' + good + '" />'), [], good + " in " + file);
     }
-    assert.deepEqual(findViolations("src/app/desk/jobs/page.tsx", '<Field label="' + bad + '" />'), []);
   }
   assert.deepEqual(findViolations("src/app/desk/billing/page.tsx", "<p>rental agreement</p>"), []);
-  assert.equal(isEverydayScreen("src/app/desk/billing/page.tsx"), true);
-  assert.equal(isEverydayScreen("src/app/desk/jobs/page.tsx"), false);
+  for (const file of everydayFiles) assert.equal(isEverydayScreen(file), true, file);
   for (const folder of ["reports", "exports", "export", "closing", "assets", "accountant"]) {
     const path = "src/app/desk/books/" + folder + "/page.tsx";
     assert.equal(isEverydayScreen(path), false);
     assert.deepEqual(findViolations(path, '<Field label="invoice" />'), []);
+    assert.deepEqual(findViolations(path, '<Field label="ledger" />'), []);
   }
+  // An allow-listed legal/tax phrase passes on its own file only.
+  const allow = [{ file: "src/app/desk/compliance/[id]/packet-sections.tsx", phrase: "Depreciation", reason: "Official IRS form name: Form 4562." }];
+  assert.deepEqual(findViolations("src/app/desk/compliance/[id]/packet-sections.tsx", '<h3>Depreciation worksheet (Form 4562)</h3>', allow), []);
+  assert.equal(findViolations("src/app/desk/sales/page.tsx", '<h3>Depreciation worksheet</h3>', allow).length, 1);
 });

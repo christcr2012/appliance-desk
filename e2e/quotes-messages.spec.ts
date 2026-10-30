@@ -196,7 +196,7 @@ test.describe("AR-4d quotes and messages as owner", () => {
       await page.getByRole("menuitem", { name: "Make it a rental" }).click();
       await expect(page).toHaveURL(new RegExp(`/desk/estimates/${approved.id}#convert`));
       await expect(page.locator("#convert")).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Convert to a draft agreement" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Convert to a draft rental" })).toBeVisible();
 
       // The lead's draft carries the Lead chip on the phone card list.
       await page.setViewportSize({ width: 390, height: 844 });

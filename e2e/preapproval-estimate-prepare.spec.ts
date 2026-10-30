@@ -28,7 +28,7 @@ test("owner can prepare actual estimate-owned agreement shells without approving
   try {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/desk/estimates/" + estimate.id);
-    const section = page.getByRole("region", { name: "Prepare estimate agreements" });
+    const section = page.getByRole("region", { name: "Prepare estimate rentals" });
     await expect(section).toBeVisible();
     await expect(section.getByText(/not sent, approved, converted or charged/i)).toHaveCount(0);
     await expect(section.getByRole("button", { name: "Prepare owned draft agreements" })).toBeEnabled();

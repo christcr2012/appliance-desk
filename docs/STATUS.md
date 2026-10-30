@@ -73,6 +73,78 @@ update; these were corrected for the next exact-head CI. Full database/browser
 CI and review remain required before merge. No live provider or customer
 communications were enabled. MCP-8 and MCP-9 remain outstanding.
 
+## October 29 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): built on ai/vivienne/ar-10a (Lane 4)
+
+Every desk page is now on the kit: 161/161 pages registered in
+docs/build-specs/migrated-pages.json (kit guards 172/172), and the legacy pieces the
+sweep retired are deleted — section-tabs + section-tabs-nav, desk-navigation,
+desk-sections, GlobalSearchBox, agreement-progress, and the ui app-shell /
+attention-list / day-timeline / visit-row (tests/ar10-sweep-guards.test.ts pins the
+end state: registry matches the pages on disk, deletions stay deleted, both
+allow-lists stay legal/tax-only). The four legacy section layouts (dashboard, fleet,
+reports, sales) now render through kit AreaLayout on their canonical areas. §2 plain
+words: the everyday list now applies to every scanned file (desk, desk/kit
+components, the customer portal, the exceptions rules) — 554 files pass; "Billing
+reconciliation" is now "Billing check", and the only everyday-word exceptions left
+are two reasoned tax allow-list entries (the Form 4562 heading, the resale-tax
+worksheet) plus the books accountant area, which keeps its own vocabulary by rule.
+Five older execution packets (K-4A, W-14, W-3, W-8, V-3) pointed their checks or
+references at files this sweep deleted; those entries now point at the living
+successors (w8-menu-sections / kit area-tabs for the navigation checks, desk-areas
+and the kit components for the references), each noted in the packet itself.
+Current main (AR-4b leads #760, MCP-11 #748) was merged in before the push: the
+leads list and record pages in this branch are AR-4b's kit-native versions, which
+supersede the sweep's conversion of the older leads pages; the seven-file overlap
+was verified by a scoped typecheck (after regenerating the Prisma client for
+MCP-11's schema) and the leads/feedback suites. A full local typecheck of the
+merged tree was OOM-killed twice on this shared VM; the pre-merge tree's full
+typecheck was green, and CI runs the full check at the exact head.
+§3 phone widths: desk routes scan at 360/390/1440 px; manual-only accessibility
+routes cut 48 → 22 because global setup now seeds a deterministic fixture graph on
+the CI database (e2e/.fixtures.json), and every route that stays manual names the
+spec or test that covers it (the inventory test checks the file exists). §4:
+e2e/approvals.spec.ts proves the approvals loop on the no-Stripe paths — limits,
+a held credit landing exactly once, a declined refund with the owner's reason, an
+approved refund honestly "not finished" with no early "Check and finish", axe, and
+a keyboard-only approve. A fresh full typecheck (the first since the conversions)
+caught and fixed real damage the per-batch checks could not see: a leftover
+PageHeader fragment breaking the launch page's JSX, an invented DataTable prop on
+seven list pages, and one test still importing the deleted section-tabs.
+
+§6 visual review notes (from the conversion pass over every page, plus the
+automated route scans — axe and no-sideways-scroll at 360/390/1440 px, light and
+dark; no separate manual pass was made at 1920 px, where the kit frame simply caps
+the width the 1440 px layout already uses):
+- Today: the approvals inbox keeps its narrow reading column, so on wide screens
+  it looks plainer than the kit record pages around it. Dispatch keeps its board
+  layout by design; at 360 px the day columns stack into a long, busy scroll.
+- Customers: the converted lists share one table shape; on phones the cards carry
+  name and status and the rest waits for a wider screen — nothing clips.
+- Schedule: the driver route view stacks at 360 px with the stop list first, which
+  reads in the right order; the work-order print view is unchanged.
+- Equipment: inventory stays a card list (bulk status actions) and the retired
+  page keeps per-row decision cards — tall on a phone, but each card is a complete
+  decision, so the long scroll is the honest shape of that page.
+- Money: books pages keep their dense tables; at 360 px a table scrolls inside its
+  own box while the page itself never scrolls sideways (the scans assert this).
+- Everywhere: the two allow-listed legal texts (the vault emergency warning and
+  the CPSC recall wording) remain single long paragraphs at phone width — the
+  visible cost of keeping the exact legal wording, kept deliberately.
+
+## October 29 — AR-10b permissions audit: COMPLETE (PR #757, Lane 4); AR-10a sweep started
+
+AR-10b merged to main as squash bda26c39 (PR #757, head 75365b0e): CI run 40943758802 fully
+green at the exact head — including the session-deactivation browser shard, whose local proof
+had been blocked all afternoon by parallel-lane contention for this VM's shared port 3000 and
+~8 GB RAM (proven collisions, not failures) — review-gate green (waived, self-reviewed; Codex's
+review never completed), 0 unresolved threads. The one staff-test failure on the first CI run
+was the test probing bare /desk, which has no page and renders the not-found shell unguarded;
+the session itself was already refused (API leg 401), and the probe now uses /desk/today. The
+browser-e accessibility failure on that run (mcp-monitoring, /desk/automations) did not repeat
+and was green at PR #754's head — a flake, recorded here so nobody chases it later. AR-10's
+packet now records pullRequest 757. AR-10a (FINAL-SWEEP §§0–4+6) is in progress on
+ai/vivienne/ar-10a; its STATUS close-out will carry the §6 visual review notes.
+
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 
 AR-10 is split by risk: AR-10b (the §5 permissions audit) first, AR-10a (the redesign sweep)

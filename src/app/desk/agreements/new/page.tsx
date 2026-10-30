@@ -9,7 +9,7 @@ import { notFound, redirect } from "next/navigation";
 import { listPackagesForLines } from "@/domains/packages";
 import { getBusinessSettings } from "@/domains/settings";
 
-export const metadata = { title: "New agreement" };
+export const metadata = { title: "New rental" };
 
 export default async function NewAgreementPage({
   searchParams,
