@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ACCESSIBILITY_ROUTES,
+  FIXTURE_KEYS,
   manualAccessibilityRoutes,
 } from "../e2e/route-inventory";
 
@@ -48,6 +49,34 @@ describe("accessibility route inventory", () => {
   it("gives every automated route a concrete URL", () => {
     for (const route of ACCESSIBILITY_ROUTES.filter((item) => !item.manualOnlyReason)) {
       expect(route.fixture.startsWith("/")).toBe(true);
+    }
+  });
+
+  it("AR-10: every manual-only route names the spec or test that covers it, and that file exists", () => {
+    const reference = /(?:e2e|tests)\/[A-Za-z0-9._/-]+\.(?:spec|test)\.ts/g;
+    for (const route of manualAccessibilityRoutes()) {
+      const named = route.manualOnlyReason?.match(reference) ?? [];
+      expect(
+        named.length,
+        `${route.path} must name its covering spec in its manual-only reason`,
+      ).toBeGreaterThan(0);
+      for (const file of named) {
+        expect(
+          fs.existsSync(path.join(process.cwd(), file)),
+          `${route.path} names ${file}, which must exist`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("AR-10: fixture id references use only the keys global setup writes", () => {
+    for (const route of ACCESSIBILITY_ROUTES) {
+      for (const match of route.fixture.matchAll(/\{(\w+)\}/g)) {
+        expect(
+          (FIXTURE_KEYS as readonly string[]).includes(match[1]),
+          `${route.path} references unknown fixture key ${match[1]}`,
+        ).toBe(true);
+      }
     }
   });
 });
