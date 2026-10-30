@@ -40,6 +40,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
   const [health, issueList, backup, monitorRules, repairCases] = await measure("PAGE", "desk:system-health", () => Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard(), listMonitorRules(), listRepairCases(session.user.id)]));
   const canPause = session.user.role === "OWNER";
   const keys = canPause ? await listOpsAgentKeys(session.user.id) : [];
+  const monitorConnections = canPause ? await listMonitorConnections(session.user.id) : [];
   const grace = health[0]?.graceMinutes ?? RECOMMENDED_LATE_GRACE_MINUTES;
 
   return (
@@ -58,7 +59,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
       }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
 
       <AssistantConnections userId={session.user.id} canSeeAll={session.user.role === "OWNER"} />
-      <MonitoringSection rules={monitorRules} heartbeat={health.find((row) => row.ruleKey === "system-issues-sweep") ?? null} canManage={canPause} />
+      <MonitoringSection rules={monitorRules} connections={monitorConnections} heartbeat={health.find((row) => row.ruleKey === "system-issues-sweep") ?? null} canManage={canPause} />
       <AssistantActivity userId={session.user.id} canSeeAll={canPause} cursor={query?.activityCursor} />
       <ImprovementsSection userId={session.user.id} canManage={canPause} />
       <section id="backup-settings" aria-labelledby="backup-settings-heading" className="mb-6 rounded-card border border-line bg-surface p-4">
