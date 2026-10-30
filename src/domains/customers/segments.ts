@@ -1,9 +1,11 @@
 /**
  * CU-1 (AR-4c, CUSTOMERS spec section 3): customer segments — one rule set in
- * two shapes that must never drift: the pure function (row pills, tests) and
- * the SQL fragment the tab filter uses. The integration test proves the tab
- * query returns exactly the customers whose customerSegments() includes the
- * segment, on 30 fixtures.
+ * three shapes that must never drift: the pure function (row pills, tests),
+ * the SQL fragment over the facts columns (segment counts), and the EXISTS
+ * fragment over the base tables (the tab filter, CU1-PERF). The integration
+ * test proves the tab query returns exactly the customers whose
+ * customerSegments() includes the segment, on 30 fixtures, and that the
+ * counts match the tab sizes.
  *
  * Rules (design CUSTOMERS-WORKSPACE section 4):
  * - setting-up: has pending agreements and none active yet
@@ -68,6 +70,56 @@ export function customerSegments(
     out.push("past");
   if (out.length === 0) out.push("new");
   return out;
+}
+
+/**
+ * The same conditions as EXISTS probes over the base tables, relative to a
+ * Customer row aliased "c" (CU1-PERF: the list's ordering phase and the
+ * searches use this shape — indexed probes instead of computing every
+ * customer's aggregates first). Each form is the aggregate rule restated:
+ * a MIN(...) < bound is "an exists below the bound", a count > 0 is an
+ * exists, a count = 0 is a not-exists. The integration test pins this shape
+ * against the pure rule (tab sizes) and against the facts shape (counts).
+ */
+export function segmentExistsSql(
+  segment: CustomerSegment,
+  startToday: Date,
+  windowEnd: Date,
+): Prisma.Sql {
+  const active = Prisma.sql`EXISTS (SELECT 1 FROM "RentalAgreement" ra
+    WHERE ra."customerId" = c."id" AND ra."status" = 'ACTIVE')`;
+  const pending = Prisma.sql`EXISTS (SELECT 1 FROM "RentalAgreement" ra
+    WHERE ra."customerId" = c."id"
+      AND (ra."status" IN ('DRAFT', 'AWAITING_SIGNATURE', 'SCHEDULED')
+        OR (ra."status" = 'ACTIVE' AND ra."firstDeliveredOn" IS NULL)))`;
+  const ended = Prisma.sql`EXISTS (SELECT 1 FROM "RentalAgreement" ra
+    WHERE ra."customerId" = c."id" AND ra."status" = 'ENDED')`;
+  const owes = Prisma.sql`EXISTS (SELECT 1 FROM "Invoice" inv
+    WHERE inv."customerId" = c."id"
+      AND inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+      AND inv."amountDueCents" > inv."amountPaidCents"
+      AND inv."dueDate" < ${startToday})`;
+  const ending = Prisma.sql`(EXISTS (SELECT 1 FROM "RentalAgreement" ra
+      WHERE ra."customerId" = c."id" AND ra."status" = 'ACTIVE'
+        AND ra."termMonths" IS NOT NULL AND ra."terminationRequestedAt" IS NULL
+        AND ra."endDate" < ${windowEnd})
+    OR EXISTS (SELECT 1 FROM "Job" j
+      WHERE j."customerId" = c."id" AND j."type" = 'REMOVAL'
+        AND j."status" = 'SCHEDULED' AND j."scheduledAt" < ${windowEnd}))`;
+  switch (segment) {
+    case "setting-up":
+      return Prisma.sql`${pending} AND NOT (${active})`;
+    case "active":
+      return active;
+    case "owes":
+      return owes;
+    case "ending":
+      return ending;
+    case "past":
+      return Prisma.sql`NOT (${active}) AND NOT (${pending}) AND ${ended}`;
+    case "new":
+      return Prisma.sql`NOT (${active}) AND NOT (${pending}) AND NOT (${ended}) AND NOT (${owes}) AND NOT (${ending})`;
+  }
 }
 
 /**

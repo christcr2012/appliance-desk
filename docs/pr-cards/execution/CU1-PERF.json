@@ -1,0 +1,112 @@
+{
+ "acceptance": [
+  "tests/perf/customers-list.perf.test.ts passes on a disposable 20k-seed database: every measured median (list per sort, segment counts, name/phone/address searches) < 150 ms, with the timings printed in the run log",
+  "tests/customer-list-integration.test.ts, tests/customer-segments.test.ts and tests/customer-keys.test.ts pass unchanged \u2014 same rows, same order per sort, same segment membership, same counts, same KIT 5.1 cursor windows as the view implementation",
+  "Role shaping is unchanged: staff list rows carry no money values at all (the integration suite's staff assertions stay green); the role-gated hydration laterals (oldest open bill, money rollups) still run only for OWNER/ADMIN and only for the window's rows",
+  "e2e/customers-list.spec.ts passes in CI unchanged (segments tabs, saved views, SidePanel, bulk export all behave as before)",
+  "No behavior change anywhere else: the customer record page and CSV export read the same DTOs; any new index ships as an additive migration only"
+ ],
+ "baseline": "32263c856e0f6a4a888415791cd14c1a40a6fe64",
+ "card": "docs/pr-cards/AR-4.md",
+ "checks": {
+  "browser": [
+   "e2e/customers-list.spec.ts"
+  ],
+  "db": [
+   "tests/customer-list-integration.test.ts"
+  ],
+  "node": [],
+  "unit": [
+   "tests/customer-segments.test.ts",
+   "tests/customer-keys.test.ts"
+  ]
+ },
+ "gates": [],
+ "id": "CU1-PERF",
+ "invariants": [
+  "Money stays integer cents and role-shaped at the query boundary: a STAFF actor's rows never select money columns, in either phase of the redesign",
+  "Segment membership is a contract: for every fixture in the integration suite, each customer lands in exactly the same segments as under the view; segments.ts rules are re-expressed, never re-decided",
+  "KIT 5.1 growing-window cursor semantics (cap 500, page 50, cursor = last id of the window) are unchanged; the page and the export keep consuming the same shapes",
+  "Migrations, if any, are additive indexes only \u2014 no column, view or data changes; the customer_list_v1 view itself stays in the schema for other readers until a separate card retires it"
+ ],
+ "next": "Nothing named beyond this card in Lane 5's queue; the customer_list_v1 view's remaining readers (record page facts) are a possible separate retirement card if this redesign proves the pattern.",
+ "outcome": "The Customers list reads stop materializing the full customer_list_v1 view on every call. getCustomerList, getCustomerSegmentCounts and the search paths query base tables instead: an ids-first window per sort, then hydration of only the window's rows. Every perf median in tests/perf/customers-list.perf.test.ts (six sorts, segment counts, three searches at the 20,000-customer capacity seed) lands under the 150 ms budget, with the list's rows, segments, counts, cursor behavior and role-shaped money byte-identical to today.",
+ "parent": "AR-4",
+ "proposedFiles": [
+  "src/domains/customers/list.ts",
+  "src/domains/customers/segments.ts",
+  "docs/STATUS.md",
+  "docs/pr-cards/AR-4.md"
+ ],
+ "references": [
+  {
+   "anchor": "CU-1 20,000-customer list capacity (isolated CI Postgres)",
+   "path": "tests/perf/customers-list.perf.test.ts",
+   "purpose": "The capacity contract: the seed shape (20k customers / 60k addresses / 30k agreements / 120k bills / 40k visits), the six sorts, counts and three searches, each with a 150 ms median budget; runs only in the Performance Baselines job (CI + BATCH_E_PERF)."
+  },
+  {
+   "anchor": "FROM \"Customer\" c",
+   "path": "src/domains/customers/list.ts",
+   "purpose": "The implementation this card changed: at Step 0 it read BASE_FROM over the view (the list query, the hydration query and the counts query all read it). As built: phased base-table queries — fetchOrderedIds (ids only), fetchFactsByIds (window facts), hydrateWindow (the role-gated laterals — next job, oldest open bill — kept for window rows only); segment counts keep one grouped-aggregate pass over FACTS_FROM."
+  },
+  {
+   "anchor": "The view facts the segment rules read (customer_list_v1 columns).",
+   "path": "src/domains/customers/segments.ts",
+   "purpose": "The segment rules in two forms \u2014 JS predicates over view facts and SQL conditions over a view alias. The redesign re-expresses the SQL form over base tables; the JS form's fact set defines what the ids phase must compute."
+  },
+  {
+   "anchor": "The customer_list_v1 view: one row per live customer",
+   "path": "prisma/migrations/20261026040000_customer_list/migration.sql",
+   "purpose": "Why the view is slow: per-customer LATERAL aggregates over agreements, bills and visits for every live customer before any filter, sort or limit can apply; also the indexes the CU-1 build already added for those laterals."
+  },
+  {
+   "anchor": "the redesign queries base tables per sort instead",
+   "path": "docs/STATUS.md",
+   "purpose": "The named follow-up from AR-4c's close-out: the measured problem (~1.6 s / ~0.9 s against the 150 ms budget at the capacity seed) and the prescribed direction."
+  }
+ ],
+ "risk": "The segment SQL and the sort orders are the contract surface: a subtle re-expression (NULL ordering on owed/rent, the attention sort's composite keys, search's phone-digits trigram path) can pass the small integration fixtures while diverging at capacity. Mitigation: S1 captures EXPLAIN ANALYZE and a row-level parity dump (ids per sort/segment at a mid-size seed) from the view implementation BEFORE touching it, and S2/S3 must reproduce that dump exactly from base tables.",
+ "sequence": [
+  "S1 baseline + design: perf timings and EXPLAIN ANALYZE for the three view queries on a disposable 20k database; a parity dump (ordered ids per sort, per segment, counts, search hits) at a mid-size seed; the per-sort base-table design recorded in the slice commit",
+  "S2 getCustomerList two-phase: ids window per sort from base tables (segment SQL re-expressed in segments.ts), hydration laterals scoped to the window ids; parity dump reproduced; integration + segments + keys suites green",
+  "S3 counts + search: getCustomerSegmentCounts and the name/phone/address search paths on base tables; counts parity against the view on the same fixtures",
+  "S4 perf proof + PR: perf suite all medians < 150 ms on the disposable 20k database, packet checks, preflight, STATUS + AR-4 card updates; CI incl. customers-list browser spec and the Performance Baselines job"
+ ],
+ "slices": [
+  {
+   "acceptance": [
+    "Perf medians for all six sorts, counts and three searches recorded from the CURRENT implementation on a disposable 20k database (expected: the AR-4c figures, ~1.6 s / ~0.9 s class)",
+    "A parity artifact (ordered ids per sort and segment, counts, search results at a mid-size seed) produced from the view implementation and kept with the slice's working notes",
+    "The design names, per sort, the base-table query that yields the window ids (which indexes carry the ordering; where aggregates are computed) \u2014 no production code changes in this slice"
+   ],
+   "id": "CU1-PERF-S1",
+   "title": "Baseline measurements, parity dump, per-sort design"
+  },
+  {
+   "acceptance": [
+    "getCustomerList no longer reads customer_list_v1; the ids phase applies segment + search + sort over base tables and the hydration phase runs the existing role-gated laterals for the window ids only",
+    "The S1 parity dump is reproduced exactly (same ids, same order, same counts of rows) at the same seed",
+    "tests/customer-list-integration.test.ts + tests/customer-segments.test.ts + tests/customer-keys.test.ts green, including the staff no-money assertions"
+   ],
+   "id": "CU1-PERF-S2",
+   "title": "getCustomerList: ids-first window, window-only hydration"
+  },
+  {
+   "acceptance": [
+    "getCustomerSegmentCounts returns identical counts to the view implementation on the integration fixtures and the parity seed",
+    "Name, phone-digits and address searches return the same rows as before (integration search cases green); the phone-digits path keeps using the trigram/composite indexes"
+   ],
+   "id": "CU1-PERF-S3",
+   "title": "Segment counts and search paths on base tables"
+  },
+  {
+   "acceptance": [
+    "tests/perf/customers-list.perf.test.ts green on the disposable 20k database with all medians < 150 ms, timings quoted in the PR body",
+    "STATUS + AR-4 card record the redesign and the before/after medians; packet checks + preflight green; CI green incl. browser-c customers-list and the Performance Baselines job"
+   ],
+   "id": "CU1-PERF-S4",
+   "title": "Perf proof, docs, PR"
+  }
+ ],
+ "version": 1
+}

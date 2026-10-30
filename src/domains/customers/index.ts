@@ -41,7 +41,8 @@ export async function getCustomers() {
 
 /* CU-1 retired the old offset-paged list helpers (customerListWhere,
  * getCustomersCount, getCustomersPage): /desk/customers now reads through
- * src/domains/customers/list.ts over the customer_list_v1 view. */
+ * src/domains/customers/list.ts (grouped base-table facts since CU1-PERF;
+ * it read the customer_list_v1 view until then). */
 
 export async function getCustomerById(id: string) {
   await requireRole("OWNER", "ADMIN");
