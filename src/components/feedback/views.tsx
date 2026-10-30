@@ -134,6 +134,7 @@ export function MyReportView({ report, attachmentBase, reopenDays }: {
       <ReporterActions
         id={report.id}
         version={report.version}
+        aiReview={report.aiReview}
         mode={mode}
         canAddPictures={report.canAddPictures}
         picturesLeft={report.picturesLeft}

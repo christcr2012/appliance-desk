@@ -2,6 +2,26 @@
 
 The bell at the top of every desk screen now says what just happened: new lead, quote opened, rental signed, payment failed, approval needed. Each event is written after its action commits through one failure-isolated seam (`notifySafely`), deduplicated per person (unique (userId, dedupeKey); payment failures dedupe on the Stripe event id, quote views on the one call that wins the SENT→VIEWED claim), and can never fail the lead form, signing, quote view or webhook it follows. Recipients are computed from the same role + job-role rules the linked pages use; when a person's access is reduced, notifications they can no longer open are deleted in the same transaction. Optional email copies ride the existing message-delivery path behind each person's own preference (default off); nobody can read or mark another person's rows. The bell follows the AR-11 freshness rule (no polling from idle or hidden tabs); desktop gets a popover, phones a sheet; preferences live at Your account → Your notifications with per-kind in-app/email switches (staff, who receive none of the five yet, see "You don't get notifications yet."). Read notifications are removed by the nightly sweep after the owner-set keep-days (Settings → Advanced, starting value 90; unread never removed by age). Tests: rules 12, integration 7 (incl. access-change purges and clean-up), hooks 6 (all five kinds end to end + failure isolation), email 1, bell words 4, inventories green; e2e/notifications.spec.ts (browser-e) covers the public-form → bell → lead flow, preference saving, the staff page and keyboard/axe. Drift from the spec is recorded in the PR body (migration name follows the repo's future-dated sequence; the read-notification age is measured from when it was read).
 
+
+## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
+
+MCP-11 assistant feedback was merged in PR #748 after its exact-head CI and normal
+review-gate completed. MCP-7b PR #762 adds owner-only, default-off standing
+monitoring approvals for a narrowly allowlisted MCP-5 action and an active,
+maintenance-scoped owner connection; each qualifying alert links its permanent
+Denver-day receipt to the operation journal. The operation checks the exact
+rule version, owner access, connection and scope at claim and before dispatch,
+records owner grant changes in the audit log, and never blindly retries
+an uncertain action. The owner interface explains delegation and assistant
+activity attributes it to the monitoring rule.
+
+Local focused ESLint passed with no errors and monitoring policy tests were 3/3
+green; GitHub's type-check, lint and repository-check job passed. The first
+GitHub CI run found synthetic audit-log teardown cleanup and a missing STATUS
+update; these were corrected for the next exact-head CI. Full database/browser
+CI and review remain required before merge. No live provider or customer
+communications were enabled. MCP-8 and MCP-9 remain outstanding.
+
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 
 AR-10 is split by risk: AR-10b (the §5 permissions audit) first, AR-10a (the redesign sweep)

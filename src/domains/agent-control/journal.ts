@@ -41,6 +41,9 @@ const ACTION_PERMISSIONS = {
   REPAIR_CREATE_CASE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
   REPAIR_LINK_EVIDENCE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
   REPAIR_CHECK_CASE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
+  FEEDBACK_REPLY: { scope: "feedback:triage", approval: "CONVERSATION" },
+  FEEDBACK_UPDATE: { scope: "feedback:triage", approval: "CONVERSATION" },
+  FEEDBACK_LINK_CASE: { scope: "feedback:triage", approval: "CONVERSATION" },
 } as const;
 
 export type JournalAction = keyof typeof ACTION_PERMISSIONS;
@@ -129,7 +132,7 @@ export async function createJournalPreview(ctx: AgentContext, input: PreviewArgs
       userId: ctx.userId, action: "mcp.operation.previewed", entityType: "AgentOperation",
       entityId: created.id, newValue: { action: input.action, targetRef: input.targetRef ?? null },
     } });
-    if (policy.approval === "OWNER_IN_APP") {
+    if (policy.approval === "OWNER_IN_APP" && !input.tool.startsWith("monitor-rule_")) {
       await createTaskInTx(tx, { userId: ctx.userId, role: "OWNER" }, {
         note: "Approve or decline assistant action: " + safe.summary +
           ". Open System health > Assistant activity.",

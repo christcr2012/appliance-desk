@@ -59,6 +59,18 @@ test("app feedback: send, question, answer, fixed, reopen", async ({ page, brows
     const card = customer.getByRole("link", { name: new RegExp(title) });
     await expect(card).toContainText("Received");
 
+    // MCP-11: the person who filed it, not the owner or assistant, owns AI permission.
+    await card.click();
+    const aiPermission = customer.getByRole("region", { name: "AI assistant privacy choice" });
+    const aiChoice = aiPermission.getByRole("checkbox", { name: /Let Chris.*AI assistant read this report/ });
+    await expect(aiChoice).not.toBeChecked();
+    await aiChoice.check();
+    await expect(customer.getByText("You allowed your assistant to review this report.")).toBeVisible();
+    await expect.poll(async () => (await prisma.feedbackReport.findUniqueOrThrow({ where: { id: sent.id } })).aiReview).toBe("ALLOWED");
+    await aiChoice.uncheck();
+    await expect(customer.getByText("Your assistant can no longer read this report.")).toBeVisible();
+    await expect.poll(async () => (await prisma.feedbackReport.findUniqueOrThrow({ where: { id: sent.id } })).aiReview).toBe("WITHDRAWN");
+
     // 2. The owner sees the To do and asks a question.
     await page.goto("/desk/today");
     await expect(page.getByText(`App feedback #${sent.number}: ${title}`).first()).toBeVisible();
