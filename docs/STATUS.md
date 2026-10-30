@@ -3,6 +3,36 @@
 The bell at the top of every desk screen now says what just happened: new lead, quote opened, rental signed, payment failed, approval needed. Each event is written after its action commits through one failure-isolated seam (`notifySafely`), deduplicated per person (unique (userId, dedupeKey); payment failures dedupe on the Stripe event id, quote views on the one call that wins the SENT→VIEWED claim), and can never fail the lead form, signing, quote view or webhook it follows. Recipients are computed from the same role + job-role rules the linked pages use; when a person's access is reduced, notifications they can no longer open are deleted in the same transaction. Optional email copies ride the existing message-delivery path behind each person's own preference (default off); nobody can read or mark another person's rows. The bell follows the AR-11 freshness rule (no polling from idle or hidden tabs); desktop gets a popover, phones a sheet; preferences live at Your account → Your notifications with per-kind in-app/email switches (staff, who receive none of the five yet, see "You don't get notifications yet."). Read notifications are removed by the nightly sweep after the owner-set keep-days (Settings → Advanced, starting value 90; unread never removed by age). Tests: rules 12, integration 7 (incl. access-change purges and clean-up), hooks 6 (all five kinds end to end + failure isolation), email 1, bell words 4, inventories green; e2e/notifications.spec.ts (browser-e) covers the public-form → bell → lead flow, preference saving, the staff page and keyboard/axe. Drift from the spec is recorded in the PR body (migration name follows the repo's future-dated sequence; the read-notification age is measured from when it was read). CI follow-ups landed on the same PR: the spec's axe call now uses the repo's shared WCAG tag scope (the unscoped default also ran best-practice rules), and the shared Card title/description wrap long unbroken words (a system problem titled with a 32-character id was pushing /desk/automations sideways at phone width; proven from the CI failure's own page snapshot). The shared route-scan helper now retries a whole theme pass once when a late server/client redirect destroys the JS context mid-scan (it previously guarded only the first evaluate; the race hit /desk/fleet, /desk/dashboard, /desk/control-center and /desk/books/closing across four runs, never the same route twice).
 
 
+## October 30 — AR-4d: Quotes and Messages (Lane 5)
+
+**What changed:** the Quotes list and Messages inbox rebuilt per
+`QUOTES-MESSAGES.md` (packet AR-4D). Quotes: `getQuotes`/`getQuoteCounts` replace the
+unpaged `getAllEstimates` on the list page — tab/search/who filters, four sorts, line sums
+via one raw SUM grouped per quote (Prisma groupBy cannot multiply price by quantity), a
+KIT 5.1 growing-window cursor; `getEstimateDetail` gained its missing OWNER/ADMIN role
+check. The screen is KIT 5.1 like Customers: status tabs with counts, owner-side pill
+words, row actions led by "Make it a rental" (to the convert panel's new `#convert`
+anchor), "Finish and send", and "Follow up" by phone or email. Messages: plain-word
+params with every legacy code mapped (old links keep working); the inbox select carries
+names only — still no message text before thread authorization — plus per-status counts
+under the same staff scoping; cards show the unread dot, the plain status words, and the
+Unknown/Several chips; the texting-not-on notice names the owner's Settings switch. The
+missing piece the spec called out now exists: **link a number to a person** —
+`linkThreadIdentity`/`unlinkThreadIdentity` (one transaction, thread row locked, other
+matches revoked, the kept binding verified by staff, audits both ways, consent records
+never touched) with the thread page's "Who is this?" sheet and a confirmation that names
+who the number will stop matching.
+
+**How it was checked:** 29 packet tests green on the lane's real Postgres (quotes list
+9, detail role 3, messages params 8, inbox names 4, thread identity 5 — including the
+two-links-one-version race), plus the pre-existing inbox-scope suite; scoped typecheck
+and eslint clean per slice; `e2e/quotes-messages.spec.ts` (tabs, the convert anchor, the
+link flow, staff scoping, axe at five sizes) runs in this PR's CI. Two spec readings are
+recorded in the slice commits: the header word is "Quotes"/"Messages" (the spec's
+"Customers" heading is a template slip — its own title says the word on screen is quote),
+and the quote money sums use raw SQL because the spec's groupBy shape cannot express
+price × quantity.
+
 ## October 29 — AR-4c COMPLETE: Customers list (CU-1) merged (Lane 5)
 
 **What changed:** PR #761 merged (squash 125fb162): the CU-1 Customers list — the
@@ -47,6 +77,32 @@ GitHub CI run found synthetic audit-log teardown cleanup and a missing STATUS
 update; these were corrected for the next exact-head CI. Full database/browser
 CI and review remain required before merge. No live provider or customer
 communications were enabled. MCP-8 and MCP-9 remain outstanding.
+
+## October 29–30 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): COMPLETE (PR #769, Lane 4)
+
+AR-10a merged to main as squash a66e9c67 (PR #769, final head ea62ee89): CI run
+41019290353 fully green at the exact head, the review gate waived on the recorded
+self-review, 0 unresolved threads. The sweep took three CI rounds: round 1
+repointed ten list pages to the kit DataTable's ?open= pattern (the table wraps
+its first cell in a link, so a linked first cell nested anchors) and hoisted a
+paperwork component the linter requires at module level; round 2 fixed the kit
+StatusTabs bleeding 4px past the desk frame per side and RecordHeader titles
+that could not wrap; round 3 stopped the kit AppFrame letting a wide tab strip
+side-scroll the whole document (the content wrapper is now overflow-x-clip —
+before/after screenshots identical), gave the notice-resolve fieldset a min-w-0
+(its option cards stretched the form at 360px), and corrected six spec
+expectations to the app's real behavior (money-input and display formats, the
+bill record's money forms opening through its action-menu sheets, and the
+current unconfirmed-refund status wording). Two earlier PRs (#763, #768) were
+closed unmerged for a mechanical reason only: content-snapshot pushes carry no
+merge ancestry, so GitHub computed mergeability against an ancient merge-base
+and read the PRs dirty — no pull_request workflow could start — although the
+trees merged cleanly (proven locally, twice). The branch was recreated from
+current main per the AUD-E precedent and the identical verified tree landed as
+#769. Final numbers at the merged tree: plain-words 557 files, kit + sweep
+guards 177/177, inventory 161/161 pages, approvals browser test 6/6. The AR-10
+card is complete: AR-10b (permissions audit) merged in #757 and AR-10a in #769;
+Lane 4's AR share is done.
 
 ## October 29 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): built on ai/vivienne/ar-10a (Lane 4)
 

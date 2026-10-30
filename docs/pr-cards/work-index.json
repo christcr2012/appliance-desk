@@ -4684,7 +4684,7 @@
         "AR-8",
         "AR-9"
       ],
-      "status": "IN PROGRESS — AR-10b COMPLETE (PR #757, merged 2026-10-29); AR-10a sweep in progress (Lane 4)",
+      "status": "COMPLETE — AR-10b permissions audit merged in #757 (2026-10-29); AR-10a redesign sweep merged in #769 (2026-10-30) (Lane 4)",
       "migration": "none",
       "budget": 700,
       "units": [
@@ -6153,6 +6153,10 @@
     {
       "id": "AR-13",
       "path": "docs/pr-cards/execution/AR-13.json"
+    },
+    {
+      "id": "AR-4D",
+      "path": "docs/pr-cards/execution/AR-4D.json"
     }
   ]
 }
