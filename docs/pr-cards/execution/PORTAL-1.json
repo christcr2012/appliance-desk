@@ -39,7 +39,7 @@
   "Kit components default to English words, so the desk needs no change; only the portal shell passes translated kit words",
   "No live payments, live SMS or live customer email is turned on; no production data is touched"
  ],
- "next": "PORTAL-1 is Lane 4's active card (started 2026-10-30 after W-11 parked at IN-61 on the LLC-formation prerequisite). One PR per the card.",
+ "next": "PORTAL-1 built and verified locally (2026-10-30); the pull request is the merge lap (CI at the exact head is the browser evidence — the local production build was OOM-killed under multi-lane box load, declared in the PR). On merge, a close-out records PR marks the card complete.",
  "outcome": "Customer portal redesign in one PR: every page under src/app/account (Home, Rentals, Repairs, Bills + the bill page, Properties, Account + Privacy) moves onto the kit with the portal dictionary (section 3 of the spec), the kit words provider makes kit fixed words translatable and the portal shell passes the Spanish set, money totals move out of page code into src/domains/agreements/totals.ts and the workspace reads, the duplicate <main> is fixed, repair wording becomes 'Ask for a repair', header paragraphs become InfoTips, and the spec's tests land (agreement totals, kit words, extended customer isolation, portal home workspace, new e2e/portal.spec.ts). Same URLs, same server actions, same domain reads, same Stripe paths; Spanish display stays governed by the IN-83 reviewed-copy rule.",
  "parent": "PORTAL-1",
  "proposedFiles": [
