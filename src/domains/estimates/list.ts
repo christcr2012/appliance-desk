@@ -81,7 +81,7 @@ function decodeCursor(raw: string | undefined): CursorValue | null {
 }
 
 /** The shared filters: everything except the tab's own status set. */
-function filtersWhere(p: QuoteListParams): Prisma.EstimateWhereInput {
+async function filtersWhere(p: QuoteListParams): Promise<Prisma.EstimateWhereInput> {
   const where: Prisma.EstimateWhereInput = {};
   if (p.who === "customers") where.customerId = { not: null };
   if (p.who === "leads") {
@@ -89,18 +89,25 @@ function filtersWhere(p: QuoteListParams): Prisma.EstimateWhereInput {
     where.leadId = { not: null };
   }
   const q = p.q?.trim().slice(0, 80) ?? "";
+  const or: Prisma.EstimateWhereInput[] = [];
   if (q.length >= 2) {
-    const or: Prisma.EstimateWhereInput[] = [
+    or.push(
       { customer: { user: { name: { contains: q, mode: "insensitive" } } } },
       { customer: { companyName: { contains: q, mode: "insensitive" } } },
       { lead: { contactName: { contains: q, mode: "insensitive" } } },
       { lead: { companyName: { contains: q, mode: "insensitive" } } },
-    ];
-    // A bare number is a quote number; digits inside a longer string stay a
-    // name/company search (the spec's "quote number digits").
-    if (/^\d+$/.test(q)) or.push({ estimateNumber: Number.parseInt(q, 10) });
-    where.OR = or;
+    );
   }
+  // A bare number is a quote-number search (the spec's "quote number
+  // digits"): a contains match at any length — typing 12 finds #112, #120
+  // and #123, and a fresh book's numbers are only a digit or two long.
+  // estimateNumber is an Int, so the digit match runs as a raw id lookup.
+  if (/^\d+$/.test(q)) {
+    const hits = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "Estimate" WHERE CAST("estimateNumber" AS TEXT) LIKE ${`%${q}%`}`;
+    or.push({ id: { in: hits.map((h) => h.id) } });
+  }
+  if (or.length) where.OR = or;
   return where;
 }
 
@@ -187,7 +194,7 @@ export async function getQuotes(
   const tab = params.tab ?? "open";
   const sort = params.sort ?? "newest";
   const where: Prisma.EstimateWhereInput = {
-    ...filtersWhere(params),
+    ...(await filtersWhere(params)),
     status: { in: QUOTE_TAB_STATUSES[tab] },
   };
   const found = await prisma.estimate.findMany({
@@ -269,7 +276,7 @@ export async function getQuoteCounts(
   params: QuoteListParams = {},
 ): Promise<Record<QuoteTab, number>> {
   await requireRole("OWNER", "ADMIN");
-  const base = filtersWhere(params);
+  const base = await filtersWhere(params);
   const entries = await Promise.all(
     QUOTE_TABS.map(async (tab) => {
       const n = await prisma.estimate.count({

@@ -223,7 +223,11 @@ test.describe("AR-4d quotes and messages as owner", () => {
     const known = await makeThread({ resolution: "RESOLVED", status: "WAITING", customerId: quinn.customerId });
     try {
       await page.goto("/desk/communications");
-      const unknownCard = rowNamed(page, "Unknown number");
+      // The seed plants its own unknown thread, so "Unknown number" alone
+      // matches two cards — target this fixture's card by its thread link.
+      const unknownCard = page.locator("main li:visible", {
+        has: page.locator(`a[href="/desk/communications/${unknown.threadId}"]`),
+      });
       await expect(unknownCard).toBeVisible();
       await expect(unknownCard).toContainText("Needs a reply");
       await expect(rowNamed(page, quinn.name)).toBeVisible();
