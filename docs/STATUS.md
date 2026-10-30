@@ -3,41 +3,31 @@
 The bell at the top of every desk screen now says what just happened: new lead, quote opened, rental signed, payment failed, approval needed. Each event is written after its action commits through one failure-isolated seam (`notifySafely`), deduplicated per person (unique (userId, dedupeKey); payment failures dedupe on the Stripe event id, quote views on the one call that wins the SENT→VIEWED claim), and can never fail the lead form, signing, quote view or webhook it follows. Recipients are computed from the same role + job-role rules the linked pages use; when a person's access is reduced, notifications they can no longer open are deleted in the same transaction. Optional email copies ride the existing message-delivery path behind each person's own preference (default off); nobody can read or mark another person's rows. The bell follows the AR-11 freshness rule (no polling from idle or hidden tabs); desktop gets a popover, phones a sheet; preferences live at Your account → Your notifications with per-kind in-app/email switches (staff, who receive none of the five yet, see "You don't get notifications yet."). Read notifications are removed by the nightly sweep after the owner-set keep-days (Settings → Advanced, starting value 90; unread never removed by age). Tests: rules 12, integration 7 (incl. access-change purges and clean-up), hooks 6 (all five kinds end to end + failure isolation), email 1, bell words 4, inventories green; e2e/notifications.spec.ts (browser-e) covers the public-form → bell → lead flow, preference saving, the staff page and keyboard/axe. Drift from the spec is recorded in the PR body (migration name follows the repo's future-dated sequence; the read-notification age is measured from when it was read). CI follow-ups landed on the same PR: the spec's axe call now uses the repo's shared WCAG tag scope (the unscoped default also ran best-practice rules), and the shared Card title/description wrap long unbroken words (a system problem titled with a 32-character id was pushing /desk/automations sideways at phone width; proven from the CI failure's own page snapshot).
 
 
-## October 29 — AR-4c Customers list (CU-1): in review (successor PR, Lane 5)
+## October 29 — AR-4c COMPLETE: Customers list (CU-1) merged (Lane 5)
 
-AR-4c is built and in review as PR #761, the successor to PR #759 (closed as superseded).
-Same card, same tree: the work was carried onto current main through the native GitHub
-workspace pilot (Lane 5 is the pilot lane) — branch ai/vivienne/ar-4c-ws, cherry-picked
-with real ancestry; STATUS conflicts on main merges resolved as unions. What it delivers:
-the CU-1 engine (phoneDigits search key + trigram/composite indexes + the customer_list_v1
-view), the segment/list/export domain (KIT 5.1 growing-window cursor, staff money shaping
-at the query boundary), and the rewritten Customers screen (StatusTabs segments, filters,
-saved views, row SidePanel, CSV export incl. bulk export of a selection). Defects the
-capacity-baselines job and the local perf run exposed, fixed in this PR: (1) the perf
-seed's raw timestamp literal failed to bind (P2010/22007) — the seed now uses Prisma.raw
-and drops a nonexistent RentalLine.updatedAt column, so the suite runs end to end; (2) a
-mixed text+digits search query matched nothing — the phone-digits branch now adds to the
-text branches instead of replacing them; (3) the list hydrates its per-row detail
-(next-visit duration, past-due sum, oldest open bill) only for the rows in the shown
-window. CI then indicted five older specs written against the pre-CU-1 list (unsegmented
-default view, email printed in rows, name link straight to the record): rental-builder
-recovery, staff-security, app-feel, task-assignment and crm-workspace now navigate the
-new list the way a user does (its own search across segments, a row locator scoped to
-the list itself — the Customers section nav is also main-li elements — and the
-SidePanel's Open full page link); the rental-builder also retries the record's menu
-open, which a pre-hydration click could swallow, and the CU-1 spec scopes its row
-assertions to the visible row (the kit renders the desktop table and phone cards in
-one DOM) and clicks the header export by its real trigger name and menuitem role.
-Every one of those fixes was reproduced and verified green on the Workshop
-(chris-agent-01) at the exact head before pushing. NAMED FOLLOW-UP (not hidden): the capacity
-budget is CI-confirmed missed — Performance Baselines at f80bc984 measured 1,619 ms /
-882 ms against the 150 ms budget at 20,000 customers — because every list/count/search
-call materializes the full lateral view before filtering. The fix is a query redesign
-driving list/count/search from the base tables with pre-aggregated joins; it is a
-follow-up card ("CU-1 perf: base-table query redesign"), not folded into AR-4c: perf is
-not a required merge check, the queries are fast at launch scale, and the redesign
-rewrites the query layer this card just proved correct. Remaining: CI, review, merge;
-AR-4d (Quotes and Messages) is next on this lane.
+**What changed:** PR #761 merged (squash 125fb162): the CU-1 Customers list — the
+phoneDigits search key with trigram/composite indexes and the customer_list_v1 view; the
+segment/list/export engine with role-shaped money (staff rows carry no money values at
+all); the KIT 5.1 screen (segment tabs, saved views, SidePanel record preview, bulk CSV
+export); the 20,000-customer perf test; and locator fixes in five browser specs the new
+page's DOM exposed (section-navigation row locators, export menu roles, the desktop row
+link, a hydration-race menu retry). PR #759 (the content-push original) was closed as
+superseded. AR-4c was also the native-workspace pilot: the whole card shipped through
+github_git_workspace_* with real merge ancestry — two mid-flight main merges resolved
+as true merge commits, no successor-PR dance.
+
+**How it was checked:** the closing CI run at the exact head (057e6b18) was green in
+every job — secret scan, typecheck/lint, all three unit shards, all five browser
+shards — read job by job, not from a summary. Every fix in the final batch was
+reproduced and verified green first on the Workshop at the exact failing head.
+review-gate waived green on the posted self-review; 0 review threads.
+
+**Named follow-up:** "CU-1 perf: base-table query redesign" — the perf suite (not a
+required check, by design) measures the list queries at ~1.6 s / ~0.9 s against the
+150 ms budget at the 20,000-customer capacity seed, because every call materializes
+the full per-row view; the redesign queries base tables per sort instead. At launch
+scale (hundreds of customers) the shipped queries are fine. Next card: AR-4d
+(Quotes and Messages).
 
 ## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
 
