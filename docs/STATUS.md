@@ -1,3 +1,31 @@
+## October 30 — CU1-PERF: Customers list query redesign merged (Lane 5)
+
+**What changed:** the Customers list, segment counts and searches no longer read the
+`customer_list_v1` view, whose six per-customer LATERAL aggregates ran for every live
+customer on every call (1,523 ms list / 731 ms counts / 1,175 ms search at the
+20,000-customer capacity seed, budget 150 ms). `src/domains/customers/list.ts` now
+works in phases over base tables: an ids-only ordering (population + filters + the
+segment's EXISTS form in `segments.ts`; aggregate sort keys as grouped aggregates,
+candidate-scoped when a search narrows the set), the grouped-aggregate facts read
+for the window's ids only, and the display laterals (next visit, property count,
+past-due, oldest open bill) for window rows only. Segment counts keep one grouped
+population pass. No schema change; the view stays for its remaining readers.
+
+**How it was checked:** a 400-customer parity harness (every list shape — 6 segments
+× 6 sorts, 6 count variants, 5 searches, 2 exports — for OWNER and STAFF) is
+byte-identical to the view implementation; packet suites green on real Postgres
+(integration 7, segments 12, keys 3, role checks 6); full typecheck clean. The
+Performance Baselines job on the PR measured every sort, the counts and the
+searches under the 150 ms budget **except the attention sort at 172.6 ms** (the
+lists test fails fast there, so the remaining sorts were verified locally at
+140 ms or under on a slower VM and in the unit/browser shards). Perf is not a
+required merge check. **Open decision for Chris:** the attention gap's remaining
+fixes are a stored summary (the design CU-1 §1 set aside) or a budget amendment
+for this one sort — Lane 5's recommendation is the amendment (173 ms at a
+20,000-customer seed is 9× faster than the view and far past this shop's real
+scale); until he rules, CU1-PERF stays open on that one number, tracked as the
+follow-up "CU-1 perf: attention budget or summary".
+
 ## October 30 — AR-13 COMPLETE: in-app notifications bell merged (Lane 6)
 
 The bell at the top of every desk screen now says what just happened: new lead, quote opened, rental signed, payment failed, approval needed. Each event is written after its action commits through one failure-isolated seam (`notifySafely`), deduplicated per person (unique (userId, dedupeKey); payment failures dedupe on the Stripe event id, quote views on the one call that wins the SENT→VIEWED claim), and can never fail the lead form, signing, quote view or webhook it follows. Recipients are computed from the same role + job-role rules the linked pages use; when a person's access is reduced, notifications they can no longer open are deleted in the same transaction. Optional email copies ride the existing message-delivery path behind each person's own preference (default off); nobody can read or mark another person's rows. The bell follows the AR-11 freshness rule (no polling from idle or hidden tabs); desktop gets a popover, phones a sheet; preferences live at Your account → Your notifications with per-kind in-app/email switches (staff, who receive none of the five yet, see "You don't get notifications yet."). Read notifications are removed by the nightly sweep after the owner-set keep-days (Settings → Advanced, starting value 90; unread never removed by age). Tests: rules 12, integration 7 (incl. access-change purges and clean-up), hooks 6 (all five kinds end to end + failure isolation), email 1, bell words 4, inventories green; e2e/notifications.spec.ts (browser-e) covers the public-form → bell → lead flow, preference saving, the staff page and keyboard/axe. Drift from the spec is recorded in the PR body (migration name follows the repo's future-dated sequence; the read-notification age is measured from when it was read). CI follow-ups landed on the same PR: the spec's axe call now uses the repo's shared WCAG tag scope (the unscoped default also ran best-practice rules), and the shared Card title/description wrap long unbroken words (a system problem titled with a 32-character id was pushing /desk/automations sideways at phone width; proven from the CI failure's own page snapshot). The shared route-scan helper now retries a whole theme pass once when a late server/client redirect destroys the JS context mid-scan (it previously guarded only the first evaluate; the race hit /desk/fleet, /desk/dashboard, /desk/control-center and /desk/books/closing across four runs, never the same route twice). Merged 2026-10-30 as PR #765 (squash `cf32aa8d`) with ci and review-gate green at the exact head.
