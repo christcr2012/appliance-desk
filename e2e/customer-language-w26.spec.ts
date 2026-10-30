@@ -120,12 +120,16 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
     await page.getByRole("button",{name:"Save language / Guardar idioma"}).click();
     await expect(page.getByRole("heading",{name:"Cuenta",exact:true})).toBeVisible();
     expect((await prisma.customer.findUniqueOrThrow({where:{id:customer.id}})).preferredLanguage).toBe("es");
-    for(const [route,heading] of [["/account","Su cuenta de alquiler"],["/account/rentals","Mis alquileres"],["/account/billing","Facturación"],["/account/maintenance","Mantenimiento"],["/account/properties","Mis propiedades y contactos locales"],["/account/settings/privacy","Solicitudes de privacidad"]]) {
+    // PORTAL-1 headings: Home greets by first name; the section pages
+    // carry the single dictionary labels (Rentals/Bills/Repairs).
+    await page.goto("/account");await expect(page.getByRole("heading",{name:/^Hola /}).first()).toBeVisible();
+    expect(await page.locator('body').innerText()).not.toContain("undefined");
+    for(const [route,heading] of [["/account/rentals","Alquileres"],["/account/billing","Facturas"],["/account/maintenance","Reparaciones"],["/account/properties","Mis propiedades"],["/account/settings/privacy","Solicitudes de privacidad"]]) {
       await page.goto(route);await expect(page.getByRole("heading",{name:heading,exact:true}).first()).toBeVisible();
       expect(await page.locator('body').innerText()).not.toContain("undefined");
     }
-    await page.goto("/account/billing");await expect(page.getByRole("button",{name:"Administrar método de pago y facturación"})).toBeVisible();
-    await page.goto("/account/maintenance");await page.locator("#problem").fill("   ");await page.getByRole("button",{name:"Enviar solicitud"}).click();
+    await page.goto("/account/billing");await expect(page.getByRole("button",{name:"Datos de tarjeta o banco"})).toBeVisible();
+    await page.goto("/account/maintenance");await page.getByRole("button",{name:"Solicitar una reparación"}).first().click();await page.locator("#problem").fill("   ");await page.getByRole("button",{name:"Enviar solicitud"}).click();
     await expect(page.getByRole("alert").filter({hasText:"Describa su solicitud"})).toContainText("Describa");
     await page.goto("/estimate/"+estimateId);
     await expect(page.getByText("$60.50",{exact:false}).first()).toBeVisible();

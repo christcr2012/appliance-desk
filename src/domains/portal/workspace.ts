@@ -141,9 +141,12 @@ export async function getPortalHome(rawAddressId?: string) {
       (sum, rental) => sum + rentalMonthlyTotalCents(rental.lines),
       0,
     ),
+    // The raw Stripe invoice id and the sale kind stay inside the
+    // domain: the page receives the derived flags (isLocalInvoice /
+    // isShopSale), never the provider identifier itself.
     invoice: invoice
       ? {
-          ...invoice,
+          ...(({ stripeInvoiceId: _stripeInvoiceId, saleKind: _saleKind, ...rest }) => rest)(invoice),
           balanceCents: Math.max(0, invoice.amountDueCents - invoice.amountPaidCents),
           isLocalInvoice: invoice.stripeInvoiceId === null,
           isShopSale: invoice.saleKind === "SHOP_SALE",

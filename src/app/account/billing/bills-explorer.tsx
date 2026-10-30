@@ -2,10 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { StatusPill } from "@/components/kit/status-pill";
-import { EmptyState } from "@/components/kit/empty-state";
+import { StatusPill, EmptyState, type Tone } from "@/components/kit";
 import { InfoNote } from "@/components/portal/info-note";
-import type { Tone } from "@/components/kit/types";
 
 export type BillRow = {
   id: string;

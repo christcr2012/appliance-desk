@@ -1,3 +1,22 @@
+## October 30 — PORTAL-1: Customer portal redesign built, in review (Lane 4)
+
+**What changed:** every customer portal page (Home, Rentals, Repairs, Bills + the bill
+page, Properties, Account + Privacy) is redesigned on the kit in one PR: money totals
+moved out of page code into the domain, kit fixed words became translatable (the portal
+passes the Spanish set), "Report a problem" is now "Ask for a repair", the duplicate
+`<main>` is fixed, and the translator subject "Portal wording, October 30, 2026" is
+filed in Decisions & reviews. Isolation testing caught and fixed one real leak (a raw
+Stripe invoice id reached the home page payload).
+
+**How it was checked:** full typecheck and lint clean locally; kit guards 186/186;
+packet unit/db suites and decisions suites green on real Postgres; plain-words pass.
+Local browser evidence is degraded (the sandbox production build was OOM-killed under
+multi-lane load), so CI's browser shards at the exact head carry the new portal spec.
+
+**Next:** merge on green CI + review gate; then a close-out records PR marks the card
+complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
+docs land.
+
 ## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 
 **What changed:** the Customers list, segment counts and searches no longer read the

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
-import { useKitWords } from "@/components/kit/words";
+import { useKitWords } from "@/components/kit";
 import { useCustomerTranslation } from "@/domains/language/client-portal";
 
 /**

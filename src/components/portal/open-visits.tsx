@@ -1,4 +1,4 @@
-import { Stepper, type StepperStep } from "@/components/kit/stepper";
+import { Stepper, type StepperStep } from "@/components/kit";
 import { portalLabel } from "@/domains/language/portal-copy";
 import type { CustomerLanguage } from "@/domains/language/copy";
 import { formatBusinessDate } from "@/lib/business-date";

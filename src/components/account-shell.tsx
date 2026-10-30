@@ -4,9 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useActionState, useRef, useState, type ReactNode } from "react";
-import { Icon, type IconName } from "@/components/kit/icons";
-import { Toaster } from "@/components/kit/toaster";
-import { KitWordsProvider } from "@/components/kit/words";
+import { Icon, type IconName, Toaster, KitWordsProvider } from "@/components/kit";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOut } from "@/lib/auth-client";
 import { portalKitWords, portalLabel } from "@/domains/language/portal-copy";
@@ -214,7 +212,7 @@ export function AccountShell({
           </main>
 
           <nav
-            aria-label={t("My account")}
+            aria-label="Main"
             className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] print:hidden lg:hidden"
           >
             <ul className="grid h-14 grid-cols-5">

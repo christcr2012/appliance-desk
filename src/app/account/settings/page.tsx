@@ -1,5 +1,4 @@
-import { ScreenHeader } from "@/components/kit/screen-header";
-import { EmptyState } from "@/components/kit/empty-state";
+import { ScreenHeader, EmptyState } from "@/components/kit";
 import { InfoNote } from "@/components/portal/info-note";
 import { portalLanguage } from "@/domains/language/portal";
 import { portalLabel } from "@/domains/language/portal-copy";

@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { ScreenHeader } from "@/components/kit/screen-header";
-import { StatusTabs } from "@/components/kit/status-tabs";
-import { StatusPill } from "@/components/kit/status-pill";
-import { EmptyState } from "@/components/kit/empty-state";
+import { ScreenHeader, StatusTabs, StatusPill, EmptyState, type Tone } from "@/components/kit";
 import { portalLanguage } from "@/domains/language/portal";
 import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
 import { getServerSession } from "@/lib/session";
@@ -17,7 +14,6 @@ import { maintenanceStatusLabel } from "@/lib/status-labels";
 import { NewRequestForm } from "./new-request-form";
 import { RequestSheet } from "./request-sheet";
 import { formatBusinessDate as originalBusinessDate, formatShortDate } from "@/lib/business-date";
-import type { Tone } from "@/components/kit/types";
 
 export const metadata = { title: "Repairs" };
 

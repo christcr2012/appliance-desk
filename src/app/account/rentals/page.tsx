@@ -1,10 +1,6 @@
 import Link from "next/link";
 import { CustomerLegalText } from "@/components/customer-legal-text";
-import { ScreenHeader } from "@/components/kit/screen-header";
-import { StatStrip } from "@/components/kit/record-header";
-import { StatusPill } from "@/components/kit/status-pill";
-import { EmptyState } from "@/components/kit/empty-state";
-import { Timeline, type TimelineItem } from "@/components/kit/timeline";
+import { ScreenHeader, StatStrip, StatusPill, EmptyState, Timeline, type TimelineItem, type Tone } from "@/components/kit";
 import { agreementLanguage, agreementLegalTexts } from "@/domains/language/legal";
 import { portalLanguage } from "@/domains/language/portal";
 import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
@@ -32,7 +28,6 @@ import {
   jobStatusLabel,
   jobKindLabel,
 } from "@/lib/status-labels";
-import type { Tone } from "@/components/kit/types";
 
 export const metadata = { title: "My rentals" };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { toast } from "@/components/kit/toaster";
+import { toast } from "@/components/kit";
 
 /**
  * PORTAL-1 section 5.4: when the pay route bounces back with

@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { PaymentReturnNotice } from "@/components/payment-return-notice";
-import { EmptyState } from "@/components/kit/empty-state";
+import { EmptyState, ScreenHeader, StatStrip, actionButtonClass } from "@/components/kit";
 import { InfoNote } from "@/components/portal/info-note";
-import { ScreenHeader } from "@/components/kit/screen-header";
-import { StatStrip } from "@/components/kit/record-header";
-import { actionButtonClass } from "@/components/kit/action-button";
 import { getServerSession } from "@/lib/session";
 import { portalLanguage } from "@/domains/language/portal";
 import { portalLabel, portalStatement, visitCountLabel, requestCountLabel } from "@/domains/language/portal-copy";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Sheet } from "@/components/kit/sheet";
+import { Sheet } from "@/components/kit";
 
 /**
  * PORTAL-1 section 5.2: a button that opens its children in a kit

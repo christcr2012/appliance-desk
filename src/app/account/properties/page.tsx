@@ -4,8 +4,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { locationWorkspace } from "@/domains/customers/location-contacts";
 import { LocationsPanel } from "@/components/locations/locations-panel";
-import { RecordHeader } from "@/components/kit/record-header";
-import { EmptyState } from "@/components/kit/empty-state";
+import { RecordHeader, EmptyState } from "@/components/kit";
 import { InfoNote } from "@/components/portal/info-note";
 
 export const metadata = { title: "My properties" };

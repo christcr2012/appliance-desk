@@ -1,7 +1,6 @@
 "use client";
 
-import { ListSkeleton, RecordSkeleton } from "@/components/kit/skeleton";
-import { useKitWords } from "@/components/kit/words";
+import { ListSkeleton, RecordSkeleton, useKitWords } from "@/components/kit";
 
 /**
  * PORTAL-1 section 6: every portal page's loading state is a kit
