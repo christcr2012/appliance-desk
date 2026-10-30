@@ -54,7 +54,7 @@ export function canTransitionJobStatus(
   };
 }
 
-const JOB_OPERATIONAL_SELECT = {
+export const JOB_OPERATIONAL_SELECT = {
   id: true,
   type: true,
   status: true,
