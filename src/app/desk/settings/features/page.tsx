@@ -14,7 +14,10 @@ export default async function FeaturesSettingsPage() {
   return (
     <main className="mx-auto max-w-3xl px-5 py-5 lg:px-7 lg:py-6">
       <ScreenHeader title="Features" back={{ href: "/desk/settings", label: "Back to Settings" }} />
-      <p className="mb-4 text-sm text-ink-soft">Turn on more when your business needs it. Starting choice: extra features are hidden from menus until needed, but their pages still work. Only the owner can change these choices.</p>
+      <p className="mb-4 text-sm text-ink-soft">
+        Turn on more when your business needs it. Starting choice: extra features are hidden from menus until needed,
+        but their pages still work. Only the owner can change these choices.
+      </p>
       <ul className="divide-y divide-line rounded-card border border-line bg-surface px-4">
         {FEATURE_KEYS.map(key => {
           const feature = FEATURES[key];

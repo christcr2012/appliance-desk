@@ -35,7 +35,9 @@ export default async function BankChecksPage({searchParams}:{
   <header className="space-y-2">
    <Link href="/desk/books/cash" className="underline">Back to bank evidence and CSV imports</Link>
    <h1 className="text-2xl font-bold">Bank checks</h1>
-   <p className="text-muted-foreground">Review real settled bank observations against source-backed Books journal lines. A match does not move money. Statements only prove a dated period; neither an import nor a match certifies today&apos;s bank balance.</p>
+   <p className="text-muted-foreground">Review real settled bank observations against source-backed Books journal lines.
+    A match does not move money.
+    Statements only prove a dated period; neither an import nor a match certifies today&apos;s bank balance.</p>
    {notice&&<p role="status" className="rounded border border-border p-3 break-words">{notice}</p>}
   </header>
   <section className="rounded-lg border border-border p-4 space-y-3">
@@ -90,7 +92,8 @@ export default async function BankChecksPage({searchParams}:{
      </div>}
     </article>)}</div>}
     <h3 className="font-semibold">Confirm a match group</h3>
-    <p>Choose one or more bank rows and one or more book lines, all with the same debit/credit direction and matching signed totals. No automatic match or new accounting entry.</p>
+    <p>Choose one or more bank rows and one or more book lines, all with the same debit/credit direction and matching signed totals.
+     No automatic match or new accounting entry.</p>
     <form action={confirmMatchAction} className="grid gap-3 sm:grid-cols-2">
      <input type="hidden" name="accountId" value={selected.id}/>
      <input type="hidden" name="commandKey" value={randomUUID()}/>
@@ -125,8 +128,11 @@ export default async function BankChecksPage({searchParams}:{
     </article>)}
    </section>
    <section className="rounded-lg border border-border p-4 space-y-3">
-    <h2 className="text-lg font-semibold">Statement reconciliation</h2>
-    <p>Owner confirms a real statement balance independently. Complete only if every row is matched or a justified duplicate/non-account row, the bank and book difference is exactly $0.00 and bank matches independently equal book lines. Later periods must be contiguous. Completed evidence is immutable.</p>
+    <h2 className="text-lg font-semibold">Statement check</h2>
+    <p>Owner confirms a real statement balance independently.
+     Complete only if every row is matched or a justified duplicate/non-account row,
+     the bank and book difference is exactly $0.00 and bank matches independently equal book lines.
+     Later periods must be contiguous. Completed evidence is immutable.</p>
     {owner&&<form action={draftStatementAction} className="grid gap-3 sm:grid-cols-2">
      <input type="hidden" name="accountId" value={selected.id}/>
      <label>Statement starts<input type="date" name="fromDate" max={today} className={cls} required/></label>

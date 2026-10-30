@@ -32,7 +32,7 @@ export default async function BooksMonthPage({params,searchParams}:{params:Promi
   <Link href="/desk/books" className="underline">Back to Your books</Link>
   <header className="space-y-2">
    <h1 className="text-2xl font-bold">Review {display}&apos;s books</h1>
-   <p className="text-muted-foreground">Four checks using actual recorded business evidence. Nothing here sends a payment or changes a ledger entry.</p>
+   <p className="text-muted-foreground">Four checks using actual recorded business evidence. Nothing here sends a payment or changes an entry in your records.</p>
   </header>
   {notice&&<p role="status" className="rounded border border-border p-3">{notice.slice(0,400)}</p>}
   {error&&<p role="alert" className="rounded border border-border p-4">{error}</p>}
@@ -100,7 +100,8 @@ export default async function BooksMonthPage({params,searchParams}:{params:Promi
    </section>}
    <section className="rounded-lg border border-border p-4 space-y-3">
     <h2 className="font-semibold">Adjusting entries</h2>
-    <p className="text-sm">Corrections and year-end fixes are posted as new entries; the original records are never edited. Debits must equal credits. Only the owner can reverse an adjusting entry.</p>
+    <p className="text-sm">Corrections and year-end fixes are posted as new entries; the original records are never edited.
+     Debits must equal credits. Only the owner can reverse an adjusting entry.</p>
     {adjustments.length?<ul className="space-y-2">{adjustments.map(entry=><li key={entry.id} className="border-t border-border py-2">
       <p className="font-medium">#{entry.entryNumber} · {formatBusinessDate(entry.entryDate)} · {entry.memo}{entry.eventKind==="MANUAL_ADJUSTMENT_REVERSED"?" (reversal)":""}</p>
       {entry.lines.map((line,i)=><p key={i} className="flex gap-3 justify-between text-sm"><span>{line.accountName}</span><span className="tabular-nums">{line.debitCents?formatMoney(line.debitCents)+" debit":formatMoney(line.creditCents)+" credit"}</span></p>)}

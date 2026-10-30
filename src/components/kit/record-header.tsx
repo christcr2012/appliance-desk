@@ -69,12 +69,12 @@ export function RecordHeader({ title, transitionId, pills = [], subtitle, contac
           <div className="flex flex-wrap items-center gap-2">
             {transitionId ? (
               <RecordTitleTransition id={transitionId}>
-                <h1 tabIndex={-1} className="text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink lg:text-[30px] lg:leading-9">
+                <h1 tabIndex={-1} className="text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink [overflow-wrap:anywhere] lg:text-[30px] lg:leading-9">
                   {title}
                 </h1>
               </RecordTitleTransition>
             ) : (
-              <h1 tabIndex={-1} className="text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink lg:text-[30px] lg:leading-9">
+              <h1 tabIndex={-1} className="text-[26px] leading-8 font-extrabold tracking-[-0.5px] text-ink [overflow-wrap:anywhere] lg:text-[30px] lg:leading-9">
                 {title}
               </h1>
             )}

@@ -21,10 +21,10 @@ export default async function ResolveNoticePage({ params }: { params: Promise<{ 
 
   return (
     <div>
-      <PageHeader
-        title={`Fix a missed reminder: ${name}`}
-        description="Every way forward, in one place. Nothing happens until you choose one and press the button."
-      />
+      <PageHeader title={`Fix a missed reminder: ${name}`} />
+      <p className="-mt-2 mb-6 max-w-2xl text-sm leading-6 text-ink-soft">
+        Every way forward, in one place. Nothing happens until you choose one and press the button.
+      </p>
       {!stillNeedsFixing ? (
         <div className="rounded-lg border border-line bg-white p-6 text-sm text-ink-soft">
           This reminder no longer needs fixing (it is {result.notice.status.toLowerCase().replace("_", " ")}).

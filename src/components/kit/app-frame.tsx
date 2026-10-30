@@ -130,7 +130,7 @@ export function AppFrame({ areas, profileLinks, user, jobRoleScreens, shown, hel
         className="mx-auto min-w-0 max-w-screen-2xl overscroll-y-contain p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 lg:p-8 lg:pb-8 print:max-w-none print:p-0">
         <ViewTransition key={pathname.split("/")[2] ?? "desk"} default="none"
           enter="desk-area-enter" exit="desk-area-exit">
-          <div>{children}</div>
+          <div className="overflow-x-clip">{children}</div>
         </ViewTransition>
       </main>
     </div>

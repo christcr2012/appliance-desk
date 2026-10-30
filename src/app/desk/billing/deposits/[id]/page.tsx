@@ -4,7 +4,8 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatCents } from "@/domains/pricing";
 import { formatBusinessDate } from "@/lib/business-date";
-import { PageHeader, SectionCard } from "@/components/desk/workspace";
+import { SectionCard } from "@/components/desk/workspace";
+import { RecordHeader } from "@/components/kit";
 import { MoneyDecisionForm } from "@/components/desk/money-decision-form";
 import { decideDepositAction } from "../../money-actions";
 
@@ -39,12 +40,12 @@ export default async function DepositDecisionPage({ params }: { params: Promise<
   const decided = deposit.refundedAt !== null;
   return (
     <div className="max-w-2xl">
-      <PageHeader title="Deposit decision" description={`${name} — deposit of ${formatCents(deposit.amountCents)}`} />
+      <RecordHeader
+        title="Deposit decision"
+        subtitle={`${name} — deposit of ${formatCents(deposit.amountCents)}`}
+        back={{ href: "/desk/billing?filter=deposits", label: "Deposits" }}
+      />
       <p className="mb-4 text-sm">
-        <Link className="text-primary underline" href="/desk/billing?filter=deposits">
-          Back to deposits
-        </Link>{" "}
-        ·{" "}
         <Link className="text-primary underline" href={`/desk/agreements/${deposit.agreement.id}`}>
           Open the rental agreement
         </Link>

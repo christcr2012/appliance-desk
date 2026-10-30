@@ -30,6 +30,7 @@
     ],
     "browser-b": [
       "owner-controls.spec.ts",
+      "approvals.spec.ts",
       "owner-price-changes.spec.ts",
       "role-shaped-pages.spec.ts",
       "accessibility-dark-mode.spec.ts",

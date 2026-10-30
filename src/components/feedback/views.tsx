@@ -74,19 +74,23 @@ export function MyReportsList({ page, base, newHref, moreHref }: {
   );
 }
 
-export function MyReportView({ report, attachmentBase, reopenDays }: {
-  report: MyFeedbackDetail; attachmentBase: string; reopenDays: number;
+export function MyReportView({ report, attachmentBase, reopenDays, hideHeader = false }: {
+  report: MyFeedbackDetail; attachmentBase: string; reopenDays: number; hideHeader?: boolean;
 }) {
   const pill = reporterPill(report.state);
   const final = isFinalState(report.state);
   const mode = report.state === "NEEDS_INFORMATION" ? "question" : !final ? "open" : report.canReopen ? "reopen" : "none";
   return (
     <div className="space-y-5">
-      <header className="space-y-2">
-        <p className="text-sm text-ink-soft">Report #{report.number} · {kindWords(report.kind)}</p>
-        <h1 className="break-words text-2xl font-semibold text-ink">{report.title}</h1>
-        <StatusPill tone={pill.tone} label={pill.label} />
-      </header>
+      {hideHeader ? (
+        <div><StatusPill tone={pill.tone} label={pill.label} /></div>
+      ) : (
+        <header className="space-y-2">
+          <p className="text-sm text-ink-soft">Report #{report.number} · {kindWords(report.kind)}</p>
+          <h1 className="break-words text-2xl font-semibold text-ink">{report.title}</h1>
+          <StatusPill tone={pill.tone} label={pill.label} />
+        </header>
+      )}
 
       <section aria-label="Conversation" className="space-y-3">
         <article className="rounded-card border border-line bg-surface p-4">

@@ -85,7 +85,7 @@ export function ResolveForm({
   const needsNote = kind !== "CONFIRM_EMAIL";
   return (
     <form onSubmit={go} className="max-w-3xl space-y-4">
-      <fieldset className="space-y-3">
+      <fieldset className="min-w-0 space-y-3">
         <legend className="text-base font-semibold text-ink">What do you want to do? ({noticeStatus.toLowerCase()})</legend>
         {options.map((o) => (
           <div key={o.kind} className={`rounded-lg border p-4 ${o.available ? "border-line-strong bg-white" : "border-line bg-canvas"}`}>

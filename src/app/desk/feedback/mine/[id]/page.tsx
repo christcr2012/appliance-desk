@@ -1,9 +1,10 @@
-import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getMyFeedback } from "@/domains/feedback";
 import { getFeedbackSettings } from "@/domains/feedback/settings";
 import { MyReportView } from "@/components/feedback/views";
 import { orNotFound } from "@/components/feedback/page-helpers";
+import { RecordHeader } from "@/components/kit";
+import { kindWords } from "@/domains/feedback/rules";
 
 export const metadata = { title: "My app feedback report" };
 
@@ -14,10 +15,12 @@ export default async function DeskMyFeedbackReportPage({ params }: { params: Pro
   const [report, settings] = await Promise.all([orNotFound(() => getMyFeedback(id)), getFeedbackSettings()]);
   return (
     <div className="max-w-3xl space-y-4">
-      <Link href="/desk/feedback/mine" className="inline-flex min-h-11 items-center text-sm font-semibold underline">
-        My app feedback
-      </Link>
-      <MyReportView report={report} attachmentBase="/api/feedback-attachments" reopenDays={settings.reopenDays} />
+      <RecordHeader
+        title={report.title}
+        subtitle={`Report #${report.number} · ${kindWords(report.kind)}`}
+        back={{ href: "/desk/feedback/mine", label: "My app feedback" }}
+      />
+      <MyReportView report={report} attachmentBase="/api/feedback-attachments" reopenDays={settings.reopenDays} hideHeader />
     </div>
   );
 }

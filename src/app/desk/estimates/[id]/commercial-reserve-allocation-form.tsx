@@ -29,7 +29,7 @@ export function CommercialReserveAllocationForm({overview,owner}:{
     <dl className="grid gap-2 sm:grid-cols-2">
       <div><dt>Estimate requested reserve</dt>
         <dd className="font-medium">{formatCents(overview.expectedReserveCents)}</dd></div>
-      <div><dt>Prepared agreement reserve total</dt>
+      <div><dt>Prepared rental reserve total</dt>
         <dd className="font-medium">{formatCents(overview.allocatedReserveCents)}</dd></div>
     </dl>
     {!overview.businessEligible&&overview.expectedReserveCents>0&&

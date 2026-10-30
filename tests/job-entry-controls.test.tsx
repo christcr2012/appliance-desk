@@ -31,6 +31,8 @@ vi.mock("@/app/desk/maintenance/actions", () => ({
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => "/desk/jobs",
+  useSearchParams: () => new URLSearchParams(),
   notFound: () => {
     throw new Error("not found");
   },
@@ -99,15 +101,18 @@ describe.each(["STAFF", "OWNER", "ADMIN"])(
       it(`${name} matches the role while retaining operational content`, async () => {
         mocks.role = role;
         render(await load());
-        const link = screen.queryByRole("link", { name: /schedule a job/i });
-        if (role === "STAFF") expect(link).not.toBeInTheDocument();
-        else
-          expect(link).toHaveAttribute(
-            "href",
+        const links = screen.queryAllByRole("link", { name: /schedule a job/i });
+        if (role === "STAFF") expect(links).toHaveLength(0);
+        else {
+          // The kit list header renders the primary action twice (header
+          // button + phone Fab); every copy must point at the same place.
+          const href =
             name === "maintenance"
               ? "/desk/jobs/new?maintenanceRequestId=request-1"
-              : "/desk/jobs/new",
-          );
+              : "/desk/jobs/new";
+          expect(links.length).toBeGreaterThan(0);
+          for (const l of links) expect(l).toHaveAttribute("href", href);
+        }
         if (name === "maintenance")
           expect(
             screen.getByRole("button", { name: "Mark Reviewing" }),

@@ -13,8 +13,8 @@ export function PrepareEstimateAgreementsButton({ estimateId, eligible }: {
   const [error, setError] = useState<string | null>(null);
   const [ids, setIds] = useState<string[]>([]);
   return (
-    <section aria-label="Prepare estimate agreements" className="mt-4 space-y-3 rounded-lg border border-line bg-surface p-4 text-sm">
-      <h2 className="font-medium">Prepare agreements before customer approval</h2>
+    <section aria-label="Prepare estimate rentals" className="mt-4 space-y-3 rounded-lg border border-line bg-surface p-4 text-sm">
+      <h2 className="font-medium">Prepare rentals before customer approval</h2>
       <p className="text-ink-soft">
         This creates draft shells at the chosen service addresses. Add the exact
         rental lines to each agreement and complete the existing signing-charge,
@@ -25,8 +25,8 @@ export function PrepareEstimateAgreementsButton({ estimateId, eligible }: {
         Preparation mode
         <select value={mode} onChange={event => setMode(event.target.value as typeof mode)}
           disabled={pending || !eligible} className="mt-1 block rounded border border-line bg-surface p-2">
-          <option value="per-property">One agreement per quoted property</option>
-          <option value="single">One agreement for a single property</option>
+          <option value="per-property">One rental per quoted property</option>
+          <option value="single">One rental for a single property</option>
         </select>
       </label>
       {mode === "single" && (

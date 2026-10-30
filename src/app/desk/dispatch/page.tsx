@@ -14,7 +14,8 @@ import {
   type DispatchableJob,
 } from "@/domains/jobs/dispatch";
 import { checklistProgress, parseChecklist } from "@/domains/jobs/checklist";
-import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
+import { ButtonLink, Card, EmptyState } from "@/components/ui";
+import { ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Dispatch" };
 
@@ -156,15 +157,13 @@ export default async function DispatchPage({
 
   return (
     <div>
-      <PageHeader
+      <ScreenHeader
         title="Dispatch"
-        description="Schedule and review service work without changing the underlying job workflow."
-        primaryAction={
-          canScheduleJobs
-            ? { href: "/desk/jobs/new", label: "Schedule a job" }
-            : undefined
-        }
+        primary={canScheduleJobs ? { kind: "link", label: "Schedule a job", href: "/desk/jobs/new" } : undefined}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Schedule and review service work without changing the underlying job workflow.
+      </p>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Dispatch view" className="flex flex-wrap gap-2">

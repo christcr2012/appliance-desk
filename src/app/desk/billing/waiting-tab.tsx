@@ -26,7 +26,7 @@ export async function WaitingTab() {
             href="/desk/billing/reconciliation"
             variant="secondary"
           >
-            Open reconciliation
+            Open billing check
           </ButtonLink>
         }
       >
@@ -37,7 +37,7 @@ export async function WaitingTab() {
           />
         ) : (
           <p className="text-sm text-ink-soft">
-            If an item remains here, use reconciliation to compare Appliance
+            If an item remains here, use the billing check to compare Appliance
             Desk records with Stripe before taking any manual action.
           </p>
         )}

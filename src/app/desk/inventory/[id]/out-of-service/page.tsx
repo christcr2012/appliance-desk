@@ -21,10 +21,11 @@ export default async function OutOfServicePage({ params }: { params: Promise<{ i
   const done = await planSetMachineDone(period.appliance.id, period.startedOn);
   return (
     <div className="max-w-3xl">
-      <PageHeader
-        title={`${customer}'s ${type} is out for repair`}
-        description={`${period.appliance.assetNumber} was taken on ${formatBusinessDate(period.startedOn)} with no replacement. The customer keeps paying the normal price and gets a credit on the next bill for each day without it.`}
-      />
+      <PageHeader title={`${customer}'s ${type} is out for repair`} />
+      <p className="-mt-2 mb-6 max-w-2xl text-sm leading-6 text-ink-soft">
+        {period.appliance.assetNumber} was taken on {formatBusinessDate(period.startedOn)} with no replacement.
+        The customer keeps paying the normal price and gets a credit on the next bill for each day without it.
+      </p>
       <Card>
         <p className="text-sm text-ink">
           {preview.kind === "credit"

@@ -28,8 +28,8 @@ export function StatusTabs({
   const search = useSearchParams()?.toString() ?? "";
   const shown = items.filter((item) => !(item.hideWhenZero && item.count === 0 && item.value !== current));
   return (
-    <nav aria-label={label} className="-mx-5 lg:mx-0">
-      <ul className="flex gap-2 overflow-x-auto px-5 py-1 [scrollbar-width:none] lg:inline-flex lg:gap-1 lg:overflow-visible lg:rounded-field lg:bg-tint lg:p-1 [&::-webkit-scrollbar]:hidden">
+    <nav aria-label={label} className="-mx-4 sm:-mx-6 lg:mx-0">
+      <ul className="flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:px-6 lg:inline-flex lg:gap-1 lg:overflow-visible lg:rounded-field lg:bg-tint lg:p-1 [&::-webkit-scrollbar]:hidden">
         {shown.map((item) => {
           const isCurrent = item.value === current;
           return (

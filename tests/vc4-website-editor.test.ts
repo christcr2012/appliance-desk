@@ -25,7 +25,7 @@ vi.mock("@/domains/site-content/index", () => ({
   getRevisionValues: async () => ({}),
 }));
 
-import { deskMoreLinks } from "@/lib/desk-navigation";
+import { visibleProfileLinks } from "@/lib/desk-areas";
 import { SITE_FIELDS, siteFieldSpec } from "@/domains/site-content/fields";
 import { WEBSITE_PAGES, pageForRegistryPage, sectionsOfPage, sharedPlaces } from "@/domains/site-content/pages";
 import { diffValues, factsUsed, pagesAffected, summarizeValue, changeKindName } from "@/domains/site-content/review";
@@ -43,8 +43,8 @@ beforeEach(() => { session.role = null; vi.clearAllMocks(); });
 
 describe("the Website screen is for owners and admins", () => {
   it("is in the More list for owner and admin, and for nobody else", () => {
-    for (const role of ["OWNER", "ADMIN"]) expect(deskMoreLinks(role).map((l) => l.href)).toContain("/desk/settings/website");
-    for (const role of ["STAFF", "CUSTOMER", undefined]) expect(deskMoreLinks(role).map((l) => l.href)).not.toContain("/desk/settings/website");
+    for (const role of ["OWNER", "ADMIN"]) expect(visibleProfileLinks(role, null).map((l) => l.href)).toContain("/desk/settings/website");
+    for (const role of ["STAFF", "CUSTOMER", undefined]) expect(visibleProfileLinks(role, null).map((l) => l.href)).not.toContain("/desk/settings/website");
   });
 
   it("refuses every action for staff, customers and signed-out visitors before touching the website", async () => {

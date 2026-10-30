@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { activeTaxesTab, TAXES_SETUP_LINKS, TAXES_TABS } from "../src/lib/taxes-tabs";
 import { TAX_ROUTE_REDIRECTS } from "../src/lib/tax-route-redirects";
 import { fileAndPayLine, shortDateLabel, SUTS_LOGIN_URL } from "../src/domains/tax/file-and-pay";
-import { deskNavigation } from "../src/lib/desk-navigation";
+import { visibleAreas } from "../src/lib/desk-areas";
 import { GLOSSARY } from "../src/lib/glossary";
 
 const root = process.cwd();
@@ -16,11 +16,11 @@ const pageExists = (route: string) => {
 describe("one Taxes menu entry with six tabs (W-3, tab set replaced by AR-7)", () => {
   it("replaces Sales tax in the menu for owners and admins only", () => {
     for (const role of ["OWNER", "ADMIN"]) {
-      const links = deskNavigation(role).flatMap((group) => group.links);
-      expect(links).toContainEqual({ href: "/desk/sales-tax", label: "Taxes" });
+      const links = visibleAreas(role, null).flatMap((area) => area.tabs);
+      expect(links.some((link) => link.href === "/desk/sales-tax" && link.label === "Taxes")).toBe(true);
       expect(links.find((link) => link.label === "Sales tax")).toBeUndefined();
     }
-    expect(deskNavigation("STAFF").flatMap((group) => group.links).some((link) => link.href === "/desk/sales-tax")).toBe(false);
+    expect(visibleAreas("STAFF", null).flatMap((area) => area.tabs).some((link) => link.href === "/desk/sales-tax")).toBe(false);
   });
   it("has exactly Overview, Returns, Areas & rates, Exemptions, Use tax and Setup (AR-7)", () => {
     expect(TAXES_TABS.map((tab) => tab.label)).toEqual(["Overview", "Returns", "Areas & rates", "Exemptions", "Use tax", "Setup"]);

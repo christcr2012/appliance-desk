@@ -50,13 +50,13 @@ test('missing, empty and skipped browser results fail closed', () => {
 
 test('test/CI drift: changed diagnostics require existing Today and navigation regressions', () => {
   assert.deepEqual(adjacentRegressions(['src/domains/system-issues/actions.ts']), [
-    'tests/today-role-access.test.ts', 'tests/desk-navigation.test.ts'
+    'tests/today-role-access.test.ts', 'tests/w8-menu-sections.test.ts'
   ]);
   const steps = commands(parse(['--db', 'tests/system-issue-actions-integration.test.ts']), [
     'src/domains/system-issues/actions.ts'
   ]);
   assert.ok(steps.some(s => s.includes('tests/today-role-access.test.ts')));
-  assert.ok(steps.some(s => s.includes('tests/desk-navigation.test.ts')));
+  assert.ok(steps.some(s => s.includes('tests/w8-menu-sections.test.ts')));
 });
 test('test/CI drift: route, schema and backup changes retain affected legacy tests', () => {
   assert.ok(adjacentRegressions(['src/app/desk/test/page.tsx']).includes('tests/accessibility-route-inventory.test.ts'));
@@ -65,11 +65,11 @@ test('test/CI drift: route, schema and backup changes retain affected legacy tes
   assert.deepEqual(adjacentRegressions(['docs/PLAN.md']), []);
 });
 test('menu and job-role rule edits run permission-map regression before expensive CI', () => {
- for (const file of ['src/lib/desk-navigation.ts','src/domains/team/job-role-rules.ts']) {
+ for (const file of ['src/lib/desk-areas.ts','src/domains/team/job-role-rules.ts']) {
   const quick = commands(parse(['--quick']), [file]);
   const expected = 'npx --no-install vitest run tests/acc5-job-role-rules.test.ts';
   assert.ok(quick.some(s => s.join(' ') === expected), file);
-  const full = commands(parse(['--unit','tests/desk-navigation.test.ts']), [file]);
+  const full = commands(parse(['--unit','tests/w8-menu-sections.test.ts']), [file]);
   assert.ok(full.some(s => s.join(' ') === expected), file);
   assert.equal(full.filter(s => s.join(' ') === expected).length, 1);
  }

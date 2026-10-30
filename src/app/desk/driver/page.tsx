@@ -1,6 +1,7 @@
 import { getDriverJobsForToday } from "@/domains/jobs";
 import { requireRole } from "@/lib/session";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { EmptyState } from "@/components/ui";
+import { ScreenHeader } from "@/components/kit";
 import { loadDriverMileage, loadDriverStopCounts } from "@/domains/vehicle/reads";
 import { MileageCard } from "./mileage-card";
 import { prisma } from "@/lib/prisma";
@@ -25,10 +26,8 @@ export default async function DriverViewPage() {
 
   return (
     <div className="mx-auto max-w-md">
-      <PageHeader
-        title="Shared team route"
-        description="All scheduled visits for the team today."
-      />
+      <ScreenHeader title="Shared team route" />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">All scheduled visits for the team today.</p>
 
       <MileageCard vehicles={mileage} stops={stopCounts} />
 
