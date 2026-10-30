@@ -6324,6 +6324,7 @@ model FeedbackReport {
   entries          FeedbackEntry[]
   attachments      FeedbackAttachment[]
   events           FeedbackEvent[]
+  repairLinks      FeedbackCaseLink[]
 
   @@unique([reporterUserId, requestKey])
   @@index([reporterUserId, createdAt, id])
@@ -6337,6 +6338,8 @@ model FeedbackEntry {
   authorUserId String
   author       User               @relation("FeedbackEntryAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
   visibility   FeedbackVisibility
+  authorKind   FeedbackAuthorKind @default(PERSON)
+  agentConnectionId String?
   body         String             @db.VarChar(4000)
   createdAt    DateTime           @default(now())
 
@@ -6389,6 +6392,23 @@ enum FeedbackAiReview {
 enum FeedbackVisibility {
   REPORTER
   INTERNAL
+}
+
+enum FeedbackAuthorKind {
+  PERSON
+  ASSISTANT
+}
+
+model FeedbackCaseLink {
+  id String @id @default(cuid())
+  reportId String
+  report FeedbackReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  repairCaseId String
+  repairCase RepairCase @relation(fields: [repairCaseId], references: [id], onDelete: Restrict)
+  createdByUserId String
+  createdAt DateTime @default(now())
+  @@unique([reportId, repairCaseId])
+  @@index([repairCaseId])
 }
 
 enum FeedbackState {
@@ -7164,6 +7184,7 @@ model RepairCase {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   evidence         RepairEvidence[]
+  feedbackCaseLinks FeedbackCaseLink[]
 
   @@index([stage, updatedAt])
   @@index([sourceKind, sourceId, sourceVersion])

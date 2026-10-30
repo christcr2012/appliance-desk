@@ -14,6 +14,8 @@ import { matchOption } from "@/domains/decisions/rules";
 import { createRepairCase, linkRepairPullRequest, checkRepairCase,
   safeRepairInstruction } from "@/domains/agent-control/repair-cases";
 import { assertNoKnownPersonNames } from "@/domains/system-issues/ops-redaction";
+import { previewFeedbackMutation, dispatchFeedbackMutation, verifyFeedbackMutation,
+  type FeedbackMutation } from "@/domains/feedback/agent-actions";
 import type { AgentContext } from "./authorization";
 import { canonicalAgentArgs, type JournalAction, type JournalPreview } from "./journal";
 
@@ -46,6 +48,23 @@ const repairLinkArgs = z.object({
   ref: z.string().regex(/^[1-9]\d{0,9}$/),
 }).strict();
 const repairCheckArgs = z.object({ caseId: z.string().min(12).max(100) }).strict();
+const feedbackId = z.string().regex(/^c[a-z0-9]{10,50}$/i);
+const feedbackVersion = z.number().int().min(1);
+const feedbackReplyArgs = z.object({ reportId: feedbackId, expectedVersion: feedbackVersion,
+  body: z.string().min(1).max(4000), visibility: z.enum(["REPORTER","INTERNAL"]) }).strict();
+const feedbackUpdateArgs = z.object({ reportId: feedbackId, expectedVersion: feedbackVersion,
+  toState: z.enum(["SUBMITTED","TRIAGED","NEEDS_INFORMATION","ACCEPTED","IN_PROGRESS",
+    "AWAITING_VERIFICATION","RESOLVED","DUPLICATE","DECLINED","CLOSED"]),
+  reason: z.string().max(500) }).strict();
+const feedbackLinkArgs = z.object({ reportId: feedbackId, expectedVersion: feedbackVersion,
+  caseId: feedbackId }).strict();
+function feedbackMutation(action: JournalAction, args: Record<string, unknown>): FeedbackMutation {
+  if (action === "FEEDBACK_REPLY") return { kind: "REPLY", ...feedbackReplyArgs.parse(args) };
+  if (action === "FEEDBACK_UPDATE") return { kind: "STATE", ...feedbackUpdateArgs.parse(args) };
+  if (action === "FEEDBACK_LINK_CASE") return { kind: "LINK", ...feedbackLinkArgs.parse(args) };
+  throw new Error("UNKNOWN_ACTION");
+}
+
 
 export type PreparedAgentAction = {
   args: Record<string, unknown>;
@@ -79,6 +98,9 @@ export function parseAgentAction(action: JournalAction, raw: unknown): Record<st
       return repairLinkArgs.parse(raw);
     case "REPAIR_CHECK_CASE":
       return repairCheckArgs.parse(raw);
+    case "FEEDBACK_REPLY": return feedbackReplyArgs.parse(raw);
+    case "FEEDBACK_UPDATE": return feedbackUpdateArgs.parse(raw);
+    case "FEEDBACK_LINK_CASE": return feedbackLinkArgs.parse(raw);
     default:
       throw new Error("UNKNOWN_ACTION");
   }
@@ -211,6 +233,20 @@ export async function prepareAgentAction(
       }) };
       break;
     }
+    case "FEEDBACK_REPLY":
+    case "FEEDBACK_UPDATE":
+    case "FEEDBACK_LINK_CASE": {
+      const checked = await previewFeedbackMutation(ctx, feedbackMutation(action, args));
+      targetRef = String(args.reportId);
+      version = { reportVersion: checked.reportVersion, state: checked.reportState, caseId: checked.caseId };
+      preview = { summary: checked.description, changes: [{
+        label: "App feedback", now: checked.reportState, after:
+          action === "FEEDBACK_REPLY" ? "Reply marked as AI assistant" :
+          action === "FEEDBACK_UPDATE" ? String(args.toState) : "Repair case linked",
+      }], costNote: "In-app only; no email or text is switched on." };
+      verifyIntent = { args };
+      break;
+    }
     case "REPAIR_CREATE_CASE": {
       const sourceKind = String(args.sourceKind);
       const sourceId = String(args.sourceId);
@@ -341,6 +377,10 @@ export async function dispatchAgentAction(
       const applied = await applyAnswers(ctx.userId, answers, confirmToken, { via: "MCP", agentOperationId: operationId });
       return { applied: applied.applied, same: applied.same, other: applied.other, skipped: applied.skipped };
     }
+    case "FEEDBACK_REPLY":
+    case "FEEDBACK_UPDATE":
+    case "FEEDBACK_LINK_CASE":
+      return dispatchFeedbackMutation(ctx, feedbackMutation(action, args), operationId);
     case "REPAIR_CREATE_CASE": {
       const repair = await createRepairCase({ actorId: ctx.userId,
         sourceKind: args.sourceKind as "SYSTEM_ISSUE" | "FEEDBACK",
@@ -447,6 +487,10 @@ export async function verifyAgentAction(
       return { ok: verified === answers.length,
         observed: { verifiedAnswers: verified, expectedAnswers: answers.length } };
     }
+    case "FEEDBACK_REPLY":
+    case "FEEDBACK_UPDATE":
+    case "FEEDBACK_LINK_CASE":
+      return verifyFeedbackMutation(ctx, feedbackMutation(action, object(intent.args)), operationId);
     case "REPAIR_CREATE_CASE": {
       const caseId = String(result.caseId ?? intent.existingCaseId ?? "");
       const record = caseId

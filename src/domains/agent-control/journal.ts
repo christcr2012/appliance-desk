@@ -41,6 +41,9 @@ const ACTION_PERMISSIONS = {
   REPAIR_CREATE_CASE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
   REPAIR_LINK_EVIDENCE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
   REPAIR_CHECK_CASE: { scope: "repairs:write", approval: "OWNER_IN_APP" },
+  FEEDBACK_REPLY: { scope: "feedback:triage", approval: "CONVERSATION" },
+  FEEDBACK_UPDATE: { scope: "feedback:triage", approval: "CONVERSATION" },
+  FEEDBACK_LINK_CASE: { scope: "feedback:triage", approval: "CONVERSATION" },
 } as const;
 
 export type JournalAction = keyof typeof ACTION_PERMISSIONS;
