@@ -16,16 +16,26 @@ test("assign, preserve competing text, complete and reopen the same linked follo
   context,
 }) => {
   const note = `CI assigned follow-up ${Date.now()}`;
-  await page.goto("/desk/customers");
   const customerEmail =
     process.env.TEST_CUSTOMER_EMAIL ?? "ci-customer@example.test";
+  // CU-1 (AR-4c): the Customers list opens on the Active segment and its rows
+  // no longer print the customer's email, so find the CI customer through the
+  // list's own search across all segments (the search matches email). The
+  // desktop row link opens the SidePanel (?open=<id>) and a phone card links
+  // straight to the record; both carry the customer id the record URL needs.
+  await page.goto(
+    `/desk/customers?segment=all&q=${encodeURIComponent(customerEmail)}`,
+  );
   const customerRow = page
     .locator("main tr:visible, main li:visible")
-    .filter({ hasText: customerEmail })
     .first();
   await expect(customerRow).toBeVisible();
   const customerLink = customerRow.getByRole("link").first();
-  const customerUrl = (await customerLink.getAttribute("href"))!;
+  const linkHref = (await customerLink.getAttribute("href"))!;
+  const customerId =
+    new URL(linkHref, "https://desk.invalid").searchParams.get("open") ??
+    linkHref.split("/").pop()!;
+  const customerUrl = `/desk/customers/${customerId}`;
   // AR-0b: the customer's linked tasks are in the Details section.
   await page.goto(`${customerUrl}?tab=details`);
   await page.getByLabel("New task", { exact: true }).fill(note);

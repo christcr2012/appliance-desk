@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { scanAccessibilityRoute } from "./accessibility-route-helpers";
 import { enabled, SIZES } from "./support/ar0b-fixtures";
 
@@ -11,6 +11,13 @@ const owner = "e2e/.auth/owner.json";
 const staff = "e2e/.auth/staff.json";
 
 type Fixture = { name: string; customerId: string; email: string; cleanup(): Promise<void> };
+
+// The kit renders both the desktop table and the phone card list in the DOM
+// (CSS shows one per width), so a bare getByText(name) matches the name in
+// both trees; scope row assertions to the visible row/card.
+function rowNamed(page: Page, name: string) {
+  return page.locator("main tr:visible, main li:visible").filter({ hasText: name });
+}
 
 async function makeCustomer(
   label: string,
@@ -83,17 +90,17 @@ test.describe("CU-1 customers list as owner", () => {
     try {
       await page.goto("/desk/customers?segment=owes");
       await expect(page.getByRole("link", { name: /Owes money/ })).toBeVisible();
-      await expect(page.getByText(owing.name)).toBeVisible();
-      await expect(page.getByText("Owes $123.45")).toBeVisible();
+      await expect(rowNamed(page, owing.name)).toBeVisible();
+      await expect(rowNamed(page, owing.name)).toContainText("Owes $123.45");
 
       // Search narrows to the fresh customer on the New tab.
       await page.goto(`/desk/customers?segment=new&q=${encodeURIComponent(fresh.name)}`);
-      await expect(page.getByText(fresh.name)).toBeVisible();
-      await expect(page.getByText(owing.name)).toHaveCount(0);
+      await expect(rowNamed(page, fresh.name)).toBeVisible();
+      await expect(rowNamed(page, owing.name)).toHaveCount(0);
 
       // Row click opens the side panel with the record summary.
       await page.goto(`/desk/customers?segment=owes&q=${encodeURIComponent(owing.name)}`);
-      await page.getByText(owing.name).first().click();
+      await rowNamed(page, owing.name).getByRole("link").first().click();
       await expect(page).toHaveURL(/open=/);
       await expect(page.getByText("Next step")).toBeVisible();
       await expect(page.getByRole("link", { name: /Open full page/ })).toBeVisible();
@@ -140,7 +147,7 @@ test.describe("CU-1 customers list as staff", () => {
     const fixture = await makeCustomer("Staff Sue", { active: true, pastDueCents: 12345 });
     try {
       await page.goto(`/desk/customers?q=${encodeURIComponent(fixture.name)}`);
-      await expect(page.getByText(fixture.name)).toBeVisible();
+      await expect(rowNamed(page, fixture.name)).toBeVisible();
       await expect(page.getByRole("link", { name: /Owes money/ })).toHaveCount(0);
       await expect(page.getByText("$123.45")).toHaveCount(0);
       await expect(page.getByText("$60.00")).toHaveCount(0);
