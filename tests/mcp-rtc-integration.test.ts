@@ -88,9 +88,9 @@ describe("MCP-9 read-only RTC passes and handle ownership on disposable PostgreS
   it("atomic rate limiting shares one database bucket across parallel requests", async () => {
     // Distinct concurrent callers represent separate stateless instances.
     const { isRateLimited } = await import("@/lib/rate-limit");
-    const key = "mcp9-two-instance-" + suffix;
+    const limiterBucket = "rtc-limit-fixture-" + suffix;
     const results = await Promise.all(Array.from({ length: 8 }, () =>
-      isRateLimited(key, { max: 4, windowMs: 60_000 })));
+      isRateLimited(limiterBucket, { max: 4, windowMs: 60_000 })));
     expect(results.filter(Boolean)).toHaveLength(4);
     expect(results.filter(value => !value)).toHaveLength(4);
   });

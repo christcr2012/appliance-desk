@@ -71,6 +71,8 @@ export async function revokeRtcPass(ownerId: string, passId: string) {
       await tx.agentPass.update({ where: { id: passId }, data: { revokedAt: new Date() } });
       await tx.mcpConnection.update({ where: { id: pass.connectionId },
         data: { revokedAt: new Date(), revokedReason: "Pass revoked by owner" } });
+      await tx.auditLog.create({ data: { userId: ownerId, action: "rtc.pass.revoked",
+        entityType: "AgentPass", entityId: pass.id, newValue: { revoked: true } } });
     }
     return { revoked: true };
   });
@@ -87,24 +89,26 @@ export async function authenticateRtcPass(request: Request): Promise<AgentContex
   if (!match) return reject();
   const d = digest(match[1]);
   const pass = await prisma.agentPass.findUnique({ where: { digest: d }, include: {
-    connection: { include: { user: { select: { id: true, name: true, role: true, archivedAt: true } } },
+    connection: { include: { user: { select: { id: true, name: true, role: true, archivedAt: true } } } },
   } });
   if (!pass || pass.revokedAt || pass.expiresAt <= new Date() ||
       pass.connection.kind !== "PASS" || pass.connection.revokedAt ||
       pass.connection.user.archivedAt ||
       pass.connection.user.role !== "OWNER" ||
       pass.connection.userId !== pass.connection.user.id ||
-      pass.profile !== "read_only" || pass.allowWrites || pass.allowProduction)
+      pass.profile !== "read_only" || pass.allowWrites ||
+      (process.env.VERCEL_ENV === "production" && !pass.allowProduction))
     return reject();
   if (await twoFactorEnrollmentRequired(pass.connection.userId, "OWNER")) return reject();
   if (await isRateLimited("rtc:" + pass.id, { max: 120, windowMs: 600_000 })) {
     return new Response("RTC request limit exceeded.", { status: 429,
       headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
   }
-  await prisma.agentPass.updateMany({
+  const stillLive = await prisma.agentPass.updateMany({
     where: { id: pass.id, revokedAt: null, expiresAt: { gt: new Date() } },
     data: { lastUsedAt: new Date() },
   });
+  if (stillLive.count !== 1) return reject();
   return {
     userId: pass.connection.userId,
     name: pass.connection.user.name ?? "Owner",
