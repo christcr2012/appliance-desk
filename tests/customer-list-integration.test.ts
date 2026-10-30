@@ -255,9 +255,13 @@ describe.skipIf(!ready)("CU-1 customer list (integration)", () => {
         where: { customerId: id, ...billOwedWhere(now) },
         select: { dueDate: true },
       });
-      const oldestOpenDueDate = owed.length
-        ? new Date(Math.min(...owed.map((i) => i.dueDate.getTime())))
-        : null;
+      // dueDate is nullable; a dateless open bill still owes, it just has
+      // no oldest due date (the retired view's MIN ignored NULLs the same way).
+      const dueDates = owed
+        .map((i) => i.dueDate)
+        .filter((d): d is Date => d !== null)
+        .map((d) => d.getTime());
+      const oldestOpenDueDate = dueDates.length ? new Date(Math.min(...dueDates)) : null;
       const pickup = await prisma.job.findFirst({
         where: { customerId: id, type: "REMOVAL", status: "SCHEDULED" },
         orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
