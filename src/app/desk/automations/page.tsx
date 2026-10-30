@@ -14,7 +14,7 @@ import { AssistantActivity } from "./assistant-activity";
 import { MonitoringSection } from "./monitoring-section";
 import { ImprovementsSection } from "./improvements-section";
 import { measure } from "@/domains/agent-control/performance";
-import { listMonitorRules } from "@/domains/agent-control/monitoring";
+import { listMonitorRules, listMonitorConnections } from "@/domains/agent-control/monitoring";
 import { RepairCasesSection } from "./repair-cases-section";
 import { listRepairCases } from "@/domains/agent-control/repair-cases";
 
