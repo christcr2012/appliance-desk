@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import type { McpScope } from "@/mcp/scopes";
 import { listRepairCases, getRepairCase } from "@/domains/agent-control/repair-cases";
-import { getObservations } from "@/domains/agent-control/performance";
+import { getObservations, measure } from "@/domains/agent-control/performance";
 import { createOptimizationProposal, listOptimizationProposals } from "@/domains/agent-control/optimization";
 import { findSettings } from "@/mcp/settings-map";
 import { listFeedbackForAgent, getFeedbackForAgent } from "@/domains/feedback/agent";
@@ -306,7 +306,7 @@ export function buildMcpServer(context: AgentContext): McpServer {
       mcpStatus: z.enum(["TOOL", "PLANNED", "NOT_APPLICABLE", "PROVIDER_MANUAL"]),
       reason: z.string(), action: z.string().optional(),
     })) }), annotations: readOnly,
-  }, async ({ query }) => read("ops:read", async () => ({ entries: findSettings(query).map(item => ({
+  }, async ({ query }) => read("ops:read", async () => ({ entries: (await measure("QUERY", "settings-map-search", async () => findSettings(query))).map(item => ({
     key: item.key, label: item.label, href: item.href,
     who: item.who, mcpStatus: item.mcpStatus, reason: item.reason,
     ...(item.action ? { action: item.action } : {}),

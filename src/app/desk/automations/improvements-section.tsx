@@ -1,4 +1,4 @@
-import { getObservations, PERFORMANCE_NAMES } from "@/domains/agent-control/performance";
+import { getObservations } from "@/domains/agent-control/performance";
 import { listOptimizationProposals } from "@/domains/agent-control/optimization";
 import { Button } from "@/components/ui";
 import { createOptimizationProposalAction, reviewOptimizationProposalAction } from "./actions";
@@ -95,4 +95,3 @@ export async function ImprovementsSection({ userId, canManage }: { userId: strin
   );
 }
 
-export const OBSERVABLE_NAMES = PERFORMANCE_NAMES;

@@ -12,6 +12,8 @@ import { HealthLegend, HealthRow } from "./health-row";
 import { AssistantConnections } from "./assistant-connections";
 import { AssistantActivity } from "./assistant-activity";
 import { MonitoringSection } from "./monitoring-section";
+import { ImprovementsSection } from "./improvements-section";
+import { measure } from "@/domains/agent-control/performance";
 import { listMonitorRules } from "@/domains/agent-control/monitoring";
 import { RepairCasesSection } from "./repair-cases-section";
 import { listRepairCases } from "@/domains/agent-control/repair-cases";
@@ -35,7 +37,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
   const session = await requireRole("OWNER", "ADMIN");
   const query = await searchParams;
   const cursor = query?.issuesCursor;
-  const [health, issueList, backup, monitorRules, repairCases] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard(), listMonitorRules(), listRepairCases(session.user.id)]);
+  const [health, issueList, backup, monitorRules, repairCases] = await measure("PAGE", "desk:system-health", () => Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard(), listMonitorRules(), listRepairCases(session.user.id)]));
   const canPause = session.user.role === "OWNER";
   const keys = canPause ? await listOpsAgentKeys(session.user.id) : [];
   const grace = health[0]?.graceMinutes ?? RECOMMENDED_LATE_GRACE_MINUTES;
@@ -58,6 +60,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
       <AssistantConnections userId={session.user.id} canSeeAll={session.user.role === "OWNER"} />
       <MonitoringSection rules={monitorRules} heartbeat={health.find((row) => row.ruleKey === "system-issues-sweep") ?? null} canManage={canPause} />
       <AssistantActivity userId={session.user.id} canSeeAll={canPause} cursor={query?.activityCursor} />
+      <ImprovementsSection userId={session.user.id} canManage={canPause} />
       <section id="backup-settings" aria-labelledby="backup-settings-heading" className="mb-6 rounded-card border border-line bg-surface p-4">
         <h2 id="backup-settings-heading" className="text-base font-bold text-ink">Backup and recovery</h2>
         <p className="mt-1 text-sm text-ink-soft">
