@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { locationWorkspace } from "@/domains/customers/location-contacts";
 import { LocationsPanel } from "@/components/locations/locations-panel";
+import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Location contacts" };
 export default async function CustomerLocationsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,8 +20,10 @@ export default async function CustomerLocationsPage({ params }: { params: Promis
       select: { tenantContactRetentionMonths: true } }),
   ]);
   return <main className="max-w-4xl space-y-5 p-4">
-    <Link className="text-primary underline" href={"/desk/customers/" + id + "?tab=properties"}>← Customer properties</Link>
-    <h1 className="text-2xl font-semibold">Location contacts for {customer.user.name ?? customer.user.email}</h1>
+    <RecordHeader
+      title={`Location contacts for ${customer.user.name ?? customer.user.email}`}
+      back={{ href: "/desk/customers/" + id + "?tab=properties", label: "Customer properties" }}
+    />
     <LocationsPanel customerId={id} locations={sites} owner
       retentionMonths={session.user.role === "OWNER" ? (settings?.tenantContactRetentionMonths ?? 12) : null} />
   </main>;

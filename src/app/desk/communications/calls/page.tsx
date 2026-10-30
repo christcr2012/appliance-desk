@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { listMissedCallInbox } from "@/domains/messaging/voice-media";
-import { Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
+
+import { ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Missed calls and voicemail" };
 export default async function MissedCallInbox({
@@ -13,7 +15,11 @@ export default async function MissedCallInbox({
   return (
     <div className="space-y-6">
       <Link href="/desk/communications" className="underline">← Communications</Link>
-      <PageHeader title="Calls & voicemail" description="Private call records. A missed or unknown call is not proof of a customer's identity. Voicemail capture remains OFF until independently approved." />
+      <ScreenHeader title="Calls & voicemail" />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Private call records. A missed or unknown call is not proof of a customer&apos;s identity.
+        Voicemail capture remains OFF until independently approved.
+      </p>
       <Card title="Calls requiring review" description="OWNER and ADMIN may review all calls. Team members see only calls from explicitly assigned threads.">
         {result.rows.length === 0 ? <p>No calls match this view.</p> : (
           <ul className="divide-y divide-line">

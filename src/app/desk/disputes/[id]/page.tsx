@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
-import { Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { formatBusinessDate } from "@/lib/business-date";
 import { getDispute } from "@/domains/disputes/reads";
 import { dueDescription, whole } from "@/domains/disputes/rules";
@@ -18,8 +18,10 @@ export default async function DisputePage({ params }: { params: Promise<{ id: st
   const canAnswer = !d.isBank && d.state === "NEEDS_RESPONSE" && !d.evidenceSubmittedAt;
   return (
     <div className="space-y-6">
-      <Link href="/desk/disputes" className="text-sm text-ink-soft hover:underline">&larr; Back to disputes</Link>
-      <PageHeader title={`${d.customerName} — ${whole(d.amountCents)}`} />
+      <RecordHeader
+        title={`${d.customerName} — ${whole(d.amountCents)}`}
+        back={{ href: "/desk/disputes", label: "Disputes" }}
+      />
       <Card title="What happened">
         <dl className="grid gap-2 text-sm">
           <div><dt className="font-semibold">Type</dt><dd>{d.isBank ? "Bank payment (ACH)" : "Card payment"}</dd></div>
@@ -32,13 +34,15 @@ export default async function DisputePage({ params }: { params: Promise<{ id: st
       </Card>
       {d.isBank ? (
         <Card title="Bank disputes can't be contested">
-          <p className="text-sm">The bank has taken the money back, and Stripe has no way to argue it. The bill is owed again, so collect it directly from the customer. Autopay by bank is switched off for this customer.</p>
+          <p className="text-sm">The bank has taken the money back, and Stripe has no way to argue it.</p>
+          <p className="mt-2 text-sm">The bill is owed again, so collect it directly from the customer. Autopay by bank is switched off for this customer.</p>
           {d.customer?.bankDebitBlockedAt && d.customerId && <div className="mt-3"><AllowAutopay customerId={d.customerId} disputeId={d.id} /></div>}
           {d.handledAt ? <p className="mt-3 text-sm">Handled: {d.handledNote}</p> : <div className="mt-3"><BankHandled disputeId={d.id} /></div>}
         </Card>
       ) : (
         <Card title="Your answer">
-          <p className="text-sm text-ink-soft">The packet is built from your records only: the signed agreement, delivery record and photos, the bill and payments, messages we sent, and the refund terms. Read it first. Stripe accepts one answer, so this button can be used once.</p>
+          <p className="text-sm text-ink-soft">The packet is built from your records only: the signed rental, delivery record and photos, the bill and payments.</p>
+          <p className="mt-2 text-sm text-ink-soft">It also includes messages we sent and the refund terms. Read it first. Stripe accepts one answer, so this button can be used once.</p>
           <p className="mt-3 text-sm"><a href={`/desk/disputes/${d.id}/packet`} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Open the packet to read it (PDF)</a></p>
           <div className="mt-3">
             {canAnswer ? <ApproveAndSend disputeId={d.id} /> : (

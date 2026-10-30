@@ -13,9 +13,8 @@ import {
 } from "@/domains/inventory/lifecycle";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { ExportCsvLink } from "@/components/export-csv-link";
-import { FilterBar } from "@/components/desk/workspace";
-import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
+import { ButtonLink, Card, EmptyState } from "@/components/ui";
+import { ScreenHeader, StatusTabs } from "@/components/kit";
 
 export const metadata = { title: "Inventory" };
 
@@ -67,13 +66,6 @@ export default async function InventoryPage({
     meta.pageSize,
   );
 
-  function tabHref(value: ApplianceStatus | "ALL"): string {
-    const params = new URLSearchParams();
-    if (value !== "ALL") params.set("status", value);
-    if (taxStatus) params.set("taxStatus", taxStatus);
-    return `/desk/inventory${params.size ? `?${params.toString()}` : ""}`;
-  }
-
   function pageHref(page: number): string {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
@@ -85,21 +77,14 @@ export default async function InventoryPage({
 
   return (
     <div>
-      <PageHeader
+      <ScreenHeader
         title="Inventory"
-        description="Every individual appliance unit you own — separate from the categories and pricing managed in Settings."
-        secondaryActions={
-          canManage ? (
-            <ExportCsvLink
-              href={
-                status
-                  ? `/desk/inventory/export?status=${status}`
-                  : "/desk/inventory/export"
-              }
-            />
-          ) : undefined
-        }
+        list
+        overflow={canManage ? [{ kind: "link", label: "Export CSV", href: status ? `/desk/inventory/export?status=${status}` : "/desk/inventory/export" }] : undefined}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Every individual appliance unit you own — separate from the categories and pricing managed in Settings.
+      </p>
 
       {session.user.role === "OWNER" && (
         <nav aria-label="Inventory purchase tax" className="mb-4 flex flex-wrap gap-4 text-sm">
@@ -119,36 +104,24 @@ export default async function InventoryPage({
         </div>
       )}
 
-      <FilterBar
+      <StatusTabs
         label="Filter inventory by status"
+        param="status"
+        current={status ?? "ALL"}
         items={STATUS_TABS.map((tab) => ({
-          href: tabHref(tab.value),
-          label:
-            tab.value === "ALL"
-              ? tab.label
-              : `${tab.label} (${counts[tab.value]})`,
-          active: (status ?? "ALL") === tab.value,
+          value: tab.value,
+          label: tab.label,
+          count: tab.value === "ALL" ? undefined : counts[tab.value],
         }))}
       />
 
       {session.user.role !== "STAFF" && (
-        <nav aria-label="Filter purchase-tax status" className="mb-4">
-          <p className="mb-2 text-sm font-semibold">Purchase-tax status</p>
-          <div className="flex flex-wrap gap-2">
-            {TAX_STATES.map((item) => {
-              const params = new URLSearchParams();
-              if (status) params.set("status", status);
-              if (item.value !== "ALL") params.set("taxStatus", item.value);
-              return (
-                <Link key={item.value}
-                  href={`/desk/inventory${params.size ? `?${params.toString()}` : ""}`}
-                  aria-current={(taxStatus ?? "ALL") === item.value ? "page" : undefined}
-                  className={`rounded-md border px-3 py-1.5 text-sm ${(taxStatus ?? "ALL") === item.value ? "font-semibold underline" : ""}`}
-                >{item.label}</Link>
-              );
-            })}
-          </div>
-        </nav>
+        <StatusTabs
+          label="Filter purchase-tax status"
+          param="taxStatus"
+          current={taxStatus ?? "ALL"}
+          items={TAX_STATES.map((item) => ({ value: item.value, label: item.label }))}
+        />
       )}
 
       {appliances.length === 0 ? (

@@ -29,11 +29,12 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
   <header className="space-y-2">
    <nav aria-label="Books bank workspaces" className="flex flex-wrap gap-2">
     <Link href="/desk/books" className="underline rounded px-2 py-2">Back to Books</Link>
-    {!isHrefHidden("/desk/books/cash/checks", shown) && <Link href="/desk/books/cash/checks" className="underline rounded px-2 py-2">Bank checks and statement reconciliation</Link>}
+    {!isHrefHidden("/desk/books/cash/checks", shown) && <Link href="/desk/books/cash/checks" className="underline rounded px-2 py-2">Bank checks and statement check</Link>}
     {!isHrefHidden("/desk/books/budget", shown) && <Link href="/desk/books/budget" className="underline rounded px-2 py-2">Budget backing</Link>}
    </nav>
    <h1 className="text-2xl font-bold">Bank statements and cash records</h1>
-   <p className="text-muted-foreground">Import settled bank evidence and review it in Bank checks. Nothing here initiates bank transfers, verifies live balances automatically, or funds a budget.</p>
+   <p className="text-muted-foreground">Import settled bank evidence and review it in Bank checks.
+    Nothing here initiates bank transfers, verifies live balances automatically, or funds a budget.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
    {!settings?.booksStartDate&&<p role="alert">Initialize owner-approved Books opening balances before any typed cash event can be journaled.</p>}
   </header>
@@ -75,7 +76,9 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
   <BankCsvImporter accounts={data.registered.map(a=>({id:a.id,name:a.name,lastFour:a.lastFour}))} owner={owner}/>
   <section className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Cash records</h2>
-   <p className="text-sm text-muted-foreground">Journal posted only from verified source types, never manual free-form entries. An owner contribution, bank transfer or draw here records accounting evidence; it does not actually move funds. Bank sources and money movements must be independently verified.</p>
+   <p className="text-sm text-muted-foreground">Journal posted only from verified source types, never manual free-form entries.
+    An owner contribution, bank transfer or draw here records accounting evidence; it does not actually move funds.
+    Bank sources and money movements must be independently verified.</p>
    {owner&&<form action={createCashEventAction} className="grid gap-3 sm:grid-cols-2">
     <input type="hidden" name="commandKey" value={randomUUID()}/>
     <label>Event type<select className={input} name="kind">{Object.entries(EVENT_NAMES).map(([kind,label])=><option value={kind} key={kind}>{label}</option>)}</select></label>

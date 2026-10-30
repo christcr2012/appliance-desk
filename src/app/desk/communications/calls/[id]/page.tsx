@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { getPrivateCallMetadata } from "@/domains/messaging/voice-media";
-import { Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Private call detail" };
 export default async function CallDetail({ params }: {
@@ -15,8 +15,11 @@ export default async function CallDetail({ params }: {
   catch { notFound(); }
   return (
     <div className="space-y-6">
-      <Link href="/desk/communications/calls" className="underline">← Calls & voicemail</Link>
-      <PageHeader title="Call review" description="Caller identity is unverified. Carrier answer is not evidence that a team member accepted the call." />
+      <RecordHeader
+        title="Call review"
+        subtitle="Caller identity is unverified. Carrier answer is not evidence that a team member accepted the call."
+        back={{ href: "/desk/communications/calls", label: "Calls & voicemail" }}
+      />
       <Card title="Call outcome">
         <dl className="grid gap-2 text-sm">
           <dt>Result</dt><dd className="font-semibold">{call.outcome ?? "Pending"}</dd>

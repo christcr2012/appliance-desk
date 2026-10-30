@@ -9,6 +9,7 @@ import { getMaintenanceRequestById } from "@/domains/maintenance";
 import { MaintenanceDetailPanel } from "./maintenance-detail-panel";
 import { SafetyIncidentButton } from "@/components/desk/safety-incident-button";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
+import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Maintenance request" };
 
@@ -29,23 +30,12 @@ export default async function MaintenanceDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <Link
-        href="/desk/maintenance"
-        className="text-sm text-ink-soft hover:underline"
-      >
-        &larr; Back to maintenance requests
-      </Link>
-
-      <h1 className="mt-2 text-xl font-semibold">
-        {request.customer.user.name ?? request.customer.user.email}
-      </h1>
-      <p className="mt-1 text-sm text-ink-soft">
-        {request.appliance
-          ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})`
-          : "General request"}{" "}
-        · Priority: {request.priority} · Submitted{" "}
-        {new Date(request.openedAt).toLocaleString()}
-      </p>
+      <RecordHeader
+        title={request.customer.user.name ?? request.customer.user.email}
+        subtitle={`${request.appliance ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})` : "General request"} · Priority: ${request.priority} · Submitted ${new Date(request.openedAt).toLocaleString()}`}
+        contact={{ email: request.customer.user.email }}
+        back={{ href: "/desk/maintenance", label: "Maintenance requests" }}
+      />
 
       {canScheduleJobs && (
         <div className="mt-4">

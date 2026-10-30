@@ -142,7 +142,7 @@ export function IdentityPanel({
       </div>
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen} title="Who is this?">
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          <SearchablePicker name="person" label="person" search={search} />
+          <SearchablePicker name="person" label="Person" search={search} />
           {error ? (
             <p role="alert" className="text-sm text-danger">{error}</p>
           ) : null}

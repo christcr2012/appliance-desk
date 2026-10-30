@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getSmsInboxThread } from "@/domains/messaging/inbox";
 import { getContextLinkChoices } from "@/domains/messaging/context-links";
 import { listThreadOtherMatches } from "@/domains/messaging/thread-identity";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { markThreadReadAction, changeThreadStatusAction, assignThreadAction, linkMessageContextAction } from "./actions";
 import { IdentityPanel } from "./identity-panel";
 
@@ -42,8 +42,11 @@ export default async function SmsConversation({
 
   return (
     <div className="space-y-6">
-      <Link href="/desk/communications" className="underline">← All conversations</Link>
-      <PageHeader title="SMS conversation" description={thread.resolution === "RESOLVED" ? "Verified contact context; still check purpose-specific permission before messaging." : "Identity is unresolved or shared. Never assume this number belongs to one customer."} />
+      <RecordHeader
+        title="SMS conversation"
+        subtitle={thread.resolution === "RESOLVED" ? "Verified contact context; still check purpose-specific permission before messaging." : "Identity is unresolved or shared. Never assume this number belongs to one customer."}
+        back={{ href: "/desk/communications", label: "All conversations" }}
+      />
       <Card title="Review and ownership">
         <dl className="text-sm">
           <dt>Identity</dt><dd>{thread.resolution}</dd>
@@ -84,7 +87,7 @@ export default async function SmsConversation({
         )}
       </Card>
       {isOwnerAdmin && contextChoices.length > 0 && thread.messages.length > 0 && (
-        <Card title="Attach communication to a work record" description="Use only when this message truly concerns the selected job, maintenance request, or invoice.">
+        <Card title="Attach communication to a work record" description="Use only when this message truly concerns the selected job, maintenance request, or bill.">
           <form action={linkMessageContextAction} className="flex flex-col gap-3 text-sm">
             <input type="hidden" name="threadId" value={id} />
             <label>Which message?
@@ -95,7 +98,7 @@ export default async function SmsConversation({
             </label>
             <label>Which work record?
               <select name="target" required defaultValue="" className="mt-1 w-full rounded border border-line bg-surface p-2">
-                <option value="" disabled>Choose a job, maintenance request, or invoice</option>
+                <option value="" disabled>Choose a job, maintenance request, or bill</option>
                 {contextChoices.map(target=><option key={target.value} value={target.value}>{target.label}</option>)}
               </select>
             </label>

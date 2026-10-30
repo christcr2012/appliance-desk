@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPartMovementHistory } from "@/domains/inventory/part-history";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Part history" };
 
@@ -29,16 +30,11 @@ export default async function PartHistoryPage({
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <Link href="/desk/parts" className="text-sm text-primary underline">← Parts</Link>
-        <h1 className="mt-2 text-2xl font-semibold text-ink">
-          {history.part.partNumber}{history.part.partName ? ` — ${history.part.partName}` : ""}
-        </h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          Model {history.part.modelNumber}
-          {history.part.manufacturer ? ` · ${history.part.manufacturer}` : ""}
-          {history.part.applianceType ? ` · ${history.part.applianceType.name}` : ""}
-          {history.part.archivedAt ? " · archived" : ""}
-        </p>
+        <RecordHeader
+          title={`${history.part.partNumber}${history.part.partName ? ` — ${history.part.partName}` : ""}`}
+          subtitle={`Model ${history.part.modelNumber}${history.part.manufacturer ? ` · ${history.part.manufacturer}` : ""}${history.part.applianceType ? ` · ${history.part.applianceType.name}` : ""}${history.part.archivedAt ? " · archived" : ""}`}
+          back={{ href: "/desk/parts", label: "Parts" }}
+        />
         <p className="mt-2 text-sm font-medium text-ink">Current on hand: {history.part.quantityOnHand}</p>
       </div>
 
@@ -46,7 +42,7 @@ export default async function PartHistoryPage({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 id="movement-history-heading" className="text-lg font-semibold text-ink">Stock movement history</h2>
-            <p className="mt-1 text-sm text-ink-soft">Newest first. The ledger is append-only; corrections appear as reversal/new movement rows.</p>
+            <p className="mt-1 text-sm text-ink-soft">Newest first. Your records are never rewritten; corrections appear as reversal/new movement rows.</p>
           </div>
           <span className="text-sm text-ink-faint">Page {history.page}</span>
         </div>

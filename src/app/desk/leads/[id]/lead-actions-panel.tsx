@@ -294,7 +294,7 @@ function NextStepLinks({ customerId, bare = false }: { customerId: string; bare?
   const links = (
     <>
       <Link href={`/desk/estimates/new?customerId=${customerId}`} className={secondary}>Create quote</Link>
-      <Link href={`/desk/agreements/new?customerId=${customerId}`} className={secondary}>Start agreement</Link>
+      <Link href={`/desk/agreements/new?customerId=${customerId}`} className={secondary}>Start rental</Link>
     </>
   );
   if (bare) return links;

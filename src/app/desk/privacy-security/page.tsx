@@ -143,7 +143,10 @@ export default async function SecurityPage() {
       {isOwner ? (
         <Card title="Legal holds">
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">A legal hold on a customer stops every automatic clean-up and blocks their privacy deletion until you lift it. Use it when there is a dispute or a lawyer asks you to keep everything.</p>
+            <p className="text-sm text-ink-soft">
+              A legal hold on a customer stops every automatic clean-up and blocks their privacy deletion until you lift it.
+              Use it when there is a dispute or a lawyer asks you to keep everything.
+            </p>
             <ul className="space-y-3">
               {overview.holds.map((h) => (
                 <li key={h.id} className="space-y-2">
@@ -166,14 +169,19 @@ export default async function SecurityPage() {
       {isOwner ? (
         <Card title="Keeping and removing information">
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">How long to keep things (starting values from the research, <strong>not confirmed</strong>: agreements and bills 7 years after the account closes, tax and mileage 7, refrigerant records 6, sales enquiries that never became customers 2, messages 3). Signed agreements, bills and payments are never removed by the app; these years only say the earliest you may remove them yourself.</p>
+            <p className="text-sm text-ink-soft">
+              How long to keep things (starting values from the research, <strong>not confirmed</strong>:
+              agreements and bills 7 years after the account closes, tax and mileage 7, refrigerant records 6,
+              sales enquiries that never became customers 2, messages 3). Signed agreements, bills and payments
+              are never removed by the app; these years only say the earliest you may remove them yourself.
+            </p>
             <SecurityForm action={settingsAction.bind(null, false)} submit="Save">
-              <Field label="Agreements and bills: years after the account closes" name="retentionAgreementYears" type="number" min={1} max={30} defaultValue={s.retentionAgreementYears} />
+              <Field label="Rentals and bills: years after the account closes" name="retentionAgreementYears" type="number" min={1} max={30} defaultValue={s.retentionAgreementYears} />
               <Field label="Tax and mileage records: years" name="retentionTaxYears" type="number" min={1} max={30} defaultValue={s.retentionTaxYears} />
               <Field label="Refrigerant records: years" name="retentionRefrigerantYears" type="number" min={1} max={30} defaultValue={s.retentionRefrigerantYears} />
               <Field label="Sales enquiries that never became customers: years" name="retentionLeadYears" type="number" min={1} max={30} defaultValue={s.retentionLeadYears} />
               <Field label="Messages: years" name="retentionMessageYears" type="number" min={1} max={30} defaultValue={s.retentionMessageYears} />
-              <Check label="Remove old sales enquiries automatically each night" name="retentionPurgeEnabled" defaultChecked={s.retentionPurgeEnabled} hint="Starts off. When on, enquiries older than the setting above that never became customers are removed, at most 200 a night, never for a customer on legal hold. Every run is logged." />
+              <Check label="Remove old sales enquiries automatically each night" name="retentionPurgeEnabled" defaultChecked={s.retentionPurgeEnabled} hint="Starts off. When on, old enquiries that never became customers are removed nightly (max 200), never on legal hold. Every run is logged." />
               <Check label="Use face-match ID checks" name="faceMatchIdEnabled" defaultChecked={s.faceMatchIdEnabled} hint={FACE_MATCH_POLICY_NOTE} />
               <Field label={`Marketing texts start (hour, 24-hour clock; now ${hourLabel(s.marketingTextStartHour)})`} name="marketingTextStartHour" type="number" min={0} max={23} defaultValue={s.marketingTextStartHour} hint="Marketing texts are held outside these hours, Denver time. Starting value 8 am to 9 pm." />
               <Field label={`Marketing texts end (hour, 24-hour clock; now ${hourLabel(s.marketingTextEndHour)})`} name="marketingTextEndHour" type="number" min={0} max={23} defaultValue={s.marketingTextEndHour} />
