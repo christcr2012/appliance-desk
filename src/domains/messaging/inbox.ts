@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { decryptCommunicationContent } from "./communications-content";
 
-type Filters = {
+export type InboxFilters = {
   status?: "OPEN" | "WAITING" | "CLOSED";
   resolution?: "RESOLVED" | "UNRESOLVED" | "AMBIGUOUS";
   assignment?: "mine" | "unassigned" | "all";
 };
+type Filters = InboxFilters;
 type Cursor = { lastActivityAt: Date; id: string };
 function validCursor(value?: string): Cursor | null {
   if (!value || value.length > 170) return null;
@@ -54,6 +55,12 @@ export async function listSmsInbox(actorId: string, filters: Filters = {},
       select: {
         id: true, status: true, resolution: true, assignedUserId: true,
         version: true, lastActivityAt: true,
+        // AR-4d: names only (already visible to these roles on the
+        // customer/lead pages) — still no message text before thread
+        // authorization.
+        customer: { select: { id: true, companyName: true, user: { select: { name: true } } } },
+        lead: { select: { id: true, contactName: true } },
+        assignedUser: { select: { name: true } },
         // Provider messages may carry private data; list only status and
         // unread markers. Decrypt only after thread-level authorization.
         messages: { where: { direction: "INBOUND" },
@@ -65,17 +72,41 @@ export async function listSmsInbox(actorId: string, filters: Filters = {},
     });
     const next = rows.length > 30 ? inboxCursor(rows[29]) : null;
     return {
-      rows: rows.slice(0,30).map(({ messages, readMarkers, ...row }) => {
+      rows: rows.slice(0,30).map(({ messages, readMarkers, customer, lead, assignedUser, ...row }) => {
         const recent = messages[0];
         const marker = readMarkers[0];
         const unread = Boolean(recent && (!marker?.lastReadOccurredAt ||
           recent.occurredAt > marker.lastReadOccurredAt ||
           (recent.occurredAt.getTime() === marker.lastReadOccurredAt.getTime() &&
             recent.id > (marker.lastReadMessageId ?? ""))));
-        return { ...row, unread };
+        return {
+          ...row,
+          unread,
+          customerName: customer ? (customer.user.name ?? customer.companyName) : null,
+          leadName: lead?.contactName ?? null,
+          assignedName: assignedUser?.name ?? null,
+        };
       }),
       next,
     };
+  });
+}
+
+/** Per-status tab counts under the same filters and the same staff scoping
+ * as the list itself (AR-4d spec section 3: three counts, same safeFilters). */
+export async function getSmsInboxCounts(actorId: string, filters: Filters = {}) {
+  return prisma.$transaction(async (tx) => {
+    const actor = await assertActiveTeamActor(tx, actorId);
+    const countFor = (status: "OPEN" | "WAITING" | "CLOSED") =>
+      tx.communicationThread.count({
+        where: safeFilters({ ...filters, status }, actor, null),
+      });
+    const [open, waiting, done] = await Promise.all([
+      countFor("OPEN"),
+      countFor("WAITING"),
+      countFor("CLOSED"),
+    ]);
+    return { open, waiting, done };
   });
 }
 

@@ -33,4 +33,5 @@ quote-for-an-existing-lead, lead editing and CSV export, all on the kit.
 AR-4c (Customers list) is merged (Lane 5, packet AR-4C, PR #761, squash
 125fb162; the native-workspace pilot card — see the top STATUS entry).
 One follow-up is named: "CU-1 perf: base-table query redesign". AR-4d
-(Quotes and Messages) is next; it has not started.
+(Quotes and Messages) is built (Lane 5, packet AR-4D — see the top STATUS
+entry) and in review; its packet names the same CU-1 perf follow-up next.
