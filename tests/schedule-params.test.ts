@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseVisitsParams } from "@/app/desk/jobs/params";
 import { parseBoardParams } from "@/app/desk/dispatch/params";
+import { parseRepairsParams } from "@/app/desk/maintenance/params";
 
 describe("parseVisitsParams", () => {
   it("defaults to Upcoming, soonest first", () => {
@@ -86,5 +87,37 @@ describe("parseBoardParams", () => {
     const parsed = parseBoardParams({ who: " unassigned ", open: " job-1 " });
     expect(parsed.who).toBe("unassigned");
     expect(parsed.open).toBe("job-1");
+  });
+});
+
+describe("parseRepairsParams", () => {
+  it("defaults to Open, newest first", () => {
+    expect(parseRepairsParams({})).toEqual({
+      tab: "open",
+      priority: undefined,
+      q: undefined,
+      sort: "newest",
+      cursor: undefined,
+    });
+  });
+
+  it("maps the spec's tab names and the old status links", () => {
+    expect(parseRepairsParams({ status: "new" }).tab).toBe("new");
+    expect(parseRepairsParams({ status: "SUBMITTED" }).tab).toBe("new");
+    expect(parseRepairsParams({ status: "REVIEWING" }).tab).toBe("open");
+    expect(parseRepairsParams({ status: "IN_PROGRESS" }).tab).toBe("open");
+    expect(parseRepairsParams({ status: "RESOLVED" }).tab).toBe("fixed");
+    expect(parseRepairsParams({ status: "fixed" }).tab).toBe("fixed");
+    expect(parseRepairsParams({ status: "CLOSED" }).tab).toBe("closed");
+    expect(parseRepairsParams({ status: "fixed", page: "2" }).tab).toBe("fixed");
+  });
+
+  it("maps the priority filter and sorts, falling back safely", () => {
+    expect(parseRepairsParams({ priority: "urgent" }).priority).toBe("URGENT");
+    expect(parseRepairsParams({ priority: "high" }).priority).toBe("HIGH");
+    expect(parseRepairsParams({ priority: "low" }).priority).toBeUndefined();
+    expect(parseRepairsParams({ sort: "priority" }).sort).toBe("priority");
+    expect(parseRepairsParams({ sort: "oldest" }).sort).toBe("oldest");
+    expect(parseRepairsParams({ sort: "bogus" }).sort).toBe("newest");
   });
 });

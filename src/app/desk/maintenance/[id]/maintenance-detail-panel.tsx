@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateMaintenanceStatusAction } from "../actions";
+import { StatusPill } from "@/components/kit";
+import { REPAIR_PILL } from "@/domains/jobs/words";
 
 type MaintenanceStatusValue =
   | "SUBMITTED"
@@ -36,9 +38,12 @@ const ALLOWED_NEXT: Record<MaintenanceStatusValue, MaintenanceStatusValue[]> = {
 export function MaintenanceDetailPanel({
   request,
   canScheduleJobs = false,
+  nextVisitId = null,
 }: {
   request: { id: string; status: MaintenanceStatusValue; customerId: string };
   canScheduleJobs?: boolean;
+  /** The earliest booked visit for this request, for the SCHEDULED next step. */
+  nextVisitId?: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -55,10 +60,66 @@ export function MaintenanceDetailPanel({
     });
   }
 
+  const pill = REPAIR_PILL[request.status];
+
   return (
     <div className="rounded-lg border border-line bg-white p-5">
+      {/* AR-5 section 8: the one next step, performed right here. */}
+      {request.status === "SUBMITTED" && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-control bg-subtle px-3 py-2.5">
+          <p className="text-sm font-medium text-ink">
+            <span className="font-bold">Next step:</span> Look at this request.
+          </p>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleStatusChange("REVIEWING")}
+            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          >
+            Look at it
+          </button>
+          {canScheduleJobs && (
+            <Link
+              href={`/desk/jobs/new?maintenanceRequestId=${request.id}`}
+              className="text-sm font-semibold text-ink underline underline-offset-4"
+            >
+              Schedule a visit
+            </Link>
+          )}
+        </div>
+      )}
+      {request.status === "SCHEDULED" && nextVisitId && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-control bg-subtle px-3 py-2.5">
+          <p className="text-sm font-medium text-ink">
+            <span className="font-bold">Next step:</span> A visit is booked for this request.
+          </p>
+          <Link
+            href={`/desk/jobs/${nextVisitId}`}
+            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Open the visit
+          </Link>
+        </div>
+      )}
+      {request.status === "RESOLVED" && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-control bg-subtle px-3 py-2.5">
+          <p className="text-sm font-medium text-ink">
+            <span className="font-bold">Next step:</span> This is fixed — close the request out.
+          </p>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleStatusChange("CLOSED")}
+            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          >
+            Close it
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-medium text-ink">Status: {request.status}</h2>
+        <h2 className="flex items-center gap-2 font-medium text-ink">
+          Status: <StatusPill label={pill.label} tone={pill.tone} />
+        </h2>
         {canScheduleJobs && (
           <Link
             href={`/desk/jobs/new?maintenanceRequestId=${request.id}`}
@@ -84,7 +145,7 @@ export function MaintenanceDetailPanel({
                 onClick={() => handleStatusChange(s.value)}
                 className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
               >
-                Mark {s.label}
+                Mark {REPAIR_PILL[s.value].label}
               </button>
             ),
           )}
