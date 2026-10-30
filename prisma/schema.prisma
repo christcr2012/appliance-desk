@@ -7106,6 +7106,36 @@ model AgentOperation {
   @@index([actorUserId, createdAt])
 }
 
+// MCP-8: fixed-name sampled latency evidence with a 30-day bounded cleanup.
+model PerfSample {
+  id String @id @default(cuid())
+  kind String @db.VarChar(10)
+  name String @db.VarChar(100)
+  ms Int
+  ok Boolean
+  at DateTime @default(now())
+  @@index([kind, name, at])
+  @@index([at])
+}
+
+model OptimizationProposal {
+  id String @id @default(cuid())
+  number Int @unique @default(autoincrement())
+  title String @db.VarChar(160)
+  observationRefs Json
+  expectedBenefit String @db.VarChar(2000)
+  risk String @db.VarChar(2000)
+  costNote String @db.VarChar(500)
+  measurementPlan String @db.VarChar(2000)
+  rollback String @db.VarChar(2000)
+  state String @default("PROPOSED") @db.VarChar(15)
+  createdByUserId String
+  repairCaseId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([state, createdAt])
+}
+
 // MCP-7: owner-configurable daily checks. Disabled by default; no provider or live action is implied.
 model MonitorRule {
   id String @id @default(cuid())
