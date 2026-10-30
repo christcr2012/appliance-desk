@@ -110,7 +110,7 @@ export default async function AccountRentalsPage({
           <ButtonLink
             href="/account/maintenance?request=pickup"
             variant="secondary"
-          >{t("Request pickup")}</ButtonLink>
+          >{t("Ask for a pickup")}</ButtonLink>
         }
       />
 
@@ -123,7 +123,7 @@ export default async function AccountRentalsPage({
         <div className="space-y-6">
           {customer.rentalAgreements.map((agreement) => {
             const legalReadback=legalReadbacks.get(agreement.id)!;
-            const total = agreement.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0);
+            const total = agreement.monthlyTotalCents;
             const fixedTerms = agreement.termMonths ? describeSnapshotTerms(agreement.termsSnapshot, locale) : null;
             const lockedAutoRenew = agreement.termMonths ? snapshotAutoRenew(agreement.termsSnapshot) : null;
             const mtmTerms = monthToMonthTerms.get(agreement.id) ?? null;
@@ -318,7 +318,7 @@ export default async function AccountRentalsPage({
         href="/account/maintenance?request=pickup"
         variant="secondary"
         className="mt-6"
-      >{t("Request pickup")}</ButtonLink>
+      >{t("Ask for a pickup")}</ButtonLink>
       <p className="mt-2 text-sm text-ink-soft">{t("A pickup request is reviewed by the business; it does not cancel your agreement or change billing automatically.")}</p>
 
       <div className="mt-8">

@@ -88,3 +88,59 @@ it("excludes closed/cancelled jobs and draft/refunded/void invoices from next ac
     in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"],
   });
 });
+it("returns domain-computed money totals and the signing-waiting list", async () => {
+  const rental = {
+    id: "r1",
+    status: "ACTIVE",
+    serviceAddress: { line1: "My home", line2: null, city: "Greeley" },
+    lines: [
+      { label: "Washer", monthlyPriceCents: 4500, packageId: null, assignments: [] },
+      { label: "Dryer", monthlyPriceCents: 4500, packageId: null, assignments: [] },
+    ],
+    outOfServicePeriods: [],
+  };
+  m.rentalAgreement.findMany.mockImplementation(
+    async (args: { where?: { status?: unknown } }) =>
+      args?.where?.status === "AWAITING_SIGNATURE"
+        ? [
+            { id: "r2", signature: { id: "sig-9" } },
+            { id: "r3", signature: null },
+          ]
+        : [rental],
+  );
+  m.invoice.findFirst.mockResolvedValue({
+    id: "inv1",
+    invoiceNumber: 7,
+    status: "OPEN",
+    amountDueCents: 10000,
+    amountPaidCents: 2500,
+    dueDate: null,
+  });
+  const data = await getPortalHome();
+  expect(data?.rentals[0]?.monthlyTotalCents).toBe(9000);
+  expect(data?.balanceCents).toBe(7500);
+  // Only the agreement with a signature record gets a sign-in link, and
+  // the query stays scoped to the signed-in customer.
+  expect(data?.signingWaiting).toEqual([
+    { agreementId: "r2", signHref: "/sign/sig-9" },
+  ]);
+  const awaitingCall = m.rentalAgreement.findMany.mock.calls.find(
+    (call) => call[0].where?.status === "AWAITING_SIGNATURE",
+  );
+  expect(awaitingCall?.[0].where.customerId).toBe("c1");
+});
+it("clamps the balance at zero and reports no balance without an open bill", async () => {
+  m.invoice.findFirst.mockResolvedValue({
+    id: "inv2",
+    invoiceNumber: 8,
+    status: "PARTIALLY_PAID",
+    amountDueCents: 5000,
+    amountPaidCents: 6000,
+    dueDate: null,
+  });
+  expect((await getPortalHome())?.balanceCents).toBe(0);
+  m.invoice.findFirst.mockResolvedValue(null);
+  const data = await getPortalHome();
+  expect(data?.balanceCents).toBe(0);
+  expect(data?.signingWaiting).toEqual([]);
+});

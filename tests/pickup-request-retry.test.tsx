@@ -22,7 +22,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 it("keeps the pickup description empty and blocks blank or prefix-only submissions", async () => {
-  render(<NewRequestForm customerId="c1" appliances={[]} requestKind="pickup" requestTitle="Request pickup" />);
+  render(<NewRequestForm customerId="c1" appliances={[]} requestKind="pickup" requestTitle="Ask for a pickup" />);
   const input = screen.getByLabelText("What's going on?");
   expect(input).toHaveValue("");
   for (const value of ["", "   ", "Pickup request: "]) {
@@ -47,7 +47,7 @@ it("preserves pickup text after failure and confirms only a successful existing 
       customerId="c1"
       appliances={[]}
       initialProblem="Pickup request: "
-      requestTitle="Request pickup"
+      requestTitle="Ask for a pickup"
     />,
   );
   const text = "Pickup request: collect my washer at my home next week";

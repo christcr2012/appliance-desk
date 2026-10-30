@@ -44,6 +44,9 @@ export type DataTableProps<T> = {
   capReached?: boolean;
   /** Phone cards that hold their own buttons set this to false and link their own title (no link around the card). */
   mobileCardLink?: boolean;
+  /** Fixed-word overrides (PORTAL-1 kit words); default to the English constants so the desk is unchanged. */
+  loadMoreLabel?: string;
+  capReachedLabel?: string;
   currentSort?: string;
 };
 
@@ -65,6 +68,8 @@ export function DataTable<T>({
   nextHref,
   capReached = false,
   mobileCardLink = true,
+  loadMoreLabel = LOAD_MORE_LABEL,
+  capReachedLabel = CAP_REACHED_LABEL,
   currentSort,
 }: DataTableProps<T>) {
   if (rows.length === 0) return <>{empty}</>;
@@ -172,7 +177,7 @@ export function DataTable<T>({
   );
 
   const footer = capReached ? (
-    <p className="py-4 text-center text-sm text-ink-soft">{CAP_REACHED_LABEL}</p>
+    <p className="py-4 text-center text-sm text-ink-soft">{capReachedLabel}</p>
   ) : nextHref ? (
     <div className="flex justify-center py-4">
       <Link
@@ -180,7 +185,7 @@ export function DataTable<T>({
         scroll={false}
         className="inline-flex min-h-11 items-center rounded-field border border-line-strong bg-surface px-5 text-[15px] font-bold text-ink hover:bg-tint lg:h-10 lg:min-h-0"
       >
-        {LOAD_MORE_LABEL}
+        {loadMoreLabel}
       </Link>
     </div>
   ) : null;

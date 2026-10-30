@@ -53,14 +53,14 @@ export default async function AccountHomePage({
         description={t("Your rentals, next visit, billing and help in one place.")}
         primaryAction={{
           href: "/account/maintenance",
-          label: t("Report a problem"),
+          label: t("Ask for a repair"),
         }}
         secondaryActions={
           <ButtonLink
             href="/account/maintenance?request=pickup"
             variant="secondary"
           >
-            {t("Request pickup")}
+            {t("Ask for a pickup")}
           </ButtonLink>
         }
       />
@@ -113,12 +113,7 @@ export default async function AccountHomePage({
                     {agreement.lines.map((line) => describeRentalLine(line)).join(", ")}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-ink">
-                    {formatCents(
-                      agreement.lines.reduce(
-                        (sum, line) => sum + line.monthlyPriceCents,
-                        0,
-                      ),
-                    )}{" "}
+                    {formatCents(agreement.monthlyTotalCents)}{" "}
                     {t("per month")}
                   </p>
                   {agreement.outOfServicePeriods.map((away) => (
@@ -200,13 +195,7 @@ export default async function AccountHomePage({
                 {t("Invoice")} #{data.invoice.invoiceNumber}
               </p>
               <p className="mt-1 text-2xl font-semibold text-ink">
-                {formatCents(
-                  Math.max(
-                    0,
-                    data.invoice.amountDueCents -
-                      data.invoice.amountPaidCents,
-                  ),
-                )}{" "}
+                {formatCents(data.balanceCents)}{" "}
                 {t("remaining")}
               </p>
               <p className="mt-2 text-sm text-ink-soft">
@@ -239,11 +228,11 @@ export default async function AccountHomePage({
             <Link
               href="/account/maintenance"
               className="signature-lift cut-corner-sm inline-flex min-h-11 items-center justify-center bg-accent px-5 py-2 text-sm font-semibold text-on-accent"
-            >{t("Report a problem")}</Link>
+            >{t("Ask for a repair")}</Link>
             <ButtonLink
               href="/account/maintenance?request=pickup"
               variant="secondary"
-            >{t("Request pickup")}</ButtonLink>
+            >{t("Ask for a pickup")}</ButtonLink>
           </div>
           <p className="mt-4 text-sm opacity-90">{t("Requests are reviewed by the business. A pickup request does not automatically cancel a rental or change billing.")}</p>
         </section>

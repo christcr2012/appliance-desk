@@ -91,7 +91,7 @@ test.describe("customer portal home", () => {
     await noSideways(page, "/account");
     const help = page.getByRole("region", { name: "How do I get help?" });
     await expect(help).toBeVisible();
-    const report = help.getByRole("link", { name: "Report a problem" });
+    const report = help.getByRole("link", { name: "Ask for a repair" });
     await expect(async () => {
       await report.focus();
       await expect(report).toBeFocused({ timeout: 1000 });

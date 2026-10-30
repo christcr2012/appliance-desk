@@ -78,7 +78,7 @@ export default async function AccountMaintenancePage({
     <div className="max-w-4xl">
       <PageHeader
         title={t("Maintenance")}
-        description={t("Report a problem, request a pickup, and review your service requests.")}
+        description={t("Ask for a repair, ask for a pickup, and review your service requests.")}
       />
 
       {request === "pickup" && (
@@ -92,7 +92,7 @@ export default async function AccountMaintenancePage({
 
       <div className="mb-8">
         <Card
-          title={request === "pickup" ? t("Request pickup") : t("Report a problem")}
+          title={request === "pickup" ? t("Ask for a pickup") : t("Ask for a repair")}
           description={
             request === "pickup"
               ? t("Give us the details and preferred timing. We will review the request and contact you.")
@@ -105,7 +105,7 @@ export default async function AccountMaintenancePage({
             initialApplianceId={initialApplianceId}
             requestKind={request === "pickup" ? "pickup" : "maintenance"}
             requestTitle={
-              request === "pickup" ? t("Request pickup") : t("Report a problem")
+              request === "pickup" ? t("Ask for a pickup") : t("Ask for a repair")
             }
           />
         </Card>

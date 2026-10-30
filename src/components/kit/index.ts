@@ -10,6 +10,7 @@ export { ActionBar } from "./action-bar";
 export { EmptyState } from "./empty-state";
 export { Skeleton, ListSkeleton, RecordSkeleton, InboxSkeleton } from "./skeleton";
 export { Toaster, toast, dismissToast, clearToasts, plainError, TOAST_MS, TOAST_UNDO_MS, type ToastInput } from "./toaster";
+export { KitWordsProvider, useKitWords, KIT_WORDS_EN, type KitWords } from "./words";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Sheet, type SheetProps } from "./sheet";
 export { NotificationBell, relativeTime } from "./notification-bell";
