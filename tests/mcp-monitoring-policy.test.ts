@@ -17,8 +17,16 @@ describe("MCP-7 owner monitor policy", () => {
     }
     expect(() => validateMonitorSettings(valid)).not.toThrow();
   });
-  it("rejects automatic assistant writes until the MCP-5 delegated execution boundary is implemented", () => {
-    expect(() => validateMonitorSettings({ ...valid, autoAction:"RETRY_DATABASE_BACKUP",
-      autoActionConnectionId:"connection-1" })).toThrow("not enabled");
+  it("allowlists only scoped delegated actions with an explicit paired connection", () => {
+    expect(() => validateMonitorSettings({ ...valid, autoAction: "RUN_DIAGNOSTIC_SWEEP",
+      autoActionConnectionId: "connection-1" })).not.toThrow();
+    expect(() => validateMonitorSettings({ ...valid, autoAction: "RETRY_DATABASE_BACKUP",
+      autoActionConnectionId: "connection-1" })).not.toThrow();
+    expect(() => validateMonitorSettings({ ...valid, autoAction: "REPAIR_CREATE_CASE",
+      autoActionConnectionId: "connection-1" })).toThrow("not permitted");
+    expect(() => validateMonitorSettings({ ...valid, autoAction: "RUN_DIAGNOSTIC_SWEEP" }))
+      .toThrow("both");
+    expect(() => validateMonitorSettings({ ...valid, autoActionConnectionId: "connection-1" }))
+      .toThrow("both");
   });
 });

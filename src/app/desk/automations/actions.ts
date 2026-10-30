@@ -108,6 +108,8 @@ export async function saveMonitorRuleAction(formData: FormData): Promise<void> {
     failuresBeforeAlert: Number(formData.get("failuresBeforeAlert")),
     cooldownHours: Number(formData.get("cooldownHours")),
     notifyEmail: formData.get("notifyEmail") === "on",
+    autoAction: String(formData.get("autoAction") ?? "") || null,
+    autoActionConnectionId: String(formData.get("autoActionConnectionId") ?? "") || null,
     expectedVersion: rawVersion ? Number(rawVersion) : null,
     restore: formData.get("operation") === "restore",
   }));
