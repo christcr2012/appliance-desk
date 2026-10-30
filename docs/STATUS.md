@@ -1,3 +1,33 @@
+## October 30 — AR-4d: Quotes and Messages (Lane 5)
+
+**What changed:** the Quotes list and Messages inbox rebuilt per
+`QUOTES-MESSAGES.md` (packet AR-4D). Quotes: `getQuotes`/`getQuoteCounts` replace the
+unpaged `getAllEstimates` on the list page — tab/search/who filters, four sorts, line sums
+via one raw SUM grouped per quote (Prisma groupBy cannot multiply price by quantity), a
+KIT 5.1 growing-window cursor; `getEstimateDetail` gained its missing OWNER/ADMIN role
+check. The screen is KIT 5.1 like Customers: status tabs with counts, owner-side pill
+words, row actions led by "Make it a rental" (to the convert panel's new `#convert`
+anchor), "Finish and send", and "Follow up" by phone or email. Messages: plain-word
+params with every legacy code mapped (old links keep working); the inbox select carries
+names only — still no message text before thread authorization — plus per-status counts
+under the same staff scoping; cards show the unread dot, the plain status words, and the
+Unknown/Several chips; the texting-not-on notice names the owner's Settings switch. The
+missing piece the spec called out now exists: **link a number to a person** —
+`linkThreadIdentity`/`unlinkThreadIdentity` (one transaction, thread row locked, other
+matches revoked, the kept binding verified by staff, audits both ways, consent records
+never touched) with the thread page's "Who is this?" sheet and a confirmation that names
+who the number will stop matching.
+
+**How it was checked:** 29 packet tests green on the lane's real Postgres (quotes list
+9, detail role 3, messages params 8, inbox names 4, thread identity 5 — including the
+two-links-one-version race), plus the pre-existing inbox-scope suite; scoped typecheck
+and eslint clean per slice; `e2e/quotes-messages.spec.ts` (tabs, the convert anchor, the
+link flow, staff scoping, axe at five sizes) runs in this PR's CI. Two spec readings are
+recorded in the slice commits: the header word is "Quotes"/"Messages" (the spec's
+"Customers" heading is a template slip — its own title says the word on screen is quote),
+and the quote money sums use raw SQL because the spec's groupBy shape cannot express
+price × quantity.
+
 ## October 29 — AR-4c COMPLETE: Customers list (CU-1) merged (Lane 5)
 
 **What changed:** PR #761 merged (squash 125fb162): the CU-1 Customers list — the

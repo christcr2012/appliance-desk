@@ -29,6 +29,19 @@ export {
   requestEstimateChanges,
   resolveConversionAddresses,
 } from "./index-base";
+export {
+  getQuotes,
+  getQuoteCounts,
+  QUOTE_TABS,
+  QUOTE_SORTS,
+  QUOTE_TAB_STATUSES,
+} from "./list";
+export type {
+  QuoteListParams,
+  QuoteListRow,
+  QuoteSort,
+  QuoteTab,
+} from "./list";
 
 export async function convertEstimateToAgreements(
   userId: string,
