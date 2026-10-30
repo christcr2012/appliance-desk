@@ -131,7 +131,7 @@ for (const role of ["owner", "customer"] as const) {
 
           const nav = page.getByRole("navigation", { name: "Main" });
           await expect(nav).toBeVisible();
-          const labels = ["Home", "Rentals", "Maintenance", "Billing", "Account"];
+          const labels = ["Home", "Rentals", "Repairs", "Bills", "Account"];
           for (const label of labels) {
             await expect(
               nav.getByRole("link", { name: label, exact: true }),
@@ -149,14 +149,13 @@ for (const role of ["owner", "customer"] as const) {
             ).toBeFocused();
           }
 
-          for (const question of [
-            "What do I rent?",
-            "What's next?",
-            "Do I owe anything?",
-            "How do I get help?",
-          ]) {
+          // PORTAL-1 home: greeting + Rentals / Next visit / Need help?
+          await expect(
+            page.getByRole("heading", { level: 1, name: /^Hi / }),
+          ).toBeVisible();
+          for (const heading of ["Rentals", "Next visit", "Need help?"]) {
             await expect(
-              page.getByRole("heading", { name: question, exact: true }),
+              page.getByRole("heading", { name: heading, exact: true }),
             ).toBeVisible();
           }
 

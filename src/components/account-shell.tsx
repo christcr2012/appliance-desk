@@ -212,7 +212,7 @@ export function AccountShell({
           </main>
 
           <nav
-            aria-label={t("My account")}
+            aria-label="Main"
             className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] print:hidden lg:hidden"
           >
             <ul className="grid h-14 grid-cols-5">
