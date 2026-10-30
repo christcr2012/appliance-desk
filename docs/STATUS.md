@@ -3,7 +3,7 @@
 The bell at the top of every desk screen now says what just happened: new lead, quote opened, rental signed, payment failed, approval needed. Each event is written after its action commits through one failure-isolated seam (`notifySafely`), deduplicated per person (unique (userId, dedupeKey); payment failures dedupe on the Stripe event id, quote views on the one call that wins the SENT→VIEWED claim), and can never fail the lead form, signing, quote view or webhook it follows. Recipients are computed from the same role + job-role rules the linked pages use; when a person's access is reduced, notifications they can no longer open are deleted in the same transaction. Optional email copies ride the existing message-delivery path behind each person's own preference (default off); nobody can read or mark another person's rows. The bell follows the AR-11 freshness rule (no polling from idle or hidden tabs); desktop gets a popover, phones a sheet; preferences live at Your account → Your notifications with per-kind in-app/email switches (staff, who receive none of the five yet, see "You don't get notifications yet."). Read notifications are removed by the nightly sweep after the owner-set keep-days (Settings → Advanced, starting value 90; unread never removed by age). Tests: rules 12, integration 7 (incl. access-change purges and clean-up), hooks 6 (all five kinds end to end + failure isolation), email 1, bell words 4, inventories green; e2e/notifications.spec.ts (browser-e) covers the public-form → bell → lead flow, preference saving, the staff page and keyboard/axe. Drift from the spec is recorded in the PR body (migration name follows the repo's future-dated sequence; the read-notification age is measured from when it was read). CI follow-ups landed on the same PR: the spec's axe call now uses the repo's shared WCAG tag scope (the unscoped default also ran best-practice rules), and the shared Card title/description wrap long unbroken words (a system problem titled with a 32-character id was pushing /desk/automations sideways at phone width; proven from the CI failure's own page snapshot). The shared route-scan helper now retries a whole theme pass once when a late server/client redirect destroys the JS context mid-scan (it previously guarded only the first evaluate; the race hit /desk/fleet, /desk/dashboard, /desk/control-center and /desk/books/closing across four runs, never the same route twice).
 
 
-## October 30 — AR-4d: Quotes and Messages (Lane 5)
+## October 30 — AR-4d COMPLETE: Quotes and Messages merged (Lane 5)
 
 **What changed:** the Quotes list and Messages inbox rebuilt per
 `QUOTES-MESSAGES.md` (packet AR-4D). Quotes: `getQuotes`/`getQuoteCounts` replace the
@@ -23,11 +23,16 @@ matches revoked, the kept binding verified by staff, audits both ways, consent r
 never touched) with the thread page's "Who is this?" sheet and a confirmation that names
 who the number will stop matching.
 
-**How it was checked:** 29 packet tests green on the lane's real Postgres (quotes list
-9, detail role 3, messages params 8, inbox names 4, thread identity 5 — including the
-two-links-one-version race), plus the pre-existing inbox-scope suite; scoped typecheck
-and eslint clean per slice; `e2e/quotes-messages.spec.ts` (tabs, the convert anchor, the
-link flow, staff scoping, axe at five sizes) runs in this PR's CI. Two spec readings are
+**How it was checked:** PR #773 merged (squash 32263c85) with its closing CI run
+(41028625954) green in every job — secret scan, typecheck/lint, all three unit shards,
+all five browser shards — read job by job; review-gate waived green on the posted
+self-review; 0 review threads. 30 packet+scope tests green on real Postgres (quotes
+list 9, detail role 3, messages params 8, inbox names 4, thread identity 5 — including
+the two-links-one-version race). (#771 was the same card's first PR, closed for the
+documented content-push ancestry repair after AR-10a merged mid-flight; its CI cycles
+found and fixed the fixture-address collisions, the quote-number search — now a digits
+contains-match at any length, proven on a fresh database — and two sibling specs on
+the old inbox chrome.) Two spec readings are
 recorded in the slice commits: the header word is "Quotes"/"Messages" (the spec's
 "Customers" heading is a template slip — its own title says the word on screen is quote),
 and the quote money sums use raw SQL because the spec's groupBy shape cannot express
