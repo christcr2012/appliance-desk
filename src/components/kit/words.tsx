@@ -31,7 +31,7 @@ export function KitWordsProvider({
   children,
 }: {
   words: KitWords;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <KitWordsContext.Provider value={words}>{children}</KitWordsContext.Provider>

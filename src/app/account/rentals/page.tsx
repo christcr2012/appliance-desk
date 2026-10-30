@@ -109,7 +109,7 @@ export default async function AccountRentalsPage({
     return [agreement.id, await agreementLanguage(locale, texts)] as const;
   })));
 
-  const visitItems: TimelineItem[] = visitPage.items.map((job) => ({
+  const visitItems: TimelineItem[] = (visitPage?.items ?? []).map((job) => ({
     id: job.id,
     at: job.scheduledAt ?? job.performedOn ?? new Date(0),
     title: jobKindLabel(job, locale),
