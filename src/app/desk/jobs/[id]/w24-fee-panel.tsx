@@ -36,7 +36,7 @@ export function W24JobFeePanel({jobId,version,kind,configuredCents,approvedCents
       onClick={()=>start(async()=>{
         const result=await queueApprovedW24FeeAction(jobId,kind);
         setMessage(result.message);if(result.ok)router.refresh();
-      })} className="rounded border border-line px-3 py-2">Review gated next-invoice posting</button>}
+      })} className="rounded border border-line px-3 py-2">Review the held charge for the next bill</button>}
     {message&&<p role="status" className="text-sm">{message}</p>}
   </section>;
 }

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { listSmsInbox } from "@/domains/messaging/inbox";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
+
+import { ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Communications inbox" };
 type Search = { status?: string; resolution?: string; assignment?: string; cursor?: string };
@@ -26,7 +28,10 @@ export default async function CommunicationsInbox({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Communications" description="Private SMS inbox. Unresolved numbers are not verified customer identities. Sending stays off until separately approved." />
+      <ScreenHeader title="Communications" />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Private SMS inbox. Unresolved numbers are not verified customer identities. Sending stays off until separately approved.
+      </p>
       <Card title="Calls & voicemail" description="Review missed calls, uncertain outcomes and private voicemail without guessing the caller's identity.">
         <Link href="/desk/communications/calls" className="underline">Open missed-call inbox →</Link>
       </Card>

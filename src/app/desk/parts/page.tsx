@@ -1,15 +1,13 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getAllPartRecords } from "@/domains/inventory";
 import { getLowStockParts } from "@/domains/purchasing";
 import {
   ButtonLink,
   Card,
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
+import { DataTable, ScreenHeader, Toolbar, type Column, type FilterDef } from "@/components/kit";
 import { PartStockPanel } from "./part-stock-panel";
 import { PartSaleSettings } from "./part-sale-settings";
 
@@ -20,30 +18,31 @@ type PartRow = Awaited<ReturnType<typeof getAllPartRecords>>[number];
 export default async function PartsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string }>;
+  searchParams: Promise<{ archived?: string; open?: string }>;
 }) {
-  const showArchived = (await searchParams).archived === "1";
+  const partsParams = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Parts have no side panel — the record page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there.
+  if (partsParams.open) redirect(`/desk/parts/${encodeURIComponent(partsParams.open)}`);
+  const showArchived = partsParams.archived === "1";
   const [partRecords, lowStockParts] = await Promise.all([
     getAllPartRecords({ includeArchived: showArchived }),
     getLowStockParts(),
   ]);
   const lowStockIds = new Set(lowStockParts.map((part) => part.id));
 
-  const columns: DataListColumn<PartRow>[] = [
+  const columns: Column<PartRow>[] = [
     {
       key: "part",
       header: "Part",
-      primary: true,
       cell: (part) => (
         <div>
-          <Link
-            href={`/desk/parts/${part.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
+          <span className="font-semibold text-ink">
             {part.modelNumber}
             {part.manufacturer ? ` (${part.manufacturer})` : ""}
             {part.applianceType ? ` — ${part.applianceType.name}` : ""}
-          </Link>
+          </span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             Part {part.partNumber}
             {part.partName ? ` — ${part.partName}` : ""}
@@ -99,18 +98,13 @@ export default async function PartsPage({
 
   return (
     <div>
-      <PageHeader
-        title="Parts"
-        description="Every part you've logged, grouped by model number. Add new parts from an appliance record for that model."
-        secondaryActions={
-          <ButtonLink
-            href={showArchived ? "/desk/parts" : "/desk/parts?archived=1"}
-            variant="secondary"
-          >
-            {showArchived ? "Hide archived parts" : "Show archived parts"}
-          </ButtonLink>
-        }
+      <ScreenHeader title="Parts" list />
+      <Toolbar
+        filters={[{ kind: "toggle", param: "archived", label: "Show archived parts" }] satisfies FilterDef[]}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Every part you&apos;ve logged, grouped by model number. Add new parts from an appliance record for that model.
+      </p>
 
       {lowStockParts.length > 0 && (
         <div className="mb-6">
@@ -138,10 +132,13 @@ export default async function PartsPage({
         </div>
       )}
 
-      <DataList
+      <DataTable
         rows={partRecords}
+        rowKey={(part) => part.id}
         columns={columns}
         caption="Parts"
+        rowHref={(part) => `/desk/parts/${part.id}`}
+        mobileCard={(part) => columns[0].cell(part)}
         empty={
           <EmptyState
             title="No parts logged yet"

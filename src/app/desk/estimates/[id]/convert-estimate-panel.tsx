@@ -67,7 +67,7 @@ export function ConvertEstimatePanel({
 
   return (
     <div className="rounded-lg border border-line bg-white p-5">
-      <h2 className="text-sm font-medium text-ink">Convert to a draft agreement</h2>
+      <h2 className="text-sm font-medium text-ink">Convert to a draft rental</h2>
       <p className="mt-1 text-sm text-ink-soft">
         This sets up the paperwork with the agreed terms — you&apos;ll still
         add the real appliances yourself, same as any other agreement.

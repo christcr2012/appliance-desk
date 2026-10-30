@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { prisma } from "@/lib/prisma";
-import { Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { formatBusinessDate } from "@/lib/business-date";
 import { getCase } from "@/domains/collections/reads";
 import { pickupGate } from "@/domains/collections/rules";
@@ -29,8 +30,10 @@ export default async function CollectionCasePage({ params, searchParams }: { par
   const name = kase.customer.user.name ?? "Customer";
   return (
     <div className="space-y-6">
-      <Link href="/desk/collections" className="text-sm text-ink-soft hover:underline">&larr; Back to past-due follow-up</Link>
-      <PageHeader title={`${name} — ${formatMoney(facts.owedCents)} owed`} />
+      <RecordHeader
+        title={`${name} — ${formatMoney(facts.owedCents)} owed`}
+        back={{ href: "/desk/collections", label: "Past-due follow-up" }}
+      />
       <Card title="What has happened">
         <ul className="space-y-1 text-sm">
           {steps.map((s) => <li key={s.id}>Bill #{s.invoice.invoiceNumber}: {s.kind.replace("_", " ").toLowerCase()} — {s.state.toLowerCase()}{s.note ? ` (${s.note})` : ""} · {formatBusinessDate(s.cameUpOn)}</li>)}
