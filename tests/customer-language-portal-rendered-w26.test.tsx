@@ -50,7 +50,7 @@ describe.each(["en","es"] as const)("W-26 actual nested customer rendering in %s
   m.language=language;const output=html(await AccountBillingPage(),language);
   expect(output).toContain("123");expect(output).toContain("$108.50");
   expect(output).toContain(language==="es"?"Pagado parcialmente":"Partially paid");
-  expect(output).toContain(language==="es"?"pendiente de pago":"currently owed");
+  expect(output).toContain(language==="es"?"Debes":"You owe");
  });
  it("renders customer location permissions without owner retention/purge controls",()=>{
   const permission={deliveryPickup:false,maintenance:false,swaps:false,copyClient:false,appointmentConfirmer:"CLIENT" as const};

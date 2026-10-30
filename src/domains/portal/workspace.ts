@@ -46,6 +46,7 @@ export async function getPortalHome(rawAddressId?: string) {
     openVisits,
     nextBills,
     awaitingSignature,
+    allActiveRentals,
   ] = await Promise.all([
     prisma.rentalAgreement.count({ where: rentalWhere }),
     prisma.job.count({ where: jobWhere }),
@@ -96,6 +97,8 @@ export async function getPortalHome(rawAddressId?: string) {
         amountDueCents: true,
         amountPaidCents: true,
         dueDate: true,
+        stripeInvoiceId: true,
+        saleKind: true,
       },
     }),
     prisma.maintenanceRequest.count({
@@ -116,6 +119,10 @@ export async function getPortalHome(rawAddressId?: string) {
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       select: { id: true, signature: { select: { id: true } } },
     }),
+    prisma.rentalAgreement.findMany({
+      where: rentalWhere,
+      select: { lines: { select: { monthlyPriceCents: true } } },
+    }),
   ]);
   return {
     customerId: customer.id,
@@ -128,7 +135,20 @@ export async function getPortalHome(rawAddressId?: string) {
       ...rental,
       monthlyTotalCents: rentalMonthlyTotalCents(rental.lines),
     })),
-    invoice,
+    // The whole account's monthly rent (every active rental in scope,
+    // not just the six shown), summed in the domain.
+    monthlyTotalCents: allActiveRentals.reduce(
+      (sum, rental) => sum + rentalMonthlyTotalCents(rental.lines),
+      0,
+    ),
+    invoice: invoice
+      ? {
+          ...invoice,
+          balanceCents: Math.max(0, invoice.amountDueCents - invoice.amountPaidCents),
+          isLocalInvoice: invoice.stripeInvoiceId === null,
+          isShopSale: invoice.saleKind === "SHOP_SALE",
+        }
+      : null,
     // What the customer still owes on the first open bill (never below
     // zero); pages format this, they never subtract in page code.
     balanceCents: invoice
