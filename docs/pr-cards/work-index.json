@@ -6149,6 +6149,10 @@
     {
       "id": "AR-8",
       "path": "docs/pr-cards/execution/AR-8.json"
+    },
+    {
+      "id": "AR-4D",
+      "path": "docs/pr-cards/execution/AR-4D.json"
     }
   ]
 }

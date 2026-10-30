@@ -3,8 +3,10 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getSmsInboxThread } from "@/domains/messaging/inbox";
 import { getContextLinkChoices } from "@/domains/messaging/context-links";
+import { listThreadOtherMatches } from "@/domains/messaging/thread-identity";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { markThreadReadAction, changeThreadStatusAction, assignThreadAction, linkMessageContextAction } from "./actions";
+import { IdentityPanel } from "./identity-panel";
 
 export const metadata = { title: "SMS conversation" };
 export default async function SmsConversation({
@@ -21,6 +23,22 @@ export default async function SmsConversation({
     select: { id: true, name: true, email: true },
     orderBy: { email: "asc" }, take: 100,
   }) : [];
+  // AR-4d: the "Who is this?" identity panel (owner/admin only).
+  let currentName: string | null = null;
+  if (thread.customerId) {
+    const c = await prisma.customer.findUnique({
+      where: { id: thread.customerId },
+      select: { companyName: true, user: { select: { name: true } } },
+    });
+    currentName = c?.user.name ?? c?.companyName ?? null;
+  } else if (thread.leadId) {
+    const l = await prisma.lead.findUnique({
+      where: { id: thread.leadId },
+      select: { contactName: true },
+    });
+    currentName = l?.contactName ?? null;
+  }
+  const otherMatches = isOwnerAdmin ? await listThreadOtherMatches(session.user.id, id) : [];
 
   return (
     <div className="space-y-6">
@@ -54,6 +72,15 @@ export default async function SmsConversation({
             </label>
             <Button type="submit">Save assignee</Button>
           </form>
+        )}
+        {isOwnerAdmin && (
+          <IdentityPanel
+            threadId={id}
+            version={thread.version}
+            resolution={thread.resolution}
+            currentName={currentName}
+            otherMatches={otherMatches}
+          />
         )}
       </Card>
       {isOwnerAdmin && contextChoices.length > 0 && thread.messages.length > 0 && (

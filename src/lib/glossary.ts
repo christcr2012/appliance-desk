@@ -1,5 +1,9 @@
 /** Plain-language explanations shared by owner screens. */
 export const GLOSSARY = {
+  "texting-switch": {
+    title: "Texting switch",
+    description: "Texting with customers is turned on or off by the owner in Settings. Until it's on, conversations here can be read, but new texts aren't sent.",
+  },
   "lead-score": { title: "Score", description: "How likely this lead is to rent, from what they asked for. The reasons are listed here." },
   "retail-delivery-fee": {
     title: "Retail delivery fee",

@@ -22,6 +22,7 @@ import { snapshotLocation as zoneLocationOf } from "@/domains/delivery/snapshot"
 import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
 import { validatePreparedConversion, validateConvertedEstimateReplay } from "./prepared-conversion";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { requireRole } from "@/lib/session";
 
 const EDITABLE_STATUSES: EstimateStatus[] = ["DRAFT", "CHANGES_REQUESTED"];
 const PUBLICLY_VIEWABLE_STATUSES: EstimateStatus[] = [
@@ -315,6 +316,9 @@ export async function getAllEstimates() {
 }
 
 export async function getEstimateDetail(estimateId: string) {
+  // AR-4d (QUOTES-MESSAGES spec section 1): the detail read had no role check
+  // of its own; its callers are OWNER/ADMIN pages, so the guard lives here.
+  await requireRole("OWNER", "ADMIN");
   return prisma.estimate.findUnique({
     where: { id: estimateId },
     include: {

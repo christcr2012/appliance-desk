@@ -1,134 +1,279 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { requireRole } from "@/lib/session";
 import {
-  getAllEstimates,
-  totalMonthlyCents,
-  totalOneTimeCents,
+  getQuoteCounts,
+  getQuotes,
+  type QuoteListRow,
 } from "@/domains/estimates";
-import { formatCents } from "@/domains/pricing";
-import { estimateStatusLabel } from "@/lib/status-labels";
+import { formatMoney } from "@/lib/money-ui";
+import { formatShortDate, relativeBusinessDay } from "@/lib/business-date";
 import {
-  DataList,
+  AutoRefresh,
+  DataTable,
   EmptyState,
-  PageHeader,
+  Fab,
+  PullToRefresh,
+  ScreenHeader,
   StatusPill,
-  type DataListColumn,
-} from "@/components/ui";
-import type { StatusTone } from "@/components/status-badge";
+  StatusTabs,
+  Toaster,
+  Toolbar,
+  type Column,
+  type FilterDef,
+  type MenuItem,
+} from "@/components/kit";
+import { parseQuotesParams, quotesHref } from "./params";
 
-export const metadata = { title: "Estimates" };
+export const metadata: Metadata = { title: "Quotes" };
 
-const STATUS_TONE: Record<string, StatusTone> = {
-  DRAFT: "pending",
-  SENT: "progress",
-  VIEWED: "progress",
-  APPROVED: "success",
-  CHANGES_REQUESTED: "attention",
-  DECLINED: "stopped",
-  EXPIRED: "stopped",
-  CONVERTED: "success",
+type Search = Record<string, string | string[] | undefined>;
+
+// AR-4d (QUOTES-MESSAGES spec section 2): owner-side status words for the
+// pill. estimateStatusLabel stays for customer-facing text.
+const PILL: Record<QuoteListRow["status"], { label: string; tone: "neutral" | "info" | "attention" | "good" }> = {
+  DRAFT: { label: "Draft", tone: "neutral" },
+  SENT: { label: "Sent", tone: "info" },
+  VIEWED: { label: "Viewed", tone: "info" },
+  CHANGES_REQUESTED: { label: "Changes asked", tone: "attention" },
+  APPROVED: { label: "Approved — make it a rental", tone: "attention" },
+  CONVERTED: { label: "Became a rental", tone: "good" },
+  DECLINED: { label: "Declined", tone: "neutral" },
+  EXPIRED: { label: "Expired", tone: "neutral" },
 };
 
-type EstimateRow = Awaited<ReturnType<typeof getAllEstimates>>[number];
+function personName(row: QuoteListRow): string {
+  if (row.customer) return row.customer.name ?? row.customer.company ?? "Customer";
+  if (row.lead) return row.lead.contactName;
+  return "No customer or lead linked";
+}
 
-/** Custom-priced estimates for deals that don't fit standard self-serve
+function personCompany(row: QuoteListRow): string | null {
+  if (row.customer) return row.customer.company;
+  if (row.lead) return row.lead.company;
+  return null;
+}
+
+function moneyLine(row: QuoteListRow): string {
+  const monthly = `${formatMoney(row.monthlyCents)}/mo`;
+  return row.oneTimeCents > 0 ? `${monthly} + ${formatMoney(row.oneTimeCents)} once` : monthly;
+}
+
+const DAY_MS = 86_400_000;
+
+function detailLines(row: QuoteListRow, now: Date): { sent: string | null; expires: string | null } {
+  let sent: string | null = null;
+  if ((row.status === "SENT" || row.status === "VIEWED") && row.sentAt) {
+    sent = `Sent ${relativeBusinessDay(row.sentAt, now)}`;
+    if (row.viewedAt) sent += ` · viewed ${relativeBusinessDay(row.viewedAt, now)}`;
+  }
+  let expires: string | null = null;
+  if (
+    row.validUntil &&
+    ["SENT", "VIEWED", "CHANGES_REQUESTED", "APPROVED"].includes(row.status) &&
+    row.validUntil.getTime() <= now.getTime() + 3 * DAY_MS
+  ) {
+    expires = `Expires ${formatShortDate(row.validUntil, now)}`;
+  }
+  return { sent, expires };
+}
+
+function rowActions(row: QuoteListRow): MenuItem[] {
+  const items: MenuItem[] = [];
+  const href = `/desk/estimates/${row.id}`;
+  if (row.status === "APPROVED") {
+    items.push({ kind: "link", label: "Make it a rental", href: `${href}#convert`, primary: true });
+  } else if (row.status === "DRAFT") {
+    items.push({ kind: "link", label: "Finish and send", href, primary: true });
+  } else if (row.status === "SENT" || row.status === "VIEWED") {
+    if (row.contactPhone) {
+      items.push({ kind: "tel", label: "Follow up", phone: row.contactPhone, primary: true });
+    } else if (row.contactEmail) {
+      items.push({ kind: "mailto", label: "Follow up", email: row.contactEmail, primary: true });
+    }
+  }
+  items.push({ kind: "link", label: "Open", href });
+  if (row.customer) {
+    items.push({ kind: "link", label: "View customer", href: `/desk/customers/${row.customer.id}` });
+  } else if (row.lead) {
+    items.push({ kind: "link", label: "View lead", href: `/desk/leads/${row.lead.id}` });
+  }
+  return items;
+}
+
+/** Custom-priced quotes for deals that don't fit standard self-serve
  * pricing — a property manager ordering for several units, an entire
  * building, and similar (2026-09-29, see docs/DECISIONS.md). Always
- * OWNER/ADMIN: an estimate is where custom pricing gets decided, same
- * access level as Billing/Settings. */
-export default async function EstimatesPage() {
+ * OWNER/ADMIN: a quote is where custom pricing gets decided, same access
+ * level as Billing/Settings. */
+export default async function QuotesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}) {
   await requireRole("OWNER", "ADMIN");
-  const estimates = await getAllEstimates();
+  const raw = await searchParams;
+  const now = new Date();
+  const params = parseQuotesParams(raw);
+  const [list, counts] = await Promise.all([getQuotes(params), getQuoteCounts(params)]);
 
-  const columns: DataListColumn<EstimateRow>[] = [
+  const tab = params.tab ?? "open";
+  const tabs = [
+    { value: "open", label: "Open", count: counts.open },
+    { value: "approved", label: "Approved", count: counts.approved, hideWhenZero: true },
+    { value: "won", label: "Won" },
+    { value: "closed", label: "Closed" },
+    { value: "drafts", label: "Drafts", count: counts.drafts, hideWhenZero: true },
+  ];
+
+  const filters: FilterDef[] = [
     {
-      key: "estimate",
-      header: "Estimate",
-      primary: true,
-      cell: (estimate) => (
-        <div>
-          <Link
-            href={`/desk/estimates/${estimate.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
-            #{estimate.estimateNumber} — {estimate.title}
-          </Link>
-          <p className="mt-1 text-sm font-normal text-ink-soft">
-            {estimate.customer ? (
-              <>
-                {estimate.customer.user.name ?? estimate.customer.user.email}
-                {estimate.customer.companyName
-                  ? ` · ${estimate.customer.companyName}`
-                  : ""}
-              </>
-            ) : estimate.lead ? (
-              <>
-                {estimate.lead.contactName}
-                {estimate.lead.companyName
-                  ? ` · ${estimate.lead.companyName}`
-                  : ""}
-                {" · lead"}
-              </>
-            ) : (
-              "No customer or lead linked"
-            )}
-          </p>
-        </div>
-      ),
+      kind: "select",
+      param: "who",
+      label: "For",
+      options: [
+        { value: "customers", label: "Customers" },
+        { value: "leads", label: "Leads" },
+      ],
+    },
+  ];
+
+  const sorts = [
+    { value: "newest", label: "Newest" },
+    { value: "oldest-sent", label: "Waiting longest" },
+    { value: "value-desc", label: "Biggest" },
+    { value: "expires", label: "Expiring soonest" },
+  ];
+
+  const columns: Column<QuoteListRow>[] = [
+    {
+      key: "who",
+      header: "Who",
+      cell: (row) => {
+        const company = personCompany(row);
+        const sub = company ?? (row.lead ? "Lead" : null);
+        return (
+          <div>
+            <span>{personName(row)}</span>
+            {sub ? <span className="mt-0.5 block text-sm font-normal text-ink-soft">{sub}</span> : null}
+          </div>
+        );
+      },
+    },
+    {
+      key: "quote",
+      header: "Quote",
+      cell: (row) => `Quote #${row.estimateNumber} · ${row.title}`,
+    },
+    {
+      key: "monthly",
+      header: "Monthly",
+      align: "right",
+      cell: (row) => formatMoney(row.monthlyCents),
+    },
+    {
+      key: "once",
+      header: "Once",
+      align: "right",
+      cell: (row) => (row.oneTimeCents > 0 ? formatMoney(row.oneTimeCents) : "—"),
     },
     {
       key: "status",
       header: "Status",
-      cell: (estimate) => (
-        <StatusPill
-          tone={STATUS_TONE[estimate.status] ?? "pending"}
-          label={estimateStatusLabel(estimate.status)}
-        />
-      ),
+      cell: (row) => {
+        const pill = PILL[row.status];
+        return <StatusPill label={pill.label} tone={pill.tone} />;
+      },
     },
     {
-      key: "pricing",
-      header: "Pricing",
-      cell: (estimate) => {
-        const monthly = totalMonthlyCents(estimate.lineItems);
-        const oneTime = totalOneTimeCents(estimate.lineItems);
-        return (
-          <span>
-            {monthly > 0 && `${formatCents(monthly)}/mo`}
-            {monthly > 0 && oneTime > 0 && " + "}
-            {oneTime > 0 && `${formatCents(oneTime)} one-time`}
-            {monthly === 0 && oneTime === 0 && "No line items yet"}
-          </span>
-        );
-      },
+      key: "sent",
+      header: "Sent",
+      cell: (row) => (row.sentAt ? relativeBusinessDay(row.sentAt, now) : "—"),
     },
   ];
 
-  return (
-    <div>
-      <PageHeader
-        title="Quotes"
-        description="Quotes (also called estimates) are custom-priced proposals for deals that don't fit standard pricing, including property-manager and multi-unit work."
-        primaryAction={{ href: "/desk/estimates/new", label: "New quote" }}
-      />
+  const filtered = Boolean(params.q || params.who);
 
-      <p className="mb-4 text-sm">
-        Entering an order while talking to a customer?{" "}
-        <Link href="/desk/phone-orders" className="font-semibold underline">
-          Phone orders — start, prepare, then send customer link
-        </Link>
-      </p>
-      <DataList
-        rows={estimates}
-        columns={columns}
-        caption="Estimates"
-        empty={
-          <EmptyState
-            title="No estimates yet"
-            description="Create the first custom-priced proposal when a deal falls outside standard pricing."
+  return (
+    <PullToRefresh>
+      <div className="px-1 sm:px-0">
+        <ScreenHeader
+          title="Quotes"
+          list
+          primary={{ kind: "link", label: "New quote", href: "/desk/estimates/new" }}
+        />
+        <AutoRefresh />
+        <Toaster />
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+          <StatusTabs label="Quote status" param="status" current={tab} items={tabs} />
+          <div className="min-w-0 flex-1">
+            <Toolbar
+              search={{ param: "q", placeholder: "Name or quote number", label: "Search quotes" }}
+              filters={filters}
+              sorts={sorts}
+              currentSort={params.sort ?? "newest"}
+            />
+          </div>
+        </div>
+        <div className="mt-2">
+          <DataTable
+            caption="Quotes"
+            rows={list.rows}
+            rowKey={(row) => row.id}
+            columns={columns}
+            rowHref={(row) => `/desk/estimates/${row.id}`}
+            mobileCardLink
+            rowActions={rowActions}
+            currentSort={params.sort ?? "newest"}
+            mobileCard={(row) => {
+              const pill = PILL[row.status];
+              const { sent, expires } = detailLines(row, now);
+              return (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 font-bold text-ink">
+                      {personName(row)}
+                      {row.lead && !row.customer ? <StatusPill label="Lead" tone="neutral" /> : null}
+                    </span>
+                    <StatusPill label={pill.label} tone={pill.tone} />
+                  </div>
+                  <span className="text-sm text-ink-soft">
+                    Quote #{row.estimateNumber} · {row.title}
+                  </span>
+                  <span className="flex items-center justify-between text-sm text-ink-soft">
+                    <span>{sent ?? personCompany(row) ?? ""}</span>
+                    <span className="font-semibold text-ink">{moneyLine(row)}</span>
+                  </span>
+                  {expires ? (
+                    <span className="text-sm font-semibold text-warning-ink">{expires}</span>
+                  ) : null}
+                </div>
+              );
+            }}
+            empty={
+              filtered ? (
+                <EmptyState
+                  title="No quotes match"
+                  action={{
+                    kind: "link",
+                    label: "Clear filters",
+                    href: quotesHref(params, { q: undefined, who: undefined, cursor: undefined }),
+                  }}
+                />
+              ) : tab === "open" ? (
+                <EmptyState
+                  title="No open quotes"
+                  action={{ kind: "link", label: "New quote", href: "/desk/estimates/new" }}
+                />
+              ) : (
+                <EmptyState title="No quotes here" />
+              )
+            }
+            nextHref={list.nextCursor ? quotesHref(params, { cursor: list.nextCursor }) : null}
+            capReached={list.capped}
           />
-        }
-      />
-    </div>
+        </div>
+        <Fab spec={{ kind: "link", label: "New quote", href: "/desk/estimates/new" }} />
+      </div>
+    </PullToRefresh>
   );
 }
