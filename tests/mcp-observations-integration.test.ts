@@ -34,6 +34,7 @@ describe("MCP-8 disposable-PostgreSQL measurements and proposals", () => {
       at: { gte: t("2040-01-01T00:00:00Z"), lt: t("2042-01-01T00:00:00Z") },
     } });
     await prisma.optimizationProposal.deleteMany({ where: { createdByUserId: ownerId } });
+    await prisma.repairCase.deleteMany({ where: { sourceKind: "OPTIMIZATION", createdByUserId: ownerId } });
     await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
   });
   afterAll(async () => {
@@ -41,6 +42,7 @@ describe("MCP-8 disposable-PostgreSQL measurements and proposals", () => {
       at: { gte: t("2040-01-01T00:00:00Z"), lt: t("2042-01-01T00:00:00Z") },
     } });
     await prisma.optimizationProposal.deleteMany({ where: { createdByUserId: ownerId } });
+    await prisma.repairCase.deleteMany({ where: { sourceKind: "OPTIMIZATION", createdByUserId: ownerId } });
     await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, staffId] } } });
     await prisma.$disconnect();
@@ -102,10 +104,20 @@ describe("MCP-8 disposable-PostgreSQL measurements and proposals", () => {
     expect(proposal.state).toBe("PROPOSED");
     const stored = await prisma.optimizationProposal.findUniqueOrThrow({ where: { id: proposal.id } });
     expect((stored.observationRefs as { baseline: { samples: number } }).baseline.samples).toBe(30);
-    const accepted = await decideOptimizationProposal(ownerId, { id: proposal.id, accept: true });
+    const accepted = await decideOptimizationProposal(ownerId, { id: proposal.id, accept: true },
+      { deployedRevision: "a".repeat(40) });
     expect(accepted.state).toBe("ACCEPTED");
+    expect(accepted.repairCaseId).toBeTruthy();
+    const repair = await prisma.repairCase.findUniqueOrThrow({ where: { id: accepted.repairCaseId! } });
+    expect(repair.sourceKind).toBe("OPTIMIZATION");
+    expect(repair.sourceId).toBe(proposal.id);
+    expect(repair.baselineRevision).toBe("a".repeat(40));
+    expect(repair.stage).toBe("PROPOSED");
+    const linked = await prisma.optimizationProposal.findUniqueOrThrow({ where: { id: proposal.id } });
+    expect(linked.repairCaseId).toBe(repair.id);
     await expect(decideOptimizationProposal(ownerId, { id: proposal.id, accept: false }))
       .rejects.toThrow("PROPOSAL_NOT_PENDING");
     expect(await prisma.optimizationProposal.count({ where: { createdByUserId: ownerId } })).toBe(1);
+    expect(await prisma.repairCase.count({ where: { sourceKind: "OPTIMIZATION", sourceId: proposal.id } })).toBe(1);
   });
 });

@@ -79,6 +79,7 @@ export async function ImprovementsSection({ userId, canManage }: { userId: strin
               <p className="text-xs text-ink-soft">Risk: {item.risk}</p>
               <p className="text-xs text-ink-soft">Check: {item.measurementPlan}</p>
               <p className="text-xs text-ink-soft">Rollback: {item.rollback}</p>
+              {item.repairCaseId ? <a href="#repair-cases" className="text-sm underline">View linked engineering case</a> : null}
               {canManage && item.state === "PROPOSED" ?
                 <form action={reviewOptimizationProposalAction} className="mt-2 flex flex-wrap gap-2">
                   <input type="hidden" name="id" value={item.id} />

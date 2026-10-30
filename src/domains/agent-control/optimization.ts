@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -67,26 +68,47 @@ export async function listOptimizationProposals(userId: string, limit = 20) {
   return prisma.optimizationProposal.findMany({
     orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: Math.max(1, Math.min(limit, 25)),
     select: { id: true, number: true, title: true, state: true, createdAt: true, expectedBenefit: true,
-      risk: true, measurementPlan: true, rollback: true, observationRefs: true },
+      risk: true, measurementPlan: true, rollback: true, observationRefs: true, repairCaseId: true },
   });
 }
 
 export async function decideOptimizationProposal(ownerId: string, input: {
   id: string; accept: boolean;
-}) {
+}, options: { deployedRevision?: string } = {}) {
   return prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, ownerId, ["OWNER"]);
     await tx.$queryRaw`SELECT "id" FROM "OptimizationProposal" WHERE "id" = ${input.id} FOR UPDATE`;
     const current = await tx.optimizationProposal.findUnique({ where: { id: input.id } });
     if (!current || current.state !== "PROPOSED") throw new Error("PROPOSAL_NOT_PENDING");
+    // This owner decision creates only an engineering case, never a setting edit.
+    // Provenance is the persisted proposal, not untrusted case arguments.
+    let repairCaseId: string | null = null;
+    if (input.accept) {
+      const revision = options.deployedRevision ?? process.env.VERCEL_GIT_COMMIT_SHA;
+      if (!revision || !/^[a-f0-9]{40}$/i.test(revision))
+        throw new Error("REPAIR_SOURCE_REVISION_UNVERIFIED");
+      const fingerprint = createHash("sha256")
+        .update("OPTIMIZATION:" + current.id + ":1").digest("hex");
+      const repair = await tx.repairCase.upsert({
+        where: { fingerprint },
+        create: {
+          sourceKind: "OPTIMIZATION", sourceId: current.id, sourceVersion: 1,
+          fingerprint, title: current.title, expectedBehavior: current.expectedBenefit,
+          howToCheck: "After a reviewed deployment, compare 30 or more fresh samples against the stored baseline and measurement plan. Owner verification is required.",
+          baselineRevision: revision.toLowerCase(), createdByUserId: ownerId,
+        },
+        update: {},
+      });
+      repairCaseId = repair.id;
+    }
     const next = await tx.optimizationProposal.update({ where: { id: input.id },
-      data: { state: input.accept ? "ACCEPTED" : "REJECTED" } });
+      data: { state: input.accept ? "ACCEPTED" : "REJECTED", repairCaseId } });
     await tx.auditLog.create({ data: {
       userId: ownerId, action: "mcp.optimization.reviewed",
       entityType: "OptimizationProposal", entityId: next.id,
-      newValue: { number: next.number, state: next.state },
+      newValue: { number: next.number, state: next.state, repairCaseId },
     } });
     // This approves review of an engineering proposal, not application of a setting.
-    return { id: next.id, number: next.number, state: next.state };
+    return { id: next.id, number: next.number, state: next.state, repairCaseId };
   });
 }
