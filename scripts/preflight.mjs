@@ -28,9 +28,9 @@ export function parse(args) {
 export function adjacentRegressions(changed) {
   const paths = [
     [/^src\/(?:domains\/system-issues\/|app\/desk\/(?:today|automations)\/)/,
-      ['tests/today-role-access.test.ts', 'tests/desk-navigation.test.ts']],
-    [/^src\/(?:lib\/(?:desk-navigation|desk-areas)|components\/desk\/.*navigation)/,
-      ['tests/desk-navigation.test.ts', 'tests/acc5-job-role-rules.test.ts']],
+      ['tests/today-role-access.test.ts', 'tests/w8-menu-sections.test.ts']],
+    [/^src\/(?:lib\/desk-areas|components\/desk\/.*navigation)/,
+      ['tests/w8-menu-sections.test.ts', 'tests/acc5-job-role-rules.test.ts']],
     [/^src\/domains\/team\/job-role-rules\./, ['tests/acc5-job-role-rules.test.ts']],
     [/^src\/domains\/backup\//, ['tests/backup-restore-integration.test.ts', 'tests/backup.test.ts']],
     [/^prisma\/schema\.prisma$/, ['tests/schema-health.test.ts', 'tests/backup.test.ts']],
@@ -49,7 +49,7 @@ export function relatedSources(changed, exists = existsSync) {
 export function commands(options, changed, exists = existsSync) {
   const application = changed.some(p => !p.startsWith('docs/') && !p.endsWith('.md'));
   const behavior = changed.some(p => /^(src|prisma|tests|e2e)\//.test(p));
-  const navigationRisk = changed.some(p => /^src\/(?:lib\/desk-navigation|domains\/team\/job-role-rules)\.[jt]sx?$/.test(p));
+  const navigationRisk = changed.some(p => /^src\/(?:lib\/desk-areas|domains\/team\/job-role-rules)\.[jt]sx?$/.test(p));
   const jobRoleCheck = ['npx', '--no-install', 'vitest', 'run', 'tests/acc5-job-role-rules.test.ts'];
   const screen = changed.some(p => /^src\/components\//.test(p) || /^src\/app\/.*\.tsx$/.test(p) || /^src\/app\/(?:.*\/)?(page|layout)\.[jt]s$/.test(p) || /^src\/.*\.css$/.test(p) || /^e2e\/.+\.spec\.ts$/.test(p));
   if (options.quick) {

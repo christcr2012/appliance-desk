@@ -14,18 +14,18 @@ const OPTION_TEXT: Record<
   { title: string; what: string; button: string }
 > = {
   MARK_PAID: {
-    title: "Mark the invoice paid",
-    what: "Take the write-off back and record this invoice as paid. Your books then show the money as collected. Choose this when the customer really did owe it.",
-    button: "Mark invoice paid",
+    title: "Mark the bill paid",
+    what: "Take the write-off back and record this bill as paid. Your books then show the money as collected. Choose this when the customer really did owe it.",
+    button: "Mark bill paid",
   },
   CREDIT: {
     title: "Keep it as account credit",
-    what: "The customer keeps the money as credit that comes off their future bills. The invoice stays written off. Choose this only if the customer asks for it.",
+    what: "The customer keeps the money as credit that comes off their future bills. The bill stays written off. Choose this only if the customer asks for it.",
     button: "Keep as credit",
   },
   REFUND: {
     title: "Refund it to their card",
-    what: "Send the money back to the card it came from. The invoice stays as it is. Choose this when the customer did not owe it.",
+    what: "Send the money back to the card it came from. The bill stays as it is. Choose this when the customer did not owe it.",
     button: "Refund to card",
   },
 };

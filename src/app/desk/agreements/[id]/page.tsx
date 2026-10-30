@@ -531,10 +531,10 @@ export default async function AgreementDetailPage({
                   <SigningChargePrepareForm agreementId={agreement.id} />
                   {readiness && (
                     <div className="mt-3 rounded-md border border-border p-3" role="status">
-                      <p className="text-sm font-medium">Pre-signing reconciliation</p>
+                      <p className="text-sm font-medium">Check the amounts before signing</p>
                       <p className="mt-1 text-sm">
                         {readiness.amountsReconciled
-                          ? "Draft allocations reconcile across this order."
+                          ? "Draft amounts add up across this order."
                           : "Draft allocations need correction before they can be finalized."}
                       </p>
                       <p className="mt-1 text-sm text-ink-soft">
@@ -601,7 +601,7 @@ export default async function AgreementDetailPage({
                               <dt>Setup fee allocated here</dt><dd>{formatMoney(charge.setupFeeCents)}</dd>
                             </div>
                             <div className="flex justify-between gap-3">
-                              <dt>Down payment for this agreement</dt><dd>{formatMoney(charge.downPaymentCents)}</dd>
+                              <dt>Down payment for this rental</dt><dd>{formatMoney(charge.downPaymentCents)}</dd>
                             </div>
                             <div className="flex justify-between gap-3 font-semibold">
                               <dt>Draft subtotal before tax</dt><dd>{formatMoney(charge.signingSubtotalCents)}</dd>

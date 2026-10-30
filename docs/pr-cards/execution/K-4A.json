@@ -108,7 +108,7 @@
   "checks": {
     "unit": [
       "tests/uploads-photo-route.test.ts",
-      "tests/desk-navigation.test.ts",
+      "tests/w8-menu-sections.test.ts",
       "tests/owner-guide-coverage.test.ts"
     ],
     "db": [

@@ -61,8 +61,10 @@ test("business records: masked number, file attach, admin boundary, export pack"
     docId = page.url().split("/").pop() ?? "";
 
     // The list (All tab) shows both, with kind pills and the masked number.
+    // (The kit list renders each record twice — phone cards + desktop
+    // table — so assert on the visible row, as the CRM workspace spec does.)
     await page.goto("/desk/paperwork?tab=all");
-    await expect(page.getByRole("link", { name: `Liability policy ${tag}` })).toBeVisible();
+    await expect(page.locator("main tr:visible, main li:visible").filter({ hasText: `Liability policy ${tag}` }).first()).toBeVisible();
     await expect(page.getByText("Policy number ••••7766")).toBeVisible();
     await expect(page.getByText(policyNumber)).toHaveCount(0);
 
@@ -78,7 +80,7 @@ test("business records: masked number, file attach, admin boundary, export pack"
     const adminContext = await browser.newContext({ storageState: admin });
     const adminPage = await adminContext.newPage();
     await adminPage.goto("/desk/paperwork?tab=all");
-    await expect(adminPage.getByRole("link", { name: `Articles copy ${tag}` })).toBeVisible();
+    await expect(adminPage.locator("main tr:visible, main li:visible").filter({ hasText: `Articles copy ${tag}` }).first()).toBeVisible();
     await expect(adminPage.getByRole("link", { name: `Liability policy ${tag}` })).toHaveCount(0);
     await adminPage.goto(`/desk/paperwork/${recordId}`);
     await expect(adminPage.getByText(`Liability policy ${tag}`)).toHaveCount(0);
