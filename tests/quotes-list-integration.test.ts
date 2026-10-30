@@ -129,8 +129,21 @@ describe.skipIf(!enabled)("quotes list (real Postgres)", () => {
 
   it("search finds by quote number digits and by lead name", async () => {
     const sent = await prisma.estimate.findUniqueOrThrow({ where: { id: byKey.get("sentCust")! } });
-    const byNumber = await getQuotes({ tab: "open", q: String(sent.estimateNumber), pageSize: 500 });
-    expect(mine(byNumber.rows)).toEqual([sent.id]);
+    const digits = String(sent.estimateNumber);
+    const byNumber = await getQuotes({ tab: "open", q: digits, pageSize: 500 });
+    // The number match is a contains-match on the digits, so the exact
+    // expectation is every open fixture whose number contains them (on a
+    // fresh database the numbers are small and substrings collide).
+    const openKeys = ["draftCust", "sentCust", "viewedLead", "changesCust", "draftLead"];
+    const myNumbers = await prisma.estimate.findMany({
+      where: { id: { in: openKeys.map((k) => byKey.get(k)!) } },
+      select: { id: true, estimateNumber: true },
+    });
+    const expected = myNumbers
+      .filter((e) => String(e.estimateNumber).includes(digits))
+      .map((e) => e.id);
+    expect(expected).toContain(sent.id);
+    expect(new Set(mine(byNumber.rows))).toEqual(new Set(expected));
     const byName = await getQuotes({ tab: "open", q: "larry", pageSize: 500 });
     expect(new Set(mine(byName.rows))).toEqual(new Set([byKey.get("viewedLead"), byKey.get("draftLead")]));
   });

@@ -132,8 +132,12 @@ async function makeThread(opts: {
   await prisma.businessPhoneNumber.create({
     data: { id: numberId, accountId, address: "+13035550197", providerNumberId: `qm-${tag}`, registrationStatus: "APPROVED", verifiedAt: new Date() },
   });
+  // ContactPoint addresses are unique per environment+channel, and specs
+  // in a shard share one database in parallel — derive this fixture's
+  // address from its random tag instead of planting a shared constant.
+  const address = `+1303555${String(1000 + (Number.parseInt(tag.slice(0, 6), 16) % 9000))}`;
   await prisma.contactPoint.create({
-    data: { id: pointId, environment: "TEST", channel: "SMS", address: "+13035550221" },
+    data: { id: pointId, environment: "TEST", channel: "SMS", address },
   });
   await prisma.communicationThread.create({
     data: {
