@@ -53,7 +53,7 @@ export async function rtcToolList(ctx: AgentContext, query = "", limit = 10) {
   const tools = await rtcTools(ctx);
   return tools.filter(tool => !needle || tool.name.includes(needle) ||
     (tool.description ?? "").toLowerCase().includes(needle))
-    .slice(0, Math.max(1, Math.min(limit, 20))).map(publicTool);
+    .slice(0, Math.max(1, Math.min(limit, 100))).map(publicTool);
 }
 
 export async function rtcToolDescribe(ctx: AgentContext, name: string) {
