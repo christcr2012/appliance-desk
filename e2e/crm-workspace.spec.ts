@@ -12,17 +12,31 @@ test.beforeEach(() => {
   );
 });
 async function customerUrl(page: Page) {
-  await page.goto("/desk/customers");
   const email =
     process.env.TEST_CUSTOMER_EMAIL ?? "ci-customer@example.test";
+  // CU-1 (AR-4c): the Customers list opens on the Active segment and its rows
+  // no longer print the customer's email, so find the CI customer through the
+  // list's own search across all segments (the search matches email). The row
+  // locator scopes to the list itself — the Customers section nav is also
+  // `main li` elements. The desktop row link opens the SidePanel (?open=<id>)
+  // and a phone card links straight to the record; both carry the customer
+  // id the record URL needs.
+  await page.goto(
+    `/desk/customers?segment=all&q=${encodeURIComponent(email)}`,
+  );
   const row = page
-    .locator("main tr:visible, main li:visible")
-    .filter({ hasText: email })
+    .locator(
+      "main table tbody tr:visible, main ul[aria-label='Customers'] li:visible",
+    )
     .first();
   await expect(row).toBeVisible();
   const link = row.getByRole("link").first();
   await expect(link).toBeVisible();
-  return (await link.getAttribute("href"))!;
+  const linkHref = (await link.getAttribute("href"))!;
+  const customerId =
+    new URL(linkHref, "https://desk.invalid").searchParams.get("open") ??
+    linkHref.split("/").pop()!;
+  return `/desk/customers/${customerId}`;
 }
 for (const width of [360, 768, 1440])
   for (const theme of ["light", "dark"]) {

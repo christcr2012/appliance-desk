@@ -15,6 +15,7 @@ import { readZoneSettings, zoneForPoint } from "@/domains/delivery/zone";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
 import { leadContactKeys } from "./keys";
+import { customerContactKeys } from "@/domains/customers/keys";
 import { recordRealContactInTx, markFirstContactInTx } from "./contact";
 import { chooseOwnerForNewLeadInTx, lockLeadAssignmentInTx } from "./assignment";
 import { findDuplicateForNewLeadInTx } from "./duplicates";
@@ -793,6 +794,7 @@ export async function convertLeadToCustomerInTx(
       data: {
         userId: account.id,
         phone: lead.phone,
+        ...customerContactKeys({ phone: lead.phone }),
         isBusiness: lead.isBusiness,
         isPropertyManager: lead.isPropertyManager,
         companyName: lead.companyName,

@@ -2,6 +2,23 @@
 
 Migration `20261217000000_notifications` adds `Notification` (one row per recipient per event: kind, title, body, in-app link, optional entity pointer, `dedupeKey`, `readAt`; unique on (`userId`, `dedupeKey`) so a replayed event can never double-notify; newest-first index on (`userId`, `createdAt`)) and `NotificationPreference` (per person per kind: `inApp`, `email`; unique on (`userId`, `kind`); no row = in app on, email off), plus `BusinessSettings.notificationKeepDays` (integer, default 90; how long read notifications are kept, edited in Settings › Advanced). Kinds: LEAD_NEW, QUOTE_VIEWED, SIGNATURE_DONE, PAYMENT_FAILED, APPROVAL_REQUESTED. Backup policy: notifications are left out of backups (`null` — short-lived, losing them loses nothing); preferences are backed up as `notificationPreference`. A privacy deletion removes the customer's notifications by their lead/estimate/agreement/invoice ids; an access reduction removes the kinds the person can no longer open.
 
+## October 29 — CU-1 Customers list (AR-4c, additive migration 20261026040000_customer_list)
+
+`Customer.phoneDigits` (digits-only phone key, backfilled from `phone`, maintained by
+`customerContactKeys` at every write that sets phone — the LD-1 pattern; privacy deletion
+clears it with the phone). Trigram GIN indexes for list search: `Customer.companyName`,
+`ServiceAddress.line1`, `ServiceAddress.city`, `User.name`, and `lower("User"."email")`
+(expression index, SQL-only). Composite btrees `RentalAgreement(customerId, status)`,
+`Invoice(customerId, status, dueDate)`, `Job(customerId, status, scheduledAt)`. View
+`customer_list_v1` (raw SQL, read via `prisma.$queryRaw`, no Prisma model): one row per
+customer with `archivedAt IS NULL AND NOT isWalkIn`, computing live — per the CUSTOMERS
+spec's design change there is no stored summary table — active/pending/ended agreement
+counts, monthly rent over ACTIVE agreements, owed + oldest open due date under the Bills
+money rule (open statuses with more due than paid), next visit (time + type), next bill
+date, ending date, next pickup, autopay flag, property count and oldest-address city.
+"Past due" and past-due cents are computed in the reading query (Denver start-of-today),
+never in the view.
+
 ## October 28 — AR-9 Insights (additive)
 
 Migration `20261030000000_lead_closed_at` adds `Lead.closedAt` (nullable timestamp; set when a lead is marked LOST or converted to a customer, cleared when a closed lead reopens, set on the merged-away lead at a merge; index on (`status`, `closedAt`)). The migration backfills it from each closed lead's newest `lead.status`/`lead.convert` audit row; leads closed before audit history existed keep null, and Insights says so. The same migration adds `BusinessSettings.goalQuietDays` (integer, default 7; the settings save validates 0–15) and `BusinessSettings.goalBehindPercent` (integer, default 75; validated 50–100): how long a goal may sit quiet and how far through the period it may be before it shows as behind, edited in Settings › Goals. No new models, so the backup manifest is unchanged.
