@@ -19,10 +19,14 @@ test("owner sets up the starter checklist, records a date and number, and sees i
     await page.getByRole("button", { name: "Set up my starter records" }).click();
     await expect(page.getByRole("button", { name: "Add any missing starter records" })).toBeVisible();
     await page.goto("/desk/paperwork?tab=all");
-    await expect(page.getByRole("link", { name: "Get your federal EIN" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Colorado yearly report (periodic report)" })).toBeVisible();
+    // The kit list renders each record twice (phone cards + desktop table);
+    // work with the visible row, as the CRM workspace spec does.
+    const einRow = page.locator("main tr:visible, main li:visible").filter({ hasText: "Get your federal EIN" }).first();
+    await expect(einRow).toBeVisible();
+    const coloradoRow = page.locator("main tr:visible, main li:visible").filter({ hasText: "Colorado yearly report (periodic report)" }).first();
+    await expect(coloradoRow).toBeVisible();
 
-    await page.getByRole("link", { name: "Colorado yearly report (periodic report)" }).click();
+    await coloradoRow.getByRole("link").first().click();
     await expect(page.getByRole("heading", { name: "Colorado yearly report (periodic report)", level: 1 })).toBeVisible();
     await page.getByLabel("Number (optional)").fill("TEST-NUMBER-9876");
     await page.getByLabel("Next action date").fill("2027-02-15");
@@ -31,9 +35,10 @@ test("owner sets up the starter checklist, records a date and number, and sees i
 
     await expect(page).toHaveURL(/\/desk\/paperwork$/);
     await page.goto("/desk/paperwork?tab=all");
-    await expect(page.getByText(/Due 2027-02-15/)).toBeVisible();
+    const savedRow = page.locator("main tr:visible, main li:visible").filter({ hasText: "Colorado yearly report (periodic report)" }).first();
+    await expect(savedRow.getByText(/Due 2027-02-15/)).toBeVisible();
     // The number is only ever shown masked on the list.
-    await expect(page.getByText("Number ••••9876")).toBeVisible();
+    await expect(savedRow.getByText("Number ••••9876")).toBeVisible();
     await expect(page.getByText("TEST-NUMBER-9876")).toHaveCount(0);
 
     for (const width of [360, 1280]) {

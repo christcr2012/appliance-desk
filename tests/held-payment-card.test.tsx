@@ -29,7 +29,7 @@ beforeEach(() => {
 it("explains each choice in plain words and marks the recommended one", () => {
   render(<ul><HeldPaymentCard {...props} /></ul>);
   expect(screen.getByText("Recommended")).toBeTruthy();
-  expect(screen.getAllByText(/Mark the invoice paid/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/Mark the bill paid/).length).toBeGreaterThan(0);
   expect(screen.getByText(/Take the write-off back/)).toBeTruthy();
   expect(screen.getByText(/Choose this only if the customer asks for it/)).toBeTruthy();
   expect(screen.getByText(/Send the money back to the card/)).toBeTruthy();
@@ -55,7 +55,7 @@ it("does nothing if the owner cancels the confirmation", async () => {
 it("shows the error and changes nothing on screen when the decision fails", async () => {
   m.resolve.mockResolvedValueOnce({ status: "error", message: "This payment has already been dealt with." });
   render(<ul><HeldPaymentCard {...props} /></ul>);
-  fireEvent.click(screen.getByRole("button", { name: "Mark invoice paid" }));
+  fireEvent.click(screen.getByRole("button", { name: "Mark bill paid" }));
   expect((await screen.findByRole("alert")).textContent).toMatch(/already been dealt with/);
   expect(m.refresh).not.toHaveBeenCalled();
 });

@@ -12,11 +12,23 @@ export type AccessibilityRoute = {
   manualOnlyReason?: string;
 };
 
+/**
+ * Ids global setup creates (or finds) on the throwaway CI database and writes
+ * to e2e/.fixtures.json — automated fixtures below reference them as {key}.
+ */
+export const FIXTURE_KEYS = [
+  "customerId", "agreementId", "invoiceId", "estimateId", "leadId",
+  "maintenanceId", "threadId", "applianceId", "partId", "purchaseOrderId",
+  "purchaseId", "supplierId", "depositId", "filingId", "paperworkId",
+  "noticeId", "incidentId", "saleId", "taxPeriodId", "taxAccountId",
+  "useTaxPeriodId",
+] as const;
+
 export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   {
     path: "/connect/consent", role: "OWNER",
     fixture: "A registered SDK OAuth client with a valid pending authorization code and active owner login",
-    manualOnlyReason: "A live client approval request and a time-limited OAuth authorization code are required.",
+    manualOnlyReason: "A live client approval request and a time-limited OAuth authorization code are required; the consent round trip is covered by tests/mcp-oauth-roundtrip-integration.test.ts.",
   },
   { path: "/", role: "PUBLIC", fixture: "/" },
   { path: "/accessibility", role: "PUBLIC", fixture: "/accessibility" },
@@ -34,30 +46,22 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     path: "/tenant/repair/[token]",
     role: "PUBLIC",
     fixture: "An individually created time-limited one-use link for a permitted current occupant",
-    manualOnlyReason: "The token is short-lived and one-use, requiring a controlled tenant and assigned-appliance fixture.",
+    manualOnlyReason: "One-use token route: the token is short-lived and one-use, and the tenant repair options behind it are covered by tests/location-contacts-integration.test.ts.",
   },
-  {
-    path: "/estimate/[id]",
-    role: "PUBLIC",
-    fixture: "A real public estimate link in an isolated test database",
-    manualOnlyReason:
-      "The public estimate page requires a generated estimate id with a valid customer-visible state; CI does not create a stable public estimate id.",
-  },
+  { path: "/estimate/[id]", role: "PUBLIC", fixture: "/estimate/{estimateId}" },
   { path: "/forgot-password", role: "PUBLIC", fixture: "/forgot-password" },
   {
     path: "/launch/confirm/[token]",
     role: "PUBLIC",
     fixture: "A newly issued launch confirmation token",
-    manualOnlyReason:
-      "Launch confirmation tokens are single-use and expire; a fixed token would make the accessibility test stateful and non-repeatable.",
+    manualOnlyReason: "One-use token route: launch confirmation tokens are single-use and expire; the confirmation action is covered by tests/public-launch-rate-limits.test.ts.",
   },
   { path: "/join/[code]", role: "PUBLIC", fixture: "/join/not-a-real-link" },
   {
     path: "/w9/[token]",
     role: "PUBLIC",
     fixture: "A newly issued one-time W-9 request link for a test supplier",
-    manualOnlyReason:
-      "W-9 links are single-use and expire in 14 days; a fixed token would make the accessibility test stateful and non-repeatable.",
+    manualOnlyReason: "One-use token route: W-9 links are single-use and expire in 14 days; the W-9 request flow is covered by tests/w9-integration.test.ts.",
   },
   { path: "/login", role: "PUBLIC", fixture: "/login" },
   { path: "/login/two-factor", role: "PUBLIC", fixture: "/login/two-factor" },
@@ -67,19 +71,12 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     path: "/sign/[id]",
     role: "PUBLIC",
     fixture: "A real unsigned agreement signing link in an isolated test database",
-    manualOnlyReason:
-      "The signing page requires a generated agreement in a signable state; a fixed agreement id would mutate and expire across runs.",
+    manualOnlyReason: "The signing page requires a generated agreement in a signable state, which viewing changes; the signing flow is covered by e2e/signing-multilocation-order.spec.ts.",
   },
 
   { path: "/account", role: "CUSTOMER", fixture: "/account" },
   { path: "/account/billing", role: "CUSTOMER", fixture: "/account/billing" },
-  {
-    path: "/account/billing/invoice/[invoiceId]",
-    role: "CUSTOMER",
-    fixture: "The CI customer's generated paid invoice",
-    manualOnlyReason:
-      "The customer seed creates the invoice with a generated id; its authorization behavior is covered separately by customer-isolation tests.",
-  },
+  { path: "/account/billing/invoice/[invoiceId]", role: "CUSTOMER", fixture: "/account/billing/invoice/{invoiceId}" },
   { path: "/account/maintenance", role: "CUSTOMER", fixture: "/account/maintenance" },
   { path: "/account/properties", role: "CUSTOMER", fixture: "/account/properties" },
   { path: "/account/rentals", role: "CUSTOMER", fixture: "/account/rentals" },
@@ -100,85 +97,38 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   {
     path: "/desk/communications/calls/[id]", role: "OWNER",
     fixture: "A signed Twilio voicemail or missed call in an isolated database",
-    manualOnlyReason:
-      "The private call id is generated by provider ingestion; dedicated database/authorization cases create this state.",
+    manualOnlyReason: "The private call id is generated by provider ingestion; call timelines are covered by tests/communication-timeline-integration.test.ts.",
   },
-  {
-    path: "/desk/communications/[id]", role: "OWNER",
-    fixture: "A private communication thread in an isolated database",
-    manualOnlyReason: "Each thread contains private message content and requires a created signed-provider fixture.",
-  },
+  { path: "/desk/communications/[id]", role: "OWNER", fixture: "/desk/communications/{threadId}" },
   { path: "/desk/activity", role: "OWNER", fixture: "/desk/activity" },
   {
     path: "/desk/agreements/[id]/cancel", role: "OWNER",
     fixture: "An undelivered rental agreement in isolated CI storage",
-    manualOnlyReason: "Requires a per-test agreement id and active authenticated owner; the dedicated Playwright spec covers the review and accessibility.",
+    manualOnlyReason: "Requires a per-test agreement id and active authenticated owner; covered by e2e/pre-delivery-cancellation.spec.ts.",
   },
   {
     path: "/desk/agreements/[id]/early-return",
     role: "OWNER",
     fixture: "A generated fixed-term active agreement eligible for early return",
-    manualOnlyReason:
-      "Eligibility depends on agreement terms and dates; the CI seed does not expose a deterministic agreement id/state for this page.",
+    manualOnlyReason: "Eligibility depends on agreement terms and dates, which the CI seed does not pin down; covered by tests/early-return-integration.test.ts.",
   },
-  {
-    path: "/desk/agreements/[id]",
-    role: "OWNER",
-    fixture: "A generated rental agreement in the isolated CI database",
-    manualOnlyReason:
-      "The seeded agreement id is generated per run; agreement presentation and behavior have dedicated browser/integration coverage.",
-  },
-  { path: "/desk/agreements/[id]/ending-decision", role: "OWNER", fixture: "Active fixed-term agreement ending within the notice window in a disposable database", manualOnlyReason: "Needs an active fixed-term agreement; the W-4 database test supplies it and the page redirects to a draft on each choice." },
-  { path: "/desk/agreements/[id]/refund", role: "OWNER", fixture: "Approved cancellation in a disposable database", manualOnlyReason: "An owner-only verified refund liability is required; dedicated DB/browser tests supply this fixture." },
+  { path: "/desk/agreements/[id]", role: "OWNER", fixture: "/desk/agreements/{agreementId}" },
+  { path: "/desk/agreements/[id]/ending-decision", role: "OWNER", fixture: "Active fixed-term agreement ending within the notice window in a disposable database", manualOnlyReason: "Needs an active fixed-term agreement ending within the notice window; covered by tests/rental-turning-points-w4-integration.test.ts." },
+  { path: "/desk/agreements/[id]/refund", role: "OWNER", fixture: "Approved cancellation in a disposable database", manualOnlyReason: "An owner-only verified refund liability is required; covered by e2e/pre-delivery-refund.spec.ts." },
   { path: "/desk/agreements/new", role: "OWNER", fixture: "/desk/agreements/new" },
   { path: "/desk/agreements", role: "OWNER", fixture: "/desk/agreements" },
   { path: "/desk/automations", role: "OWNER", fixture: "/desk/automations" },
-  {
-    path: "/desk/billing/customer/[id]/invoice/[invoiceId]",
-    role: "OWNER",
-    fixture: "A generated customer and invoice pair in the isolated CI database",
-    manualOnlyReason:
-      "Both ids are generated by the CI customer fixture; financial isolation is covered by dedicated billing/customer-isolation tests.",
-  },
-  {
-    path: "/desk/billing/customer/[id]",
-    role: "OWNER",
-    fixture: "A generated customer id in the isolated CI database",
-    manualOnlyReason:
-      "The customer fixture id is generated per run; the customer billing workspace has dedicated browser coverage.",
-  },
-  {
-    path: "/desk/billing/deposits/[id]",
-    role: "OWNER",
-    fixture: "A generated deposit-liability row",
-    manualOnlyReason:
-      "This page requires a specific deposit-liability record that is not seeded with a deterministic id.",
-  },
+  { path: "/desk/billing/customer/[id]/invoice/[invoiceId]", role: "OWNER", fixture: "/desk/billing/customer/{customerId}/invoice/{invoiceId}" },
+  { path: "/desk/billing/customer/[id]", role: "OWNER", fixture: "/desk/billing/customer/{customerId}" },
+  { path: "/desk/billing/deposits/[id]", role: "OWNER", fixture: "/desk/billing/deposits/{depositId}" },
   { path: "/desk/billing/held-payments", role: "OWNER", fixture: "/desk/billing/held-payments" },
   { path: "/desk/billing", role: "OWNER", fixture: "/desk/billing" },
   { path: "/desk/billing/reconciliation", role: "OWNER", fixture: "/desk/billing/reconciliation" },
   { path: "/desk/compliance", role: "OWNER", fixture: "/desk/compliance" },
   { path: "/desk/compliance/facts", role: "OWNER", fixture: "/desk/compliance/facts" },
-  {
-    path: "/desk/compliance/[id]",
-    role: "OWNER",
-    fixture: "A generated compliance filing id",
-    manualOnlyReason:
-      "The CI seed does not create a deterministic filing id; filing behavior is covered by the compliance workflow tests.",
-  },
-  {
-    path: "/desk/customers/[id]",
-    role: "OWNER",
-    fixture: "A generated customer id in the isolated CI database",
-    manualOnlyReason:
-      "The CI customer id is generated per run; customer workspace behavior is covered by dedicated browser tests.",
-  },
-  {
-    path: "/desk/customers/[id]/locations",
-    role: "OWNER",
-    fixture: "A customer with created location contacts in disposable CI storage",
-    manualOnlyReason: "The client identifier changes per run; e2e/location-contacts.spec.ts exercises an authenticated owner/customer fixture.",
-  },
+  { path: "/desk/compliance/[id]", role: "OWNER", fixture: "/desk/compliance/{filingId}" },
+  { path: "/desk/customers/[id]", role: "OWNER", fixture: "/desk/customers/{customerId}" },
+  { path: "/desk/customers/[id]/locations", role: "OWNER", fixture: "/desk/customers/{customerId}/locations" },
   { path: "/desk/customers/new", role: "OWNER", fixture: "/desk/customers/new" },
   { path: "/desk/customers", role: "OWNER", fixture: "/desk/customers" },
   { path: "/desk/dashboard", role: "OWNER", fixture: "/desk/dashboard" },
@@ -186,13 +136,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/more", role: "OWNER", fixture: "/desk/more" },
   { path: "/desk/account", role: "OWNER", fixture: "/desk/account" },
   { path: "/desk/driver", role: "STAFF", fixture: "/desk/driver" },
-  {
-    path: "/desk/estimates/[id]",
-    role: "OWNER",
-    fixture: "A generated estimate id",
-    manualOnlyReason:
-      "The estimate detail route requires a generated record and has dedicated estimate browser/integration coverage.",
-  },
+  { path: "/desk/estimates/[id]", role: "OWNER", fixture: "/desk/estimates/{estimateId}" },
   { path: "/desk/estimates/new", role: "OWNER", fixture: "/desk/estimates/new" },
   { path: "/desk/estimates", role: "OWNER", fixture: "/desk/estimates" },
   { path: "/desk/phone-orders", role: "OWNER", fixture: "/desk/phone-orders" },
@@ -237,50 +181,21 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     fixture: "A possible recall match found by the nightly check",
     manualOnlyReason: "CI cannot reach the government recall list, so no match exists; the flow is covered by tests/ops1-recalls-integration.test.ts.",
   },
-  {
-    path: "/desk/recalls/incidents/[id]",
-    role: "OWNER",
-    fixture: "A safety incident someone marked from a repair request or job",
-    manualOnlyReason: "CI seeds no safety incident; the flow is covered by tests/ops1-recalls-integration.test.ts.",
-  },
+  { path: "/desk/recalls/incidents/[id]", role: "OWNER", fixture: "/desk/recalls/incidents/{incidentId}" },
   { path: "/desk/inventory/retired", role: "OWNER", fixture: "/desk/inventory/retired" },
   { path: "/desk/jobs/[id]", role: "OWNER", fixture: "/desk/jobs/ci-security-job" },
   { path: "/desk/jobs/[id]/work-order", role: "OWNER", fixture: "/desk/jobs/ci-security-job/work-order" },
   { path: "/desk/jobs/new", role: "OWNER", fixture: "/desk/jobs/new" },
   { path: "/desk/jobs", role: "OWNER", fixture: "/desk/jobs" },
   { path: "/desk/launch", role: "OWNER", fixture: "/desk/launch" },
-  {
-    path: "/desk/leads/[id]",
-    role: "OWNER",
-    fixture: "A generated lead id",
-    manualOnlyReason:
-      "The CI seed does not create a deterministic lead id; lead detail behavior is covered by lead workflow tests.",
-  },
+  { path: "/desk/leads/[id]", role: "OWNER", fixture: "/desk/leads/{leadId}" },
   { path: "/desk/leads/new", role: "OWNER", fixture: "/desk/leads/new" },
   { path: "/desk/leads", role: "OWNER", fixture: "/desk/leads" },
-  {
-    path: "/desk/maintenance/[id]",
-    role: "OWNER",
-    fixture: "A generated maintenance request id",
-    manualOnlyReason:
-      "The CI seed does not create a deterministic maintenance-request id; request detail behavior has dedicated tests.",
-  },
+  { path: "/desk/maintenance/[id]", role: "OWNER", fixture: "/desk/maintenance/{maintenanceId}" },
   { path: "/desk/maintenance", role: "OWNER", fixture: "/desk/maintenance" },
-  {
-    path: "/desk/notices/[id]/resolve",
-    role: "OWNER",
-    fixture: "A generated unresolved customer notice",
-    manualOnlyReason:
-      "The page requires a live unresolved notice whose state changes when resolved; fixed reusable fixture data would be unsafe.",
-  },
+  { path: "/desk/notices/[id]/resolve", role: "OWNER", fixture: "/desk/notices/{noticeId}/resolve" },
   { path: "/desk/notices", role: "OWNER", fixture: "/desk/notices" },
-  {
-    path: "/desk/parts/[id]",
-    role: "OWNER",
-    fixture: "A generated part id",
-    manualOnlyReason:
-      "The CI seed does not create a deterministic part record; inventory-part behavior is covered by real-Postgres tests.",
-  },
+  { path: "/desk/parts/[id]", role: "OWNER", fixture: "/desk/parts/{partId}" },
   { path: "/desk/paperwork", role: "OWNER", fixture: "/desk/paperwork" },
   { path: "/desk/setup-guide", role: "OWNER", fixture: "/desk/setup-guide" },
   { path: "/desk/setup-guide/[key]", role: "OWNER", fixture: "/desk/setup-guide/ein" },
@@ -289,52 +204,26 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     path: "/desk/vault/[id]",
     role: "OWNER",
     fixture: "A generated vault credential id",
-    manualOnlyReason:
-      "Vault logins are created by the owner; the CI seed has none. Item behavior is covered by real-Postgres tests.",
+    manualOnlyReason: "Vault logins are created by the owner with encrypted secrets the seed cannot hold; covered by e2e/vault.spec.ts.",
   },
   {
     path: "/emergency/[token]",
     role: "PUBLIC",
     fixture: "A generated emergency link token",
-    manualOnlyReason:
-      "Emergency links are issued by the owner on demand and ship switched off; the public page behavior is covered by real-Postgres tests.",
+    manualOnlyReason: "One-use token route: emergency links are issued by the owner on demand and ship switched off; covered by tests/vault-integration.test.ts.",
   },
   { path: "/desk/vehicle", role: "OWNER", fixture: "/desk/vehicle" },
   { path: "/desk/insurance", role: "OWNER", fixture: "/desk/insurance" },
-  {
-    path: "/desk/paperwork/[id]",
-    role: "OWNER",
-    fixture: "A generated paperwork item id",
-    manualOnlyReason:
-      "Paperwork items are created by the owner from the starter checklist; the CI seed has none. Item behavior is covered by real-Postgres tests.",
-  },
+  { path: "/desk/paperwork/[id]", role: "OWNER", fixture: "/desk/paperwork/{paperworkId}" },
   { path: "/desk/paperwork/new", role: "OWNER", fixture: "/desk/paperwork/new" },
   { path: "/desk/parts", role: "OWNER", fixture: "/desk/parts" },
   { path: "/desk/privacy", role: "OWNER", fixture: "/desk/privacy" },
   { path: "/desk/privacy-security", role: "OWNER", fixture: "/desk/privacy-security" },
   { path: "/desk/sales", role: "OWNER", fixture: "/desk/sales" },
   { path: "/desk/sales/new", role: "OWNER", fixture: "/desk/sales/new" },
-  {
-    path: "/desk/sales/[id]",
-    role: "OWNER",
-    fixture: "A generated shop-sale invoice id",
-    manualOnlyReason:
-      "A sale needs completed tax setup and a sellable part, which the CI seed does not create; sale behavior is covered by real-Postgres tests.",
-  },
-  {
-    path: "/desk/purchase-orders/[id]",
-    role: "OWNER",
-    fixture: "A generated purchase order id",
-    manualOnlyReason:
-      "Purchase-order detail requires a generated order and mutable lifecycle state; dedicated purchasing browser tests cover it.",
-  },
-  {
-    path: "/desk/purchases/[id]",
-    role: "OWNER",
-    fixture: "A generated purchase id",
-    manualOnlyReason:
-      "Purchase detail needs a recorded purchase; real-Postgres purchase tests and the record-a-purchase browser test cover it.",
-  },
+  { path: "/desk/sales/[id]", role: "OWNER", fixture: "/desk/sales/{saleId}" },
+  { path: "/desk/purchase-orders/[id]", role: "OWNER", fixture: "/desk/purchase-orders/{purchaseOrderId}" },
+  { path: "/desk/purchases/[id]", role: "OWNER", fixture: "/desk/purchases/{purchaseId}" },
   { path: "/desk/purchases/new", role: "OWNER", fixture: "/desk/purchases/new" },
   { path: "/desk/purchases", role: "OWNER", fixture: "/desk/purchases" },
   { path: "/desk/purchase-orders/new", role: "OWNER", fixture: "/desk/purchase-orders/new" },
@@ -352,7 +241,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/books/budget", role: "OWNER", fixture: "/desk/books/budget" },
   { path: "/desk/books/budget/review/[id]", role: "OWNER",
     fixture: "An immutable saved month-end report snapshot id in isolated Postgres",
-    manualOnlyReason: "Requires an owner-published historical evidence row with a generated private identifier; dedicated owner report and source-role tests exercise archive reading.",
+    manualOnlyReason: "Requires an owner-published month-end snapshot with a full report payload; covered by tests/budget-reports-integration.test.ts.",
   },
   { path: "/desk/books/closing", role: "OWNER", fixture: "/desk/books/closing" },
   { path: "/desk/books/assets", role: "OWNER", fixture: "/desk/books/assets" },
@@ -404,13 +293,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/settings/preview-storage", role: "OWNER", fixture: "/desk/settings/preview-storage" },
   { path: "/desk/settings/telecom", role: "OWNER", fixture: "/desk/settings/telecom" },
   { path: "/desk/settings/website", role: "OWNER", fixture: "/desk/settings/website" },
-  {
-    path: "/desk/suppliers/[id]",
-    role: "OWNER",
-    fixture: "A generated supplier id",
-    manualOnlyReason:
-      "The CI seed does not create a deterministic supplier id; supplier lifecycle behavior is covered by supplier tests.",
-  },
+  { path: "/desk/suppliers/[id]", role: "OWNER", fixture: "/desk/suppliers/{supplierId}" },
   { path: "/desk/suppliers/new", role: "OWNER", fixture: "/desk/suppliers/new" },
   { path: "/desk/suppliers", role: "OWNER", fixture: "/desk/suppliers" },
   { path: "/desk/sales-tax/areas", role: "OWNER", fixture: "/desk/sales-tax/areas" },
@@ -419,41 +302,24 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/sales-tax/delivery-fees", role: "OWNER", fixture: "/desk/sales-tax/delivery-fees" },
   { path: "/desk/sales-tax/exemptions", role: "OWNER", fixture: "/desk/sales-tax/exemptions" },
   { path: "/desk/sales-tax/returns", role: "OWNER", fixture: "/desk/sales-tax/returns" },
-  {
-    path: "/desk/sales-tax/returns/[periodId]",
-    role: "OWNER",
-    fixture: "A real private tax filing period in isolated PostgreSQL",
-    manualOnlyReason: "The route requires a valid tax filing period ID; a static public ID does not exist.",
-  },
+  { path: "/desk/sales-tax/returns/[periodId]", role: "OWNER", fixture: "/desk/sales-tax/returns/{taxPeriodId}" },
   {
     path: "/desk/sales-tax/returns/[periodId]/amend",
     role: "OWNER",
     fixture: "A filed tax period with a detected open amendment",
-    manualOnlyReason: "A realistic amendment needs an actual filed return and stored correction evidence.",
+    manualOnlyReason: "A realistic amendment needs an actual filed return and stored correction evidence; covered by tests/tax-filing-finalization-integration.test.ts.",
   },
 
   { path: "/desk/sales-tax", role: "OWNER", fixture: "/desk/sales-tax" },
   { path: "/desk/sales-tax/setup", role: "OWNER", fixture: "/desk/sales-tax/setup" },
   { path: "/desk/sales-tax/taxability", role: "OWNER", fixture: "/desk/sales-tax/taxability" },
-  {
-    path: "/desk/sales-tax/setup/accounts/[id]",
-    role: "OWNER",
-    fixture: "One tax filing account created in the isolated test database",
-    manualOnlyReason:
-      "An account editor needs a real private filing account id; static page inventory cannot assume an account exists.",
-  },
+  { path: "/desk/sales-tax/setup/accounts/[id]", role: "OWNER", fixture: "/desk/sales-tax/setup/accounts/{taxAccountId}" },
   { path: "/desk/sales-tax/audit-pack", role: "OWNER", fixture: "/desk/sales-tax/audit-pack" },
   { path: "/desk/sales-tax/record-retention", role: "OWNER", fixture: "/desk/sales-tax/record-retention" },
   { path: "/desk/sales-tax/rules", role: "OWNER", fixture: "/desk/sales-tax/rules" },
   { path: "/desk/sales-tax/use-tax/settings", role: "OWNER", fixture: "/desk/sales-tax/use-tax/settings" },
   { path: "/desk/sales-tax/use-tax", role: "OWNER", fixture: "/desk/sales-tax/use-tax" },
-  {
-    path: "/desk/sales-tax/use-tax/[periodId]",
-    role: "OWNER",
-    fixture: "A generated consumer-use-tax filing period with a valid state account",
-    manualOnlyReason:
-      "A current private worksheet requires a generated consumer use-tax period id; its server-side authorization and packet behavior are verified separately.",
-  },
+  { path: "/desk/sales-tax/use-tax/[periodId]", role: "OWNER", fixture: "/desk/sales-tax/use-tax/{useTaxPeriodId}" },
   { path: "/desk/tasks", role: "OWNER", fixture: "/desk/tasks" },
   { path: "/desk/today", role: "OWNER", fixture: "/desk/today" },
 ];

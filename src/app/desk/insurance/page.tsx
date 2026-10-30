@@ -78,7 +78,10 @@ export default async function InsurancePage() {
                 </details>
                 <details className="mt-1">
                   <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Request a certificate of insurance</summary>
-                  <p className="mb-2 text-sm text-ink-soft">For a property manager who needs proof of insurance. This writes the email to your agent for you to read and send. Nothing is sent by the app.</p>
+                  <p className="mb-2 text-sm text-ink-soft">
+                    For a property manager who needs proof of insurance. This writes the email to your agent
+                    for you to read and send. Nothing is sent by the app.
+                  </p>
                   <InsuranceForm action={certificateAction.bind(null, p.id)} submit="Write the email">
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label="Who is asking" name="requesterName" required />
@@ -102,8 +105,15 @@ export default async function InsurancePage() {
       <Card title="Workers' compensation" description="Required in Colorado once you have employees.">
         <div id="workers-comp" className="space-y-3">
           <p className="text-sm">{workersCompSummary({ status: s.workersCompStatus, note: s.workersCompNote, formSentOnText: s.workersCompFormSentOn ? dateText(s.workersCompFormSentOn) : null, mailNumber: s.workersCompMailNumber })}</p>
-          {o.workersCompRequired ? <p role="status" className="text-sm font-semibold">Workers&apos; compensation insurance is required now: you have employees. Add the policy above as &ldquo;Workers&apos; compensation&rdquo; and set the status to &ldquo;A policy is in place&rdquo;.</p> : null}
-          <p className="text-sm text-ink-soft">An LLC member who owns at least 10% may be able to opt out of coverage for themselves; the common way is a written rejection kept on file. Ask your agent or attorney. Starting value: not recorded — not confirmed.</p>
+          {o.workersCompRequired ? <p role="status" className="text-sm font-semibold">
+            Workers&apos; compensation insurance is required now: you have employees. Add the policy above
+            as &ldquo;Workers&apos; compensation&rdquo; and set the status to &ldquo;A policy is in place&rdquo;.
+          </p> : null}
+          <p className="text-sm text-ink-soft">
+            An LLC member who owns at least 10% may be able to opt out of coverage for themselves;
+            the common way is a written rejection kept on file. Ask your agent or attorney.
+            Starting value: not recorded — not confirmed.
+          </p>
           <InsuranceForm action={workersCompAction} submit="Save">
             <div className="grid gap-3 md:grid-cols-2">
               <Select label="Status" name="status" defaultValue={s.workersCompStatus} options={[["NOT_SET", "Not recorded yet"], ["NO_EMPLOYEES_REJECTED", "No employees; coverage rejected as an LLC member"], ["POLICY_IN_PLACE", "A policy is in place"]]} />

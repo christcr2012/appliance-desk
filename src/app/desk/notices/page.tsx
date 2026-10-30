@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/session";
-import { Card, EmptyState, PageHeader } from "@/components/ui";
+import { Card, EmptyState } from "@/components/ui";
+import { ScreenHeader } from "@/components/kit";
 import { listWaitingNotices } from "@/domains/notices";
 import { formatBusinessDate } from "@/lib/business-date";
 import { NoticeCard } from "./notice-card";
@@ -12,10 +13,10 @@ export default async function NoticesPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Notices waiting to go out"
-        description="Messages a customer is owed, such as the reminder before an automatic renewal. Each notice is saved exactly as written."
-      />
+      <ScreenHeader title="Notices waiting to go out" />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Messages a customer is owed, such as the reminder before an automatic renewal. Each notice is saved exactly as written.
+      </p>
 
       <div className="mb-6">
         <Card title="How this works">

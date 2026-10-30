@@ -10,9 +10,9 @@ import {
   ButtonLink,
   DataList,
   EmptyState,
-  PageHeader,
   type DataListColumn,
 } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { SupplierDetailClient } from "./supplier-detail-client";
 import { SupplierArchiveButton } from "./supplier-archive-button";
 import { W9Panel } from "./w9-panel";
@@ -87,14 +87,14 @@ export default async function SupplierDetailPage({
 
   return (
     <div className="max-w-3xl">
-      <PageHeader
+      <RecordHeader
         title={supplier.name}
-        description="Supplier contact details, purchasing availability, and purchase-order history."
-        secondaryActions={
-          <ButtonLink href="/desk/suppliers" variant="secondary">
-            All suppliers
-          </ButtonLink>
-        }
+        subtitle="Supplier contact details, purchasing availability, and purchase-order history."
+        contact={{
+          phone: supplier.phone ?? undefined,
+          email: supplier.email ?? undefined,
+        }}
+        back={{ href: "/desk/suppliers", label: "Suppliers" }}
       />
 
       <div className="space-y-6">

@@ -9,7 +9,7 @@ export function AgreementDeliveryOfferPanel({agreementId,initial,version,editabl
   const [busy,start]=useTransition();
   const [notice,setNotice]=useState("");
   return <section className="space-y-3 rounded border border-line p-4">
-    <h2 className="font-semibold">Offer customer delivery choices for this agreement</h2>
+    <h2 className="font-semibold">Offer customer delivery choices for this rental</h2>
     <p className="text-sm text-ink-soft">1–4 dates, morning or afternoon. No customer self-booking.
       A signed payment must be verified before anyone can confirm the visit.</p>
     <p className="text-xs text-ink-soft">Offer version {version}</p>

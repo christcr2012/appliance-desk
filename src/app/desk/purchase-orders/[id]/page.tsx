@@ -3,13 +3,12 @@ import { requireRole } from "@/lib/session";
 import { getPurchaseOrderById } from "@/domains/purchasing";
 import { formatCents } from "@/domains/pricing";
 import {
-  ButtonLink,
   Card,
   DataList,
-  PageHeader,
   StatusPill,
   type DataListColumn,
 } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import type { StatusTone } from "@/components/status-badge";
 import { PurchaseOrderActionsPanel } from "./purchase-order-actions-panel";
 import { loadReceiptTaxSteps } from "@/domains/purchasing/receipt-tax";
@@ -100,26 +99,21 @@ export default async function PurchaseOrderDetailPage({
 
   return (
     <div className="max-w-4xl">
-      <PageHeader
+      <RecordHeader
         title={order.supplier.name}
-        description={`Created ${new Date(
+        subtitle={`Created ${new Date(
           order.createdAt,
         ).toLocaleDateString()} by ${
           order.createdBy.name ?? order.createdBy.email
         }`}
-        secondaryActions={
-          <>
-            <ButtonLink
-              href={`/desk/suppliers/${order.supplier.id}`}
-              variant="secondary"
-            >
-              Supplier
-            </ButtonLink>
-            <ButtonLink href="/desk/purchase-orders" variant="secondary">
-              All purchase orders
-            </ButtonLink>
-          </>
-        }
+        back={{ href: "/desk/purchase-orders", label: "Purchase orders" }}
+        actions={[
+          {
+            kind: "link",
+            label: "Supplier",
+            href: `/desk/suppliers/${order.supplier.id}`,
+          },
+        ]}
       />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">

@@ -1,14 +1,12 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { getPurchaseOrders } from "@/domains/purchasing";
 import { formatCents } from "@/domains/pricing";
 import {
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
+import { DataTable, ScreenHeader, type Column } from "@/components/kit";
 import type { StatusTone } from "@/components/status-badge";
 
 export const metadata = { title: "Purchase orders" };
@@ -22,23 +20,26 @@ const STATUS_TONE: Record<string, StatusTone> = {
 
 type PurchaseOrderRow = Awaited<ReturnType<typeof getPurchaseOrders>>[number];
 
-export default async function PurchaseOrdersPage() {
+export default async function PurchaseOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string }>;
+}) {
   await requireRole("OWNER", "ADMIN");
+  const { open } = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Purchase orders have no side panel — the record page IS the destination,
+  // as it was before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/purchase-orders/${encodeURIComponent(open)}`);
   const orders = await getPurchaseOrders();
 
-  const columns: DataListColumn<PurchaseOrderRow>[] = [
+  const columns: Column<PurchaseOrderRow>[] = [
     {
       key: "order",
       header: "Purchase order",
-      primary: true,
       cell: (order) => (
         <div>
-          <Link
-            href={`/desk/purchase-orders/${order.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
-            {order.supplier.name}
-          </Link>
+          <span className="font-semibold text-ink">{order.supplier.name}</span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             {order.lines.length} {order.lines.length === 1 ? "line" : "lines"}
             {" · "}
@@ -82,19 +83,31 @@ export default async function PurchaseOrdersPage() {
 
   return (
     <div>
-      <PageHeader
+      <ScreenHeader
         title="Purchase orders"
-        description="Parts and supplies you've ordered, and whether they've arrived."
-        primaryAction={{
+        list
+        primary={{
+          kind: "link",
           href: "/desk/purchase-orders/new",
           label: "New purchase order",
         }}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Parts and supplies you&apos;ve ordered, and whether they&apos;ve arrived.
+      </p>
 
-      <DataList
+      <DataTable
         rows={orders}
+        rowKey={(order) => order.id}
         columns={columns}
         caption="Purchase orders"
+        rowHref={(order) => `/desk/purchase-orders/${order.id}`}
+        mobileCard={(order) => (
+          <div>
+            {columns[0].cell(order)}
+            <div className="mt-2">{columns[1].cell(order)}</div>
+          </div>
+        )}
         empty={
           <EmptyState
             title="No purchase orders yet"

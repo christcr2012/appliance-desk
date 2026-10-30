@@ -26,7 +26,7 @@ export async function listHeldPaymentAttention(limit: number): Promise<Rows> {
     rows: payments.map((p): ExceptionItem => ({
       category: "HELD_PAYMENT_DECISION", severity: "high",
       title: name(p.invoice.customer) + "'s " + dollars(p.amountCents) + " payment is on hold",
-      detail: "Money arrived for invoice #" + p.invoice.invoiceNumber + " after it was written off or cancelled. Decide: mark it paid, keep it as credit, or refund it.",
+      detail: "Money arrived for bill #" + p.invoice.invoiceNumber + " after it was written off or cancelled. Decide: mark it paid, keep it as credit, or refund it.",
       href: "/desk/billing/held-payments", amountCents: p.amountCents, since: p.createdAt,
       primaryAction: { href: "/desk/billing/held-payments", label: "Decide" },
     })),

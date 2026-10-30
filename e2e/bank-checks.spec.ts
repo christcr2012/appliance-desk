@@ -17,7 +17,7 @@ test("K-CASH-3 links from existing Bank evidence workspace",async({page})=>{
  await page.goto("/desk/settings/features");
  const switchedOn=(await page.getByRole("switch",{name:"Bank statements"}).getAttribute("aria-checked"))==="true";
  await page.goto("/desk/books/cash");
- const link=page.getByRole("link",{name:"Bank checks and statement reconciliation"});
+ const link=page.getByRole("link",{name:"Bank checks and statement check"});
  await expect(link).toHaveCount(switchedOn?1:0);
  if(switchedOn) await expect(link).toHaveAttribute("href","/desk/books/cash/checks");
  // The bank checks page still works directly for an authorized owner.

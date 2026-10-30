@@ -1,14 +1,11 @@
 import { requireRole } from "@/lib/session";
 import { listPrivacyRequestsForOwner } from "@/domains/privacy";
-import {
-  Button,
+import { Button,
   ButtonLink,
   Card,
   EmptyState,
   Field,
-  PageHeader,
-  StatusPill,
-} from "@/components/ui";
+    StatusPill } from "@/components/ui";
 import {
   fulfillPrivacyDeletionAction,
   rejectPrivacyRequestAction,
@@ -46,10 +43,12 @@ export default async function DeskPrivacyPage({
 
   return (
     <div className="max-w-4xl">
-      <PageHeader
-        title="Privacy requests"
-        description="Verify identity before fulfilling a request. Deletion removes or pseudonymizes personal data but preserves invoices, payments, signed agreements, document evidence, notices and audit records that the business must keep."
-      />
+      <h1 className="text-xl font-semibold">Privacy requests</h1>
+      <p className="mt-1 text-sm text-ink-soft">
+        Verify identity before fulfilling a request. Deletion removes or pseudonymizes personal data
+        but preserves invoices, payments, signed agreements, document evidence, notices and audit records
+        that the business must keep.
+      </p>
 
       {params.updated && (
         <p

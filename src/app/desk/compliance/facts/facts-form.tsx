@@ -223,7 +223,7 @@ export function FactsForm(props: Props) {
       </label>
 
       <fieldset className="space-y-4 border-t border-border pt-5">
-        <legend className="text-sm font-semibold text-ink">Write-offs: when the business began, and the home office</legend>
+        <legend className="text-sm font-semibold text-ink">Amounts you gave up on: when the business began, and the home office</legend>
         <p className={helpCls}>
           The day the business began decides which early expenses count as start-up costs. Leave it blank and
           the app uses the earlier of the first appliance available and the first lead from the public site —

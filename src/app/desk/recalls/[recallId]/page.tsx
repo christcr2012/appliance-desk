@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
-import { Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { formatBusinessDate } from "@/lib/business-date";
 import { getRecallDetail } from "@/domains/recalls/reads";
 import { draftRenterMessage } from "@/domains/recalls/hold";
@@ -16,8 +16,7 @@ export default async function RecallPage({ params }: { params: Promise<{ recallI
   if (!recall) notFound();
   return (
     <div className="space-y-6">
-      <Link href="/desk/recalls" className="text-sm text-ink-soft hover:underline">&larr; Back to recalls</Link>
-      <PageHeader title={recall.title} />
+      <RecordHeader title={recall.title} back={{ href: "/desk/recalls", label: "Recalls" }} />
       <Card title="What the government says">
         <dl className="grid gap-2 text-sm">
           <div><dt className="font-semibold">Recall number</dt><dd>{recall.recallNumber}{recall.publishedAt ? ` · posted ${formatBusinessDate(recall.publishedAt)}` : ""}</dd></div>
@@ -28,7 +27,8 @@ export default async function RecallPage({ params }: { params: Promise<{ recallI
       </Card>
       <section aria-label="Appliances that may be covered" className="space-y-3">
         <h2 className="text-lg font-semibold text-ink">Your appliances that may be covered</h2>
-        <p className="text-sm text-ink-soft">Check the model number on the machine&apos;s label against the notice. Choosing &ldquo;It&apos;s ours&rdquo; puts the machine on hold: it can&apos;t be rented, reserved, swapped in or sold until you record the fix.</p>
+        <p className="text-sm text-ink-soft">Check the model number on the machine&apos;s label against the notice.</p>
+        <p className="text-sm text-ink-soft">Choosing &ldquo;It&apos;s ours&rdquo; puts the machine on hold until you record the fix: no renting, reserving, swapping in or selling it.</p>
         <ul className="space-y-3">
           {recall.matches.map((match) => (
             <MatchRow

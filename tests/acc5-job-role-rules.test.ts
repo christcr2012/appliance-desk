@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   JobRoleError, SCREENS, SCREEN_KEYS, STARTER_JOB_ROLES, jobRoleAllowsPath, screenForPath, validateJobRole,
 } from "@/domains/team/job-role-rules";
-import { deskMoreLinks, deskNavigation } from "@/lib/desk-navigation";
+import { visibleAreas, visibleProfileLinks } from "@/lib/desk-areas";
 import { CAPABILITY_KEYS } from "@/domains/capabilities/labels";
 
 // ACC-5 rules with no database: which address belongs to which screen, what a job role allows, what it can never be.
@@ -57,20 +57,18 @@ describe("job role screens", () => {
   });
 
   it("every screen address in the menu belongs to a known screen", () => {
-    const links = [...deskNavigation("OWNER").flatMap((g) => g.links), ...deskMoreLinks("OWNER")];
+    const links = [...visibleAreas("OWNER", null).flatMap((a) => a.tabs), ...visibleProfileLinks("OWNER", null)];
     for (const link of links) expect(screenForPath(link.href), link.href).not.toBeNull();
   });
 
   it("the menu and More page only show what the job role includes", () => {
     const driver = STARTER_JOB_ROLES.find((r) => r.id === "jobrole-driver")!;
-    const hrefs = deskNavigation("STAFF", driver.screens).flatMap((g) => g.links.map((l) => l.href));
+    const hrefs = visibleAreas("STAFF", driver.screens).flatMap((a) => a.tabs.map((t) => t.href));
     expect(hrefs).toContain("/desk/today");
     expect(hrefs).toContain("/desk/dispatch");
     expect(hrefs).not.toContain("/desk/customers");
     expect(hrefs).not.toContain("/desk/more");
-    expect(deskMoreLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/account", "/desk/activity", "/desk/help", "/desk/feedback/new"]);
-    // No job role: exactly what the access level gave before.
-    expect(deskNavigation("STAFF", null)).toEqual(deskNavigation("STAFF"));
+    expect(visibleProfileLinks("STAFF", driver.screens).map((l) => l.href)).toEqual(["/desk/account", "/desk/activity", "/desk/help", "/desk/feedback/new"]);
   });
 });
 

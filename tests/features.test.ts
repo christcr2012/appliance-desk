@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   FEATURES, FEATURE_KEYS, automaticFeatureReasons, isFeatureKey, isHrefHidden, savedFeatureKeys, shownFeatureKeys,
 } from "@/domains/features/registry";
-import { deskNavigation, deskMoreLinks } from "@/lib/desk-navigation";
+import { visibleAreas, visibleProfileLinks } from "@/lib/desk-areas";
 import { practiceAppUrl } from "@/domains/features/practice";
 
 describe("AR-12 feature visibility (navigation only)", () => {
@@ -39,13 +39,13 @@ describe("AR-12 feature visibility (navigation only)", () => {
   it("filters menu links only after role and job-role checks, never granting staff money access", () => {
     const allShown = new Set(FEATURE_KEYS);
     const noFeatures = new Set<never>();
-    const owner = deskNavigation("OWNER", null, allShown).flatMap(g => g.links.map(l => l.href));
+    const owner = visibleAreas("OWNER", null, allShown).flatMap(a => a.tabs.map(t => t.href));
     expect(owner).toContain("/desk/dispatch");
-    expect(deskNavigation("OWNER", null, noFeatures).flatMap(g => g.links.map(l => l.href))).not.toContain("/desk/dispatch");
-    expect(deskNavigation("STAFF", ["customers"], allShown).flatMap(g => g.links.map(l => l.href))).not.toContain("/desk/billing");
-    expect(deskNavigation("STAFF", ["customers"], allShown).flatMap(g => g.links.map(l => l.href))).not.toContain("/desk/dispatch");
-    expect(deskMoreLinks("ADMIN", null, allShown).some(l => l.href === "/desk/settings/permissions")).toBe(false);
-    expect(deskNavigation("ACCOUNTANT", null, noFeatures).flatMap(g => g.links.map(l => l.href))).not.toContain("/desk/settings");
+    expect(visibleAreas("OWNER", null, noFeatures).flatMap(a => a.tabs.map(t => t.href))).not.toContain("/desk/dispatch");
+    expect(visibleAreas("STAFF", ["customers"], allShown).flatMap(a => a.tabs.map(t => t.href))).not.toContain("/desk/billing");
+    expect(visibleAreas("STAFF", ["customers"], allShown).flatMap(a => a.tabs.map(t => t.href))).not.toContain("/desk/dispatch");
+    expect(visibleProfileLinks("ADMIN", null).some(l => l.href === "/desk/settings/permissions")).toBe(false);
+    expect(visibleAreas("ACCOUNTANT", null, noFeatures).flatMap(a => a.tabs.map(t => t.href))).not.toContain("/desk/settings");
   });
 
   it("only shows Practice with a safe configured HTTPS URL and never in testing", () => {

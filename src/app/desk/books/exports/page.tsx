@@ -30,14 +30,18 @@ export default async function BooksExportsPage({searchParams}:{
   <header className="space-y-2">
    <Link href="/desk/books" className="underline">Back to Books and accounts</Link>
    <h1 className="text-2xl font-bold">Accounting exports</h1>
-   <p className="text-muted-foreground">Prepare an immutable journal file for your bookkeeper. This does not send a file to QuickBooks or Xero or move any money. Test a file in a trial accounting company before real use.</p>
+   <p className="text-muted-foreground">Prepare an immutable journal file for your bookkeeper.
+    This does not send a file to QuickBooks or Xero or move any money.
+    Test a file in a trial accounting company before real use.</p>
    {params.notice&&<p role="alert" className="rounded border border-border p-3">Export needs attention: {params.notice.slice(0,600)}</p>}
    {params.imported&&<p role="alert">Already imported: the original archived file is available for inspection, not a second upload.</p>}
    {recent&&<p role="status" className="rounded border border-border p-3">Export archived. <Link className="underline" href={`/desk/books/exports/download/${encodeURIComponent(recent.id)}`}>Download {recent.fileName}</Link></p>}
   </header>
   <section className="space-y-3 rounded-lg border border-border p-4">
    <h2 className="font-semibold text-lg">Create a mapped export</h2>
-   <p>QuickBooks default is journal detail to preserve individual bank matching. A daily summary combines many journal sources and cannot reliably match bank lines. All accounts used in the journal must be mapped for this target. <Link href="/desk/books" className="underline">Edit account mappings in Books.</Link> Dates include both endpoints in Colorado time.</p>
+   <p>QuickBooks default is journal detail to preserve individual bank matching.
+    A daily summary combines many journal sources and cannot reliably match bank lines.
+    All accounts used in the journal must be mapped for this target. <Link href="/desk/books" className="underline">Edit account mappings in Books.</Link> Dates include both endpoints in Colorado time.</p>
    <form action={runBookExportAction} className="grid gap-3 sm:grid-cols-2">
     <label htmlFor="books-export-target">Accounting software</label><select id="books-export-target" name="target" required className={input}>
      {TARGETS.map(x=><option key={x} value={x}>{names[x]}</option>)}
@@ -51,7 +55,8 @@ export default async function BooksExportsPage({searchParams}:{
       <option value="SIMPLE_START">Simple Start</option><option value="ESSENTIALS">Essentials</option>
       <option value="PLUS">Plus</option><option value="OTHER">Other or not yet verified</option>
     </select></label>
-    <label className="sm:col-span-2 flex items-start gap-2"><input type="checkbox" name="qboSummaryRiskAccepted" className="mt-1"/>I accept that QuickBooks daily summary combines journals and may prevent matching individual bank rows. Required only for that advanced mode.</label>
+    <label className="sm:col-span-2 flex items-start gap-2"><input type="checkbox" name="qboSummaryRiskAccepted" className="mt-1"/>I accept that QuickBooks daily summary combines journals and may prevent matching individual bank rows.
+    Required only for that advanced mode.</label>
     <label>From (Colorado date)<input type="date" name="from" defaultValue={currentMonth} required className={input}/></label>
     <label>Through (Colorado date)<input type="date" name="to" defaultValue={today} required className={input}/></label>
     <label className="sm:col-span-2 inline-flex items-start gap-2"><input type="checkbox" name="onlyNew" defaultChecked className="mt-1"/>Only journal entries not yet included in a prior export for the selected accounting software</label>
@@ -61,7 +66,8 @@ export default async function BooksExportsPage({searchParams}:{
   <section className="space-y-3 rounded-lg border border-border p-4">
    <h2 className="text-lg font-semibold">Prior immutable exports</h2>
    <p className="text-sm text-muted-foreground">A QuickBooks CSV is <strong>PREPARED / possibly imported</strong> until an owner records a witnessed outcome. Downloading alone never confirms import, and QuickBooks is not connected.</p>
-   <p className="text-sm text-muted-foreground">A previously generated file keeps the original bytes, even if you later rename accounts or correct entries. Re-download an old batch for audit or trial import.</p>
+   <p className="text-sm text-muted-foreground">A previously generated file keeps the original bytes, even if you later rename accounts or correct entries.
+    Re-download an old batch for audit or trial import.</p>
    {history.length===0?<p>No export batches have been saved.</p>:
     <div className="overflow-x-auto"><table className="min-w-full text-sm">
      <caption className="text-left text-muted-foreground pb-2">{history.length} most recent batches (up to 100)</caption>
@@ -80,7 +86,10 @@ export default async function BooksExportsPage({searchParams}:{
 
   <section aria-labelledby="qbo-delivery-review" className="space-y-3 rounded-lg border border-border p-4">
    <h2 id="qbo-delivery-review" className="text-lg font-semibold">QuickBooks import and delivery review</h2>
-   <p className="text-sm text-muted-foreground">A file can have been imported remotely even when Appliance Desk cannot see it. Prepared or unverified exports block another overlapping file. Only mark failed-before-import if you know no QuickBooks upload started. Imported files remain archived; do not upload them twice.</p>
+   <p className="text-sm text-muted-foreground">A file can have been imported remotely even when Appliance Desk cannot see it.
+    Prepared or unverified exports block another overlapping file.
+    Only mark failed-before-import if you know no QuickBooks upload started.
+    Imported files remain archived; do not upload them twice.</p>
    {qboHistory.length===0?<p>No QuickBooks journal exports yet.</p>:
     <div className="space-y-4">{qboHistory.map(batch=>
      <article key={batch.id} className="space-y-2 rounded border border-border p-3">
@@ -133,11 +142,16 @@ export default async function BooksExportsPage({searchParams}:{
    <ol className="list-decimal pl-6 space-y-1">
     <li>Check the actual QuickBooks edition permits Journal Entries import. An advertised Free edition is not verified by this screen.</li>
     <li>Match the chart of accounts by names, including Parent:Child for subaccounts. Prepare DETAIL CSV.</li>
-    <li>In QuickBooks, use Settings → Import Data → Journal Entries; map journal number, date, account, description, debits and credits before import.</li>
-    <li>Compare imported entry count and balanced journal amounts, then the bank register and statement beginning/ending balance. Capture private trial-company report reference.</li>
-    <li>If the import may have started but the outcome is uncertain, keep PREPARED and investigate inside QuickBooks rather than preparing a duplicate CSV.</li>
+    <li>In QuickBooks, use Settings → Import Data → Journal Entries;
+     map journal number, date, account, description, debits and credits before import.</li>
+    <li>Compare imported entry count and balanced journal amounts,
+     then the bank register and statement beginning/ending balance.
+     Capture private trial-company report reference.</li>
+    <li>If the import may have started but the outcome is uncertain, keep PREPARED and investigate inside QuickBooks
+     rather than preparing a duplicate CSV.</li>
    </ol>
-   <p className="text-sm text-muted-foreground">No QuickBooks API, bank transfer or accounting close happens here; an owner-attested test is not independently verified real-account acceptance.</p>
+   <p className="text-sm text-muted-foreground">No QuickBooks API, bank transfer or accounting close happens here;
+    an owner-attested test is not independently verified real-account acceptance.</p>
   </section>
  </div>;
 }
