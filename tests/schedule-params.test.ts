@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseVisitsParams } from "@/app/desk/jobs/params";
+import { parseBoardParams } from "@/app/desk/dispatch/params";
 
 describe("parseVisitsParams", () => {
   it("defaults to Upcoming, soonest first", () => {
@@ -56,5 +57,34 @@ describe("parseVisitsParams", () => {
     expect(parsed.who).toBe("unassigned");
     expect(parsed.q).toBe("ruiz");
     expect(parsed.when).toBe("next-week");
+  });
+});
+
+describe("parseBoardParams", () => {
+  it("defaults to the day view with no date, who or open visit", () => {
+    expect(parseBoardParams({})).toEqual({
+      view: "day",
+      date: undefined,
+      who: undefined,
+      open: undefined,
+    });
+  });
+
+  it("accepts the week and agenda views and a real calendar date", () => {
+    expect(parseBoardParams({ view: "week" }).view).toBe("week");
+    expect(parseBoardParams({ view: "agenda" }).view).toBe("agenda");
+    expect(parseBoardParams({ date: "2026-10-30" }).date).toBe("2026-10-30");
+  });
+
+  it("rejects impossible or misshapen dates and unknown views", () => {
+    expect(parseBoardParams({ date: "2026-02-30" }).date).toBeUndefined();
+    expect(parseBoardParams({ date: "10/30/2026" }).date).toBeUndefined();
+    expect(parseBoardParams({ view: "month" }).view).toBe("day");
+  });
+
+  it("passes who and open through, trimmed", () => {
+    const parsed = parseBoardParams({ who: " unassigned ", open: " job-1 " });
+    expect(parsed.who).toBe("unassigned");
+    expect(parsed.open).toBe("job-1");
   });
 });
