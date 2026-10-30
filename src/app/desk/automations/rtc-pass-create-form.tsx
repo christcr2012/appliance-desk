@@ -7,23 +7,23 @@ export function CreateRtcPassForm() {
     secret: null, expiresAt: null, error: null,
   });
   return (
-    <div className="space-y-3">
-      <form action={action} className="space-y-3">
+    <div className="min-w-0 max-w-full space-y-3">
+      <form action={action} className="min-w-0 max-w-full space-y-3">
         <label className="block text-sm font-medium">Pass label
           <input name="label" minLength={3} maxLength={80} required
             placeholder="My toolkit connection"
-            className="mt-1 block w-full rounded-control border border-line-strong bg-surface p-2" />
+            className="mt-1 block w-full min-w-0 max-w-full rounded-control border border-line-strong bg-surface p-2" />
         </label>
         <label className="block text-sm font-medium">Expires after
           <select name="days" defaultValue="1"
-            className="mt-1 block w-full rounded-control border border-line-strong bg-surface p-2">
+            className="mt-1 block w-full min-w-0 max-w-full rounded-control border border-line-strong bg-surface p-2">
             <option value="1">24 hours (recommended)</option>
             <option value="7">7 days</option>
             <option value="30">30 days (maximum)</option>
           </select>
         </label>
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="decisionsRead" className="mt-1" />
+        <label className="flex min-w-0 items-start gap-2 text-sm">
+          <input type="checkbox" name="decisionsRead" className="mt-1 shrink-0" />
           Also allow reading the status of business decisions (not their private answers)
         </label>
         <button type="submit" disabled={pending}

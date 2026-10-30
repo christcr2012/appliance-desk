@@ -12,7 +12,7 @@ export async function RtcPassConnections({ ownerId }: { ownerId: string }) {
   });
   return (
     <section id="rtc-passes" aria-labelledby="rtc-passes-heading"
-      className="mb-6 min-w-0 max-w-full space-y-3 rounded-card border border-line bg-surface p-4">
+      className="mb-6 min-w-0 max-w-full space-y-3 rounded-card border border-line bg-surface p-4 [overflow-wrap:anywhere]">
       <h2 id="rtc-passes-heading" className="text-base font-bold text-ink">
         Advanced: Robinson Toolkit pass (optional)
       </h2>
@@ -24,7 +24,7 @@ export async function RtcPassConnections({ ownerId }: { ownerId: string }) {
       {passes.length > 0 && <ul className="space-y-2">
         {passes.map(pass => {
           const active = !pass.revokedAt && pass.expiresAt > new Date();
-          return <li key={pass.id} className="rounded-control border border-line p-3 text-sm">
+          return <li key={pass.id} className="min-w-0 max-w-full rounded-control border border-line p-3 text-sm [overflow-wrap:anywhere]">
             <span className="font-medium">{pass.label}</span> — {active ? "Active" : "Expired or revoked"}
             <p className="text-ink-soft">{pass.scopes.join(", ")} · Expires {pass.expiresAt.toISOString().slice(0, 10)}</p>
             {active ? <form action={revokeRtcPassAction} className="mt-2">
