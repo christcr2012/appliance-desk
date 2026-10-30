@@ -15,16 +15,34 @@ test("draft and reserved line survive refresh with discounted pricing and one ch
 }, info) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 360, height: 900 });
-  await page.goto("/desk/customers");
+  // CU-1 (AR-4c): the Customers list opens on the Active segment and its rows
+  // no longer print the customer's email, so find the CI customer through the
+  // list's own search across all segments (the search matches email).
+  await page.goto(
+    `/desk/customers?segment=all&q=${encodeURIComponent(process.env.TEST_CUSTOMER_EMAIL!)}`,
+  );
+  // Scope to the list itself: the Customers section nav is also `main li`
+  // elements, so an unscoped first row is the Leads nav item.
   const customerRow = page
-    .locator("main tr:visible, main li:visible")
-    .filter({ hasText: process.env.TEST_CUSTOMER_EMAIL! })
+    .locator(
+      "main table tbody tr:visible, main ul[aria-label='Customers'] li:visible",
+    )
     .first();
   await expect(customerRow).toBeVisible();
   await customerRow.getByRole("link").first().click();
   // AR-0b: on the customer record, "New rental" is in the ⋯ menu at the top.
-  await page.getByRole("button", { name: /^More for / }).first().click();
-  await page.getByRole("menuitem", { name: "New rental", exact: true }).click();
+  // CU-1 (AR-4c): the record is now reached by a client-side navigation from
+  // the search, so its ⋯ button can be visible before the page has finished
+  // hydrating and an early click is swallowed. Keep opening the menu until
+  // its item is actually showing (the repo's toPass pattern), then click it.
+  const newRental = page.getByRole("menuitem", { name: "New rental", exact: true });
+  await expect(async () => {
+    if (!(await newRental.isVisible())) {
+      await page.getByRole("button", { name: /^More for / }).first().click();
+    }
+    await expect(newRental).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  await newRental.click();
   await page.getByRole("button", { name: "Next: term & fees" }).click();
   await page.getByLabel("Term (months, optional)").fill("6");
   await page.getByRole("button", { name: "Next: appliances" }).click();

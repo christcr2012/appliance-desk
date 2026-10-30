@@ -70,7 +70,8 @@
       "accountant-access.spec.ts",
       "delivery-area.spec.ts",
       "tax-benefits.spec.ts",
-      "ar9-insights.spec.ts"
+      "ar9-insights.spec.ts",
+      "customers-list.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",

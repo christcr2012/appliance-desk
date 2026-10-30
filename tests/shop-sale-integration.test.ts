@@ -10,7 +10,8 @@ import { createShopSale, cancelShopSale, returnShopSale, SaleTaxBlockedError } f
 import { recordManualPayment } from "@/domains/billing";
 import { WALK_IN_EMAIL } from "@/domains/sales/walk-in";
 import { PartOperationConflictError, findPartLedgerMismatches } from "@/domains/purchasing/ledger";
-import { getCustomers, getCustomersCount, getCustomersPage } from "@/domains/customers";
+import { getCustomers } from "@/domains/customers";
+import { getCustomerExportRows } from "@/domains/customers/list";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
 
 // Batch M, M-1C: a shop sale is a local invoice with stock taken out, taxed by where the goods go.
@@ -168,10 +169,10 @@ describe.skipIf(!enabled)("shop sales on real Postgres", () => {
     await createShopSale(ownerId, { operationKey: key(), customerId: null, walkInName: "Pat", location: "PICKUP", items: [{ partRecordId: part, quantity: 1, unitPriceCents: 1000 }] });
     const walkIn = await prisma.customer.findFirstOrThrow({ where: { isWalkIn: true } });
     expect((await getCustomers()).some((c) => c.id === walkIn.id)).toBe(false);
-    const total = await getCustomersCount();
-    const pages = await getCustomersPage(0, total + 5);
-    expect(pages.some((c) => c.id === walkIn.id)).toBe(false);
-    expect(pages.length).toBe(total);
+    const listed = await getCustomerExportRows({ segment: "all" });
+    const total = await prisma.customer.count({ where: { archivedAt: null, isWalkIn: false } });
+    expect(listed.some((c) => c.id === walkIn.id)).toBe(false);
+    expect(listed.length).toBe(total);
   });
 
   it("cancelling an unpaid sale voids it and restocks; a paid sale is refused; a second cancel changes nothing", async () => {
