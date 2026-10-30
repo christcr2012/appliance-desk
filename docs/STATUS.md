@@ -66,6 +66,18 @@ recorded in the slice commits: the header word is "Quotes"/"Messages" (the spec'
 and the quote money sums use raw SQL because the spec's groupBy shape cannot express
 price × quantity.
 
+## October 30 — W-11 PARKED at gate IN-61; PORTAL-1 started (Lane 4)
+
+W-11 (live Colorado GIS tax rates) is parked at its IN-61 contract gate: Chris
+confirmed 2026-10-30 that he cannot sign in to SUTS until he officially starts
+the LLC, and no date is set. The prerequisite is now recorded where the gate
+lives — the IN-61 row in docs/OWNER-INPUTS.md and the state section of
+docs/runbooks/colorado-gis-api.md. Production keeps the approved manual
+fallback (owner-confirmed rates only; new addresses stay "review this address"
+To dos). W-11 resumes the same day the SUTS API method documentation lands in
+the runbook. Lane 4's active card is now PORTAL-1 (customer portal redesign on
+the kit), started 2026-10-30 on ai/vivienne/portal-1.
+
 ## October 29 — AR-4c COMPLETE: Customers list (CU-1) merged (Lane 5)
 
 **What changed:** PR #761 merged (squash 125fb162): the CU-1 Customers list — the
