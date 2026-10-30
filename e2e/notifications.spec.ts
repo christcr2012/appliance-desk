@@ -114,7 +114,12 @@ test.describe("Notifications bell and preferences (AR-13)", () => {
     await bell.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("link", { name: "Choose what you get" })).toBeVisible();
-    const results = await new AxeBuilder({ page }).analyze();
+    // Same WCAG tag scope as every other axe scan in this repo (accessibility-route-helpers.ts
+    // AXE_TAGS). The unscoped default ruleset also runs best-practice rules (heading-order fired on
+    // this page's own h3s in CI), which the house standard deliberately excludes.
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+      .analyze();
     expect(results.violations).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("link", { name: "Choose what you get" })).toBeHidden();
