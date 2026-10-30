@@ -18,10 +18,7 @@ export default async function NotificationPreferencesPage() {
   return (
     <div className="max-w-2xl space-y-5">
       <Toaster />
-      <PageHeader
-        title="Your notifications"
-        description="Choose which notifications you get, and how. These choices are only yours."
-      />
+      <PageHeader title="Your notifications" />
       {preferences.length === 0 ? (
         <p className="rounded-card border border-line bg-surface p-4 text-sm text-ink">
           You don&apos;t get notifications yet.
@@ -29,8 +26,8 @@ export default async function NotificationPreferencesPage() {
       ) : (
         <>
           <p className="text-sm text-ink-soft">
-            Email is off to start so your inbox stays quiet; turn it on for the ones you never want
-            to miss.
+            These choices are only yours. Email is off to start so your inbox stays quiet; turn it
+            on for the ones you never want to miss.
           </p>
           {preferences.map((preference) => {
             const meta = KIND_META[preference.kind];
