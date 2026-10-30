@@ -38,3 +38,27 @@ export async function readRtcResult(ctx: AgentContext, handle: string, now = new
   if (!stillAuthorized) throw new Error("RTC_RESULT_NOT_FOUND");
   return result.payload;
 }
+
+/** Wire-level RTC 1 pages preserve UTF-8 boundaries and stay below 4 KB each. */
+export function pageRtcPayload(payload: unknown, requestedPage: number) {
+  const serialized = JSON.stringify(payload);
+  if (typeof serialized !== "string") throw new Error("RTC_RESULT_NOT_FOUND");
+  const byteSize = Buffer.byteLength(serialized, "utf8");
+  if (byteSize > 512_000) throw new Error("RTC_RESULT_SIZE_INVALID");
+  const chunks: string[] = [];
+  let part = "", bytes = 0;
+  for (const character of serialized) {
+    const length = Buffer.byteLength(character, "utf8");
+    if (bytes + length > 4096 && part) {
+      chunks.push(part); part = ""; bytes = 0;
+    }
+    part += character; bytes += length;
+  }
+  if (part) chunks.push(part);
+  if (!Number.isSafeInteger(requestedPage) || requestedPage < 1 ||
+      requestedPage > chunks.length || chunks.length > 256)
+    throw new Error("RTC_RESULT_NOT_FOUND");
+  return { page: requestedPage, pages: chunks.length, bytes: byteSize,
+    content: chunks[requestedPage - 1],
+    next: requestedPage < chunks.length ? requestedPage + 1 : null };
+}

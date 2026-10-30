@@ -80,8 +80,13 @@ export async function revokeRtcPass(ownerId: string, passId: string) {
 
 /** Same DB-backed limit for all server instances, never in-memory counters. */
 export async function authenticateRtcPass(request: Request): Promise<AgentContext | Response> {
-  const reject = () => new Response("RTC pass required.", { status: 401,
-    headers: { "Cache-Control": "no-store", "WWW-Authenticate": "Bearer" } });
+  const reject = (code: "permission" | "pass_revoked" | "pass_expired" | "rate_limited" = "permission",
+    status = 401) => Response.json({
+      ok: false, error: { code, what: "RTC pass not accepted",
+        cause: code === "rate_limited" ? "Too many requests" : "Pass is unavailable or lacks access",
+        todo: "Check or renew the owner's RTC pass", technical: "" },
+    }, { status, headers: { "Cache-Control": "no-store",
+      ...(status === 429 ? { "Retry-After": "60" } : { "WWW-Authenticate": "Bearer" }) } });
   // Neither URL nor query parameters are ever a credential transport.
   if (/rtc_pass_/i.test(request.url)) return reject();
   const auth = request.headers.get("authorization") ?? "";
@@ -91,9 +96,10 @@ export async function authenticateRtcPass(request: Request): Promise<AgentContex
   const pass = await prisma.agentPass.findUnique({ where: { digest: d }, include: {
     connection: { include: { user: { select: { id: true, name: true, role: true, archivedAt: true } } } },
   } });
-  if (!pass || pass.revokedAt || pass.expiresAt <= new Date() ||
-      pass.connection.kind !== "PASS" || pass.connection.revokedAt ||
-      pass.connection.user.archivedAt ||
+  if (!pass) return reject();
+  if (pass.revokedAt || pass.connection.revokedAt) return reject("pass_revoked");
+  if (pass.expiresAt <= new Date()) return reject("pass_expired");
+  if (pass.connection.kind !== "PASS" || pass.connection.user.archivedAt ||
       pass.connection.user.role !== "OWNER" ||
       pass.connection.userId !== pass.connection.user.id ||
       pass.profile !== "read_only" || pass.allowWrites ||
@@ -101,14 +107,13 @@ export async function authenticateRtcPass(request: Request): Promise<AgentContex
     return reject();
   if (await twoFactorEnrollmentRequired(pass.connection.userId, "OWNER")) return reject();
   if (await isRateLimited("rtc:" + pass.id, { max: 120, windowMs: 600_000 })) {
-    return new Response("RTC request limit exceeded.", { status: 429,
-      headers: { "Retry-After": "60", "Cache-Control": "no-store" } });
+    return reject("rate_limited", 429);
   }
   const stillLive = await prisma.agentPass.updateMany({
     where: { id: pass.id, revokedAt: null, expiresAt: { gt: new Date() } },
     data: { lastUsedAt: new Date() },
   });
-  if (stillLive.count !== 1) return reject();
+  if (stillLive.count !== 1) return reject("pass_revoked");
   return {
     userId: pass.connection.userId,
     name: pass.connection.user.name ?? "Owner",

@@ -6,7 +6,7 @@ async function oneServer(bucket: string): Promise<{ accepted: number; rejected: 
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath,
       ["--import", "tsx", "scripts/mcp9-rate-child.ts", bucket],
-      { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+      { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     let err = "";
     child.stdout.on("data", chunk => { out += String(chunk); });
@@ -14,9 +14,10 @@ async function oneServer(bucket: string): Promise<{ accepted: number; rejected: 
     child.on("error", reject);
     child.on("close", code => {
       if (code !== 0) {
-        const firstError = err.split(/\\r?\\n/).find(line => /Error|ERR_|Cannot|permission|Prisma/.test(line)) ?? "unknown child failure";
+        const firstError = err.split(/\r?\n/).find(line =>
+          /Error|ERR_|Cannot|permission|Prisma/.test(line)) ?? "unknown child failure";
         return reject(new Error("Synthetic limiter worker failed (exit " + code + "): " +
-          firstError.replace(/postgres(?:ql)?:\\/\\/\\S+/gi, "[redacted]").slice(0, 500)));
+          firstError.replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted]").slice(0, 500)));
       }
       try { resolve(JSON.parse(out)); } catch { reject(new Error("No valid limiter result")); }
     });

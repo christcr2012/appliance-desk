@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isRtcPass, newRtcPassSecret } from "@/domains/agent-control/passes";
+import { pageRtcPayload } from "@/domains/agent-control/rtc-results";
 
 describe("MCP-9 pinned RTC 1 pass credential shape", () => {
   it("uses 32 unpredictable bytes, strict base64url and exactly the pinned prefix", () => {
@@ -17,5 +18,21 @@ describe("MCP-9 pinned RTC 1 pass credential shape", () => {
     expect(isRtcPass("rtc_pass_" + "a".repeat(42))).toBe(false);
     expect(isRtcPass("rtc_pass_" + "a".repeat(44))).toBe(false);
     expect(isRtcPass("rtc_pass_" + "a".repeat(42) + "=")).toBe(false);
+  });
+});
+
+describe("MCP-9 UTF-8-bounded 24-hour result pages", () => {
+  it("returns contiguous <=4096-byte pages with exact round-trip UTF-8", () => {
+    const value = { content: "A 🧰 — ".repeat(2400), items: [1, 2, 3] };
+    const first = pageRtcPayload(value, 1);
+    expect(first.pages).toBeGreaterThan(2);
+    const all = Array.from({ length: first.pages }, (_, i) => pageRtcPayload(value, i + 1));
+    for (const row of all) {
+      expect(Buffer.byteLength(row.content, "utf8")).toBeLessThanOrEqual(4096);
+      expect(row.bytes).toBe(Buffer.byteLength(JSON.stringify(value), "utf8"));
+    }
+    expect(all.map(row => row.content).join("")).toBe(JSON.stringify(value));
+    expect(all.at(-1)?.next).toBeNull();
+    expect(() => pageRtcPayload(value, first.pages + 1)).toThrow("RTC_RESULT_NOT_FOUND");
   });
 });

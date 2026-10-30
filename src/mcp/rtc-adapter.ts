@@ -13,7 +13,7 @@ export const rtcJson = (payload: object, status = 200) =>
   Response.json(payload, { status, headers: flags });
 export const rtcError = (code: string, status = 400) => rtcJson({
   ok: false, error: { code, what: code, cause: "Request not accepted",
-    todo: "Check the granted pass and supported request", technical: null },
+    todo: "Check the granted pass and supported request", technical: "" },
 }, status);
 
 export async function rtcAuthorized(req: Request): Promise<Authorized> {
@@ -69,10 +69,10 @@ export async function rtcToolCall(ctx: AgentContext, name: string,
   if (result.isError) throw new Error("refused_by_guard");
   const payload = result.structuredContent ?? { content: result.content };
   const serialized = JSON.stringify(payload);
-  if (serialized.length <= 8192) return { ok: true, result: payload };
+  if (Buffer.byteLength(serialized, "utf8") <= 8192) return { ok: true, result: payload };
   // Keep the raw sanitized MCP output owned by this pass; never cut mid-JSON.
   const handle = await storeRtcResult(ctx, payload as Record<string, unknown>);
-  return { ok: true, result: { summary: "Result saved for 24 hours", count: 1 },
+  return { ok: true, result: { summary: "Result saved for 24 hours", count: 1, preview: serialized.slice(0, 512) },
     handle };
 }
 
