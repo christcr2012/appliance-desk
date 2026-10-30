@@ -1,3 +1,38 @@
+## October 30 — CU1-VIEW COMPLETE: customer_list_v1 view retired (Workshop card)
+
+**What changed:** the `customer_list_v1` view is dropped (migration
+`20261218000000_customer_list_view_retire`; PR #783). CU1-PERF had moved every
+production Customers read to grouped base-table aggregates and left the view
+"for other readers until a separate card retires it" — a repo-wide drift grep
+at main `f7794889` showed its only remaining readers were the two oracle
+queries in `tests/customer-list-integration.test.ts` (the CU-1 close-out
+guessed "the record page facts"; the record page reads no view at current
+main). The suite's oracle now computes the six segment facts from the base
+tables with plain Prisma reads, written from the fixture semantics and the
+CUSTOMERS spec definitions, sharing no SQL with `list.ts` (the one shared
+helper is `billOwedWhere`, the Bills money rule the suite already pins
+independently). Two stale comments in `segments.ts` were corrected; the
+facts type's origin sentence stays verbatim because a registered packet
+anchors on it. No table, column, index or data changes; no production
+behavior change. The CU-1 chain (AR-4c, CU1-PERF, CU1-VIEW) is closed.
+
+**How it was checked:** the whole card ran on the Workshop (chris-agent-01)
+end to end — clone, packet, build, verification and a real git push from the
+box. Packet CU1-VIEW registered and validated (`work-session check`).
+Workshop run-checks at head `9eb10646` in CI's shape (static + three unit
+shards, fresh databases via `prisma migrate deploy`, so the drop migration
+ran on every shard database): static green; unit shards 1 and 2 fully green
+(2,249 and 1,922 tests); `tests/customer-list-integration.test.ts` passed in
+both Workshop runs (7 tests). Declared honestly: Workshop shard 3 (and one
+shard-1 axe test) fail in unrelated suites (com-n1c, jobs-status-concurrency,
+ops5-dispute-rules, plus a rotating fourth) — the identical pattern
+reproduces on pristine main `f7794889` in the same runner on the same box
+(baseline run `checks-20261030T231705Z-f7794889`), so they are this box's
+parallel-load flakes, not this change; the merge gate is CI at the exact
+head. Gitleaks range scan (CI's pinned 8.28.0) clean; pre-push
+conflict-marker grep clean. Browser phase not run locally — no UI, route or
+browser surface changes; CI runs all five browser groups at the exact head.
+
 ## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 
 **What changed:** the Customers list, segment counts and searches no longer read the
