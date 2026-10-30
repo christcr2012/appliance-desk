@@ -42,13 +42,16 @@ async function lockOperation(tx: Prisma.TransactionClient, id: string) {
 
 export async function previewAgentOperation(ctx: AgentContext, input: {
   action: JournalAction; args: Record<string, unknown>; requestKey: string;
+  /** Internal scheduler provenance, not an API-supplied approval. */
+  monitor?: { ruleKey: string; ruleVersion: number };
 }) {
   const policy = policyFor(input.action);
   if (!ctx.scopes.includes(policy.scope)) throw new Error("FORBIDDEN_SCOPE");
   if (OWNER_ONLY_JOURNAL_ACTIONS.has(input.action) && ctx.role !== "OWNER") throw new Error("OWNER_REQUIRED");
   const prepared = await prepareAgentAction(ctx, input.action, input.args);
   const op = await createJournalPreview(ctx, {
-    tool: "appliance_action_preview", action: input.action, requestKey: input.requestKey,
+    tool: input.monitor ? `monitor-rule_${input.monitor.ruleKey}_${input.monitor.ruleVersion}` : "appliance_action_preview",
+    action: input.action, requestKey: input.requestKey,
     args: prepared.args, targetRef: prepared.targetRef,
     preview: prepared.preview, previewHash: prepared.previewHash,
   });
@@ -69,6 +72,33 @@ export async function getAgentOperation(ctx: AgentContext, operationId: string) 
     throw new Error("FORBIDDEN_SCOPE");
   await prisma.$transaction(async (tx) => { await assertActiveTeamActor(tx, ctx.userId, ["OWNER", "ADMIN"]); });
   return view(row);
+}
+
+/**
+ * A standing monitoring grant is valid only while its exact rule revision, connection,
+ * actor and ALERT receipt still agree. An unlinked preview is NEVER delegated approval.
+ * The rule is re-read at claim and immediately before dispatch.
+ */
+async function checkStandingMonitorGrant(
+  tx: Prisma.TransactionClient, op: { id: string; tool: string; action: string;
+    connectionId: string; actorUserId: string },
+): Promise<boolean> {
+  if (!op.tool.startsWith("monitor-rule_")) return false;
+  const match = /^monitor-rule_([a-z0-9-]+)_([1-9][0-9]*)$/.exec(op.tool);
+  if (!match) throw new Error("MONITORING_GRANT_REVOKED");
+  const [, key, versionText] = match;
+  await tx.$queryRaw`SELECT "id" FROM "MonitorRule" WHERE "key" = ${key} FOR UPDATE`;
+  const rule = await tx.monitorRule.findUnique({ where: { key } });
+  if (!rule?.enabled || rule.version !== Number(versionText) ||
+      rule.autoAction !== op.action || rule.autoActionConnectionId !== op.connectionId)
+    throw new Error("MONITORING_GRANT_REVOKED");
+  await assertActiveTeamActor(tx, op.actorUserId, ["OWNER"]);
+  const receipt = await tx.monitorRun.findFirst({
+    where: { ruleKey: key, state: "ALERT", operationId: op.id },
+    select: { id: true },
+  });
+  if (!receipt) throw new Error("MONITORING_GRANT_REVOKED");
+  return true;
 }
 
 /** Authorize and claim once, commit the intent, then dispatch outside the short database transaction. */
@@ -106,7 +136,9 @@ export async function executeAgentOperation(ctx: AgentContext, input: {
     if (op.argsHash !== canonicalAgentArgs(parseAgentAction(action, op.args)).digest)
       throw new Error("OPERATION_ARGUMENT_TAMPERED");
     if (terminal.includes(op.state) || op.state === "RUNNING") return { op, claimToken: "" };
-    if (!["PREVIEWED", "AUTHORIZED"].includes(op.state)) throw new Error("OWNER_APPROVAL_REQUIRED");
+    const standing = await checkStandingMonitorGrant(tx, op);
+    if (!["PREVIEWED", "AUTHORIZED"].includes(op.state) && !(standing && op.state === "AWAITING_APPROVAL"))
+      throw new Error("OWNER_APPROVAL_REQUIRED");
     const expired = op.expiresAt.getTime() <= Date.now();
     const changed = !fresh || fresh.previewHash !== op.previewHash || fresh.targetRef !== op.targetRef;
     if (expired || changed) {
@@ -117,7 +149,7 @@ export async function executeAgentOperation(ctx: AgentContext, input: {
         newValue: { action, targetRef: op.targetRef, reason: expired ? "expired" : "changed" } } });
       return { op: ended, claimToken: "" };
     }
-    if ((policy.approval === "OWNER_IN_APP" && (op.state !== "AUTHORIZED" || !op.approvedByUserId)) ||
+    if ((policy.approval === "OWNER_IN_APP" && !standing && (op.state !== "AUTHORIZED" || !op.approvedByUserId)) ||
       (policy.approval === "CONVERSATION" && op.state !== "PREVIEWED"))
       throw new Error("OWNER_APPROVAL_REQUIRED");
     if (JSON.stringify(fresh.verifyIntent).length > 8192) throw new Error("VERIFY_INTENT_TOO_LARGE");
@@ -157,6 +189,7 @@ export async function executeAgentOperation(ctx: AgentContext, input: {
         throw new Error("FORBIDDEN_SCOPE");
       await assertActiveTeamActor(tx, ctx.userId,
         OWNER_ONLY_JOURNAL_ACTIONS.has(action) ? ["OWNER"] : ["OWNER", "ADMIN"]);
+      await checkStandingMonitorGrant(tx, op);
       const claimRow = await tx.agentOperation.findUniqueOrThrow({ where: { id: op.id },
         select: { state: true, leaseToken: true, expiresAt: true } });
       if (claimRow.state !== "RUNNING" || claimRow.leaseToken !== claim.claimToken ||

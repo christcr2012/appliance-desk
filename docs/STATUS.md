@@ -14,12 +14,17 @@ and drops a nonexistent RentalLine.updatedAt column, so the suite runs end to en
 mixed text+digits search query matched nothing — the phone-digits branch now adds to the
 text branches instead of replacing them; (3) the list hydrates its per-row detail
 (next-visit duration, past-due sum, oldest open bill) only for the rows in the shown
-window. CI then indicted four older specs written against the pre-CU-1 list (unsegmented
+window. CI then indicted five older specs written against the pre-CU-1 list (unsegmented
 default view, email printed in rows, name link straight to the record): rental-builder
-recovery, staff-security, app-feel and task-assignment now navigate the new list the way
-a user does (its own search across segments, the SidePanel's Open full page link), and
-the CU-1 spec itself scopes its row assertions to the visible row (the kit renders the
-desktop table and phone cards in one DOM). NAMED FOLLOW-UP (not hidden): the capacity
+recovery, staff-security, app-feel, task-assignment and crm-workspace now navigate the
+new list the way a user does (its own search across segments, a row locator scoped to
+the list itself — the Customers section nav is also main-li elements — and the
+SidePanel's Open full page link); the rental-builder also retries the record's menu
+open, which a pre-hydration click could swallow, and the CU-1 spec scopes its row
+assertions to the visible row (the kit renders the desktop table and phone cards in
+one DOM) and clicks the header export by its real trigger name and menuitem role.
+Every one of those fixes was reproduced and verified green on the Workshop
+(chris-agent-01) at the exact head before pushing. NAMED FOLLOW-UP (not hidden): the capacity
 budget is CI-confirmed missed — Performance Baselines at f80bc984 measured 1,619 ms /
 882 ms against the 150 ms budget at 20,000 customers — because every list/count/search
 call materializes the full lateral view before filtering. The fix is a query redesign
@@ -29,9 +34,24 @@ not a required merge check, the queries are fast at launch scale, and the redesi
 rewrites the query layer this card just proved correct. Remaining: CI, review, merge;
 AR-4d (Quotes and Messages) is next on this lane.
 
-## October 29 — MCP-11 assistant feedback, PR #748 (Lane 2)
+## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
 
-Consent-scoped feedback assistant reads, reporter withdrawal, journaled assistant replies/state changes and verified repair-case linkage are implemented on #748. Previous 0fbdba4 exact-head `ci` passed and 24 focused disposable-PostgreSQL tests were recorded as passing; after merging latest main, local lint and four no-AI privacy tests passed. Local TypeScript checks ran out of memory in the 4 GiB sandbox, so the new merged head requires GitHub CI. Codex review quota is exhausted; self-review and the required `review-gate` remain pending. Hosted connection and owner UI acceptance are separately pending. No live messaging.
+MCP-11 assistant feedback was merged in PR #748 after its exact-head CI and normal
+review-gate completed. MCP-7b PR #762 adds owner-only, default-off standing
+monitoring approvals for a narrowly allowlisted MCP-5 action and an active,
+maintenance-scoped owner connection; each qualifying alert links its permanent
+Denver-day receipt to the operation journal. The operation checks the exact
+rule version, owner access, connection and scope at claim and before dispatch,
+records owner grant changes in the audit log, and never blindly retries
+an uncertain action. The owner interface explains delegation and assistant
+activity attributes it to the monitoring rule.
+
+Local focused ESLint passed with no errors and monitoring policy tests were 3/3
+green; GitHub's type-check, lint and repository-check job passed. The first
+GitHub CI run found synthetic audit-log teardown cleanup and a missing STATUS
+update; these were corrected for the next exact-head CI. Full database/browser
+CI and review remain required before merge. No live provider or customer
+communications were enabled. MCP-8 and MCP-9 remain outstanding.
 
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 
