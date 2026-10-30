@@ -5,7 +5,8 @@ import { getPurchaseDetail } from "@/domains/purchasing/purchases";
 import { formatBusinessDate } from "@/lib/business-date";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
-import { ButtonLink, Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { PurchaseTaxForm } from "./purchase-tax-form";
 import { AddReceipt, RemoveReceiptPage } from "./add-receipt";
 import { RecordConnections } from "@/components/desk/record-connections";
@@ -21,10 +22,10 @@ export default async function PurchasePage({ params }: { params: Promise<{ id: s
   const seller = purchase.supplier?.name ?? purchase.sellerName ?? "Unknown seller";
   return (
     <div className="max-w-4xl space-y-6">
-      <PageHeader
+      <RecordHeader
         title={`Purchase from ${seller}`}
-        description={`${formatBusinessDate(purchase.purchasedOn)}${purchase.reference ? ` · Receipt ${purchase.reference}` : ""}`}
-        secondaryActions={<ButtonLink href="/desk/purchases" variant="secondary">All purchases</ButtonLink>}
+        subtitle={`${formatBusinessDate(purchase.purchasedOn)}${purchase.reference ? ` · Receipt ${purchase.reference}` : ""}`}
+        back={{ href: "/desk/purchases", label: "Purchases" }}
       />
 
       <Card title="Receipt totals">
