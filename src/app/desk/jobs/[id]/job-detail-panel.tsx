@@ -378,7 +378,7 @@ export function JobDetailPanel({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-line bg-white p-5">
+      <div id="finish" className="rounded-lg border border-line bg-white p-5">
         <h2 className="font-medium text-ink">Status: {job.status}</h2>
 
         {job.status === "IN_PROGRESS" && (

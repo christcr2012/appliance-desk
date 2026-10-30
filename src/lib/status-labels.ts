@@ -49,6 +49,13 @@ const MAINTENANCE_STATUS_LABELS: Record<string, string> = {
   CLOSED: "Closed",
 };
 
+const MAINTENANCE_PRIORITY_LABELS: Record<string, string> = {
+  LOW: "Low",
+  NORMAL: "Normal",
+  HIGH: "High",
+  URGENT: "Urgent",
+};
+
 const INVOICE_STATUS_LABELS: Record<string, string> = {
   DRAFT: "Being prepared",
   OPEN: "Open",
@@ -107,7 +114,11 @@ export const SPANISH_STATUS_LABELS: Record<string, string> = {
   "Changes requested": "Cambios solicitados",
   "Declined": "Rechazado",
   "Expired": "Vencido",
-  "Approved and set up": "Aprobado y preparado"
+  "Approved and set up": "Aprobado y preparado",
+  "Low": "Baja",
+  "Normal": "Normal",
+  "High": "Alta",
+  "Urgent": "Urgente"
 };
 
 function lookup(labels: Record<string, string>, value: string, language: CustomerLanguage = "en"): string {
@@ -155,6 +166,9 @@ export const jobStatusTone = (status: string): StatusTone => JOB_STATUS_TONE[sta
 
 export const maintenanceStatusLabel = (status: string, language: CustomerLanguage = "en") =>
   lookup(MAINTENANCE_STATUS_LABELS, status, language);
+
+export const maintenancePriorityLabel = (priority: string, language: CustomerLanguage = "en") =>
+  lookup(MAINTENANCE_PRIORITY_LABELS, priority, language);
 
 export const invoiceStatusLabel = (status: string, language: CustomerLanguage = "en") => lookup(INVOICE_STATUS_LABELS, status, language);
 
