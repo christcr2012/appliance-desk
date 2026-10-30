@@ -113,7 +113,13 @@ test.describe("staff permissions", () => {
     const saved = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
-        response.url().includes("/desk/jobs/ci-security-job"),
+        response.url().includes("/desk/jobs/ci-security-job") &&
+        // The desk shell's notification bell POSTs its own server action to
+        // the current page URL on mount, so any POST to this URL returning
+        // OK no longer proves the checklist save landed — the reload below
+        // could beat it. Only the checklist save carries the checklist
+        // items in its request body; wait for that response specifically.
+        (response.request().postData() ?? "").includes("CI operational check"),
     );
     await page.getByRole("checkbox", { name: "CI operational check" }).check();
     expect((await saved).ok()).toBe(true);
