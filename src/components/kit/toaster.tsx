@@ -1,10 +1,17 @@
 "use client";
 // AR-0 kit 4.15: in-house toasts. Mount <Toaster /> once per layout; call toast() from any client code.
 import { useEffect, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { Icon } from "./icons";
 import type { Tone } from "./types";
 
-export type ToastInput = { message: string; tone?: Tone; undo?: () => Promise<void> };
+/** AR-5 section 7: a toast may carry one follow-on link (the hand-off's next screen). */
+export type ToastInput = {
+  message: string;
+  tone?: Tone;
+  undo?: () => Promise<void>;
+  action?: { label: string; href: string };
+};
 type ToastEntry = ToastInput & { id: number };
 
 export const TOAST_MS = 6000;
@@ -60,6 +67,15 @@ function ToastItem({ entry }: { entry: ToastEntry }) {
       data-tone={entry.tone ?? "neutral"}
     >
       <span className="min-w-0 flex-1">{entry.message}</span>
+      {entry.action ? (
+        <Link
+          href={entry.action.href}
+          onClick={() => dismissToast(entry.id)}
+          className="inline-flex min-h-11 items-center rounded-field px-3 font-extrabold underline underline-offset-2"
+        >
+          {entry.action.label}
+        </Link>
+      ) : null}
       {entry.undo ? (
         <button
           type="button"

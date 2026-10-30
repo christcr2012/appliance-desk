@@ -19,6 +19,8 @@ import type { JobApplianceResult, JobApplianceRole, JobOutcome, JobStatus, JobTy
 import { formatCents } from "@/domains/pricing/money";
 import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 import { parseChecklist, type ChecklistItem } from "@/domains/jobs/checklist";
+import { toast } from "@/components/kit";
+import { handoffToast } from "@/domains/jobs/handoff";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 
 const SUGGESTED_STATUS_FOR_TYPE: Record<JobType, ApplianceStatus | null> = {
@@ -190,9 +192,12 @@ export function JobDetailPanel({
   pendingDeliveries = [],
   today = "",
   partsFromList = false,
+  role = "STAFF",
 }: {
   job: JobRow;
   canViewFinance?: boolean;
+  /** The signed-in person's role — the completion hand-off toast never shows staff money lines. */
+  role?: "OWNER" | "ADMIN" | "STAFF";
   /** The appliances this visit needs a result for (only while the job is in progress). */
   completionScope?: CompletionScopeRow[];
   /** The job's version, so a stale screen cannot complete a job someone else changed. */
@@ -319,6 +324,11 @@ export function JobDetailPanel({
       });
       if (result.status === "error") {
         setStatusMessage(result.message);
+      } else if (result.handoff) {
+        // AR-5 section 7: say what the finish set in motion (billing, the closed rental, the
+        // deposit, the follow-up task) with its next screen one tap away.
+        const hand = handoffToast(result.handoff, role);
+        toast({ message: hand.message, ...(hand.action ? { action: hand.action } : {}) });
       }
       router.refresh();
     });
