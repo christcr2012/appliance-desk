@@ -200,7 +200,7 @@ export function SettingsForm({
             />
           ))}
           <div>
-            <LabeledInput label="Logo address (for printed invoices and work orders)" {...register("logoUrl")} />
+            <LabeledInput label="Logo address (for printed bills and work orders)" {...register("logoUrl")} />
             <p className="mt-1 text-xs text-ink-soft">
               One of {BRAND_LOGO_FILES.join(", ")}, or the address of a picture (PNG or JPG) uploaded to your own file
               storage. Pictures from other websites are blocked by the site&apos;s security rules, so they would not
@@ -316,7 +316,7 @@ export function SettingsForm({
             })}
           />
           <Checkbox
-            label="Also give a free month when a customer pays the full 12-month term in one lump sum up front (you mark this yourself when creating that agreement)"
+            label="Also give a free month when a customer pays the full 12-month term in one lump sum up front (you mark this yourself when creating that rental)"
             {...register("twelveMonthPrepayFreeMonthEnabled")}
           />
         </fieldset>

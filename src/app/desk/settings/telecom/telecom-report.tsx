@@ -111,7 +111,7 @@ export async function TelecomReportSection({actorUserId}:{actorUserId:string}) {
             Differences are {current.reconciliation.differenceCents===null?"unknown":
               money(current.reconciliation.differenceCents,current.usage.currency)}.
             Not marked paid.</dd></div>
-        <div><dt className="font-medium">Usage sync freshness</dt>
+        <div><dt className="font-medium">How fresh the usage numbers are</dt>
           <dd>{current.freshness.lastSuccessAt?
             current.freshness.lastSuccessAt.toISOString():"Never successfully synchronized"}</dd>
           <dd className="text-xs text-ink-soft">{current.freshness.lastErrorCode?"Latest fetch failed — prior evidence retained":"No reported fetch error"}</dd></div>
