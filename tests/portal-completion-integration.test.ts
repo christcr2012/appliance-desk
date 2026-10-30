@@ -148,6 +148,9 @@ describe("Batch D customer portal completion", () => {
       "id",
       "jobs",
       "lines",
+      // PORTAL-1: the customer's own monthly total, computed in the domain
+      // (src/domains/agreements/totals.ts) for the Rentals page stat strip.
+      "monthlyTotalCents",
       "nextBillingDate",
       "paidInFullInAdvance",
       "renewalPreference",
