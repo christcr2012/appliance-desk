@@ -12,8 +12,10 @@ observations that refuse to guess below 30 samples, owner-only reversible
 improvement proposals, owner System health screen and scoped assistant lookup
 of settings generated from AR-8's final catalog and real control inventory.
 Prisma migration and unit/disposable-PostgreSQL tests are included. Focused
-unit tests (8/8) and ESLint passed locally; full CI, browser/database checks,
-review and merge remain pending. MCP-9 RTC conformance is not implemented yet.
+unit tests (8/8) and ESLint passed locally; the first corrected full CI was green.
+Owner acceptance now links one MCP-6 engineering case, with independent post-deployment
+measurement review required rather than a fabricated improvement claim. A refreshed
+full CI, review gate and merge remain pending. MCP-9 RTC conformance is not implemented yet.
 
 
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
