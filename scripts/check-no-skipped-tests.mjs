@@ -22,6 +22,9 @@ const ALLOWED_TO_SKIP = new Set([
   // LD-1: the 50,000-lead queue capacity test runs only in the Performance
   // Baselines job (perf.yml, BATCH_E_PERF=true), like the other three.
   "tests/perf/leads-queue.perf.test.ts",
+  // CU-1 (AR-4c): the 20,000-customer list capacity test runs only in the
+  // Performance Baselines job (perf.yml, BATCH_E_PERF=true), like the others.
+  "tests/perf/customers-list.perf.test.ts",
 ]);
 
 const file = process.argv[2];

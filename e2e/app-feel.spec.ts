@@ -33,10 +33,12 @@ test("record title remains accessible after following a customer link with motio
       await page.emulateMedia({ reducedMotion: preference });
       await page.setViewportSize({ width, height: 844 });
       await page.goto("/desk/customers", { waitUntil: "load" });
-      const selector = width < 768
-        ? 'ul[aria-label="Customers"] a[href^="/desk/customers/"]'
-        : 'table a[href^="/desk/customers/"]';
-      const record = page.locator(selector).first();
+      // CU-1 (AR-4c): on desktop the row's name link opens the SidePanel
+      // (?open=<id>), so no table anchor carries the record href anymore;
+      // the link to follow is the first data row's first link.
+      const record = width < 768
+        ? page.locator('ul[aria-label="Customers"] a[href^="/desk/customers/"]').first()
+        : page.locator("table tbody tr").first().getByRole("link").first();
     await expect(record).toBeVisible();
     // CU-1 (AR-4c): a phone card's link text carries the whole card (name,
     // status, city, rent); the record title is its first line.

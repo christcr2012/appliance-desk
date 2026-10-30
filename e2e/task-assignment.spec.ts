@@ -26,8 +26,12 @@ test("assign, preserve competing text, complete and reopen the same linked follo
   await page.goto(
     `/desk/customers?segment=all&q=${encodeURIComponent(customerEmail)}`,
   );
+  // Scope to the list itself: the Customers section nav is also `main li`
+  // elements, so an unscoped first row is the Leads nav item.
   const customerRow = page
-    .locator("main tr:visible, main li:visible")
+    .locator(
+      "main table tbody tr:visible, main ul[aria-label='Customers'] li:visible",
+    )
     .first();
   await expect(customerRow).toBeVisible();
   const customerLink = customerRow.getByRole("link").first();

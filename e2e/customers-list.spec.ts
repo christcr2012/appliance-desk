@@ -108,8 +108,10 @@ test.describe("CU-1 customers list as owner", () => {
       // The header export downloads exactly the filtered set.
       await page.goto(`/desk/customers?segment=owes&q=${encodeURIComponent(owing.name)}`);
       const downloadPromise = page.waitForEvent("download");
-      await page.getByRole("button", { name: /More actions|⋯|Overflow/ }).first().click();
-      await page.getByRole("link", { name: "Export (CSV)" }).click();
+      // The header overflow trigger is named for the screen ("More for
+      // Customers") and its items carry the menuitem role, not link.
+      await page.getByRole("button", { name: "More for Customers" }).click();
+      await page.getByRole("menuitem", { name: "Export (CSV)" }).click();
       const download = await downloadPromise;
       expect(download.suggestedFilename()).toMatch(/^customers-\d{4}-\d{2}-\d{2}\.csv$/);
       const path = await download.path();
