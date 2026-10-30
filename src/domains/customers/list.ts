@@ -1,17 +1,29 @@
 /**
- * CU-1 (AR-4c, CUSTOMERS spec section 4): the Customers list query over the
- * customer_list_v1 view. Roles are filtered at the query boundary: the STAFF
- * select literally omits the money columns (monthlyRentCents, owedCents,
- * pastDueCents, autopay), the owes segment and the money sorts are refused
- * for staff (falling back to the defaults), and staff row objects never
- * carry the money keys.
+ * CU-1 (AR-4c, CUSTOMERS spec section 4): the Customers list query. Roles
+ * are filtered at the query boundary: the STAFF select literally omits the
+ * money columns (monthlyRentCents, owedCents, pastDueCents, autopay), the
+ * owes segment and the money sorts are refused for staff (falling back to
+ * the defaults), and staff row objects never carry the money keys.
+ *
+ * CU1-PERF (the AR-4c follow-up): the reads no longer touch the
+ * customer_list_v1 view, whose six per-customer LATERAL aggregates ran for
+ * every live customer on every call (~1.5 s at the 20,000-customer capacity
+ * seed against the 150 ms budget). A list call now runs in phases over the
+ * base tables: fetchOrderedIds resolves the full ordering as ids only
+ * (candidates from base-table filters + the segment's EXISTS form; the
+ * aggregate sort keys are grouped aggregates over the candidates alone),
+ * fetchFactsByIds reads the grouped-aggregate facts for the window's ids,
+ * and hydrateWindow adds the facts only a shown row needs (next visit,
+ * property count, city, past-due sum, oldest open bill). Segment counts
+ * still run one grouped-aggregate pass over the population.
  *
  * Paging follows the KIT 5.1 cursor rule (same shape as the Rentals list):
  * the window grows from the start through the cursor row plus the next
  * page, capped at 500 rows; the cursor carries the sort value + id.
  *
- * "Past due" is a reading-query fact, never a view fact: pastDueCents is a
- * LATERAL sum over open invoices due before the Denver start of today.
+ * "Past due" is a reading-query fact, never a stored fact: pastDueCents is
+ * a LATERAL sum over open invoices due before the Denver start of today,
+ * computed for window rows only.
  */
 import { Prisma, type InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +35,7 @@ import { getRentalEndingNoticeDays } from "@/domains/agreements/ending-notice";
 import {
   customerSegments,
   endingWindowEnd,
+  segmentExistsSql,
   segmentWhereSql,
   startOfTodayDenver,
   type CustomerSegment,
@@ -141,7 +154,7 @@ function filtersSql(p: CustomerListParams, staff: boolean): Prisma.Sql {
   }
   if (p.pm) parts.push(Prisma.sql`c."isPropertyManager" = true`);
   if (p.autopay === "off" && !staff)
-    parts.push(Prisma.sql`v."autopay" = false`);
+    parts.push(Prisma.sql`c."stripeDefaultPaymentMethodId" IS NULL`);
   if (p.service) {
     parts.push(Prisma.sql`EXISTS (SELECT 1 FROM "MaintenanceRequest" mr
       WHERE mr."customerId" = c."id" AND mr."status" IN (${Prisma.join(OPEN_MAINTENANCE)}))`);
@@ -161,6 +174,8 @@ function filtersSql(p: CustomerListParams, staff: boolean): Prisma.Sql {
   return Prisma.join(parts, " AND ");
 }
 
+/** The tab filter: the segment as EXISTS probes over the base tables
+ * (segments.ts), against the phase-A query's Customer alias "c". */
 function segmentSql(
   p: CustomerListParams,
   startToday: Date,
@@ -168,37 +183,216 @@ function segmentSql(
 ): Prisma.Sql {
   const segment = p.segment ?? "active";
   if (segment === "all") return Prisma.sql`1 = 1`;
-  return segmentWhereSql(segment, "v", startToday, windowEnd);
+  return segmentExistsSql(segment, startToday, windowEnd);
 }
 
-function sortSql(sort: CustomerSort, startToday: Date, windowEnd: Date): Prisma.Sql {
+/**
+ * Phase A (CU1-PERF): the full ordering as ids only. Candidates come from
+ * the base tables — population, filters and the segment's EXISTS form.
+ * The aggregate sort keys (rent, owed, the attention facts) join as plain
+ * grouped aggregates; when the call carries a search (`scoped`), the same
+ * aggregates are instead computed over the candidate set alone via a CTE
+ * (search indexes narrow candidates to a handful, and paying a full
+ * population aggregate pass for a one-row answer measured 15x slower).
+ * A call never materializes more than the id list here; the window's wide
+ * rows are fetched by id afterwards (fetchFactsByIds + hydrateWindow).
+ */
+async function fetchOrderedIds(
+  where: Prisma.Sql,
+  sort: CustomerSort,
+  startToday: Date,
+  windowEnd: Date,
+  scoped: boolean,
+): Promise<string[]> {
+  const nameKey = Prisma.sql`lower(COALESCE(c."companyName", u."name", u."email"))`;
+  const baseFrom = Prisma.sql`
+    FROM "Customer" c
+    JOIN "User" u ON u."id" = c."userId"`;
+  const population = Prisma.sql`c."archivedAt" IS NULL AND NOT c."isWalkIn"`;
+  if (!scoped) {
+    let joins = Prisma.empty;
+    let order: Prisma.Sql;
+    switch (sort) {
+      case "name":
+        order = Prisma.sql`ORDER BY ${nameKey} ASC, c."id" ASC`;
+        break;
+      case "newest":
+        order = Prisma.sql`ORDER BY c."createdAt" DESC, c."id" DESC`;
+        break;
+      case "since":
+        order = Prisma.sql`ORDER BY c."createdAt" ASC, c."id" ASC`;
+        break;
+      case "rent-desc":
+        joins = Prisma.sql`
+          LEFT JOIN (
+            SELECT ra2."customerId" AS "cid",
+              COALESCE(SUM(rl."monthlyPriceCents"), 0)::int AS "monthlyRentCents"
+            FROM "RentalLine" rl
+            JOIN "RentalAgreement" ra2 ON ra2."id" = rl."agreementId"
+            WHERE ra2."status" = 'ACTIVE'
+            GROUP BY ra2."customerId"
+          ) r ON r."cid" = c."id"`;
+        order = Prisma.sql`ORDER BY COALESCE(r."monthlyRentCents", 0) DESC, ${nameKey} ASC, c."id" ASC`;
+        break;
+      case "owed-desc":
+        joins = Prisma.sql`
+          LEFT JOIN (
+            SELECT inv."customerId" AS "cid",
+              COALESCE(SUM(GREATEST(0, inv."amountDueCents" - inv."amountPaidCents")), 0)::int AS "owedCents"
+            FROM "Invoice" inv
+            WHERE inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+            GROUP BY inv."customerId"
+          ) i ON i."cid" = c."id"`;
+        order = Prisma.sql`ORDER BY COALESCE(i."owedCents", 0) DESC, ${nameKey} ASC, c."id" ASC`;
+        break;
+      case "attention":
+        joins = Prisma.sql`
+          LEFT JOIN (
+            SELECT ra."customerId" AS "cid",
+              COUNT(*) FILTER (WHERE ra."status" = 'ACTIVE') AS "activeCount",
+              COUNT(*) FILTER (
+                WHERE ra."status" IN ('DRAFT', 'AWAITING_SIGNATURE', 'SCHEDULED')
+                  OR (ra."status" = 'ACTIVE' AND ra."firstDeliveredOn" IS NULL)
+              ) AS "pendingCount",
+              MIN(ra."endDate") FILTER (
+                WHERE ra."status" = 'ACTIVE' AND ra."termMonths" IS NOT NULL
+                  AND ra."terminationRequestedAt" IS NULL
+              ) AS "endingOn"
+            FROM "RentalAgreement" ra
+            GROUP BY ra."customerId"
+          ) a ON a."cid" = c."id"
+          LEFT JOIN (
+            SELECT inv."customerId" AS "cid",
+              MIN(inv."dueDate") FILTER (WHERE inv."amountDueCents" > inv."amountPaidCents") AS "oldestOpenDueDate"
+            FROM "Invoice" inv
+            WHERE inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+            GROUP BY inv."customerId"
+          ) i ON i."cid" = c."id"
+          LEFT JOIN (
+            SELECT j2."customerId" AS "cid", MIN(j2."scheduledAt") AS "pickupAt"
+            FROM "Job" j2
+            WHERE j2."type" = 'REMOVAL' AND j2."status" = 'SCHEDULED'
+            GROUP BY j2."customerId"
+          ) p ON p."cid" = c."id"`;
+        order = Prisma.sql`ORDER BY
+          CASE
+            WHEN i."oldestOpenDueDate" < ${startToday} THEN 0
+            WHEN a."endingOn" < ${windowEnd} OR p."pickupAt" < ${windowEnd} THEN 1
+            WHEN COALESCE(a."pendingCount", 0) > 0 AND COALESCE(a."activeCount", 0) = 0 THEN 2
+            ELSE 3
+          END ASC,
+          i."oldestOpenDueDate" ASC NULLS LAST,
+          COALESCE(a."endingOn", p."pickupAt") ASC NULLS LAST,
+          ${nameKey} ASC,
+          c."id" ASC`;
+        break;
+    }
+    const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT c."id" AS "id"
+      ${baseFrom}
+      ${joins}
+      WHERE ${population} AND ${where}
+      ${order}`);
+    return rows.map((r) => r.id);
+  }
+  const cand = Prisma.sql`
+    SELECT c."id" AS "id",
+      lower(COALESCE(c."companyName", u."name", u."email")) AS "nameKey",
+      c."createdAt" AS "createdAt"
+    ${baseFrom}
+    WHERE ${population} AND ${where}`;
+  let joins = Prisma.empty;
+  let order: Prisma.Sql;
   switch (sort) {
     case "name":
-      return Prisma.sql`ORDER BY lower(COALESCE(c."companyName", u."name", u."email")) ASC, v."id" ASC`;
-    case "rent-desc":
-      return Prisma.sql`ORDER BY v."monthlyRentCents" DESC, lower(COALESCE(c."companyName", u."name", u."email")) ASC, v."id" ASC`;
-    case "owed-desc":
-      return Prisma.sql`ORDER BY v."owedCents" DESC, lower(COALESCE(c."companyName", u."name", u."email")) ASC, v."id" ASC`;
+      order = Prisma.sql`ORDER BY cand."nameKey" ASC, cand."id" ASC`;
+      break;
     case "newest":
-      return Prisma.sql`ORDER BY c."createdAt" DESC, v."id" DESC`;
+      order = Prisma.sql`ORDER BY cand."createdAt" DESC, cand."id" DESC`;
+      break;
     case "since":
-      return Prisma.sql`ORDER BY c."createdAt" ASC, v."id" ASC`;
+      order = Prisma.sql`ORDER BY cand."createdAt" ASC, cand."id" ASC`;
+      break;
+    case "rent-desc":
+      joins = Prisma.sql`
+        LEFT JOIN (
+          SELECT ra2."customerId" AS "cid",
+            COALESCE(SUM(rl."monthlyPriceCents"), 0)::int AS "monthlyRentCents"
+          FROM "RentalLine" rl
+          JOIN "RentalAgreement" ra2 ON ra2."id" = rl."agreementId"
+          WHERE ra2."status" = 'ACTIVE'
+            AND ra2."customerId" IN (SELECT "id" FROM cand)
+          GROUP BY ra2."customerId"
+        ) r ON r."cid" = cand."id"`;
+      order = Prisma.sql`ORDER BY COALESCE(r."monthlyRentCents", 0) DESC, cand."nameKey" ASC, cand."id" ASC`;
+      break;
+    case "owed-desc":
+      joins = Prisma.sql`
+        LEFT JOIN (
+          SELECT inv."customerId" AS "cid",
+            COALESCE(SUM(GREATEST(0, inv."amountDueCents" - inv."amountPaidCents")), 0)::int AS "owedCents"
+          FROM "Invoice" inv
+          WHERE inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+            AND inv."customerId" IN (SELECT "id" FROM cand)
+          GROUP BY inv."customerId"
+        ) i ON i."cid" = cand."id"`;
+      order = Prisma.sql`ORDER BY COALESCE(i."owedCents", 0) DESC, cand."nameKey" ASC, cand."id" ASC`;
+      break;
     case "attention":
-      return Prisma.sql`ORDER BY
+      joins = Prisma.sql`
+        LEFT JOIN (
+          SELECT ra."customerId" AS "cid",
+            COUNT(*) FILTER (WHERE ra."status" = 'ACTIVE') AS "activeCount",
+            COUNT(*) FILTER (
+              WHERE ra."status" IN ('DRAFT', 'AWAITING_SIGNATURE', 'SCHEDULED')
+                OR (ra."status" = 'ACTIVE' AND ra."firstDeliveredOn" IS NULL)
+            ) AS "pendingCount",
+            MIN(ra."endDate") FILTER (
+              WHERE ra."status" = 'ACTIVE' AND ra."termMonths" IS NOT NULL
+                AND ra."terminationRequestedAt" IS NULL
+            ) AS "endingOn"
+          FROM "RentalAgreement" ra
+          WHERE ra."customerId" IN (SELECT "id" FROM cand)
+          GROUP BY ra."customerId"
+        ) a ON a."cid" = cand."id"
+        LEFT JOIN (
+          SELECT inv."customerId" AS "cid",
+            MIN(inv."dueDate") FILTER (WHERE inv."amountDueCents" > inv."amountPaidCents") AS "oldestOpenDueDate"
+          FROM "Invoice" inv
+          WHERE inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+            AND inv."customerId" IN (SELECT "id" FROM cand)
+          GROUP BY inv."customerId"
+        ) i ON i."cid" = cand."id"
+        LEFT JOIN (
+          SELECT j2."customerId" AS "cid", MIN(j2."scheduledAt") AS "pickupAt"
+          FROM "Job" j2
+          WHERE j2."type" = 'REMOVAL' AND j2."status" = 'SCHEDULED'
+            AND j2."customerId" IN (SELECT "id" FROM cand)
+          GROUP BY j2."customerId"
+        ) p ON p."cid" = cand."id"`;
+      order = Prisma.sql`ORDER BY
         CASE
-          WHEN v."oldestOpenDueDate" < ${startToday} THEN 0
-          WHEN v."endingOn" < ${windowEnd} OR v."pickupAt" < ${windowEnd} THEN 1
-          WHEN v."pendingCount" > 0 AND v."activeCount" = 0 THEN 2
+          WHEN i."oldestOpenDueDate" < ${startToday} THEN 0
+          WHEN a."endingOn" < ${windowEnd} OR p."pickupAt" < ${windowEnd} THEN 1
+          WHEN COALESCE(a."pendingCount", 0) > 0 AND COALESCE(a."activeCount", 0) = 0 THEN 2
           ELSE 3
         END ASC,
-        v."oldestOpenDueDate" ASC NULLS LAST,
-        COALESCE(v."endingOn", v."pickupAt") ASC NULLS LAST,
-        lower(COALESCE(c."companyName", u."name", u."email")) ASC,
-        v."id" ASC`;
+        i."oldestOpenDueDate" ASC NULLS LAST,
+        COALESCE(a."endingOn", p."pickupAt") ASC NULLS LAST,
+        cand."nameKey" ASC,
+        cand."id" ASC`;
+      break;
   }
+  const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    WITH cand AS (${cand})
+    SELECT cand."id" AS "id"
+    FROM cand
+    ${joins}
+    ${order}`);
+  return rows.map((r) => r.id);
 }
 
-function sortValueOf(sort: CustomerSort, r: RawRow, startToday: Date, windowEnd: Date): string | number | null {
+function sortValueOf(sort: CustomerSort, r: FactsRow, startToday: Date, windowEnd: Date): string | number | null {
   switch (sort) {
     case "name":
       return (r.companyName ?? r.userName ?? r.userEmail).toLowerCase();
@@ -224,7 +418,10 @@ function sortValueOf(sort: CustomerSort, r: RawRow, startToday: Date, windowEnd:
   }
 }
 
-type RawRow = {
+/** The facts phase row: base-table columns + the grouped-aggregate facts
+ * the filters, segments and sorts read. Everything display-only lives in
+ * Hydration and is fetched for window rows only. */
+type FactsRow = {
   id: string;
   userName: string | null;
   userEmail: string;
@@ -237,111 +434,157 @@ type RawRow = {
   endedCount: number;
   monthlyRentCents: number | null;
   owedCents: number | null;
-  pastDueCents: number | null;
   autopay: boolean | null;
   oldestOpenDueDate: Date | null;
-  nextVisitAt: Date | null;
-  nextVisitType: string | null;
-  nextVisitDurationMinutes: number | null;
   nextBillOn: Date | null;
   endingOn: Date | null;
   pickupAt: Date | null;
-  propertyCount: number;
-  city: string | null;
+};
+
+type RawRow = FactsRow & Hydration;
+
+/**
+ * The facts source (alias "v", the same column names the view exposed, so
+ * the segment SQL fragments are untouched): one row per live customer
+ * (archived and the walk-in counter-sale customer excluded — the view's
+ * population), with the per-customer facts computed as grouped aggregates
+ * over the base tables instead of per-row LATERAL probes. The FILTER
+ * clauses are the view's, verbatim. With `ids`, every aggregate is scoped
+ * to those customers (window rows only — index probes, not full passes);
+ * without, it is the whole population (the segment-counts query).
+ */
+function factsFromSql(ids: string[] | null): Prisma.Sql {
+  const inIds = ids ? Prisma.join(ids) : null;
+  const childScope = (alias: string): Prisma.Sql =>
+    inIds
+      ? Prisma.sql`AND ${Prisma.raw(`"${alias}"`)}."customerId" IN (${inIds})`
+      : Prisma.empty;
+  const populationScope = inIds
+    ? Prisma.sql`AND c0."id" IN (${inIds})`
+    : Prisma.empty;
+  return Prisma.sql`
+  FROM (
+    SELECT c0."id" AS "id",
+      COALESCE(a."activeCount", 0)::int AS "activeCount",
+      COALESCE(a."pendingCount", 0)::int AS "pendingCount",
+      COALESCE(a."endedCount", 0)::int AS "endedCount",
+      COALESCE(r."monthlyRentCents", 0)::int AS "monthlyRentCents",
+      a."nextBillOn" AS "nextBillOn",
+      a."endingOn" AS "endingOn",
+      COALESCE(i."owedCents", 0)::int AS "owedCents",
+      i."oldestOpenDueDate" AS "oldestOpenDueDate",
+      p."pickupAt" AS "pickupAt",
+      (c0."stripeDefaultPaymentMethodId" IS NOT NULL) AS "autopay"
+    FROM "Customer" c0
+    LEFT JOIN (
+      SELECT ra."customerId",
+        COUNT(*) FILTER (WHERE ra."status" = 'ACTIVE') AS "activeCount",
+        COUNT(*) FILTER (
+          WHERE ra."status" IN ('DRAFT', 'AWAITING_SIGNATURE', 'SCHEDULED')
+            OR (ra."status" = 'ACTIVE' AND ra."firstDeliveredOn" IS NULL)
+        ) AS "pendingCount",
+        COUNT(*) FILTER (WHERE ra."status" = 'ENDED') AS "endedCount",
+        MIN(ra."nextBillingDate") FILTER (WHERE ra."status" = 'ACTIVE') AS "nextBillOn",
+        MIN(ra."endDate") FILTER (
+          WHERE ra."status" = 'ACTIVE' AND ra."termMonths" IS NOT NULL
+            AND ra."terminationRequestedAt" IS NULL
+        ) AS "endingOn"
+      FROM "RentalAgreement" ra
+      WHERE 1 = 1 ${childScope("ra")}
+      GROUP BY ra."customerId"
+    ) a ON a."customerId" = c0."id"
+    LEFT JOIN (
+      SELECT ra2."customerId",
+        COALESCE(SUM(rl."monthlyPriceCents"), 0) AS "monthlyRentCents"
+      FROM "RentalLine" rl
+      JOIN "RentalAgreement" ra2 ON ra2."id" = rl."agreementId"
+      WHERE ra2."status" = 'ACTIVE' ${childScope("ra2")}
+      GROUP BY ra2."customerId"
+    ) r ON r."customerId" = c0."id"
+    LEFT JOIN (
+      SELECT inv."customerId",
+        COALESCE(SUM(GREATEST(0, inv."amountDueCents" - inv."amountPaidCents")), 0) AS "owedCents",
+        MIN(inv."dueDate") FILTER (WHERE inv."amountDueCents" > inv."amountPaidCents") AS "oldestOpenDueDate"
+      FROM "Invoice" inv
+      WHERE inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED') ${childScope("inv")}
+      GROUP BY inv."customerId"
+    ) i ON i."customerId" = c0."id"
+    LEFT JOIN (
+      SELECT j2."customerId", MIN(j2."scheduledAt") AS "pickupAt"
+      FROM "Job" j2
+      WHERE j2."type" = 'REMOVAL' AND j2."status" = 'SCHEDULED' ${childScope("j2")}
+      GROUP BY j2."customerId"
+    ) p ON p."customerId" = c0."id"
+    WHERE c0."archivedAt" IS NULL AND NOT c0."isWalkIn" ${populationScope}
+  ) v
+  JOIN "Customer" c ON c."id" = v."id"
+  JOIN "User" u ON u."id" = c."userId"`;
+}
+
+const FACTS_FROM = factsFromSql(null);
+
+/** Phase B (CU1-PERF): the facts for a set of ids — at most a window's
+ * worth (callers chunk). Every aggregate is scoped to the ids, so this is
+ * index probes, not population passes. Staff selects NULL money, exactly
+ * as the old view query did. */
+async function fetchFactsByIds(
+  ids: string[],
+  staff: boolean,
+): Promise<FactsRow[]> {
+  if (ids.length === 0) return [];
+  const money = staff
+    ? Prisma.sql`NULL::int AS "monthlyRentCents", NULL::int AS "owedCents",
+        NULL::boolean AS "autopay"`
+    : Prisma.sql`v."monthlyRentCents", v."owedCents", v."autopay"`;
+  return prisma.$queryRaw<FactsRow[]>(Prisma.sql`
+    SELECT v."id", u."name" AS "userName", u."email" AS "userEmail",
+      c."companyName", c."isPropertyManager", c."phone", c."createdAt",
+      v."activeCount", v."pendingCount", v."endedCount",
+      ${money},
+      v."oldestOpenDueDate",
+      v."nextBillOn", v."endingOn", v."pickupAt"
+    ${factsFromSql(ids)}
+    WHERE v."id" IN (${Prisma.join(ids)})`);
+}
+
+/** The display-only facts, hydrated for the rows a window actually shows. */
+type Hydration = {
+  nextVisitAt: Date | null;
+  nextVisitType: string | null;
+  nextVisitDurationMinutes: number | null;
+  pastDueCents: number | null;
   obId: string | null;
   obStatus: string | null;
   obOwed: number | null;
   obStripe: string | null;
   obSale: string | null;
+  propertyCount: number;
+  city: string | null;
 };
 
-const BASE_FROM = Prisma.sql`
-  FROM "customer_list_v1" v
-  JOIN "Customer" c ON c."id" = v."id"
-  JOIN "User" u ON u."id" = c."userId"`;
+const EMPTY_HYDRATION: Hydration = {
+  nextVisitAt: null,
+  nextVisitType: null,
+  nextVisitDurationMinutes: null,
+  pastDueCents: null,
+  obId: null,
+  obStatus: null,
+  obOwed: null,
+  obStripe: null,
+  obSale: null,
+  propertyCount: 0,
+  city: null,
+};
 
-/** The next visit's duration (for the "Delivery Tue 9–11" window text) — not money, so every role gets it. */
-function nextJobLateral(): Prisma.Sql {
-  return Prisma.sql`LEFT JOIN LATERAL (
-    SELECT j."durationMinutes" AS "nextVisitDurationMinutes"
-    FROM "Job" j
-    WHERE j."customerId" = v."id" AND j."status" IN ('SCHEDULED', 'IN_PROGRESS')
-      AND j."scheduledAt" = v."nextVisitAt" AND j."type" = v."nextVisitType"
-    ORDER BY j."id" ASC LIMIT 1
-  ) nj ON true`;
-}
-
-/** The oldest open bill (the record page's Take payment target) — money-adjacent, owner/admin only. */
-function oldestBillLateral(): Prisma.Sql {
-  return Prisma.sql`LEFT JOIN LATERAL (
-    SELECT i."id" AS "obId", i."status"::text AS "obStatus",
-      GREATEST(i."amountDueCents" - i."amountPaidCents", 0)::int AS "obOwed",
-      i."stripeInvoiceId" AS "obStripe", i."saleKind" AS "obSale"
-    FROM "Invoice" i
-    WHERE i."customerId" = v."id"
-      AND i."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
-      AND i."amountDueCents" > i."amountPaidCents"
-    ORDER BY i."dueDate" ASC NULLS LAST, i."createdAt" ASC
-    LIMIT 1
-  ) ob ON true`;
-}
-
-function pastDueLateral(startToday: Date): Prisma.Sql {
-  return Prisma.sql`LEFT JOIN LATERAL (
-    SELECT COALESCE(SUM(GREATEST(0, inv."amountDueCents" - inv."amountPaidCents")), 0)::int AS "pastDueCents"
-    FROM "Invoice" inv
-    WHERE inv."customerId" = v."id"
-      AND inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
-      AND inv."amountDueCents" > inv."amountPaidCents"
-      AND inv."dueDate" < ${startToday}
-  ) pd ON true`;
-}
-
-const NULL_JOB_LATERAL = Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::int AS "nextVisitDurationMinutes") nj ON true`;
 const NULL_PD_LATERAL = Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::int AS "pastDueCents") pd ON true`;
 const NULL_OB_LATERAL = Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::text AS "obId", NULL::text AS "obStatus", NULL::int AS "obOwed", NULL::text AS "obStripe", NULL::text AS "obSale") ob ON true`;
 
-async function fetchRows(
-  where: Prisma.Sql,
-  sort: CustomerSort,
-  staff: boolean,
-  startToday: Date,
-  windowEnd: Date,
-  hydrate = true,
-): Promise<RawRow[]> {
-  const money = staff
-    ? Prisma.sql`NULL::int AS "monthlyRentCents", NULL::int AS "owedCents",
-        NULL::int AS "pastDueCents", NULL::boolean AS "autopay"`
-    : Prisma.sql`v."monthlyRentCents", v."owedCents", pd."pastDueCents", v."autopay"`;
-  const order = sortSql(sort, startToday, windowEnd);
-  return prisma.$queryRaw<RawRow[]>(Prisma.sql`
-    SELECT v."id", u."name" AS "userName", u."email" AS "userEmail",
-      c."companyName", c."isPropertyManager", c."phone", c."createdAt",
-      v."activeCount", v."pendingCount", v."endedCount",
-      ${money},
-      v."oldestOpenDueDate", v."nextVisitAt", v."nextVisitType",
-      nj."nextVisitDurationMinutes",
-      v."nextBillOn", v."endingOn", v."pickupAt", v."propertyCount", v."city",
-      ob."obId", ob."obStatus", ob."obOwed", ob."obStripe", ob."obSale"
-    ${BASE_FROM}
-    ${hydrate ? nextJobLateral() : NULL_JOB_LATERAL}
-    ${staff || !hydrate ? NULL_PD_LATERAL : pastDueLateral(startToday)}
-    ${staff || !hydrate ? NULL_OB_LATERAL : oldestBillLateral()}
-    WHERE ${where}
-    ${order}`);
-}
-
-type Hydration = Pick<
-  RawRow,
-  "nextVisitDurationMinutes" | "pastDueCents" | "obId" | "obStatus" | "obOwed" | "obStripe" | "obSale"
->;
-
 /**
- * The per-row detail laterals (next-visit duration, past-due sum, oldest open
- * bill) for just the rows a list window actually shows. Running them over the
- * whole segment cost three extra per-customer probes on every row; the window
- * is at most WINDOW_CAP ids, so they run there instead. Staff never receives
- * the money laterals.
+ * The per-row detail laterals (next visit + its duration, property count
+ * and city, past-due sum, oldest open bill) for just the rows a list window
+ * actually shows — at most WINDOW_CAP ids per call. These are the view's
+ * own lateral definitions, keyed on the base Customer row. Staff never
+ * receives the money laterals. Callers chunk long id lists themselves.
  */
 async function hydrateWindow(
   ids: string[],
@@ -350,15 +593,57 @@ async function hydrateWindow(
 ): Promise<Map<string, Hydration>> {
   if (ids.length === 0) return new Map();
   const rows = await prisma.$queryRaw<(Hydration & { id: string })[]>(Prisma.sql`
-    SELECT v."id",
+    SELECT c."id",
+      nv."nextVisitAt", nv."nextVisitType",
       nj."nextVisitDurationMinutes",
       pd."pastDueCents",
-      ob."obId", ob."obStatus", ob."obOwed", ob."obStripe", ob."obSale"
-    FROM "customer_list_v1" v
-    ${nextJobLateral()}
-    ${staff ? NULL_PD_LATERAL : pastDueLateral(startToday)}
-    ${staff ? NULL_OB_LATERAL : oldestBillLateral()}
-    WHERE v."id" IN (${Prisma.join(ids)})`);
+      ob."obId", ob."obStatus", ob."obOwed", ob."obStripe", ob."obSale",
+      s."propertyCount", s."city"
+    FROM "Customer" c
+    LEFT JOIN LATERAL (
+      SELECT j."scheduledAt" AS "nextVisitAt", j."type" AS "nextVisitType"
+      FROM "Job" j
+      WHERE j."customerId" = c."id"
+        AND j."status" IN ('SCHEDULED', 'IN_PROGRESS')
+        AND j."scheduledAt" >= now()
+      ORDER BY j."scheduledAt" ASC, j."id" ASC
+      LIMIT 1
+    ) nv ON true
+    LEFT JOIN LATERAL (
+      SELECT j."durationMinutes" AS "nextVisitDurationMinutes"
+      FROM "Job" j
+      WHERE j."customerId" = c."id" AND j."status" IN ('SCHEDULED', 'IN_PROGRESS')
+        AND j."scheduledAt" = nv."nextVisitAt" AND j."type" = nv."nextVisitType"
+      ORDER BY j."id" ASC LIMIT 1
+    ) nj ON true
+    ${staff ? NULL_PD_LATERAL : Prisma.sql`LEFT JOIN LATERAL (
+      SELECT COALESCE(SUM(GREATEST(0, inv."amountDueCents" - inv."amountPaidCents")), 0)::int AS "pastDueCents"
+      FROM "Invoice" inv
+      WHERE inv."customerId" = c."id"
+        AND inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+        AND inv."amountDueCents" > inv."amountPaidCents"
+        AND inv."dueDate" < ${startToday}
+    ) pd ON true`}
+    ${staff ? NULL_OB_LATERAL : Prisma.sql`LEFT JOIN LATERAL (
+      SELECT i."id" AS "obId", i."status"::text AS "obStatus",
+        GREATEST(i."amountDueCents" - i."amountPaidCents", 0)::int AS "obOwed",
+        i."stripeInvoiceId" AS "obStripe", i."saleKind" AS "obSale"
+      FROM "Invoice" i
+      WHERE i."customerId" = c."id"
+        AND i."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
+        AND i."amountDueCents" > i."amountPaidCents"
+      ORDER BY i."dueDate" ASC NULLS LAST, i."createdAt" ASC
+      LIMIT 1
+    ) ob ON true`}
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS "propertyCount",
+        (SELECT sa."city" FROM "ServiceAddress" sa
+          WHERE sa."customerId" = c."id"
+          ORDER BY sa."createdAt" ASC, sa."id" ASC LIMIT 1) AS "city"
+      FROM "ServiceAddress" sa2
+      WHERE sa2."customerId" = c."id"
+    ) s ON true
+    WHERE c."id" IN (${Prisma.join(ids)})`);
   return new Map(rows.map((r) => [r.id, r]));
 }
 
@@ -381,36 +666,36 @@ export async function getCustomerList(
       : (p.sort ?? "attention");
 
   const where = Prisma.sql`${filtersSql(p, staff)} AND ${segmentSql({ ...p, segment }, startToday, windowEnd)}`;
-  const all = await fetchRows(where, sort, staff, startToday, windowEnd, false);
+  const scoped = (p.q?.trim().length ?? 0) >= 2;
+  const orderedIds = await fetchOrderedIds(where, sort, startToday, windowEnd, scoped);
 
-  const ordered: CursorValue[] = all.map((r) => ({
-    v: sortValueOf(sort, r, startToday, windowEnd),
-    id: r.id,
-  }));
   const cursor = decodeCursor(p.cursor);
-  const through = cursor ? ordered.findIndex((o) => o.id === cursor.id) + 1 : 0;
-  const windowValues = ordered.slice(
+  const through = cursor ? orderedIds.indexOf(cursor.id) + 1 : 0;
+  const windowIds = orderedIds.slice(
     0,
     Math.min(through + (p.pageSize ?? PAGE_SIZE), WINDOW_CAP),
   );
-  const hydration = await hydrateWindow(
-    windowValues.map((w) => w.id),
-    staff,
-    startToday,
-  );
-  for (const r of all) {
-    const h = hydration.get(r.id);
-    if (h) Object.assign(r, h);
-  }
-  const capped = windowValues.length >= WINDOW_CAP && ordered.length > windowValues.length;
-  const hasMore = !capped && ordered.length > windowValues.length;
-  const nextCursor = hasMore
-    ? encodeCursor(windowValues[windowValues.length - 1])
-    : null;
+  const facts = await fetchFactsByIds(windowIds, staff);
+  const factsById = new Map(facts.map((f) => [f.id, f]));
+  const hydration = await hydrateWindow(windowIds, staff, startToday);
+  const capped = windowIds.length >= WINDOW_CAP && orderedIds.length > windowIds.length;
+  const hasMore = !capped && orderedIds.length > windowIds.length;
+  const lastFacts = windowIds.length
+    ? factsById.get(windowIds[windowIds.length - 1])
+    : undefined;
+  const nextCursor =
+    hasMore && lastFacts
+      ? encodeCursor({
+          v: sortValueOf(sort, lastFacts, startToday, windowEnd),
+          id: lastFacts.id,
+        })
+      : null;
 
-  const byId = new Map(all.map((r) => [r.id, r]));
-  const rows: CustomerListRow[] = windowValues.map((w) => {
-    const r = byId.get(w.id)!;
+  const rows: CustomerListRow[] = windowIds.map((id) => {
+    const r: RawRow = {
+      ...factsById.get(id)!,
+      ...(hydration.get(id) ?? EMPTY_HYDRATION),
+    };
     const row: CustomerListRow = {
       id: r.id,
       name: r.companyName ?? r.userName ?? r.userEmail,
@@ -465,10 +750,31 @@ export async function getCustomerExportRows(
   const sort: CustomerSort = p.sort ?? "attention";
   const where =
     p.ids && p.ids.length > 0
-      ? Prisma.sql`v."id" IN (${Prisma.join(p.ids.slice(0, 500))})`
+      ? Prisma.sql`c."id" IN (${Prisma.join(p.ids.slice(0, 500))})`
       : Prisma.sql`${filtersSql(p, false)} AND ${segmentSql(p, startToday, windowEnd)}`;
-  const all = await fetchRows(where, sort, false, startToday, windowEnd);
-  return all.slice(0, 10_000).map((r) => ({
+  const orderedIds = (
+    await fetchOrderedIds(
+      where,
+      sort,
+      startToday,
+      windowEnd,
+      (p.ids?.length ?? 0) > 0 || (p.q?.trim().length ?? 0) >= 2,
+    )
+  ).slice(0, 10_000);
+  const factsById = new Map<string, FactsRow>();
+  const hydration = new Map<string, Hydration>();
+  for (let i = 0; i < orderedIds.length; i += WINDOW_CAP) {
+    const chunkIds = orderedIds.slice(i, i + WINDOW_CAP);
+    for (const f of await fetchFactsByIds(chunkIds, false))
+      factsById.set(f.id, f);
+    const chunk = await hydrateWindow(chunkIds, false, startToday);
+    for (const [id, h] of chunk) hydration.set(id, h);
+  }
+  const all: RawRow[] = orderedIds.map((id) => ({
+    ...factsById.get(id)!,
+    ...(hydration.get(id) ?? EMPTY_HYDRATION),
+  }));
+  return all.map((r) => ({
     id: r.id,
     name: r.companyName ?? r.userName ?? r.userEmail,
     companyName: r.companyName,
@@ -517,7 +823,7 @@ export async function getCustomerSegmentCounts(
       COUNT(*) FILTER (WHERE ${seg("ending")})::int AS "ending",
       COUNT(*) FILTER (WHERE ${seg("past")})::int AS "past",
       COUNT(*) FILTER (WHERE ${seg("new")})::int AS "fresh"
-    ${BASE_FROM}
+    ${FACTS_FROM}
     WHERE ${where}`);
   return {
     "setting-up": row?.settingUp ?? 0,

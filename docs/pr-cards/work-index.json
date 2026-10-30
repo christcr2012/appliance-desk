@@ -6157,6 +6157,10 @@
     {
       "id": "AR-4D",
       "path": "docs/pr-cards/execution/AR-4D.json"
+    },
+    {
+      "id": "CU1-PERF",
+      "path": "docs/pr-cards/execution/CU1-PERF.json"
     }
   ]
 }
