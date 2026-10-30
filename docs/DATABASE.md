@@ -1,3 +1,14 @@
+## October 30 — CU1-VIEW: customer_list_v1 view retired (drop migration 20261218000000_customer_list_view_retire)
+
+Migration `20261218000000_customer_list_view_retire` drops the `customer_list_v1` view
+(created by CU-1, migration 20261026040000_customer_list below). Since CU1-PERF (#776)
+every production read computes the same facts from grouped base-table aggregates
+(`factsFromSql` in `src/domains/customers/list.ts`); the view's only remaining readers
+were the two oracle queries in `tests/customer-list-integration.test.ts`, which now
+compute the segment facts from the base tables directly. No table, column or data
+changes; the `phoneDigits` key and the trigram/composite indexes from the CU-1
+migration stay.
+
 ## October 29 — AR-13 notifications (additive)
 
 Migration `20261217000000_notifications` adds `Notification` (one row per recipient per event: kind, title, body, in-app link, optional entity pointer, `dedupeKey`, `readAt`; unique on (`userId`, `dedupeKey`) so a replayed event can never double-notify; newest-first index on (`userId`, `createdAt`)) and `NotificationPreference` (per person per kind: `inApp`, `email`; unique on (`userId`, `kind`); no row = in app on, email off), plus `BusinessSettings.notificationKeepDays` (integer, default 90; how long read notifications are kept, edited in Settings › Advanced). Kinds: LEAD_NEW, QUOTE_VIEWED, SIGNATURE_DONE, PAYMENT_FAILED, APPROVAL_REQUESTED. Backup policy: notifications are left out of backups (`null` — short-lived, losing them loses nothing); preferences are backed up as `notificationPreference`. A privacy deletion removes the customer's notifications by their lead/estimate/agreement/invoice ids; an access reduction removes the kinds the person can no longer open.

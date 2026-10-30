@@ -29,7 +29,9 @@ export const CUSTOMER_SEGMENTS = [
 ] as const;
 export type CustomerSegment = (typeof CUSTOMER_SEGMENTS)[number];
 
-/** The view facts the segment rules read (customer_list_v1 columns). */
+/** The view facts the segment rules read (customer_list_v1 columns).
+ * Since CU1-PERF these are computed from the base tables in list.ts, and
+ * CU1-VIEW retired the view itself; the wording records the shape's origin. */
 export type CustomerSegmentFacts = {
   activeCount: number;
   pendingCount: number;
@@ -123,9 +125,10 @@ export function segmentExistsSql(
 }
 
 /**
- * The same conditions as SQL over a customer_list_v1 alias. `alias` is the
- * view's alias in the reading query ("v"); the two date parameters are the
- * Denver start-of-today and the ending-window end for the same `now`.
+ * The same conditions as SQL over the facts relation. `alias` is the facts
+ * alias in the reading query ("v" — the grouped base-table facts in
+ * list.ts); the two date parameters are the Denver start-of-today and the
+ * ending-window end for the same `now`.
  */
 export function segmentWhereSql(
   segment: CustomerSegment,
