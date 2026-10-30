@@ -30,16 +30,23 @@ test("Colorado day/week/agenda retain scheduled jobs and checklist progress afte
             : i === 1
               ? new Date("2026-11-01T05:30:00Z")
               : null,
+        // AR-5: the waiting list shows the 50 longest-waiting visits, so the unscheduled
+        // fixture is backdated to stay first in line on the shared CI database.
+        createdAt: i === 2 ? new Date("2020-06-01T00:00:00Z") : undefined,
         checklist: [{ item: "CI dispatch persisted check", checked: false }],
       })),
     });
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto("/desk/dispatch?view=day&date=2026-11-01");
-    const visible = page.locator(`a[href="/desk/jobs/${ids[0]}"]`);
+    // AR-5: a board row is an <li> whose stretched link points at the visit record.
+    const row = (id: string) =>
+      page.locator("li", { has: page.locator(`a[href="/desk/jobs/${id}"]`) });
+    const visible = row(ids[0]);
     await expect(visible).toContainText("12:30 AM MDT");
     await expect(visible).toContainText("Double-booked");
     await expect(page.locator(`a[href="/desk/jobs/${ids[1]}"]`)).toHaveCount(0);
-    await expect(page.locator(`a[href="/desk/jobs/${ids[2]}"]`)).toBeVisible();
+    await page.getByText(/Waiting for a time/).click();
+    await expect(row(ids[2])).toBeVisible();
     expect(
       (
         await new AxeBuilder({ page })
@@ -53,9 +60,7 @@ test("Colorado day/week/agenda retain scheduled jobs and checklist progress afte
     });
     for (const view of ["week", "agenda"]) {
       await page.goto(`/desk/dispatch?view=${view}&date=2026-11-01`);
-      await expect(
-        page.locator(`a[href="/desk/jobs/${ids[0]}"]`),
-      ).toContainText("12:30 AM MDT");
+      await expect(row(ids[0])).toContainText("12:30 AM MDT");
       await expect(page.locator(`a[href="/desk/jobs/${ids[1]}"]`)).toHaveCount(
         0,
       );
@@ -85,9 +90,7 @@ test("Colorado day/week/agenda retain scheduled jobs and checklist progress afte
       }),
     ).toBeChecked();
     await page.goto("/desk/dispatch?view=day&date=2026-11-01");
-    await expect(page.locator(`a[href="/desk/jobs/${ids[0]}"]`)).toContainText(
-      "Checklist: 1/1",
-    );
+    await expect(row(ids[0])).toContainText("Checklist: 1/1");
   } finally {
     await prisma.auditLog.deleteMany({ where: { entityId: { in: ids } } });
     await prisma.job.deleteMany({ where: { id: { in: ids } } });
