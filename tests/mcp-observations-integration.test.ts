@@ -69,7 +69,7 @@ describe("MCP-8 disposable-PostgreSQL measurements and proposals", () => {
     expect(row.samples).toBe(30);
     expect(row.p50Ms).toBe(15);
     expect(row.p95Ms).toBe(29);
-    expect(row.errorRatePercent).toBe(10);
+    expect(row.errorRatePercent).toBe(13.33);
     expect(row.previousSamples).toBe(30);
     expect(row.previousP95Ms).toBe(10);
     expect(row.p95ChangePercent).toBe(190);
@@ -91,12 +91,21 @@ describe("MCP-8 disposable-PostgreSQL measurements and proposals", () => {
     expect(() => checkOptimizationTargets([])).not.toThrow();
   });
 
-  it("real owner authority is required; review never changes a setting automatically", async () => {
-    // Current wall clock is the test run: future-dated evidence cannot satisfy
-    // createOptimizationProposal's real-time window, so this tests the refusal boundary.
-    await seedSamples(30, t("2041-05-30T12:00:00Z"));
-    await expect(createOptimizationProposal(staffId, baseInput))
+  it("owner-only proposal is evidence-backed; review never applies a setting", async () => {
+    await seedSamples(29, t("2041-05-30T12:00:00Z"));
+    await expect(createOptimizationProposal(ownerId, baseInput, { now: windowNow }))
       .rejects.toThrow("NOT_ENOUGH_PERFORMANCE_EVIDENCE");
-    expect(await prisma.optimizationProposal.count({ where: { createdByUserId: ownerId } })).toBe(0);
+    await seedSamples(1, t("2041-05-30T12:00:00Z"));
+    await expect(createOptimizationProposal(staffId, baseInput, { now: windowNow }))
+      .rejects.toThrow();
+    const proposal = await createOptimizationProposal(ownerId, baseInput, { now: windowNow });
+    expect(proposal.state).toBe("PROPOSED");
+    const stored = await prisma.optimizationProposal.findUniqueOrThrow({ where: { id: proposal.id } });
+    expect((stored.observationRefs as { baseline: { samples: number } }).baseline.samples).toBe(30);
+    const accepted = await decideOptimizationProposal(ownerId, { id: proposal.id, accept: true });
+    expect(accepted.state).toBe("ACCEPTED");
+    await expect(decideOptimizationProposal(ownerId, { id: proposal.id, accept: false }))
+      .rejects.toThrow("PROPOSAL_NOT_PENDING");
+    expect(await prisma.optimizationProposal.count({ where: { createdByUserId: ownerId } })).toBe(1);
   });
 });

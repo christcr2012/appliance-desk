@@ -29,7 +29,7 @@ function safeText(raw: string, max: number): string {
 }
 
 /** Owner-only: snapshot an observed baseline, never execute a suggested edit. */
-export async function createOptimizationProposal(ownerId: string, input: ProposalInput) {
+export async function createOptimizationProposal(ownerId: string, input: ProposalInput, options: { now?: Date } = {}) {
   checkOptimizationTargets(input.settingKeys);
   if (!safePerformanceName(input.observation.kind, input.observation.name))
     throw new Error("UNKNOWN_PERFORMANCE_LABEL");
@@ -41,7 +41,7 @@ export async function createOptimizationProposal(ownerId: string, input: Proposa
   const costNote = safeText(input.costNote, 500);
   const measurementPlan = safeText(input.measurementPlan, 2000);
   const rollback = safeText(input.rollback, 2000);
-  const evidence = await getObservations({ window: input.observation.window, kind: input.observation.kind });
+  const evidence = await getObservations({ window: input.observation.window, kind: input.observation.kind, now: options.now });
   const baseline = evidence.rows.find(row => row.name === input.observation.name);
   if (!baseline || baseline.status !== "ENOUGH")
     throw new Error("NOT_ENOUGH_PERFORMANCE_EVIDENCE");
