@@ -71,6 +71,36 @@ describe("MCP-9 RTC read-only HTTP adapter uses the actual MCP catalog", () => {
     ] }));
     expect(notAllowed.status).toBe(403);
   });
+  it("supports paged, scoped catalog and compact listings without exposing writer tools", async () => {
+    const catalog = await toolSearch(req("/api/tools?listing=catalog&limit=100&page=1"));
+    expect(catalog.status).toBe(200);
+    const all = (await catalog.json()).result;
+    expect(all.tools.length).toBeGreaterThan(10);
+    expect(all.next).toBeNull();
+    expect(all.tools.every((tool: { writes: boolean }) => !tool.writes)).toBe(true);
+    const first = (await (await toolSearch(req("/api/tools?limit=3&page=1"))).json()).result;
+    const second = (await (await toolSearch(req("/api/tools?limit=3&page=2"))).json()).result;
+    expect(first.tools).toHaveLength(3);
+    expect(first.next).toBe("2");
+    expect(second.tools[0].name).not.toBe(first.tools[0].name);
+    const compact = (await (await toolSearch(req("/api/tools?listing=compact&limit=100"))).json()).result;
+    expect(compact.tools.length).toBeLessThanOrEqual(4);
+    expect(compact.tools.some((tool: { name: string }) => tool.name === "appliance_whoami")).toBe(true);
+    const health = (await (await toolSearch(req("/api/tools?area=health&limit=100"))).json()).result;
+    expect(health.tools.every((tool: { area: string }) => tool.area === "health")).toBe(true);
+    expect((await toolSearch(req("/api/tools?limit=101"))).status).toBe(400);
+  });
+  it("fields and detail select sanitized read output without changing domain schemas", async () => {
+    const response = await toolCall(req("/api/tools/appliance_whoami", "POST", {
+      detail: "full", fields: "role",
+    }), toolCtx("appliance_whoami"));
+    expect(response.status).toBe(200);
+    expect((await response.json()).result).toEqual({ role: "OWNER" });
+    const denied = await toolCall(req("/api/tools/appliance_whoami", "POST", {
+      fields: "constructor",
+    }), toolCtx("appliance_whoami"));
+    expect(denied.status).toBe(400);
+  });
   it("whoami never returns a reusable credential", async () => {
     const response = await rtcWhoami(req("/api/whoami"));
     const body = await response.json();
