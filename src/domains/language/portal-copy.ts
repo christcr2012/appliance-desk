@@ -1,4 +1,5 @@
 import type { CustomerLanguage } from "./copy";
+import type { KitWords } from "@/components/kit/words";
 
 export const PORTAL_TRANSLATIONS = {
   "Welcome": "Bienvenido",
@@ -412,11 +413,38 @@ export const PORTAL_TRANSLATIONS = {
   "We haul it away": "Nosotros lo retiramos",
   "No thanks": "No, gracias",
   "Free": "Gratis",
+  "Load more": "Cargar más",
+  "Loading…": "Cargando…",
+  "Cancel": "Cancelar",
+  "Undo": "Deshacer",
+  "Next step": "Siguiente paso",
+  "Narrow your filters to see more": "Reduce los filtros para ver más",
+  "Something went wrong loading this page.": "Algo salió mal al cargar esta página.",
+  "Try again": "Intentar de nuevo",
 } as const;
 
 export type PortalLabel = keyof typeof PORTAL_TRANSLATIONS;
 export function portalLabel(language: CustomerLanguage, english: PortalLabel): string {
   return language === "es" ? PORTAL_TRANSLATIONS[english] : english;
+}
+
+/**
+ * The kit's fixed words in the customer's language (PORTAL-1 section 4).
+ * The portal shell passes this set to KitWordsProvider and to the kit
+ * server components that take word props; every English key is a
+ * KIT_WORDS_EN value, so a missing translation is a type error here.
+ */
+export function portalKitWords(language: CustomerLanguage): KitWords {
+  return {
+    loadMore: portalLabel(language, "Load more"),
+    loading: portalLabel(language, "Loading…"),
+    cancel: portalLabel(language, "Cancel"),
+    undo: portalLabel(language, "Undo"),
+    nextStep: portalLabel(language, "Next step"),
+    narrowFilters: portalLabel(language, "Narrow your filters to see more"),
+    pageLoadFailed: portalLabel(language, "Something went wrong loading this page."),
+    tryAgain: portalLabel(language, "Try again"),
+  };
 }
 
 /** Grammatical dynamic quantity; not a status or money calculation. */
