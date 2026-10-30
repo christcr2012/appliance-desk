@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getSaleFormData } from "@/domains/sales";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { EmptyState } from "@/components/ui";
 import { NewSaleForm } from "./new-sale-form";
 
 export const metadata = { title: "New sale" };
@@ -11,15 +11,18 @@ export default async function NewSalePage() {
   const { parts, customers, usedAppliances } = await getSaleFormData(session.user.id);
   return (
     <main className="space-y-6">
-      <PageHeader
-        title="New sale"
-        description="Pick what is being sold, who it is for, and whether it is picked up or delivered. The sales tax is figured for you."
-        secondaryActions={<Link href="/desk/sales" className="text-sm underline">Back to all sales</Link>}
-      />
+      <Link href="/desk/sales" className="text-sm text-ink-soft hover:underline">
+        &larr; Back to all sales
+      </Link>
+
+      <h1 className="mt-2 text-xl font-semibold">New sale</h1>
+      <p className="mt-1 text-sm text-ink-soft">
+        Pick what is being sold, who it is for, and whether it is picked up or delivered. The sales tax is figured for you.
+      </p>
       {parts.length === 0 && usedAppliances.length === 0 ? (
         <EmptyState
           title="Nothing is ready to sell"
-          description="On the Parts screen, open a part you have on the shelf and choose “Sell to customers”, then set a price. To sell a used appliance, retire it and choose “Sell it” as its plan."
+          description="Open a part on the Parts screen and choose “Sell to customers” to set its price. Used appliances sell from the retired list."
           action={<Link href="/desk/parts" className="underline">Go to Parts</Link>}
         />
       ) : (

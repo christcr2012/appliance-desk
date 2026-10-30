@@ -106,13 +106,26 @@ export function pageKind(entry: PageEntry, source: string): PageKind {
   return /<ScreenHeader\b/.test(source) ? "list" : "other";
 }
 
-/** Rule 4: list pages import DataTable and Toolbar from the kit; record pages import RecordHeader. */
+/** Rule 4: list pages import DataTable and a kit filter control (Toolbar, or
+ * StatusTabs when status is the page's only filter — the billing/agreements
+ * pattern pairs StatusTabs with a Toolbar that carries the other controls);
+ * record pages import RecordHeader. */
 export function ruleKitImports(kind: PageKind, source: string): Violation[] {
   const names = kitImports(source);
-  const needed = kind === "list" ? ["DataTable", "Toolbar"] : kind === "record" ? ["RecordHeader"] : [];
-  return needed
-    .filter((name) => !names.has(name))
-    .map((name) => ({ rule: 4 as const, line: 1, message: `${kind} page does not import ${name} from ${KIT_IMPORT}` }));
+  if (kind === "record") {
+    return names.has("RecordHeader")
+      ? []
+      : [{ rule: 4 as const, line: 1, message: `record page does not import RecordHeader from ${KIT_IMPORT}` }];
+  }
+  if (kind !== "list") return [];
+  const out: Violation[] = [];
+  if (!names.has("DataTable")) {
+    out.push({ rule: 4 as const, line: 1, message: `list page does not import DataTable from ${KIT_IMPORT}` });
+  }
+  if (!names.has("Toolbar") && !names.has("StatusTabs")) {
+    out.push({ rule: 4 as const, line: 1, message: `list page does not import Toolbar or StatusTabs from ${KIT_IMPORT}` });
+  }
+  return out;
 }
 
 const UI_LIBRARY_IMPORT = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|^\s*import\s+)["'](@radix-ui\/[^"']+|cmdk|vaul)(?:\/[^"']*)?["']/gm;
@@ -203,11 +216,11 @@ describe("kit guards fail on a page that breaks them (tests/fixtures/kit-guard-b
     expect(checkPage(fixturePath, fixture, [{ file: fixturePath, rule: 3, reason: "legal wording test entry" }]).filter((v) => v.rule === 3)).toEqual([]);
   });
 
-  it("guard 4: a list page without DataTable and Toolbar is refused", () => {
+  it("guard 4: a list page without DataTable and a kit filter control is refused", () => {
     expect(pageKind(fixturePath, fixture)).toBe("list");
     expect(byRule(4).map((violation) => violation.message)).toEqual([
       `list page does not import DataTable from ${KIT_IMPORT}`,
-      `list page does not import Toolbar from ${KIT_IMPORT}`,
+      `list page does not import Toolbar or StatusTabs from ${KIT_IMPORT}`,
     ]);
     expect(ruleKitImports("record", fixture)).toHaveLength(1);
     expect(pageKind("src/app/desk/customers/[id]/page.tsx", "")).toBe("record");

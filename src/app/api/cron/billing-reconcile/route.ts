@@ -2,6 +2,7 @@ import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { sweepSystemIssues } from "@/domains/system-issues/sources";
+import { cleanupOldNotifications } from "@/domains/notifications";
 import { reconcileAgentOperations } from "@/domains/agent-control/operations";
 import { runMonitors } from "@/domains/agent-control/monitoring";
 import { measure, prunePerformanceSamples } from "@/domains/agent-control/performance";
@@ -109,11 +110,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Readback-only: uncertain assistant operations never dispatch a second effect.
       const assistants = await reconcileAgentOperations(new Date(), 10);
       const monitors = await runMonitors(new Date());
-      // Performance evidence expires after 30 days. Retention is capped at 5,000
-      // per sweep and must never stop the actual health check if storage fails.
+      // MCP-8: capped, failure-isolated performance telemetry cleanup.
       let performancePruned = 0;
       try { performancePruned = await prunePerformanceSamples(new Date()); } catch { /* telemetry is optional */ }
-      return { counts: automationCounts({ ...issues, ...assistants, ...monitors, performancePruned }) };
+      // AR-13: retain notification cleanup in the same nightly sweep.
+      const notificationsRemoved = await cleanupOldNotifications(new Date());
+      return { counts: automationCounts({ ...issues, ...assistants, ...monitors, performancePruned, notificationsRemoved }) };
     }),
   });
   return NextResponse.json({ systemIssues, providerOps, bankInFlight, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });

@@ -1,6 +1,27 @@
 ## October 29 — MCP-8 performance observations and improvement proposals
 
-Migration `20261029220000_mcp8_performance_proposals` adds `PerfSample` (fixed PAGE/ACTION/JOB/QUERY label, elapsed milliseconds, success, timestamp; indexed by kind/name/time and time), and `OptimizationProposal` (owner-created evidence, benefit/risk/cost, measurement and rollback, PROPOSED/ACCEPTED/REJECTED/DONE state). The metric sweep deletes up to 5,000 samples older than 30 days per run. PerfSample is **excluded** from recoverable business backups because it is disposable telemetry; OptimizationProposal is **included** because reviewed proposals are durable owner records. This is additive; no production migration or live provider action is authorized.
+Migration `20261029220000_mcp8_performance_proposals` adds `PerfSample` (fixed PAGE/ACTION/JOB/QUERY label, elapsed milliseconds, success, timestamp; indexed by kind/name/time and time) and `OptimizationProposal` (owner-created evidence, benefit/risk/cost, measurement and rollback, PROPOSED/ACCEPTED/REJECTED/DONE state). The sweep deletes up to 5,000 samples older than 30 days per run. PerfSample is excluded from recoverable business backups because it is disposable telemetry; OptimizationProposal is included because reviewed proposals are durable owner records. Additive only; no production migration or provider action was executed by these tests.
+
+## October 29 — AR-13 notifications (additive)
+
+Migration `20261217000000_notifications` adds `Notification` (one row per recipient per event: kind, title, body, in-app link, optional entity pointer, `dedupeKey`, `readAt`; unique on (`userId`, `dedupeKey`) so a replayed event can never double-notify; newest-first index on (`userId`, `createdAt`)) and `NotificationPreference` (per person per kind: `inApp`, `email`; unique on (`userId`, `kind`); no row = in app on, email off), plus `BusinessSettings.notificationKeepDays` (integer, default 90; how long read notifications are kept, edited in Settings › Advanced). Kinds: LEAD_NEW, QUOTE_VIEWED, SIGNATURE_DONE, PAYMENT_FAILED, APPROVAL_REQUESTED. Backup policy: notifications are left out of backups (`null` — short-lived, losing them loses nothing); preferences are backed up as `notificationPreference`. A privacy deletion removes the customer's notifications by their lead/estimate/agreement/invoice ids; an access reduction removes the kinds the person can no longer open.
+
+## October 29 — CU-1 Customers list (AR-4c, additive migration 20261026040000_customer_list)
+
+`Customer.phoneDigits` (digits-only phone key, backfilled from `phone`, maintained by
+`customerContactKeys` at every write that sets phone — the LD-1 pattern; privacy deletion
+clears it with the phone). Trigram GIN indexes for list search: `Customer.companyName`,
+`ServiceAddress.line1`, `ServiceAddress.city`, `User.name`, and `lower("User"."email")`
+(expression index, SQL-only). Composite btrees `RentalAgreement(customerId, status)`,
+`Invoice(customerId, status, dueDate)`, `Job(customerId, status, scheduledAt)`. View
+`customer_list_v1` (raw SQL, read via `prisma.$queryRaw`, no Prisma model): one row per
+customer with `archivedAt IS NULL AND NOT isWalkIn`, computing live — per the CUSTOMERS
+spec's design change there is no stored summary table — active/pending/ended agreement
+counts, monthly rent over ACTIVE agreements, owed + oldest open due date under the Bills
+money rule (open statuses with more due than paid), next visit (time + type), next bill
+date, ending date, next pickup, autopay flag, property count and oldest-address city.
+"Past due" and past-due cents are computed in the reading query (Denver start-of-today),
+never in the view.
 
 ## October 28 — AR-9 Insights (additive)
 

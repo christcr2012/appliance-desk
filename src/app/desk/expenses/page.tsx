@@ -55,7 +55,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           <label>Appliance ID (optional)<input className={field} name="applianceId"/></label>
           <label>Job ID (optional)<input className={field} name="jobId"/></label>
           <label>Purchase order ID (optional)<input className={field} name="purchaseOrderId"/></label>
-          <label className="sm:col-span-3 inline-flex gap-2 items-center"><input type="checkbox" name="capitalize"/>This bought a rental appliance (capitalize cost)</label>
+          <label className="sm:col-span-3 inline-flex gap-2 items-center"><input type="checkbox" name="capitalize"/>This bought a rental appliance (count as equipment)</label>
         </div>}
         <div className="sm:col-span-2 flex gap-2 flex-wrap">
           {data.manager ? <>

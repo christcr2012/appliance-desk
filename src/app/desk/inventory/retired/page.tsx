@@ -4,7 +4,8 @@ import {
   countRetiredByState, getRetiredFollowUpDays, listDepositAccounts, listRetiredAppliances, listScrapPayments, planChoiceLabel, RETIRED_LIST_LIMIT,
   type RetiredFilter,
 } from "@/domains/inventory/retired-plans";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { EmptyState } from "@/components/ui";
+import { ScreenHeader, StatusTabs } from "@/components/kit";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import { RetiredList } from "./retired-list";
 import { ScrapMoney } from "./scrap-money";
@@ -41,22 +42,16 @@ export default async function RetiredAppliancesPage({ searchParams }: { searchPa
   const listLimit = RETIRED_LIST_LIMIT;
   return (
     <main className="space-y-8">
-      <PageHeader
-        title="Retired appliances"
-        description={`${counts.waiting} waiting on a decision or not finished · ${counts.done} done. Retired appliances can't be rented. Choose what happens to each one.`}
+      <ScreenHeader title="Retired appliances" />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        {`${counts.waiting} waiting on a decision or not finished · ${counts.done} done. Retired appliances can't be rented. Choose what happens to each one.`}
+      </p>
+      <StatusTabs
+        label="Filter retired appliances"
+        param="show"
+        current={filter}
+        items={FILTERS.map((f) => ({ value: f.value, label: f.label }))}
       />
-      <nav aria-label="Filter retired appliances" className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <Link
-            key={f.value}
-            href={f.value === "ALL" ? "/desk/inventory/retired" : `/desk/inventory/retired?show=${f.value}`}
-            aria-current={f.value === filter ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold ${f.value === filter ? "border-primary bg-subtle text-ink" : "border-line text-ink-soft"}`}
-          >
-            {f.label}
-          </Link>
-        ))}
-      </nav>
       {rows.length === 0 ? (
         <EmptyState title="Nothing here" description="Appliances you retire from an appliance's page show up in this list." />
       ) : (

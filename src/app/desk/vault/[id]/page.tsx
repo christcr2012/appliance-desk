@@ -4,7 +4,8 @@ import { requireRole } from "@/lib/session";
 import { getCredential, listRecordsForLinking } from "@/domains/vault";
 import { getVaultUnlockStatus } from "@/domains/vault/unlock";
 import { getSecondStepView } from "@/domains/security/second-step";
-import { Button, ButtonLink, Card, PageHeader } from "@/components/ui";
+import { Button, ButtonLink, Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import {
   deleteCredentialAction,
   markRotatedAction,
@@ -35,14 +36,10 @@ export default async function VaultCredentialPage({ params }: { params: Promise<
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <RecordHeader
         title={credential.title}
-        description="Owner only. Values stay encrypted until you unlock the vault and tap Show or Copy — every look is written to the activity log, without the value."
-        secondaryActions={
-          <Link href="/desk/vault" className="text-sm font-semibold text-action underline">
-            Back to all logins
-          </Link>
-        }
+        subtitle="Owner only. Values stay encrypted until you unlock the vault and tap Show or Copy — every look is logged, without the value."
+        back={{ href: "/desk/vault", label: "All logins" }}
       />
 
       {!unlock.unlocked && (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { ButtonLink, Card, PageHeader } from "@/components/ui";
+import { ButtonLink, Card } from "@/components/ui";
+import { ScreenHeader } from "@/components/kit";
 import { editorFields } from "@/domains/site-content/editor-fields";
 import { WEBSITE_PAGES } from "@/domains/site-content/pages";
 import { siteFacts } from "@/domains/site-content/facts";
@@ -49,7 +50,9 @@ export default async function WebsitePage({ searchParams }: { searchParams: Prom
     const focus = params.focus;
     return (
       <div className="max-w-7xl">
-        <PageHeader title={focus === "photos" ? "Photos and promotions" : focus === "contact" ? "Contact and prices" : "Edit a page"} description="Pick what to change. Nothing reaches visitors until you review and publish." secondaryActions={back} />
+        <div className="flex justify-end">{back}</div>
+        <ScreenHeader title={focus === "photos" ? "Photos and promotions" : focus === "contact" ? "Contact and prices" : "Edit a page"} />
+        <p className="-mt-2 text-sm text-ink-soft">Pick what to change. Nothing reaches visitors until you review and publish.</p>
         <WebsiteWorkspace
           pages={pages}
           fields={editorFields()}
@@ -74,7 +77,9 @@ export default async function WebsitePage({ searchParams }: { searchParams: Prom
     const review = await getDraftReview(facts);
     return (
       <div className="max-w-5xl">
-        <PageHeader title="Review and publish" description="This is exactly what will change on the live website." secondaryActions={back} />
+        <div className="flex justify-end">{back}</div>
+        <ScreenHeader title="Review and publish" />
+        <p className="-mt-2 text-sm text-ink-soft">This is exactly what will change on the live website.</p>
         <ReviewPanel review={review} nowIso={nowIso} pagePaths={pagePaths} />
       </div>
     );
@@ -84,7 +89,9 @@ export default async function WebsitePage({ searchParams }: { searchParams: Prom
     const [history, overview] = await Promise.all([listPublishedHistory(), getWebsiteOverview()]);
     return (
       <div className="max-w-4xl">
-        <PageHeader title="Website history" description="Every version that has been live. Restoring one puts it in your draft first; it never goes live by itself." secondaryActions={back} />
+        <div className="flex justify-end">{back}</div>
+        <ScreenHeader title="Website history" />
+        <p className="-mt-2 text-sm text-ink-soft">Every version that has been live. Restoring one puts it in your draft first; it never goes live by itself.</p>
         <HistoryPanel
           rows={history.map((item) => ({ id: item.id, version: item.version, live: item.id === overview.live?.id, when: when(item.publishedAt), by: item.publishedBy, note: item.note }))}
           draft={overview.draft ? { id: overview.draft.id, version: overview.draft.version, changes: overview.draft.changeCount } : null}
@@ -102,7 +109,8 @@ export default async function WebsitePage({ searchParams }: { searchParams: Prom
   ];
   return (
     <div className="max-w-5xl">
-      <PageHeader title="Website" description="Change what visitors read and see on your public website. Nothing reaches them until you publish." />
+      <ScreenHeader title="Website" />
+      <p className="-mt-2 text-sm text-ink-soft">Change what visitors read and see on your public website. Nothing reaches them until you publish.</p>
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Live now">
           {overview.live ? (

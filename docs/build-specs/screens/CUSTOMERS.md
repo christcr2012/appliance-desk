@@ -13,6 +13,13 @@ list silently wrong. Decision: compute the same facts **live, in one SQL view**,
 test. Only if the capacity test fails the 150 ms budget at 20,000 customers does a follow-up add a cache — and that
 follow-up must be written up first (STATUS + card), not improvised.
 
+**Amendment (owner ruling, 2026-10-30, after CU1-PERF):** the follow-up redesign replaced the view with phased
+base-table queries (PR #776) and brought the list from 1,523 ms to under every budget except two: the attention
+sort (172.6 ms in CI) and segment counts (205 ms on a loaded CI runner; 125–147 ms locally). The owner chose to
+amend the budget rather than commission the stored summary: **the attention sort and the segment counts carry a
+300 ms budget at the 20,000-customer seed; every other measurement keeps 150 ms.** The summary/cache design
+remains the escalation if the amended budget is ever breached — written up first, per the rule above.
+
 ## 2. Data (additive migration `20261026040000_customer_list`)
 
 - `Customer.phoneDigits String?` + `@@index([phoneDigits])`, maintained by the same `contactKeys()` helper pattern as
@@ -87,7 +94,8 @@ export async function getCustomerSegmentCounts(p: Omit<CustomerListParams, "segm
   accepts the same params; max 10,000 rows).
 - Capacity test `tests/perf/customers-list.perf.test.ts` (Performance Baselines job): 20,000 customers, 60,000
   service addresses, 30,000 agreements, 120,000 invoices, 40,000 jobs; list (each sort), counts and search each under
-  150 ms in CI; output the timings.
+  150 ms in CI — except the attention sort and the counts at 300 ms per the 2026-10-30 amendment in section 1;
+  output the timings.
 
 ## 5. Screen — `/desk/customers` (same URL)
 

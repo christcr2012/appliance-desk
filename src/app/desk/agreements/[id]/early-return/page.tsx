@@ -64,7 +64,7 @@ export default async function EarlyReturnPage({
         </p>
       )}
       <Link href={`/desk/agreements/${id}`} className="text-sm text-ink-soft hover:underline">
-        &larr; Back to the agreement
+        &larr; Back to the rental
       </Link>
       <h1 className="mt-2 text-xl font-semibold">Equipment returned early — {name}</h1>
     </>
@@ -134,7 +134,7 @@ export default async function EarlyReturnPage({
       )}
       {agreement.paidInFullInAdvance && (
         <p role="alert" className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          This rental was paid in advance. Settle it from the agreement page instead; this screen does not handle prepaid rentals.
+          This rental was paid in advance. Settle it from the rental page instead; this screen does not handle prepaid rentals.
         </p>
       )}
 

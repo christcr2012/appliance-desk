@@ -15,7 +15,10 @@ for (const width of [360, 1280]) {
     await expect(page.getByRole("button", { name: "Print work order" })).toBeVisible();
     await page.emulateMedia({ media: "print" });
     await expect(page.locator("aside")).toBeHidden();
-    await expect(page.locator("header")).toBeHidden();
+    // The desk chrome (the sticky top bar) must not print. The work order's
+    // own kit RecordHeader is page content, not chrome, so it is not matched
+    // here — this selector targets the top bar only.
+    await expect(page.locator("header.sticky")).toBeHidden();
     await expect(page.getByRole("navigation", { name: "Quick access", includeHidden: true })).toBeHidden();
     await expect(page.getByRole("button", { name: "Print work order", includeHidden: true })).toBeHidden();
     await expect(page.getByText("CI operational check", { exact: true })).toBeVisible();

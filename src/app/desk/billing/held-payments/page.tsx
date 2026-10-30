@@ -1,10 +1,8 @@
+import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import {
-  ButtonLink,
+import { ButtonLink,
   Card,
-  EmptyState,
-  PageHeader,
-} from "@/components/ui";
+  EmptyState } from "@/components/ui";
 import {
   listHeldPayments,
   listHeldRefundsWaitingOnStripe,
@@ -25,15 +23,15 @@ export default async function HeldPaymentsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Held payments"
-        description="Card payments that arrived after an invoice had already been written off or cancelled. The money is recorded but waits for an owner/admin decision."
-        secondaryActions={
-          <ButtonLink href="/desk/billing" variant="secondary">
-            Back to billing
-          </ButtonLink>
-        }
-      />
+      <Link href="/desk/billing" className="text-sm text-ink-soft hover:underline">
+        &larr; Back to billing
+      </Link>
+
+      <h1 className="mt-2 text-xl font-semibold">Held payments</h1>
+      <p className="mt-1 text-sm text-ink-soft">
+        Card payments that arrived after an invoice had already been written off or cancelled.
+        The money is recorded but waits for an owner/admin decision.
+      </p>
 
       <div className="mb-6">
         <Card title="How this works">
@@ -81,7 +79,7 @@ export default async function HeldPaymentsPage() {
                 href="/desk/billing/reconciliation"
                 variant="secondary"
               >
-                Billing reconciliation
+                Billing check
               </ButtonLink>
             }
           >

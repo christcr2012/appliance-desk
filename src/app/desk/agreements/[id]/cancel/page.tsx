@@ -10,14 +10,14 @@ export default async function CancelPage({params,searchParams}:{params:Promise<{
  await requireRole("OWNER","ADMIN");
  const {id}=await params;
  const agreement=await getAgreementById(id);
- if(!agreement)return <p>Agreement not found.</p>;
+ if(!agreement)return <p>Rental not found.</p>;
  let quote:Awaited<ReturnType<typeof getPreDeliveryCancellationQuote>>|null=null;
  let blocker:string|null=null;
  try { quote=await getPreDeliveryCancellationQuote(id); }
- catch(e) {blocker=e instanceof Error?e.message:"Reconciliation required.";}
+ catch(e) {blocker=e instanceof Error?e.message:"Checking against your bank is required first.";}
  return <div className="max-w-2xl space-y-4">
   {(await searchParams).from==="end" && <p className="rounded-lg border border-line bg-subtle p-3 text-sm" role="status">Ending {agreement.customer.user.name??agreement.customer.user.email}&apos;s rental — step 2 of 3 <Link href={"/desk/agreements/"+encodeURIComponent(id)} className="font-medium underline">&larr; Back to the rental</Link></p>}
-  <Link href={"/desk/agreements/"+encodeURIComponent(id)} className="underline">Back to agreement</Link>
+  <Link href={"/desk/agreements/"+encodeURIComponent(id)} className="underline">Back to the rental</Link>
   <h1 className="text-xl font-semibold">Cancellation and refund review</h1>
   <p>Customer: {agreement.customer.user.name??agreement.customer.user.email}</p>
   <p>Review the actual signed terms. A scheduled delivery is not a completed delivery.</p>
@@ -43,7 +43,7 @@ export default async function CancelPage({params,searchParams}:{params:Promise<{
      </div>
    ) : (
      <p role="status" className="mt-2 border border-line p-2 text-sm">
-       Historical signing policy was not frozen for this agreement. No setup-fee
+       Historical signing policy was not frozen for this rental. No setup-fee
        retention is calculated from today&apos;s settings. Full refund only; review
        the actual signed terms and finance history before approval.
      </p>

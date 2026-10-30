@@ -40,14 +40,14 @@ test("owner reconciles a separately returned check; other roles denied",async({p
  const url="/desk/agreements/"+agreement.id+"/refund";
  try{
   await page.goto(url);
-  await expect(page.getByRole("heading",{name:"Reconcile completed refund"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Record the completed refund"})).toBeVisible();
   await expect(page.getByText("Approved amount: $105.00")).toBeVisible();
   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
   for(const state of [staffState,customerState]){
    const ctx=await browser.newContext({storageState:state});
    const other=await ctx.newPage();
    await other.goto(url);
-   await expect(other.getByRole("heading",{name:"Reconcile completed refund"})).toHaveCount(0);
+   await expect(other.getByRole("heading",{name:"Record the completed refund"})).toHaveCount(0);
    await ctx.close();
   }
   await page.getByRole("textbox",{name:"Evidence reference"}).fill("CHECK-"+agreement.id);

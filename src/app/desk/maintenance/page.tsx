@@ -1,17 +1,14 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { MaintenanceStatus } from "@prisma/client";
 import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domains/maintenance";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { FilterBar } from "@/components/desk/workspace";
 import {
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
 import type { StatusTone } from "@/components/status-badge";
+import { DataTable, ScreenHeader, StatusTabs, type Column } from "@/components/kit";
 import { maintenanceStatusLabel } from "@/lib/status-labels";
 
 export const metadata = { title: "Maintenance" };
@@ -55,9 +52,14 @@ type MaintenanceRow = Awaited<
 export default async function MaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; page?: string; open?: string }>;
 }) {
-  const { status: rawStatus, page: rawPage } = await searchParams;
+  const { status: rawStatus, page: rawPage, open } = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Maintenance requests have no side panel — the record page IS the
+  // destination, as it was before the redesign — so an ?open= link goes
+  // straight there.
+  if (open) redirect(`/desk/maintenance/${encodeURIComponent(open)}`);
   const status = isMaintenanceStatus(rawStatus) ? rawStatus : undefined;
   const filter = status ? { status } : undefined;
 
@@ -80,19 +82,15 @@ export default async function MaintenancePage({
     return qs ? `/desk/maintenance?${qs}` : "/desk/maintenance";
   }
 
-  const columns: DataListColumn<MaintenanceRow>[] = [
+  const columns: Column<MaintenanceRow>[] = [
     {
       key: "request",
       header: "Request",
-      primary: true,
       cell: (request) => (
         <div>
-          <Link
-            href={`/desk/maintenance/${request.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
+          <span className="font-semibold text-ink">
             {request.customer.user.name ?? request.customer.user.email}
-          </Link>
+          </span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             {request.appliance
               ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})`
@@ -126,24 +124,30 @@ export default async function MaintenancePage({
 
   return (
     <div>
-      <PageHeader
-        title="Maintenance requests"
-        description="Customer-submitted service requests from the account portal."
-      />
+      <ScreenHeader title="Maintenance requests" list />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Customer-submitted service requests from the account portal.
+      </p>
 
-      <FilterBar
+      <StatusTabs
         label="Filter by status"
-        items={STATUS_TABS.map((tab) => ({
-          href: maintenanceHref(1, tab.value),
-          label: tab.label,
-          active: (status ?? "ALL") === tab.value,
-        }))}
+        param="status"
+        current={status ?? "ALL"}
+        items={STATUS_TABS.map((tab) => ({ value: tab.value, label: tab.label }))}
       />
 
-      <DataList
+      <DataTable
         rows={requests}
+        rowKey={(request) => request.id}
         columns={columns}
         caption="Maintenance requests"
+        rowHref={(request) => `/desk/maintenance/${request.id}`}
+        mobileCard={(request) => (
+          <div className="space-y-1">
+            {columns[0].cell(request)}
+            {columns[1].cell(request)}
+          </div>
+        )}
         empty={
           <EmptyState
             title={

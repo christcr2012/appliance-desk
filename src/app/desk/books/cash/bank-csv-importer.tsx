@@ -49,7 +49,7 @@ export function BankCsvImporter({accounts,owner}:{accounts:Account[];owner:boole
  }
  return <section className="rounded-lg border border-border p-4 space-y-3">
   <h2 className="text-lg font-semibold">Import a settled bank CSV</h2>
-  <p className="text-sm text-muted-foreground">The bank CSV is parsed privately on the server, never sent to an accounting provider. Preview uses real dates and exact dollar amounts; imports do not move money, add to available cash, or finish reconciliation.</p>
+  <p className="text-sm text-muted-foreground">The bank CSV is parsed privately on the server, never sent to an accounting provider. Preview uses real dates and exact dollar amounts; imports do not move money, add to available cash, or finish the check against your bank.</p>
   {!accounts.length&&<p>Register an actual business bank source before previewing transactions.</p>}
    <div className="grid gap-3 sm:grid-cols-2">
    <label>Registered bank<select className={base} disabled={!accounts.length} value={accountId} onChange={e=>{setAccountId(e.target.value);reset();}}>

@@ -7,13 +7,11 @@ import {
 } from "@/domains/tasks/workspace";
 import { getTaskAssignees } from "@/domains/tasks";
 import { businessDateKey } from "@/lib/business-date";
-import { FilterBar } from "@/components/desk/workspace";
 import {
-  ButtonLink,
   Card,
   EmptyState,
-  PageHeader,
 } from "@/components/ui";
+import { ScreenHeader, StatusTabs } from "@/components/kit";
 import { Pagination } from "@/components/pagination";
 import { NewTaskForm } from "./new-task-form";
 import { TaskRow } from "./task-row";
@@ -37,15 +35,14 @@ export default async function TasksPage({
 
   return (
     <div className="max-w-4xl">
-      <PageHeader
+      <ScreenHeader
         title="Tasks"
-        description="Shared team follow-ups, linked to the people and jobs they concern. Due dates follow the Colorado business calendar."
-        secondaryActions={
-          <ButtonLink href="/desk/today" variant="secondary">
-            Back to Today
-          </ButtonLink>
-        }
+        list
+        overflow={[{ kind: "link", label: "Back to Today", href: "/desk/today" }]}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Shared team follow-ups, linked to the people and jobs they concern. Due dates follow the Colorado business calendar.
+      </p>
 
       <div id="new-task" className="mb-6 scroll-mt-4">
         <Card
@@ -56,24 +53,26 @@ export default async function TasksPage({
         </Card>
       </div>
 
-      <FilterBar
+      <StatusTabs
         label="Choose task view"
+        param="view"
+        current={view}
         items={TASK_VIEWS.map((item) => ({
+          value: item.value,
           label: item.label,
-          href: `/desk/tasks?view=${item.value}&due=${filter}`,
-          active: view === item.value,
         }))}
       />
 
-      <FilterBar
+      <StatusTabs
         label="Filter tasks by due date"
+        param="due"
+        current={filter}
         items={TASK_FILTERS.map((item) => ({
+          value: item.value,
           label:
             view === "completed" && item.value === "all"
               ? "All due dates"
               : item.label,
-          href: `/desk/tasks?view=${view}&due=${item.value}`,
-          active: filter === item.value,
         }))}
       />
 

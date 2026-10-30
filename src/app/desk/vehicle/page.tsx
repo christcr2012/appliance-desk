@@ -65,7 +65,10 @@ export default async function VehiclePage() {
             <div className="rounded-control border border-line p-3">
               <p className="font-semibold">{v.rules.headline}</p>
               <ul className="mt-1 list-disc pl-5 text-sm">{v.rules.points.map((p) => <li key={p}>{p}</li>)}</ul>
-              <p className="mt-2 text-xs text-ink-soft">Weight lines: a CDL from 26,001 lb (federal); Colorado commercial-vehicle rules from 16,001 lb (C.R.S. 42-4-235). Summaries only — confirm with the Colorado State Patrol.</p>
+              <p className="mt-2 text-xs text-ink-soft">
+                Weight lines: a CDL from 26,001 lb (federal); Colorado commercial-vehicle rules from 16,001 lb (C.R.S. 42-4-235).
+                Summaries only — confirm with the Colorado State Patrol.
+              </p>
             </div>
             <p className="text-sm">
               {!v.insurancePolicy
@@ -131,11 +134,19 @@ export default async function VehiclePage() {
             </tbody>
           </table>
         )}
-        <p className="mt-2 text-xs text-ink-soft">The rate comes from the dated rule book (2026: 72.5¢ a mile, IRS Notice 2026-10). The last column is what your books posted for fuel, vehicle repairs and vehicle insurance. You can use only one way on a tax return: your tax packet uses the way chosen below (line 9, car and truck), and shows the other as a comparison. Ask your accountant before changing it.</p>
+        <p className="mt-2 text-xs text-ink-soft">
+          The rate comes from the dated rule book (2026: 72.5¢ a mile, IRS Notice 2026-10).
+          The last column is what your books posted for fuel, vehicle repairs and vehicle insurance.
+          You can use only one way on a tax return: your tax packet uses the way chosen below (line 9, car and truck),
+          and shows the other as a comparison. Ask your accountant before changing it.
+        </p>
       </Card>
 
       <Card title="How you claim vehicle costs" description="Ask your accountant; it matters most in the first year.">
-        <p className="mb-2 text-sm text-ink-soft">Starting value — not confirmed: the standard mileage rate in the first year, which keeps both options open for later years. A medical card is asked for from 16,001 lb up (starting value, not confirmed).</p>
+        <p className="mb-2 text-sm text-ink-soft">
+          Starting value — not confirmed: the standard mileage rate in the first year, which keeps both options open for later years.
+          A medical card is asked for from 16,001 lb up (starting value, not confirmed).
+        </p>
         <VehicleForm action={settingsAction} submit="Save" secondary>
           <div className="grid gap-3 md:max-w-sm">
             <Select label="Method" name="method" defaultValue={o.settings.mileageMethod} options={[["STANDARD_RATE", "Standard mileage rate"], ["ACTUAL_COSTS", "Actual vehicle costs"]]} />

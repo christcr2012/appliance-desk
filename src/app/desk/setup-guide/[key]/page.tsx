@@ -31,9 +31,9 @@ export default async function WalkthroughPage({
     <div className="space-y-6">
       <PageHeader
         title={walkthrough.title}
-        description={walkthrough.why}
         primaryAction={<Link href="/desk/setup-guide">← All walkthroughs</Link>}
       />
+      <p className="max-w-2xl text-sm leading-6 text-ink-soft">{walkthrough.why}</p>
 
       <Card title="Have ready" description={`About ${walkthrough.estimatedMinutes} minutes in total.`}>
         <ul>

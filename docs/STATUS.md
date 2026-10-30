@@ -1,22 +1,232 @@
-## October 29 — Lane 2: MCP-11 and MCP-7b merged; MCP-8 observations and settings coverage in progress
+## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
 
-MCP-11 feedback PR #748 and MCP-7b delegated monitoring PR #762 are merged after
-their required exact-head CI and normal review gates cleared. MCP-7b protects
-owner-approved standing automation with maintenance-scoped connections, durable
-per-slot receipts, version and revocation checks, and pre-dispatch verification.
-No live provider or customer messaging was activated.
+MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
 
-MCP-8 branch `ai/chatgpt/mcp-8-observations-settings` adds fixed-label sampled
-PAGE/ACTION/JOB/QUERY performance evidence, 30-day capped cleanup, percentile
-observations that refuse to guess below 30 samples, owner-only reversible
-improvement proposals, owner System health screen and scoped assistant lookup
-of settings generated from AR-8's final catalog and real control inventory.
-Prisma migration and unit/disposable-PostgreSQL tests are included. Focused
-unit tests (8/8) and ESLint passed locally; the first corrected full CI was green.
-Owner acceptance now links one MCP-6 engineering case, with independent post-deployment
-measurement review required rather than a fabricated improvement claim. A refreshed
-full CI, review gate and merge remain pending. MCP-9 RTC conformance is not implemented yet.
+## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 
+**What changed:** the Customers list, segment counts and searches no longer read the
+`customer_list_v1` view, whose six per-customer LATERAL aggregates ran for every live
+customer on every call (1,523 ms list / 731 ms counts / 1,175 ms search at the
+20,000-customer capacity seed, budget 150 ms). `src/domains/customers/list.ts` now
+works in phases over base tables: an ids-only ordering (population + filters + the
+segment's EXISTS form in `segments.ts`; aggregate sort keys as grouped aggregates,
+candidate-scoped when a search narrows the set), the grouped-aggregate facts read
+for the window's ids only, and the display laterals (next visit, property count,
+past-due, oldest open bill) for window rows only. Segment counts keep one grouped
+population pass. No schema change; the view stays for its remaining readers.
+
+**How it was checked:** a 400-customer parity harness (every list shape — 6 segments
+× 6 sorts, 6 count variants, 5 searches, 2 exports — for OWNER and STAFF) is
+byte-identical to the view implementation; packet suites green on real Postgres
+(integration 7, segments 12, keys 3, role checks 6); full typecheck clean. Merged
+2026-10-30 as PR #776 (squash `fa170dbd`) with ci and review-gate green at the
+exact head. The Performance Baselines job measured every sort, the counts and the
+searches under the 150 ms budget **except the attention sort at 172.6 ms** (278 ms
+on a second, loaded runner) and the counts at 205 ms on that loaded run (125–147 ms
+locally). Perf is not a required merge check. **Owner ruling (Chris, 2026-10-30):**
+the budget is amended instead of commissioning the stored summary — the attention
+sort and segment counts now carry a **300 ms** budget at the 20,000-customer seed
+(CUSTOMERS.md §1 records the amendment; the perf test asserts it), every other
+measurement keeps 150 ms, and the summary design stays the written-up-first
+escalation if the amended budget is ever breached. With the amendment in place the
+card's acceptance is met and CU1-PERF is complete; the follow-up "CU-1 perf:
+attention budget or summary" is closed by the ruling. The view's remaining readers
+(the record page facts) remain a possible separate retirement card.
+
+## October 30 — AR-13 COMPLETE: in-app notifications bell merged (Lane 6)
+
+The bell at the top of every desk screen now says what just happened: new lead, quote opened, rental signed, payment failed, approval needed. Each event is written after its action commits through one failure-isolated seam (`notifySafely`), deduplicated per person (unique (userId, dedupeKey); payment failures dedupe on the Stripe event id, quote views on the one call that wins the SENT→VIEWED claim), and can never fail the lead form, signing, quote view or webhook it follows. Recipients are computed from the same role + job-role rules the linked pages use; when a person's access is reduced, notifications they can no longer open are deleted in the same transaction. Optional email copies ride the existing message-delivery path behind each person's own preference (default off); nobody can read or mark another person's rows. The bell follows the AR-11 freshness rule (no polling from idle or hidden tabs); desktop gets a popover, phones a sheet; preferences live at Your account → Your notifications with per-kind in-app/email switches (staff, who receive none of the five yet, see "You don't get notifications yet."). Read notifications are removed by the nightly sweep after the owner-set keep-days (Settings → Advanced, starting value 90; unread never removed by age). Tests: rules 12, integration 7 (incl. access-change purges and clean-up), hooks 6 (all five kinds end to end + failure isolation), email 1, bell words 4, inventories green; e2e/notifications.spec.ts (browser-e) covers the public-form → bell → lead flow, preference saving, the staff page and keyboard/axe. Drift from the spec is recorded in the PR body (migration name follows the repo's future-dated sequence; the read-notification age is measured from when it was read). CI follow-ups landed on the same PR: the spec's axe call now uses the repo's shared WCAG tag scope (the unscoped default also ran best-practice rules), and the shared Card title/description wrap long unbroken words (a system problem titled with a 32-character id was pushing /desk/automations sideways at phone width; proven from the CI failure's own page snapshot). The shared route-scan helper now retries a whole theme pass once when a late server/client redirect destroys the JS context mid-scan (it previously guarded only the first evaluate; the race hit /desk/fleet, /desk/dashboard, /desk/control-center and /desk/books/closing across four runs, never the same route twice). Merged 2026-10-30 as PR #765 (squash `cf32aa8d`) with ci and review-gate green at the exact head.
+
+
+## October 30 — AR-4d COMPLETE: Quotes and Messages merged (Lane 5)
+
+**What changed:** the Quotes list and Messages inbox rebuilt per
+`QUOTES-MESSAGES.md` (packet AR-4D). Quotes: `getQuotes`/`getQuoteCounts` replace the
+unpaged `getAllEstimates` on the list page — tab/search/who filters, four sorts, line sums
+via one raw SUM grouped per quote (Prisma groupBy cannot multiply price by quantity), a
+KIT 5.1 growing-window cursor; `getEstimateDetail` gained its missing OWNER/ADMIN role
+check. The screen is KIT 5.1 like Customers: status tabs with counts, owner-side pill
+words, row actions led by "Make it a rental" (to the convert panel's new `#convert`
+anchor), "Finish and send", and "Follow up" by phone or email. Messages: plain-word
+params with every legacy code mapped (old links keep working); the inbox select carries
+names only — still no message text before thread authorization — plus per-status counts
+under the same staff scoping; cards show the unread dot, the plain status words, and the
+Unknown/Several chips; the texting-not-on notice names the owner's Settings switch. The
+missing piece the spec called out now exists: **link a number to a person** —
+`linkThreadIdentity`/`unlinkThreadIdentity` (one transaction, thread row locked, other
+matches revoked, the kept binding verified by staff, audits both ways, consent records
+never touched) with the thread page's "Who is this?" sheet and a confirmation that names
+who the number will stop matching.
+
+**How it was checked:** PR #773 merged (squash 32263c85) with its closing CI run
+(41028625954) green in every job — secret scan, typecheck/lint, all three unit shards,
+all five browser shards — read job by job; review-gate waived green on the posted
+self-review; 0 review threads. 30 packet+scope tests green on real Postgres (quotes
+list 9, detail role 3, messages params 8, inbox names 4, thread identity 5 — including
+the two-links-one-version race). (#771 was the same card's first PR, closed for the
+documented content-push ancestry repair after AR-10a merged mid-flight; its CI cycles
+found and fixed the fixture-address collisions, the quote-number search — now a digits
+contains-match at any length, proven on a fresh database — and two sibling specs on
+the old inbox chrome.) Two spec readings are
+recorded in the slice commits: the header word is "Quotes"/"Messages" (the spec's
+"Customers" heading is a template slip — its own title says the word on screen is quote),
+and the quote money sums use raw SQL because the spec's groupBy shape cannot express
+price × quantity.
+
+## October 30 — W-11 PARKED at gate IN-61; PORTAL-1 started (Lane 4)
+
+W-11 (live Colorado GIS tax rates) is parked at its IN-61 contract gate: Chris
+confirmed 2026-10-30 that he cannot sign in to SUTS until he officially starts
+the LLC, and no date is set. The prerequisite is now recorded where the gate
+lives — the IN-61 row in docs/OWNER-INPUTS.md and the state section of
+docs/runbooks/colorado-gis-api.md. Production keeps the approved manual
+fallback (owner-confirmed rates only; new addresses stay "review this address"
+To dos). W-11 resumes the same day the SUTS API method documentation lands in
+the runbook. Lane 4's active card is now PORTAL-1 (customer portal redesign on
+the kit), started 2026-10-30 on ai/vivienne/portal-1.
+
+## October 29 — AR-4c COMPLETE: Customers list (CU-1) merged (Lane 5)
+
+**What changed:** PR #761 merged (squash 125fb162): the CU-1 Customers list — the
+phoneDigits search key with trigram/composite indexes and the customer_list_v1 view; the
+segment/list/export engine with role-shaped money (staff rows carry no money values at
+all); the KIT 5.1 screen (segment tabs, saved views, SidePanel record preview, bulk CSV
+export); the 20,000-customer perf test; and locator fixes in five browser specs the new
+page's DOM exposed (section-navigation row locators, export menu roles, the desktop row
+link, a hydration-race menu retry). PR #759 (the content-push original) was closed as
+superseded. AR-4c was also the native-workspace pilot: the whole card shipped through
+github_git_workspace_* with real merge ancestry — two mid-flight main merges resolved
+as true merge commits, no successor-PR dance.
+
+**How it was checked:** the closing CI run at the exact head (057e6b18) was green in
+every job — secret scan, typecheck/lint, all three unit shards, all five browser
+shards — read job by job, not from a summary. Every fix in the final batch was
+reproduced and verified green first on the Workshop at the exact failing head.
+review-gate waived green on the posted self-review; 0 review threads.
+
+**Named follow-up:** "CU-1 perf: base-table query redesign" — the perf suite (not a
+required check, by design) measures the list queries at ~1.6 s / ~0.9 s against the
+150 ms budget at the 20,000-customer capacity seed, because every call materializes
+the full per-row view; the redesign queries base tables per sort instead. At launch
+scale (hundreds of customers) the shipped queries are fine. Next card: AR-4d
+(Quotes and Messages).
+
+## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
+
+MCP-11 assistant feedback was merged in PR #748 after its exact-head CI and normal
+review-gate completed. MCP-7b PR #762 adds owner-only, default-off standing
+monitoring approvals for a narrowly allowlisted MCP-5 action and an active,
+maintenance-scoped owner connection; each qualifying alert links its permanent
+Denver-day receipt to the operation journal. The operation checks the exact
+rule version, owner access, connection and scope at claim and before dispatch,
+records owner grant changes in the audit log, and never blindly retries
+an uncertain action. The owner interface explains delegation and assistant
+activity attributes it to the monitoring rule.
+
+Local focused ESLint passed with no errors and monitoring policy tests were 3/3
+green; GitHub's type-check, lint and repository-check job passed. The first
+GitHub CI run found synthetic audit-log teardown cleanup and a missing STATUS
+update; these were corrected for the next exact-head CI. Full database/browser
+CI and review remain required before merge. No live provider or customer
+communications were enabled. MCP-8 and MCP-9 remain outstanding.
+
+## October 29–30 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): COMPLETE (PR #769, Lane 4)
+
+AR-10a merged to main as squash a66e9c67 (PR #769, final head ea62ee89): CI run
+41019290353 fully green at the exact head, the review gate waived on the recorded
+self-review, 0 unresolved threads. The sweep took three CI rounds: round 1
+repointed ten list pages to the kit DataTable's ?open= pattern (the table wraps
+its first cell in a link, so a linked first cell nested anchors) and hoisted a
+paperwork component the linter requires at module level; round 2 fixed the kit
+StatusTabs bleeding 4px past the desk frame per side and RecordHeader titles
+that could not wrap; round 3 stopped the kit AppFrame letting a wide tab strip
+side-scroll the whole document (the content wrapper is now overflow-x-clip —
+before/after screenshots identical), gave the notice-resolve fieldset a min-w-0
+(its option cards stretched the form at 360px), and corrected six spec
+expectations to the app's real behavior (money-input and display formats, the
+bill record's money forms opening through its action-menu sheets, and the
+current unconfirmed-refund status wording). Two earlier PRs (#763, #768) were
+closed unmerged for a mechanical reason only: content-snapshot pushes carry no
+merge ancestry, so GitHub computed mergeability against an ancient merge-base
+and read the PRs dirty — no pull_request workflow could start — although the
+trees merged cleanly (proven locally, twice). The branch was recreated from
+current main per the AUD-E precedent and the identical verified tree landed as
+#769. Final numbers at the merged tree: plain-words 557 files, kit + sweep
+guards 177/177, inventory 161/161 pages, approvals browser test 6/6. The AR-10
+card is complete: AR-10b (permissions audit) merged in #757 and AR-10a in #769;
+Lane 4's AR share is done.
+
+## October 29 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): built on ai/vivienne/ar-10a (Lane 4)
+
+Every desk page is now on the kit: 161/161 pages registered in
+docs/build-specs/migrated-pages.json (kit guards 172/172), and the legacy pieces the
+sweep retired are deleted — section-tabs + section-tabs-nav, desk-navigation,
+desk-sections, GlobalSearchBox, agreement-progress, and the ui app-shell /
+attention-list / day-timeline / visit-row (tests/ar10-sweep-guards.test.ts pins the
+end state: registry matches the pages on disk, deletions stay deleted, both
+allow-lists stay legal/tax-only). The four legacy section layouts (dashboard, fleet,
+reports, sales) now render through kit AreaLayout on their canonical areas. §2 plain
+words: the everyday list now applies to every scanned file (desk, desk/kit
+components, the customer portal, the exceptions rules) — 554 files pass; "Billing
+reconciliation" is now "Billing check", and the only everyday-word exceptions left
+are two reasoned tax allow-list entries (the Form 4562 heading, the resale-tax
+worksheet) plus the books accountant area, which keeps its own vocabulary by rule.
+Five older execution packets (K-4A, W-14, W-3, W-8, V-3) pointed their checks or
+references at files this sweep deleted; those entries now point at the living
+successors (w8-menu-sections / kit area-tabs for the navigation checks, desk-areas
+and the kit components for the references), each noted in the packet itself.
+Current main (AR-4b leads #760, MCP-11 #748) was merged in before the push: the
+leads list and record pages in this branch are AR-4b's kit-native versions, which
+supersede the sweep's conversion of the older leads pages; the seven-file overlap
+was verified by a scoped typecheck (after regenerating the Prisma client for
+MCP-11's schema) and the leads/feedback suites. A full local typecheck of the
+merged tree was OOM-killed twice on this shared VM; the pre-merge tree's full
+typecheck was green, and CI runs the full check at the exact head.
+§3 phone widths: desk routes scan at 360/390/1440 px; manual-only accessibility
+routes cut 48 → 22 because global setup now seeds a deterministic fixture graph on
+the CI database (e2e/.fixtures.json), and every route that stays manual names the
+spec or test that covers it (the inventory test checks the file exists). §4:
+e2e/approvals.spec.ts proves the approvals loop on the no-Stripe paths — limits,
+a held credit landing exactly once, a declined refund with the owner's reason, an
+approved refund honestly "not finished" with no early "Check and finish", axe, and
+a keyboard-only approve. A fresh full typecheck (the first since the conversions)
+caught and fixed real damage the per-batch checks could not see: a leftover
+PageHeader fragment breaking the launch page's JSX, an invented DataTable prop on
+seven list pages, and one test still importing the deleted section-tabs.
+
+§6 visual review notes (from the conversion pass over every page, plus the
+automated route scans — axe and no-sideways-scroll at 360/390/1440 px, light and
+dark; no separate manual pass was made at 1920 px, where the kit frame simply caps
+the width the 1440 px layout already uses):
+- Today: the approvals inbox keeps its narrow reading column, so on wide screens
+  it looks plainer than the kit record pages around it. Dispatch keeps its board
+  layout by design; at 360 px the day columns stack into a long, busy scroll.
+- Customers: the converted lists share one table shape; on phones the cards carry
+  name and status and the rest waits for a wider screen — nothing clips.
+- Schedule: the driver route view stacks at 360 px with the stop list first, which
+  reads in the right order; the work-order print view is unchanged.
+- Equipment: inventory stays a card list (bulk status actions) and the retired
+  page keeps per-row decision cards — tall on a phone, but each card is a complete
+  decision, so the long scroll is the honest shape of that page.
+- Money: books pages keep their dense tables; at 360 px a table scrolls inside its
+  own box while the page itself never scrolls sideways (the scans assert this).
+- Everywhere: the two allow-listed legal texts (the vault emergency warning and
+  the CPSC recall wording) remain single long paragraphs at phone width — the
+  visible cost of keeping the exact legal wording, kept deliberately.
+
+## October 29 — AR-10b permissions audit: COMPLETE (PR #757, Lane 4); AR-10a sweep started
+
+AR-10b merged to main as squash bda26c39 (PR #757, head 75365b0e): CI run 40943758802 fully
+green at the exact head — including the session-deactivation browser shard, whose local proof
+had been blocked all afternoon by parallel-lane contention for this VM's shared port 3000 and
+~8 GB RAM (proven collisions, not failures) — review-gate green (waived, self-reviewed; Codex's
+review never completed), 0 unresolved threads. The one staff-test failure on the first CI run
+was the test probing bare /desk, which has no page and renders the not-found shell unguarded;
+the session itself was already refused (API leg 401), and the probe now uses /desk/today. The
+browser-e accessibility failure on that run (mcp-monitoring, /desk/automations) did not repeat
+and was green at PR #754's head — a flake, recorded here so nobody chases it later. AR-10's
+packet now records pullRequest 757. AR-10a (FINAL-SWEEP §§0–4+6) is in progress on
+ai/vivienne/ar-10a; its STATUS close-out will carry the §6 visual review notes.
 
 ## October 29 — AR-10b permissions audit (FINAL-SWEEP §5): Steps 1–5 built, two real findings fixed (Lane 4)
 

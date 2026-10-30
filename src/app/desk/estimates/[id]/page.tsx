@@ -29,6 +29,7 @@ import { CommercialReserveAllocationForm } from "./commercial-reserve-allocation
 import { getPreparedMandatoryChargeOverview } from
   "@/domains/estimates/mandatory-charge-allocation";
 import { MandatoryChargeLocationReviewForm } from "./mandatory-charge-location-form";
+import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Estimate" };
 
@@ -67,41 +68,28 @@ export default async function EstimateDetailPage({
     ? await getPhoneOrder(session.user.id,estimate.id) : null;
   return (
     <div className="w-full min-w-0 max-w-3xl">
-      <Link href="/desk/estimates" className="text-sm text-ink-soft hover:underline">
-        &larr; All estimates
-      </Link>
+      <RecordHeader
+        title={`Estimate #${estimate.estimateNumber} — ${estimate.title}`}
+        subtitle={
+          estimate.customer
+            ? `${estimate.customer.user.name ?? estimate.customer.user.email}${estimate.customer.companyName ? ` · ${estimate.customer.companyName}` : ""}`
+            : estimate.lead
+              ? `${estimate.lead.contactName}${estimate.lead.companyName ? ` · ${estimate.lead.companyName}` : ""} (not yet a customer)`
+              : undefined
+        }
+        pills={[{ label: estimateStatusLabel(estimate.status), tone: "neutral" }]}
+        back={{ href: "/desk/estimates", label: "Estimates" }}
+        actions={
+          !estimate.customer && estimate.lead
+            ? [{ kind: "link", label: "View lead", href: `/desk/leads/${estimate.lead.id}` }]
+            : []
+        }
+      />
 
       <div className="mt-3">
         <SendTextPanel userId={session.user.id} entityType="Estimate" entityId={estimate.id} path={`/desk/estimates/${estimate.id}`}
           families={["estimate_ready", "estimate_reminder"]}
           principal={estimate.customerId ? { customerId: estimate.customerId } : { leadId: estimate.leadId ?? "" }} />
-      </div>
-
-      <div className="mt-2 flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="break-words text-xl font-semibold [overflow-wrap:anywhere]">
-            Estimate #{estimate.estimateNumber} — {estimate.title}
-          </h1>
-          <p className="min-w-0 break-words [overflow-wrap:anywhere] text-sm text-ink-soft">
-            {estimate.customer ? (
-              <>
-                {estimate.customer.user.name ?? estimate.customer.user.email}
-                {estimate.customer.companyName ? ` · ${estimate.customer.companyName}` : ""}
-              </>
-            ) : estimate.lead ? (
-              <>
-                {estimate.lead.contactName}
-                {estimate.lead.companyName ? ` · ${estimate.lead.companyName}` : ""}
-                <Link href={`/desk/leads/${estimate.lead.id}`} className="ml-2 text-xs underline">
-                  (not yet a customer — view lead)
-                </Link>
-              </>
-            ) : null}
-          </p>
-        </div>
-        <span className="inline-block rounded-full bg-canvas-alt px-3 py-1 text-sm font-medium text-ink-soft">
-          {estimateStatusLabel(estimate.status)}
-        </span>
       </div>
 
       {estimate.status === "CHANGES_REQUESTED" && estimate.changesRequestedMessage && (
@@ -178,8 +166,8 @@ export default async function EstimateDetailPage({
         <div className="mt-4 rounded-lg border border-line p-3 text-sm">
           <p className="font-medium">Customer&apos;s reviewed order readback</p>
           <p className="mt-1 text-ink-soft">
-            Once all converted agreements have frozen, approved charges, the original
-            estimate link shows the complete reconciled signing amounts.
+            Once all converted rentals have frozen, approved charges, the original
+            estimate link shows the complete final signing amounts.
             An incomplete order displays a review-required warning, never a guessed total.
           </p>
           <Link href={`/estimate/${estimate.id}`} className="mt-2 inline-block underline">
@@ -190,20 +178,20 @@ export default async function EstimateDetailPage({
       {estimate.createdAgreements.length > 0 && (
         <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
           <p className="font-medium">
-            Converted to {estimate.createdAgreements.length === 1 ? "a draft agreement" : "draft agreements"}:
+            Converted to {estimate.createdAgreements.length === 1 ? "a draft rental" : "draft rentals"}:
           </p>
           <ul className="mt-1 list-inside list-disc">
             {estimate.createdAgreements.map((a) => (
               <li key={a.id}>
                 <Link href={`/desk/agreements/${a.id}`} className="underline">
-                  Agreement {a.id.slice(0, 8)} — {a.status}
+                  Rental {a.id.slice(0, 8)} — {a.status}
                 </Link>
               </li>
             ))}
           </ul>
           <p className="mt-2 text-xs text-blue-800">
             Add the real appliances to each one from its own page, same as
-            any other agreement.
+            any other rental.
           </p>
         </div>
       )}

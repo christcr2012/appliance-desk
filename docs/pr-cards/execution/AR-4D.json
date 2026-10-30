@@ -1,0 +1,156 @@
+{
+  "acceptance": [
+    "Old URLs keep working: /desk/estimates and /desk/communications stay the URLs; legacy inbox params (status=OPEN|WAITING|CLOSED, resolution=, assignment=) map to the new words (messages-params tests)",
+    "Quotes list is paged (KIT 5.1 cursor): getQuotes returns each quote once across pages for every sort; monthly/one-time sums equal the line-item sums on fixtures (integration)",
+    "getEstimateDetail refuses non-OWNER/ADMIN actors (estimate-detail-role tests); getAllEstimates is no longer called by the list page",
+    "Staff inbox still shows only their assigned threads and the inbox select carries names only — no message text is selected before thread authorization (inbox-names tests)",
+    "Link to a person: unknown thread links, ambiguous thread keeps one binding and revokes the others, a later inbound message resolves to the linked person, staff are refused, concurrent links resolve to one winner with 'This conversation changed' (throwaway-Postgres tests)",
+    "Consent records are never changed by linking/unlinking (they belong to the contact point)",
+    "ci green at the exact head; every review comment read; axe + 5 sizes in the browser spec"
+  ],
+  "baseline": "fcb159a7e0112e3f28013120a23a2112d226d191",
+  "card": "docs/pr-cards/AR-4.md",
+  "checks": {
+    "browser": [
+      "e2e/quotes-messages.spec.ts"
+    ],
+    "db": [
+      "tests/quotes-list-integration.test.ts",
+      "tests/inbox-names.test.ts",
+      "tests/thread-identity.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/messages-params.test.ts",
+      "tests/estimate-detail-role.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "AR-4D",
+  "invariants": [
+    "Roles filtered at the query/DTO boundary: quotes are OWNER/ADMIN end to end (list and detail); the messages inbox select adds names only, never message content, and staff scoping stays in safeFilters/authorizeThreadInTx",
+    "Money is integer cents; quote sums come from EstimateLineItem rows via one groupBy for the page's ids, never per-row queries",
+    "Identity linking locks the thread row first (SELECT ... FOR UPDATE), re-checks the actor in the transaction, and never touches consent records; every link/unlink writes its audit event in the same transaction",
+    "No live SMS/email/Stripe behavior changes: the inbox is a read + identity-resolution surface; sending paths are untouched",
+    "Migrations additive only; this card is expected to need none (bindings and thread columns already exist)"
+  ],
+  "next": "CU-1 perf: base-table query redesign (the named AR-4c follow-up) — Lane 5, after AR-4d lands.",
+  "outcome": "Quotes and Messages become working tools at their existing URLs: the quotes list stops loading every quote with all its lines and becomes a paged, role-checked KIT 5.1 work queue (status tabs with counts, search by name or quote number, customer/lead filter, four sorts, money sums per quote, and the APPROVED card's primary action 'Make it a rental' anchoring to the existing convert panel); the messages inbox speaks plain words instead of stored codes, shows who each thread is with, and gains the missing 'Link to a person…' flow — a transactional thread-identity domain that links an unknown or ambiguous number to a customer or lead (revoking competing bindings, auditing both ways) so the next inbound message resolves to the right person.",
+  "parent": "AR-4",
+  "proposedFiles": [
+    "docs/STATUS.md",
+    "docs/pr-cards/AR-4.md",
+    "docs/pr-cards/execution/AR-4D.json",
+    "docs/pr-cards/work-index.json",
+    "e2e/quotes-messages.spec.ts",
+    "e2e/shards.json",
+    "src/app/desk/communications/[id]/actions.ts",
+    "src/app/desk/communications/[id]/page.tsx",
+    "src/app/desk/communications/page.tsx",
+    "src/app/desk/communications/params.ts",
+    "src/app/desk/estimates/[id]/convert-estimate-panel.tsx",
+    "src/app/desk/estimates/page.tsx",
+    "src/app/desk/estimates/params.ts",
+    "src/domains/estimates/index-base.ts",
+    "src/domains/estimates/index.ts",
+    "src/domains/estimates/list.ts",
+    "src/domains/messaging/inbox.ts",
+    "src/domains/messaging/thread-identity.ts",
+    "src/lib/glossary.ts",
+    "tests/estimate-detail-role.test.ts",
+    "tests/inbox-names.test.ts",
+    "tests/messages-params.test.ts",
+    "tests/quotes-list-integration.test.ts",
+    "tests/thread-identity.test.ts"
+  ],
+  "references": [
+    {
+      "anchor": "# Screen spec — Quotes list and Messages inbox (AR-4d)",
+      "path": "docs/build-specs/screens/QUOTES-MESSAGES.md",
+      "purpose": "The AR-4d spec: the two fixes found while specifying, the quotes params/data/words/layout contract, the inbox params and name-only select, the link-to-a-person domain contract, and the named tests"
+    },
+    {
+      "anchor": "- **AR-4d — Quotes and Messages** (`QUOTES-MESSAGES.md`): paged quotes, role checks on quote reads, inbox words,",
+      "path": "docs/pr-cards/AR-4.md",
+      "purpose": "The parent card's split line for AR-4d and the design 4.3 hand-off: an approved quote's primary action is 'Make it a rental'"
+    },
+    {
+      "anchor": "### 5.1 Work queue page (server component)",
+      "path": "docs/build-specs/KIT.md",
+      "purpose": "KIT 5.1: the growing-window cursor paging and work-queue page shape both screens follow"
+    },
+    {
+      "anchor": "export async function getAllEstimates() {",
+      "path": "src/domains/estimates/index-base.ts",
+      "purpose": "The unpaged, ungated list read the spec replaces; getEstimateDetail in the same file gains requireRole(\"OWNER\",\"ADMIN\")"
+    },
+    {
+      "anchor": "function safeFilters(filters: Filters, actor: { id: string; role: string },",
+      "path": "src/domains/messaging/inbox.ts",
+      "purpose": "listSmsInbox and its staff scoping: the select gains thread customer/lead/assignee names only; safeFilters stays the staff boundary"
+    },
+    {
+      "anchor": "it needs explicit staff review to",
+      "path": "src/domains/messaging/inbound-resolution.ts",
+      "purpose": "The ambiguous-thread comment the spec answers: no screen did the review; thread-identity.ts is that review, and resolveInboundContact is the knock-on the tests exercise"
+    }
+  ],
+  "risk": "Identity resolution and money display. The conservative direction is structural: linking a number to a person is OWNER/ADMIN only, transactional with the thread row locked, revokes only competing bindings for the same contact point, never touches consent records, and is audited both ways with the concurrency test proving one winner. Quote money is read-only display summed from the same line items the quote page edits; no write path changes. The inbox select widening is names-only and stays behind the existing staff scoping.",
+  "sequence": [
+    "S1 quotes data: estimates/list.ts (getQuotes/getQuoteCounts, KIT 5.1 cursor, groupBy money sums) + estimates params.ts (zod, legacy-safe) + requireRole on getEstimateDetail + quotes-list-integration and estimate-detail-role tests",
+    "S2 quotes screen: /desk/estimates as the KIT 5.1 work queue (StatusTabs with counts, search, For filter, sorts, cards + desktop columns, quote pill words, Make it a rental / Finish and send / Follow up actions, id=\"convert\" on the convert panel, Fab, empty state)",
+    "S3 messages inbox: communications params.ts with legacy mapping + listSmsInbox name-only select extension + per-status counts + plain-words inbox page (tabs, Who/Number filters, cards, texting-not-on notice) + messages-params and inbox-names tests",
+    "S4 link to a person: messaging/thread-identity.ts (linkThreadIdentity/unlinkThreadIdentity, FOR UPDATE, binding revoke/create, audits) + thread page 'Who is this?' Sheet with SearchablePicker and revoke ConfirmDialog + thread-identity tests incl. concurrency and the resolveInboundContact knock-on",
+    "S5 proof: e2e/quotes-messages.spec.ts (tabs, make-it-a-rental anchor, staff inbox, axe + 5 sizes) + shards registration + STATUS/card docs"
+  ],
+  "slices": [
+    {
+      "id": "AR-4D-S1",
+      "title": "Quotes data: paged list query, params, detail role check",
+      "acceptance": [
+        "src/domains/estimates/list.ts: getQuotes(params) selects id, estimateNumber, status, title, sentAt, viewedAt, respondedAt, validUntil, createdAt, depositCents, customer/lead identity, with monthlyCents/oneTimeCents as SUMs from one EstimateLineItem groupBy over the page ids; getQuoteCounts(params) returns the tab counts",
+        "Params (zod): status open|approved|won|closed|drafts with the spec status sets (open = DRAFT, SENT, VIEWED, CHANGES_REQUESTED), q (name, company, quote-number digits), who customers|leads, sort newest|oldest-sent|value-desc|expires, KIT 5.1 cursor",
+        "getEstimateDetail gains requireRole(\"OWNER\",\"ADMIN\"); existing tests that call it are updated to provide a session (the PR #594 pattern); the list page no longer calls getAllEstimates",
+        "tests/quotes-list-integration.test.ts: tabs, sums, search by number, cursor walks each row once per sort; tests/estimate-detail-role.test.ts: staff refused, owner/admin pass"
+      ]
+    },
+    {
+      "id": "AR-4D-S2",
+      "title": "Quotes screen: /desk/estimates as the KIT 5.1 work queue",
+      "acceptance": [
+        "ScreenHeader 'Customers'; StatusTabs Open {n} / Approved {n} (hide 0) / Won / Closed / Drafts {n} (hide 0); search 'Name or quote number'; filter For (Customers/Leads); sorts Newest / Waiting longest / Biggest / Expiring soonest",
+        "Cards and desktop columns (Who · Quote · Monthly · Once · Status · Sent · ⋯) per spec: 'Quote #{n} · {title}', '{monthly}/mo' (+ ' + {once} once'), owner-side pill words (estimateStatusLabel stays for customer-facing text), sent/viewed relative business days, expiring-within-3-days line in attention",
+        "Actions: APPROVED → 'Make it a rental' linking /desk/estimates/{id}#convert and ConvertEstimatePanel's wrapper gains id=\"convert\"; DRAFT → 'Finish and send'; SENT/VIEWED → 'Follow up' (tel: when a phone is known, else mailto:); ⋯ Open / View customer / View lead; row click opens the quote page (no side panel); Fab 'New quote'",
+        "Empty state: 'No open quotes' + 'New quote'"
+      ]
+    },
+    {
+      "id": "AR-4D-S3",
+      "title": "Messages inbox: plain words, names, legacy params",
+      "acceptance": [
+        "communications params.ts: status open|waiting|done, who all|mine|unassigned, match known|unknown|several, existing inbox cursor; legacy status=OPEN|WAITING|CLOSED, resolution= and assignment= values map onto the new params (tests/messages-params.test.ts)",
+        "listSmsInbox select gains only the thread's customer { id, user { name }, companyName }, lead { id, contactName } and the assigned user's name — no message text; counts per status from three count calls with the same safeFilters (tests/inbox-names.test.ts: names present, no text selected, staff still only their threads)",
+        "Inbox page: StatusTabs 'Needs a reply {n}' / 'Waiting {n}' / 'Done'; filters Who (All/Mine/Unassigned) and Number (Known/Unknown/Several); words per spec (OPEN 'Needs a reply', WAITING 'Waiting on them', CLOSED 'Done'; UNRESOLVED 'Unknown number', AMBIGUOUS 'Matches more than one person', both with the 'Link to a person…' action); unread dot with sr-only 'Unread'; per-tab empty words; the texting-not-on notice with InfoTip when the existing switch is off"
+      ]
+    },
+    {
+      "id": "AR-4D-S4",
+      "title": "Link to a person: thread identity domain + thread-page sheet",
+      "acceptance": [
+        "src/domains/messaging/thread-identity.ts: linkThreadIdentity(actorId, threadId, { customerId } | { leadId }) — OWNER/ADMIN, one transaction, thread row SELECT … FOR UPDATE, assertActiveTeamActor, target exists and is not archived/merged; revoke every other active ContactBinding for the thread's externalContactPointId that points at a different person; create (or keep, if identical) the STAFF binding with verifiedAt now; thread resolution RESOLVED with customerId/leadId set and version + 1; audit communication.identity_linked with old/new person and revoked binding ids",
+        "unlinkThreadIdentity(actorId, threadId): revoke the thread's person binding, resolution UNRESOLVED, person cleared, audit communication.identity_unlinked; consent records unchanged in both directions",
+        "Thread page: 'Who is this?' Sheet with a SearchablePicker over customers and leads (labelled), and a ConfirmDialog 'Link this number to {name}? It will stop matching {other names}.' shown when other bindings will be revoked",
+        "tests/thread-identity.test.ts (throwaway Postgres): unknown → linked; ambiguous with two bindings → one kept, one revoked; a later inbound message resolves to the linked person via resolveInboundContact; staff refused; concurrent link of the same thread → one wins, the other sees 'This conversation changed'"
+      ]
+    },
+    {
+      "id": "AR-4D-S5",
+      "title": "Proof: browser spec, shards, docs",
+      "acceptance": [
+        "e2e/quotes-messages.spec.ts: quotes tabs and counts, the make-it-a-rental anchor lands on #convert, inbox tabs and words, staff sees only their threads; axe + 5 sizes; registered in e2e/shards.json",
+        "STATUS entry and AR-4 Progress updated in the same PR; packet checks all green locally (unit + db on the lane cluster) before the push"
+      ]
+    }
+  ],
+  "version": 1
+}
