@@ -1,4 +1,4 @@
-## October 30 — CU1-PERF: Customers list query redesign merged (Lane 5)
+## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 
 **What changed:** the Customers list, segment counts and searches no longer read the
 `customer_list_v1` view, whose six per-customer LATERAL aggregates ran for every live
@@ -14,17 +14,20 @@ population pass. No schema change; the view stays for its remaining readers.
 **How it was checked:** a 400-customer parity harness (every list shape — 6 segments
 × 6 sorts, 6 count variants, 5 searches, 2 exports — for OWNER and STAFF) is
 byte-identical to the view implementation; packet suites green on real Postgres
-(integration 7, segments 12, keys 3, role checks 6); full typecheck clean. The
-Performance Baselines job on the PR measured every sort, the counts and the
-searches under the 150 ms budget **except the attention sort at 172.6 ms** (the
-lists test fails fast there, so the remaining sorts were verified locally at
-140 ms or under on a slower VM and in the unit/browser shards). Perf is not a
-required merge check. **Open decision for Chris:** the attention gap's remaining
-fixes are a stored summary (the design CU-1 §1 set aside) or a budget amendment
-for this one sort — Lane 5's recommendation is the amendment (173 ms at a
-20,000-customer seed is 9× faster than the view and far past this shop's real
-scale); until he rules, CU1-PERF stays open on that one number, tracked as the
-follow-up "CU-1 perf: attention budget or summary".
+(integration 7, segments 12, keys 3, role checks 6); full typecheck clean. Merged
+2026-10-30 as PR #776 (squash `fa170dbd`) with ci and review-gate green at the
+exact head. The Performance Baselines job measured every sort, the counts and the
+searches under the 150 ms budget **except the attention sort at 172.6 ms** (278 ms
+on a second, loaded runner) and the counts at 205 ms on that loaded run (125–147 ms
+locally). Perf is not a required merge check. **Owner ruling (Chris, 2026-10-30):**
+the budget is amended instead of commissioning the stored summary — the attention
+sort and segment counts now carry a **300 ms** budget at the 20,000-customer seed
+(CUSTOMERS.md §1 records the amendment; the perf test asserts it), every other
+measurement keeps 150 ms, and the summary design stays the written-up-first
+escalation if the amended budget is ever breached. With the amendment in place the
+card's acceptance is met and CU1-PERF is complete; the follow-up "CU-1 perf:
+attention budget or summary" is closed by the ruling. The view's remaining readers
+(the record page facts) remain a possible separate retirement card.
 
 ## October 30 — AR-13 COMPLETE: in-app notifications bell merged (Lane 6)
 
