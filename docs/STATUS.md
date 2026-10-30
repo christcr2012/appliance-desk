@@ -1,4 +1,4 @@
-## October 30 — AR-4d: Quotes and Messages (Lane 5)
+## October 30 — AR-4d COMPLETE: Quotes and Messages merged (Lane 5)
 
 **What changed:** the Quotes list and Messages inbox rebuilt per
 `QUOTES-MESSAGES.md` (packet AR-4D). Quotes: `getQuotes`/`getQuoteCounts` replace the
@@ -18,11 +18,16 @@ matches revoked, the kept binding verified by staff, audits both ways, consent r
 never touched) with the thread page's "Who is this?" sheet and a confirmation that names
 who the number will stop matching.
 
-**How it was checked:** 29 packet tests green on the lane's real Postgres (quotes list
-9, detail role 3, messages params 8, inbox names 4, thread identity 5 — including the
-two-links-one-version race), plus the pre-existing inbox-scope suite; scoped typecheck
-and eslint clean per slice; `e2e/quotes-messages.spec.ts` (tabs, the convert anchor, the
-link flow, staff scoping, axe at five sizes) runs in this PR's CI. Two spec readings are
+**How it was checked:** PR #773 merged (squash 32263c85) with its closing CI run
+(41028625954) green in every job — secret scan, typecheck/lint, all three unit shards,
+all five browser shards — read job by job; review-gate waived green on the posted
+self-review; 0 review threads. 30 packet+scope tests green on real Postgres (quotes
+list 9, detail role 3, messages params 8, inbox names 4, thread identity 5 — including
+the two-links-one-version race). (#771 was the same card's first PR, closed for the
+documented content-push ancestry repair after AR-10a merged mid-flight; its CI cycles
+found and fixed the fixture-address collisions, the quote-number search — now a digits
+contains-match at any length, proven on a fresh database — and two sibling specs on
+the old inbox chrome.) Two spec readings are
 recorded in the slice commits: the header word is "Quotes"/"Messages" (the spec's
 "Customers" heading is a template slip — its own title says the word on screen is quote),
 and the quote money sums use raw SQL because the spec's groupBy shape cannot express
