@@ -6,11 +6,10 @@ import { getPortalData } from "@/domains/portal";
 import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 import { InvoiceDocument } from "@/components/billing/invoice-document";
 import { PrintDocumentButton } from "@/components/print-document-button";
-import { RecordHeader } from "@/components/kit/record-header";
+import { RecordHeader, type Tone } from "@/components/kit";
 import { isPayNowEligible } from "@/domains/portal/pay-now";
 import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status-labels";
 import { PayErrorToast } from "./pay-error-toast";
-import type { Tone } from "@/components/kit/types";
 
 export const metadata = { title: "Bill" };
 

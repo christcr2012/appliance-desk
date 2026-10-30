@@ -1,6 +1,4 @@
-import { ScreenHeader } from "@/components/kit/screen-header";
-import { StatStrip } from "@/components/kit/record-header";
-import { EmptyState } from "@/components/kit/empty-state";
+import { ScreenHeader, StatStrip, EmptyState, type Tone } from "@/components/kit";
 import { InfoNote } from "@/components/portal/info-note";
 import { portalLanguage } from "@/domains/language/portal";
 import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
@@ -14,7 +12,6 @@ import { ManageBillingButton } from "./manage-billing-button";
 import { BillsExplorer, type BillRow } from "./bills-explorer";
 import { getNextBills } from "@/domains/portal/next-bill";
 import { isPayNowEligible } from "@/domains/portal/pay-now";
-import type { Tone } from "@/components/kit/types";
 
 export const metadata = { title: "Bills" };
 

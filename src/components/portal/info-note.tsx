@@ -1,7 +1,7 @@
 "use client";
 
 import { GlossaryPopover } from "@/components/kit/glossary-popover";
-import { Icon } from "@/components/kit/icons";
+import { Icon } from "@/components/kit";
 
 /**
  * A free-text info note for portal pages (PORTAL-1): the kit's InfoTip

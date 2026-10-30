@@ -2,11 +2,8 @@ import { portalLanguage } from "@/domains/language/portal";
 import { portalLabel } from "@/domains/language/portal-copy";
 import { requireSession } from "@/lib/session";
 import { listPrivacyRequestsForCustomer } from "@/domains/privacy";
-import { RecordHeader } from "@/components/kit/record-header";
-import { StatusPill } from "@/components/kit/status-pill";
-import { EmptyState } from "@/components/kit/empty-state";
+import { RecordHeader, StatusPill, EmptyState, type Tone } from "@/components/kit";
 import { accountPrivacyRequestAction } from "./actions";
-import type { Tone } from "@/components/kit/types";
 
 export const metadata = { title: "Privacy requests" };
 

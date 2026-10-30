@@ -364,5 +364,37 @@
     "file": "src/app/desk/vault/page.tsx",
     "kind": "other"
   },
-  "src/app/desk/vehicle/page.tsx"
+  "src/app/desk/vehicle/page.tsx",
+  {
+    "file": "src/app/account/page.tsx",
+    "kind": "other"
+  },
+  {
+    "file": "src/app/account/rentals/page.tsx",
+    "kind": "other"
+  },
+  {
+    "file": "src/app/account/maintenance/page.tsx",
+    "kind": "other"
+  },
+  {
+    "file": "src/app/account/billing/page.tsx",
+    "kind": "other"
+  },
+  {
+    "file": "src/app/account/billing/invoice/[invoiceId]/page.tsx",
+    "kind": "record"
+  },
+  {
+    "file": "src/app/account/properties/page.tsx",
+    "kind": "other"
+  },
+  {
+    "file": "src/app/account/settings/page.tsx",
+    "kind": "other"
+  },
+  {
+    "file": "src/app/account/settings/privacy/page.tsx",
+    "kind": "other"
+  }
 ]
