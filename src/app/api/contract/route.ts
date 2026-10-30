@@ -1,4 +1,7 @@
-import { rtcManifest, rtcJson } from "@/mcp/rtc-adapter";
+import { rtcPublicManifest } from "@/mcp/rtc-public";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export async function GET() { return rtcJson(await rtcManifest()); }
+/** Public manifest: no session, pass lookup, account data or private tool results. */
+export async function GET() {
+  return Response.json(rtcPublicManifest(), { headers: { "Cache-Control": "no-store" } });
+}

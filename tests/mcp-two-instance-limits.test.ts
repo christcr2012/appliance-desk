@@ -13,7 +13,11 @@ async function oneServer(bucket: string): Promise<{ accepted: number; rejected: 
     child.stderr.on("data", chunk => { err += String(chunk); });
     child.on("error", reject);
     child.on("close", code => {
-      if (code !== 0) return reject(new Error("Synthetic limiter worker failed: " + err.slice(-200)));
+      if (code !== 0) {
+        const firstError = err.split(/\\r?\\n/).find(line => /Error|ERR_|Cannot|permission|Prisma/.test(line)) ?? "unknown child failure";
+        return reject(new Error("Synthetic limiter worker failed (exit " + code + "): " +
+          firstError.replace(/postgres(?:ql)?:\\/\\/\\S+/gi, "[redacted]").slice(0, 500)));
+      }
       try { resolve(JSON.parse(out)); } catch { reject(new Error("No valid limiter result")); }
     });
   });
