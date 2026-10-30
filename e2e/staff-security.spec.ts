@@ -59,6 +59,9 @@ test.describe("staff permissions", () => {
       .getByRole("link")
       .first()
       .click();
+    // CU-1 (AR-4c): a row click opens the customer SidePanel on the list;
+    // the record itself is the panel's "Open full page" link.
+    await page.getByRole("link", { name: /Open full page/ }).click();
     await expect(
       page.getByRole("heading", { name: "Service addresses" }),
     ).toBeVisible();

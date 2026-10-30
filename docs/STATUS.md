@@ -1,6 +1,57 @@
-## October 29 — MCP-11 assistant feedback, PR #748 (Lane 2)
+## October 29 — AR-4c Customers list (CU-1): in review (successor PR, Lane 5)
 
-Consent-scoped feedback assistant reads, reporter withdrawal, journaled assistant replies/state changes and verified repair-case linkage are implemented on #748. Previous 0fbdba4 exact-head `ci` passed and 24 focused disposable-PostgreSQL tests were recorded as passing; after merging latest main, local lint and four no-AI privacy tests passed. Local TypeScript checks ran out of memory in the 4 GiB sandbox, so the new merged head requires GitHub CI. Codex review quota is exhausted; self-review and the required `review-gate` remain pending. Hosted connection and owner UI acceptance are separately pending. No live messaging.
+AR-4c is built and in review as PR #761, the successor to PR #759 (closed as superseded).
+Same card, same tree: the work was carried onto current main through the native GitHub
+workspace pilot (Lane 5 is the pilot lane) — branch ai/vivienne/ar-4c-ws, cherry-picked
+with real ancestry; STATUS conflicts on main merges resolved as unions. What it delivers:
+the CU-1 engine (phoneDigits search key + trigram/composite indexes + the customer_list_v1
+view), the segment/list/export domain (KIT 5.1 growing-window cursor, staff money shaping
+at the query boundary), and the rewritten Customers screen (StatusTabs segments, filters,
+saved views, row SidePanel, CSV export incl. bulk export of a selection). Defects the
+capacity-baselines job and the local perf run exposed, fixed in this PR: (1) the perf
+seed's raw timestamp literal failed to bind (P2010/22007) — the seed now uses Prisma.raw
+and drops a nonexistent RentalLine.updatedAt column, so the suite runs end to end; (2) a
+mixed text+digits search query matched nothing — the phone-digits branch now adds to the
+text branches instead of replacing them; (3) the list hydrates its per-row detail
+(next-visit duration, past-due sum, oldest open bill) only for the rows in the shown
+window. CI then indicted five older specs written against the pre-CU-1 list (unsegmented
+default view, email printed in rows, name link straight to the record): rental-builder
+recovery, staff-security, app-feel, task-assignment and crm-workspace now navigate the
+new list the way a user does (its own search across segments, a row locator scoped to
+the list itself — the Customers section nav is also main-li elements — and the
+SidePanel's Open full page link); the rental-builder also retries the record's menu
+open, which a pre-hydration click could swallow, and the CU-1 spec scopes its row
+assertions to the visible row (the kit renders the desktop table and phone cards in
+one DOM) and clicks the header export by its real trigger name and menuitem role.
+Every one of those fixes was reproduced and verified green on the Workshop
+(chris-agent-01) at the exact head before pushing. NAMED FOLLOW-UP (not hidden): the capacity
+budget is CI-confirmed missed — Performance Baselines at f80bc984 measured 1,619 ms /
+882 ms against the 150 ms budget at 20,000 customers — because every list/count/search
+call materializes the full lateral view before filtering. The fix is a query redesign
+driving list/count/search from the base tables with pre-aggregated joins; it is a
+follow-up card ("CU-1 perf: base-table query redesign"), not folded into AR-4c: perf is
+not a required merge check, the queries are fast at launch scale, and the redesign
+rewrites the query layer this card just proved correct. Remaining: CI, review, merge;
+AR-4d (Quotes and Messages) is next on this lane.
+
+## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
+
+MCP-11 assistant feedback was merged in PR #748 after its exact-head CI and normal
+review-gate completed. MCP-7b PR #762 adds owner-only, default-off standing
+monitoring approvals for a narrowly allowlisted MCP-5 action and an active,
+maintenance-scoped owner connection; each qualifying alert links its permanent
+Denver-day receipt to the operation journal. The operation checks the exact
+rule version, owner access, connection and scope at claim and before dispatch,
+records owner grant changes in the audit log, and never blindly retries
+an uncertain action. The owner interface explains delegation and assistant
+activity attributes it to the monitoring rule.
+
+Local focused ESLint passed with no errors and monitoring policy tests were 3/3
+green; GitHub's type-check, lint and repository-check job passed. The first
+GitHub CI run found synthetic audit-log teardown cleanup and a missing STATUS
+update; these were corrected for the next exact-head CI. Full database/browser
+CI and review remain required before merge. No live provider or customer
+communications were enabled. MCP-8 and MCP-9 remain outstanding.
 
 ## October 29 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): built on ai/vivienne/ar-10a (Lane 4)
 

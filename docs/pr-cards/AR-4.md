@@ -27,7 +27,9 @@ Reason: each list is an independent, usable screen with its own data and risks; 
 - [ ] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
 
 ## Progress
-AR-4a (Rentals) is merged (PR #723). AR-4b (Leads) is built in this PR — see
-the top STATUS entry and packet AR-4B: queue, record, bulk actions, board,
+AR-4a (Rentals) is merged (PR #723). AR-4b (Leads) is merged — see the top
+STATUS entry and packet AR-4B: queue, record, bulk actions, board,
 quote-for-an-existing-lead, lead editing and CSV export, all on the kit.
-AR-4c (Customers list) is next; AR-4d (Quotes and Messages) has not started.
+AR-4c (Customers list) is in review (Lane 5, packet AR-4C, PR #761, the
+workspace successor to PR #759). AR-4d (Quotes and Messages) has not
+started; it is queued behind AR-4c.
