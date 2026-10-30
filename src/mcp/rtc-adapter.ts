@@ -45,7 +45,8 @@ const publicTool = (tool: ClientTool) => ({
 export async function rtcTools(ctx: AgentContext) {
   return mcpRead(ctx, async client => {
     const result = await client.listTools();
-    return result.tools.filter(tool => tool.annotations?.readOnlyHint === true);
+    return result.tools.filter(tool => tool.annotations?.readOnlyHint === true &&
+      (!ctx.rtcAreas?.length || ctx.rtcAreas.includes(tool.name.replace(/^appliance_/, "").split("_")[0])));
   });
 }
 

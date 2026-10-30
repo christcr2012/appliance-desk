@@ -12,6 +12,8 @@ export type AgentContext = {
   connectionId: string;
   connectionLabel: string;
   scopes: McpScope[];
+  /** RTC pass-only area restriction. OAuth connector contexts omit it. */
+  rtcAreas?: string[];
 };
 
 function reject(issuer: string): Response {

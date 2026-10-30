@@ -15,6 +15,7 @@ export async function createRtcPassAction(
       scopes: form.get("decisionsRead") === "on"
         ? ["ops:read", "decisions:read"] : ["ops:read"],
       expiresDays: Number(form.get("days") ?? 1),
+      areas: form.get("area") === "all" ? [] : [String(form.get("area") ?? "")],
     });
     revalidatePath("/desk/automations");
     return { secret: created.secret, expiresAt: created.expiresAt.toISOString(), error: null };

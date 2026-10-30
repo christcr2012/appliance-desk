@@ -22,6 +22,19 @@ export function CreateRtcPassForm() {
             <option value="30">30 days (maximum)</option>
           </select>
         </label>
+        <label className="block min-w-0 text-sm font-medium">Read access area
+          <select name="area" defaultValue="all"
+            className="mt-1 block w-full min-w-0 max-w-full rounded-control border border-line-strong bg-surface p-2">
+            <option value="all">All allowed read-only areas</option>
+            <option value="health">System health only</option>
+            <option value="automation">Automation runs only</option>
+            <option value="decisions">Decision status only</option>
+            <option value="backup">Backup status only</option>
+            <option value="feedback">Feedback reports only</option>
+            <option value="repair">Repair cases only</option>
+            <option value="optimization">Improvement observations only</option>
+          </select>
+        </label>
         <label className="flex min-w-0 items-start gap-2 text-sm">
           <input type="checkbox" name="decisionsRead" className="mt-1 shrink-0" />
           Also allow reading the status of business decisions (not their private answers)

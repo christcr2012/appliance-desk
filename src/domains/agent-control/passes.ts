@@ -19,7 +19,7 @@ export function newRtcPassSecret(): string {
 }
 
 export async function issueRtcPass(ownerId: string, input: {
-  label: string; scopes: McpScope[]; expiresDays?: number;
+  label: string; scopes: McpScope[]; expiresDays?: number; areas?: string[];
 }, now = new Date()) {
   const days = input.expiresDays ?? 1;
   if (!Number.isInteger(days) || days < 1 || days > 30)
@@ -30,6 +30,12 @@ export async function issueRtcPass(ownerId: string, input: {
   const unique = [...new Set(input.scopes)];
   if (!unique.length || unique.some(scope => !MCP_SCOPES.includes(scope)))
     throw new Error("INVALID_RTC_PASS_SCOPES");
+  const validAreas = ["health", "automation", "configuration", "backup", "decisions",
+    "feedback", "repair", "optimization"] as const;
+  const areas = [...new Set(input.areas ?? [])];
+  if (areas.length > validAreas.length || areas.some(area =>
+      !validAreas.includes(area as (typeof validAreas)[number])))
+    throw new Error("INVALID_RTC_PASS_AREAS");
   const secret = newRtcPassSecret();
   const d = digest(secret);
   const connectionClientId = "rtc-pass:" + randomUUID();
@@ -47,7 +53,7 @@ export async function issueRtcPass(ownerId: string, input: {
     });
     const pass = await tx.agentPass.create({
       data: { connectionId: connection.id, digest: d, label, scopes: unique,
-        areas: [], profile: "read_only", allowWrites: false, allowProduction: false,
+        areas, profile: "read_only", allowWrites: false, allowProduction: false,
         expiresAt },
     });
     await tx.auditLog.create({ data: {
@@ -120,6 +126,7 @@ export async function authenticateRtcPass(request: Request): Promise<AgentContex
     role: "OWNER",
     connectionId: pass.connectionId,
     connectionLabel: pass.label,
+    rtcAreas: pass.areas,
     scopes: grantedMcpScopes(pass.scopes, pass.connection.scopes).filter(
       scope => scope === "ops:read" || scope === "decisions:read",
     ),
