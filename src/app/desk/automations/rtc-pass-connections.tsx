@@ -12,7 +12,7 @@ export async function RtcPassConnections({ ownerId }: { ownerId: string }) {
   });
   return (
     <section id="rtc-passes" aria-labelledby="rtc-passes-heading"
-      className="mb-6 space-y-3 rounded-card border border-line bg-surface p-4">
+      className="mb-6 min-w-0 max-w-full space-y-3 rounded-card border border-line bg-surface p-4">
       <h2 id="rtc-passes-heading" className="text-base font-bold text-ink">
         Advanced: Robinson Toolkit pass (optional)
       </h2>

@@ -24,7 +24,7 @@ describe("AI assistants disconnect inventory", () => {
     expect(html).toContain("Historical assistant 29");
     expect(db.findMany).toHaveBeenCalledTimes(2);
     expect(db.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { userId: "owner-1", revokedAt: null },
+      where: { userId: "owner-1", kind: "CONNECTOR", revokedAt: null },
     }));
     const activeRead = db.findMany.mock.calls.find((call) => call[0].where.revokedAt === null)?.[0];
     expect(activeRead).not.toHaveProperty("take");
