@@ -10,7 +10,8 @@ describe("MCP-8 catalog-based settings and honest action coverage", () => {
     expect(new Set(entries.map(item => item.key)).size).toBe(entries.length);
     for (const row of SETTING_ROWS) {
       const item = entries.find(value => value.key === row.key);
-      expect(item?.href).toMatch(/^\/desk\/settings/);
+      // An AR-8 panel may intentionally link to its actual editor outside Settings.
+      expect(item?.href).toMatch(/^\/desk\//);
       expect(item?.label).toBe(row.label);
       expect(item?.mcpStatus).toBe("PLANNED");
     }
