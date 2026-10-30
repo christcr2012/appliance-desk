@@ -35,9 +35,10 @@ test("owner sets up the starter checklist, records a date and number, and sees i
 
     await expect(page).toHaveURL(/\/desk\/paperwork$/);
     await page.goto("/desk/paperwork?tab=all");
-    await expect(page.getByText(/Due 2027-02-15/)).toBeVisible();
+    const savedRow = page.locator("main tr:visible, main li:visible").filter({ hasText: "Colorado yearly report (periodic report)" }).first();
+    await expect(savedRow.getByText(/Due 2027-02-15/)).toBeVisible();
     // The number is only ever shown masked on the list.
-    await expect(page.getByText("Number ••••9876")).toBeVisible();
+    await expect(savedRow.getByText("Number ••••9876")).toBeVisible();
     await expect(page.getByText("TEST-NUMBER-9876")).toHaveCount(0);
 
     for (const width of [360, 1280]) {
