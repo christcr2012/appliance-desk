@@ -43,6 +43,32 @@ update; these were corrected for the next exact-head CI. Full database/browser
 CI and review remain required before merge. No live provider or customer
 communications were enabled. MCP-8 and MCP-9 remain outstanding.
 
+## October 29–30 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): COMPLETE (PR #769, Lane 4)
+
+AR-10a merged to main as squash a66e9c67 (PR #769, final head ea62ee89): CI run
+41019290353 fully green at the exact head, the review gate waived on the recorded
+self-review, 0 unresolved threads. The sweep took three CI rounds: round 1
+repointed ten list pages to the kit DataTable's ?open= pattern (the table wraps
+its first cell in a link, so a linked first cell nested anchors) and hoisted a
+paperwork component the linter requires at module level; round 2 fixed the kit
+StatusTabs bleeding 4px past the desk frame per side and RecordHeader titles
+that could not wrap; round 3 stopped the kit AppFrame letting a wide tab strip
+side-scroll the whole document (the content wrapper is now overflow-x-clip —
+before/after screenshots identical), gave the notice-resolve fieldset a min-w-0
+(its option cards stretched the form at 360px), and corrected six spec
+expectations to the app's real behavior (money-input and display formats, the
+bill record's money forms opening through its action-menu sheets, and the
+current unconfirmed-refund status wording). Two earlier PRs (#763, #768) were
+closed unmerged for a mechanical reason only: content-snapshot pushes carry no
+merge ancestry, so GitHub computed mergeability against an ancient merge-base
+and read the PRs dirty — no pull_request workflow could start — although the
+trees merged cleanly (proven locally, twice). The branch was recreated from
+current main per the AUD-E precedent and the identical verified tree landed as
+#769. Final numbers at the merged tree: plain-words 557 files, kit + sweep
+guards 177/177, inventory 161/161 pages, approvals browser test 6/6. The AR-10
+card is complete: AR-10b (permissions audit) merged in #757 and AR-10a in #769;
+Lane 4's AR share is done.
+
 ## October 29 — AR-10a redesign sweep (FINAL-SWEEP §§0–4+6): built on ai/vivienne/ar-10a (Lane 4)
 
 Every desk page is now on the kit: 161/161 pages registered in
