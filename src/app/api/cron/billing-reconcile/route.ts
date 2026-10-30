@@ -4,6 +4,7 @@ import { runAutomation } from "@/domains/automation/runs";
 import { sweepSystemIssues } from "@/domains/system-issues/sources";
 import { reconcileAgentOperations } from "@/domains/agent-control/operations";
 import { runMonitors } from "@/domains/agent-control/monitoring";
+import { measure, prunePerformanceSamples } from "@/domains/agent-control/performance";
 import { automationCounts } from "@/domains/automation/counts";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
 import { checkBankPaymentsInFlight } from "@/domains/billing/in-flight-check";
@@ -103,13 +104,17 @@ export async function GET(request: Request): Promise<NextResponse> {
   // Run this after business obligations so diagnostics cannot delay reconciliation.
   const systemIssues = await runAutomation({
     ruleKey: "system-issues-sweep",
-    work: async () => {
+    work: async () => measure("JOB", "system-issues-sweep", async () => {
       const issues = await sweepSystemIssues(new Date(), 100);
       // Readback-only: uncertain assistant operations never dispatch a second effect.
       const assistants = await reconcileAgentOperations(new Date(), 10);
       const monitors = await runMonitors(new Date());
-      return { counts: automationCounts({ ...issues, ...assistants, ...monitors }) };
-    },
+      // Performance evidence expires after 30 days. Retention is capped at 5,000
+      // per sweep and must never stop the actual health check if storage fails.
+      let performancePruned = 0;
+      try { performancePruned = await prunePerformanceSamples(new Date()); } catch { /* telemetry is optional */ }
+      return { counts: automationCounts({ ...issues, ...assistants, ...monitors, performancePruned }) };
+    }),
   });
   return NextResponse.json({ systemIssues, providerOps, bankInFlight, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });
 }
