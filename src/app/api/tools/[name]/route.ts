@@ -6,7 +6,10 @@ export async function GET(req: Request, { params }: Context) {
   const auth = await rtcAuthorized(req);
   if ("response" in auth) return auth.response;
   const { name } = await params;
-  if (!/^appliance_[a-z0-9_]{1,80}$/.test(name)) return rtcError("invalid_args");
+  // Unknown, syntactically harmless names are 404 RTC not_found; malformed
+  // paths remain invalid arguments. Neither form dispatches a domain command.
+  if (!/^[a-z][a-z0-9_]{0,100}$/.test(name)) return rtcError("invalid_args");
+  if (!name.startsWith("appliance_")) return rtcError("not_found", 404);
   const tool = await rtcToolDescribe(auth.ctx, name);
   return tool ? rtcJson({ ok: true, result: tool }) : rtcError("not_found", 404);
 }

@@ -49,6 +49,12 @@ describe("MCP-9 RTC read-only HTTP adapter uses the actual MCP catalog", () => {
     expect(detail.status).toBe(200);
     expect((await detail.json()).result.writes).toBe(false);
   });
+  it("uses the RTC 1 not_found envelope for an unknown safe tool name", async () => {
+    const missing = await toolDescribe(req("/api/tools/definitely_not_a_tool"),
+      toolCtx("definitely_not_a_tool"));
+    expect(missing.status).toBe(404);
+    expect((await missing.json()).error.code).toBe("not_found");
+  });
   it("refuses non-read tools even when a caller sends confirm", async () => {
     const denied = await toolCall(req("/api/tools/appliance_action_execute", "POST", { confirm: true }),
       toolCtx("appliance_action_execute"));
