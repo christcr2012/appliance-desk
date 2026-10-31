@@ -31,6 +31,7 @@ Reason: the route's on-device copy is a separate privacy/safety boundary with it
 
 ## Progress
 AR-5a started 2026-10-30 (Lane 6) — execution packet `docs/pr-cards/execution/AR-5A.json` (baseline `fa170dbd`, main after CU1-PERF #776); branch `ai/vivienne/ar-5a` in a native GitHub MCP workspace. AR-5a builds spec sections 1–4, 6–8 in slices S1–S6 per the packet; AR-5b (section 5) follows as its own PR. Drift found at packet time: section 1 fix 6 (Repairs area layout) is already delivered by AR-1's AreaLayout; the remaining section 1 fixes verified live against the tree (the maintenance read has no role check; `maintenancePriorityLabel` does not exist yet).
+AR-5a MERGED 2026-10-30 (Lane 6) — PR #782, squash `752c69a8`, CI green at head `a6327c67` (12/12 jobs), review gate waived on the self-review. The final fix was fixture-side: the pickup hand-off test now stands up the open custody stay and the agreed end date that a real pickup closes. AR-5b remains.
 AR-5a built 2026-10-30 (Lane 6) — all six slices landed on `ai/vivienne/ar-5a`: shared words/pills + standalone fixes (S1), the Visits cursor list (S2), the Schedule board (S3), the visit record + hand-off toasts (S4), the Repairs cursor list + record (S5), and `e2e/schedule.spec.ts` + docs (S6). Local unit/integration suites green per slice; local full typecheck is environment-blocked in the lane VM (declared in the PR), so CI at the PR head is the deciding gate.
 
 ## Implementation route (reconciled October 28, 2026)
