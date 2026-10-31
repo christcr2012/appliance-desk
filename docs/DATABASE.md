@@ -1,6 +1,16 @@
 ## October 29 — MCP-8 performance observations and improvement proposals
 
 Migration `20261029220000_mcp8_performance_proposals` adds `PerfSample` (fixed PAGE/ACTION/JOB/QUERY label, elapsed milliseconds, success, timestamp; indexed by kind/name/time and time) and `OptimizationProposal` (owner-created evidence, benefit/risk/cost, measurement and rollback, PROPOSED/ACCEPTED/REJECTED/DONE state). The sweep deletes up to 5,000 samples older than 30 days per run. PerfSample is excluded from recoverable business backups because it is disposable telemetry; OptimizationProposal is included because reviewed proposals are durable owner records. Additive only; no production migration or provider action was executed by these tests.
+## October 30 — CU1-VIEW: customer_list_v1 view retired (drop migration 20261218000000_customer_list_view_retire)
+
+Migration `20261218000000_customer_list_view_retire` drops the `customer_list_v1` view
+(created by CU-1, migration 20261026040000_customer_list below). Since CU1-PERF (#776)
+every production read computes the same facts from grouped base-table aggregates
+(`factsFromSql` in `src/domains/customers/list.ts`); the view's only remaining readers
+were the two oracle queries in `tests/customer-list-integration.test.ts`, which now
+compute the segment facts from the base tables directly. No table, column or data
+changes; the `phoneDigits` key and the trigram/composite indexes from the CU-1
+migration stay.
 
 ## October 29 — AR-13 notifications (additive)
 

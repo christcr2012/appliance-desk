@@ -5,7 +5,6 @@ vi.mock("@/lib/session", () => ({
   requireRole: vi.fn(async () => ({ user: { id: "cust-test", role: role.current } })),
 }));
 
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   getCustomerList,
@@ -24,7 +23,8 @@ import { billOwedWhere } from "@/domains/billing/bill-status";
 
 // CU-1 / CUSTOMERS spec sections 2-4 + 7: the tab query returns exactly the
 // customers whose pure customerSegments() includes the segment (30 fixtures,
-// facts read back from the real view); owed equals the Bills money rule;
+// facts computed from the base tables by the test's own oracle); owed equals
+// the Bills money rule;
 // staff rows carry no money at runtime; search by phone digits, address and
 // asset number; the growing cursor window shows each row once; the walk-in
 // never appears or counts. Runs only against the local throwaway test DB.
@@ -191,7 +191,7 @@ describe.skipIf(!ready)("CU-1 customer list (integration)", () => {
     // at most one). It is created lazily by the sales domain, so ensure it
     // here instead of assuming an earlier suite already made one — on a
     // fresh database this file can run first. It must never appear in the
-    // view or the list.
+    // list.
     walkInId = (await prisma.$transaction((tx) => ensureWalkInCustomer(tx))).customerId;
   });
 
@@ -208,18 +208,87 @@ describe.skipIf(!ready)("CU-1 customer list (integration)", () => {
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   });
 
-  it("tab query = pure rule, for every segment (facts read from the real view)", async () => {
-    const viewRows = await prisma.$queryRaw<
-      { id: string; activeCount: number; pendingCount: number; endedCount: number; oldestOpenDueDate: Date | null; endingOn: Date | null; pickupAt: Date | null }[]
-    >`SELECT "id", "activeCount", "pendingCount", "endedCount", "oldestOpenDueDate", "endingOn", "pickupAt" FROM "customer_list_v1" WHERE "id" IN (${Prisma.join(customerIds)})`;
+  it("tab query = pure rule, for every segment (facts computed from the base tables)", async () => {
+    // The oracle: the six segment facts per fixture customer, computed here
+    // from the base tables with plain Prisma reads — independent of the
+    // production SQL in list.ts, so this test still proves the tab query
+    // returns exactly the customers whose pure customerSegments() includes
+    // the segment. (Until CU1-VIEW this read the customer_list_v1 view; the
+    // view is retired, so the facts come from the same base tables the
+    // fixtures were built in. The definitions are the CUSTOMERS spec's:
+    // pending is DRAFT / AWAITING_SIGNATURE / SCHEDULED plus ACTIVE not yet
+    // delivered; endingOn is the earliest end date of an ACTIVE agreement
+    // with a term and no termination request; the oldest open due date and
+    // the pickup follow the Bills money rule and the REMOVAL job rule.)
     const expected = new Map<string, CustomerSegment[]>();
-    for (const r of viewRows) expected.set(r.id, customerSegments(r, now, endingDays));
-    // 30 matrix fixtures + phone + asset = 32 view rows (walk-in excluded).
-    expect(viewRows.length).toBe(32);
+    for (const id of customerIds) {
+      const agreements = await prisma.rentalAgreement.findMany({
+        where: { customerId: id },
+        select: {
+          status: true,
+          firstDeliveredOn: true,
+          termMonths: true,
+          terminationRequestedAt: true,
+          endDate: true,
+        },
+      });
+      const activeCount = agreements.filter((a) => a.status === "ACTIVE").length;
+      const pendingCount = agreements.filter(
+        (a) =>
+          a.status === "DRAFT" ||
+          a.status === "AWAITING_SIGNATURE" ||
+          a.status === "SCHEDULED" ||
+          (a.status === "ACTIVE" && a.firstDeliveredOn === null),
+      ).length;
+      const endedCount = agreements.filter((a) => a.status === "ENDED").length;
+      const endingDates = agreements
+        .filter(
+          (a) =>
+            a.status === "ACTIVE" &&
+            a.termMonths !== null &&
+            a.terminationRequestedAt === null &&
+            a.endDate !== null,
+        )
+        .map((a) => (a.endDate as Date).getTime());
+      const endingOn = endingDates.length ? new Date(Math.min(...endingDates)) : null;
+      const owed = await prisma.invoice.findMany({
+        where: { customerId: id, ...billOwedWhere(now) },
+        select: { dueDate: true },
+      });
+      // dueDate is nullable; a dateless open bill still owes, it just has
+      // no oldest due date (the retired view's MIN ignored NULLs the same way).
+      const dueDates = owed
+        .map((i) => i.dueDate)
+        .filter((d): d is Date => d !== null)
+        .map((d) => d.getTime());
+      const oldestOpenDueDate = dueDates.length ? new Date(Math.min(...dueDates)) : null;
+      const pickup = await prisma.job.findFirst({
+        where: { customerId: id, type: "REMOVAL", status: "SCHEDULED" },
+        orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
+        select: { scheduledAt: true },
+      });
+      expected.set(
+        id,
+        customerSegments(
+          {
+            activeCount,
+            pendingCount,
+            endedCount,
+            oldestOpenDueDate,
+            endingOn,
+            pickupAt: pickup?.scheduledAt ?? null,
+          },
+          now,
+          endingDays,
+        ),
+      );
+    }
+    // 30 matrix fixtures + phone + asset = 32 oracle rows (the walk-in is
+    // not a fixture customer and must never appear in the list below).
+    expect(expected.size).toBe(32);
     expect(walkInId).not.toBe("");
-    const walkInRows = await prisma.$queryRaw<{ n: number }[]>`
-      SELECT COUNT(*)::int AS n FROM "customer_list_v1" WHERE "id" = ${walkInId}`;
-    expect(walkInRows[0].n).toBe(0);
+    const { rows: allRows } = await getCustomerList({ segment: "all", q: tag, pageSize: 100 });
+    expect(allRows.map((r) => r.id)).not.toContain(walkInId);
 
     for (const segment of CUSTOMER_SEGMENTS) {
       const { rows } = await getCustomerList({ segment, q: tag, pageSize: 100 });

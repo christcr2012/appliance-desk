@@ -6,9 +6,70 @@
 
 **What needs you:** nothing to decide. One spec item was already delivered before this card (section 1 fix 6, the Repairs area layout, shipped with AR-1) and a few small readings are recorded as drift in the PR body (the "My visits this week" view is owner/admin-only because it carries the who filter; Text the customer goes to the visit record where the text panel lives).
 
+## October 30 — MCP-5 COMPLETE: assistant actions verified and closed out (Lane 5)
+
+**What changed:** no app behavior. MCP-5's implementation (assistant actions with
+preview, owner approval, once-only execution and readback verification) merged on
+2026-10-29 as PR #717 (squash `62a1cd84`) but the card was never closed out: its
+acceptance boxes stayed unticked, the work-index still read APPROVED, and one named
+acceptance artifact — the Assistant Activity browser spec — did not exist. This
+close-out (packet MCP-5-CLOSEOUT) verifies the merged work, adds the missing spec
+(`e2e/mcp-activity.spec.ts`, registered in `e2e/shards.json`), ticks the card's
+boxes with evidence, and corrects the work-index.
+
+**How it was checked:** on main at `f7794889` the two named integration suites
+re-ran focused on the lane database — `tests/mcp-operations-integration.test.ts`
+(10) and `tests/mcp-decisions-apply-integration.test.ts` (3), 13 passed, 0
+skipped — and the merged implementation was read against every testable line on
+the card (canonical args + tamper hash, OWNER-only approval under row locks,
+grant-version rechecks at approve/claim/dispatch, lease fencing, UNKNOWN
+readback-only reconciliation, the six actions plus DEC-1 application). The new
+browser spec seeds waiting operations, approves on phone through the confirm
+dialog (journal records AUTHORIZED with the owner id), declines on desktop
+(DENIED), and axe-scans the page at 360/390/1440 in light and dark. Local launcher
+execution of the spec was degraded — the shared VM had ~1 GB free and production
+builds died collecting page data — so its execution evidence is CI's browser
+shard; the local checks phase (lint, typecheck, shard registration) passed.
+Approval gating and the action surface are unchanged; later cards' REPAIR_*
+(MCP-6) and FEEDBACK_* (MCP-11) journal actions are their own scope.
+
 ## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
 
 MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
+## October 30 — CU1-VIEW COMPLETE: customer_list_v1 view retired (Workshop card)
+
+**What changed:** the `customer_list_v1` view is dropped (migration
+`20261218000000_customer_list_view_retire`; PR #783). CU1-PERF had moved every
+production Customers read to grouped base-table aggregates and left the view
+"for other readers until a separate card retires it" — a repo-wide drift grep
+at main `f7794889` showed its only remaining readers were the two oracle
+queries in `tests/customer-list-integration.test.ts` (the CU-1 close-out
+guessed "the record page facts"; the record page reads no view at current
+main). The suite's oracle now computes the six segment facts from the base
+tables with plain Prisma reads, written from the fixture semantics and the
+CUSTOMERS spec definitions, sharing no SQL with `list.ts` (the one shared
+helper is `billOwedWhere`, the Bills money rule the suite already pins
+independently). Two stale comments in `segments.ts` were corrected; the
+facts type's origin sentence stays verbatim because a registered packet
+anchors on it. No table, column, index or data changes; no production
+behavior change. The CU-1 chain (AR-4c, CU1-PERF, CU1-VIEW) is closed.
+
+**How it was checked:** the whole card ran on the Workshop (chris-agent-01)
+end to end — clone, packet, build, verification and a real git push from the
+box. Packet CU1-VIEW registered and validated (`work-session check`).
+Workshop run-checks at head `9eb10646` in CI's shape (static + three unit
+shards, fresh databases via `prisma migrate deploy`, so the drop migration
+ran on every shard database): static green; unit shards 1 and 2 fully green
+(2,249 and 1,922 tests); `tests/customer-list-integration.test.ts` passed in
+both Workshop runs (7 tests). Declared honestly: Workshop shard 3 (and one
+shard-1 axe test) fail in unrelated suites (com-n1c, jobs-status-concurrency,
+ops5-dispute-rules, plus a rotating fourth) — the identical pattern
+reproduces on pristine main `f7794889` in the same runner on the same box
+(baseline run `checks-20261030T231705Z-f7794889`), so they are this box's
+parallel-load flakes, not this change; the merge gate is CI at the exact
+head. Gitleaks range scan (CI's pinned 8.28.0) clean; pre-push
+conflict-marker grep clean. Browser phase not run locally — no UI, route or
+browser surface changes; CI runs all five browser groups at the exact head.
 
 ## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 

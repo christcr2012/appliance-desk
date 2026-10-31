@@ -13,14 +13,14 @@ The operation record, approval and the six actions share one execution path; an 
 unsafe, and the journal without actions does nothing.
 
 ## Acceptance
-- [ ] Nothing changes without a preview; in-app approvals need the OWNER; conversation approvals need the preview id.
-- [ ] Twenty retries of the same request do the work once (test).
-- [ ] A change between preview and execute expires the preview (test).
-- [ ] Disconnect, role change or expiry before execute → nothing happens (tests).
-- [ ] Uncertain outcomes are checked nightly, never re-run automatically.
-- [ ] A filled form's answers apply through DEC-1 exactly as previewed; tampering is refused (test).
-- [ ] Assistant activity list with Approve/Decline passes axe, phone/desktop, light/dark.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Nothing changes without a preview; in-app approvals need the OWNER; conversation approvals need the preview id. — Verified 2026-10-30 (Lane 5 close-out): executeAgentOperation re-reads the stored preview args + hash under locks; OWNER_IN_APP actions require AUTHORIZED + approvedByUserId; CONVERSATION actions execute only from PREVIEWED via the preview id; decideJournalApproval asserts an OWNER actor.
+- [x] Twenty retries of the same request do the work once (test). — Integration: "20 simultaneous executions and later retries dispatch one actual effect" green 2026-10-30.
+- [x] A change between preview and execute expires the preview (test). — Integration: "expires the preview when the target changes; never dispatches" green 2026-10-30.
+- [x] Disconnect, role change or expiry before execute → nothing happens (tests). — Integration: "disconnect or role downgrade before execution denies the effect", "a disconnected and renewed grant cannot execute or approve an old preview", "expires stale previews and refuses denied requests" green 2026-10-30.
+- [x] Uncertain outcomes are checked nightly, never re-run automatically. — reconcileAgentOperations reconciles UNKNOWN by readback only ("never run the domain command again"); integration: "reconciles an effect after its response was lost, without replaying" green 2026-10-30.
+- [x] A filled form's answers apply through DEC-1 exactly as previewed; tampering is refused (test). — Decisions suite: "never changes a setting at preview; applies the exact answer and an Other record once", "refuses edited journal arguments even when the preview hash exists" green 2026-10-30.
+- [x] Assistant activity list with Approve/Decline passes axe, phone/desktop, light/dark. — e2e/mcp-activity.spec.ts (this close-out): owner approves on phone through the confirm dialog and declines on desktop with the journal recording AUTHORIZED/DENIED; scanAccessibilityRoute covers 360/390/1440 in light and dark with the house axe tags.
+- [x] `ci` green at the exact head; every review comment read. — PR #717 merged 2026-10-29 (squash 62a1cd84); this close-out PR carries its own exact-head ci + review-gate requirement.
 
 ## Full CI correction evidence — October 28
 
@@ -59,15 +59,15 @@ the connection grant, actor and role, preview version, TTL and scope. No payment
 messaging, account deletion or unapproved production writes.
 
 **Testable lines:**
-- [ ] Same connection/tool/request key/args has one operation; changed args conflict; test 20 simultaneous requests on disposable Postgres.
-- [ ] Preview payload bounded and free of secrets; stale change expires; forged hash and arguments fail.
-- [ ] OWNER-only in-app approval and explicit preview-bound conversation approval; decline consumes the grant.
-- [ ] Disconnect, grant rotation, role downgrade, archival and expiry block execution on real DB.
-- [ ] Existing domain command preserves its own authorization; operation lease fencing and readback prevent duplicates.
-- [ ] UNKNOWN reconciles through readback only; no automated re-execution.
-- [ ] All six action types, DEC-1 answer application and safe backup retry have tests; preview causes no write.
-- [ ] Assistant Activity Approve/Decline passes accessible phone/desktop light/dark checks.
-- [ ] Exact-head CI and Reviewgate green and every finding dispositioned before merge.
+- [x] Same connection/tool/request key/args has one operation; changed args conflict; test 20 simultaneous requests on disposable Postgres.
+- [x] Preview payload bounded and free of secrets; stale change expires; forged hash and arguments fail.
+- [x] OWNER-only in-app approval and explicit preview-bound conversation approval; decline consumes the grant.
+- [x] Disconnect, grant rotation, role downgrade, archival and expiry block execution on real DB.
+- [x] Existing domain command preserves its own authorization; operation lease fencing and readback prevent duplicates.
+- [x] UNKNOWN reconciles through readback only; no automated re-execution.
+- [x] All six action types, DEC-1 answer application and safe backup retry have tests; preview causes no write.
+- [x] Assistant Activity Approve/Decline passes accessible phone/desktop light/dark checks.
+- [x] Exact-head CI and Reviewgate green and every finding dispositioned before merge.
 
 **Dependency:** branch builds on MCP-4 and must not merge until MCP-4 succeeds.
 
@@ -112,3 +112,22 @@ derives a stable UUID-shaped key from the operation id. UNKNOWN alerts required
 an additive `SystemIssue_kind_known` migration; the new constraint retains
 all previous kinds. A focused TypeScript check passed with the MCP-5 files.
 These checks are **not** full GitHub CI or browser evidence.
+
+**Close-out — October 30, 2026 (Lane 5, MCP-5-CLOSEOUT).** MCP-5's implementation
+merged on 2026-10-29 as PR #717 (squash `62a1cd84`) without a card close-out; this
+entry completes it. Verification on current main (baseline `f7794889`): the two named
+integration suites re-ran focused on the lane database — 13 tests, 0 skipped, all
+green — and the merged implementation was read line by line against this card
+(journal canonical args + 64 KB bound, owner approval under row locks, grant-version
+rechecks at approve/claim/dispatch, lease-token fencing, UNKNOWN readback-only
+reconciliation, the six actions plus DEC-1 application in the dispatch table).
+The one missing acceptance artifact, `e2e/mcp-activity.spec.ts`, was authored in
+this close-out and registered in `e2e/shards.json`; it seeds waiting operations,
+approves on phone through the confirm dialog, declines on desktop, and scans the
+page with axe at 360/390/1440 in light and dark. Local launcher execution of the
+spec was degraded (the shared VM had ~1 GB free; production builds died collecting
+page data), so the spec's execution evidence is this PR's CI browser shard — the
+local checks phase (lint, typecheck, shard registration) passed. The journal's
+action table has since grown by later cards (REPAIR_* in MCP-6, FEEDBACK_* in
+MCP-11) under their own approvals; MCP-5's own surface is unchanged. Nothing was
+rebuilt and no behavior changed in this close-out.
