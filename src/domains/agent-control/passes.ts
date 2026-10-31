@@ -38,6 +38,10 @@ export async function issueRtcPass(ownerId: string, input: {
   if (areas.length > validAreas.length || areas.some(area =>
       !validAreas.includes(area as (typeof validAreas)[number])))
     throw new Error("INVALID_RTC_PASS_AREAS");
+  // The owner UI is read-only until the pinned RTC 1 write probes pass.
+  // Internal synthetic test passes must never become live write credentials.
+  if (input.allowWrites && process.env.VERCEL_ENV === "production")
+    throw new Error("RTC_FULL_PASS_NOT_ENABLED");
   if (input.allowWrites && (!unique.includes("ops:maintain") ||
       (areas.length > 0 && !areas.includes("automation"))))
     throw new Error("INVALID_RTC_PASS_WRITE_SCOPE");
