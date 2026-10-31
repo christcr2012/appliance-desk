@@ -1,3 +1,11 @@
+## October 31 — Lane 2 MCP-9 merged engineering evidence and remaining acceptance
+
+**Merged, not full RTC certification:** PR #787 (read-only RTC pass gateway, owned result handles, two-process HTTP limiter and application-specific approval journal), #793 (real local PKCE OAuth refresh-selection oracle) and #794 (truthful client matrix and owner walkthrough) all merged. Exact-head full CI and Review Gate passed on each final PR head: #787 runs 41180116792/41180116750; #793 runs 41206019621/41206019642; #794 runs 41209589527/41209589596. The separate performance workflow failed for #787/#794; do not present it as passing.
+
+**Still unproven:** upstream generic direct-setter write conformance (cannot silently bypass independent owner approval), real hosted external clients, compatible redeployment, optional Hub and owner-only acceptance. Every declared client remains NOT_TRIED. See the reconciled MCP-9 evidence ledger. No production, payment, messaging or live credential actions occurred.
+
+**Next:** implement and verify an upstream-compatible write contract that preserves MCP-5 approval and journaling, then run all applicable pinned probes. Real client/redeploy/Hub/owner acceptance remains separate. Playground repository attachment is still unavailable; no local command/test execution is claimed for this documentation update.
+
 ## October 31 — W-12 gate slice MERGED (PR #795, squash ee559632) — IN-44 researched defaults + owner/accountant editor (Lane 4)
 
 **What changed:** the filing packet's four deduction buckets now start from researched Colorado DR 0100 Schedule A defaults (short-term exempt rent A13-1, nontaxable services A3-1, exempt entities A4-1, outside-area A2-1 — all counted in gross, then deducted), labelled "Researched default — CPA confirmation still pending" until someone with authority saves wording. The wording is edited per bucket on its own page by the owner or the business's accountant (Chris's amendment): the save is role-checked in the transaction, provenance follows the editor (accountant-set clears the pending label), and every save is audit-logged per bucket. IN-44 stays open for the CPA's confirmation.
