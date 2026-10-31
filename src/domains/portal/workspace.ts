@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "@/lib/session";
 import { ACTIVE_ASSIGNMENT_WHERE } from "@/domains/agreements/active-appliances";
+import { rentalMonthlyTotalCents } from "@/domains/agreements/totals";
 import { getNextBills } from "@/domains/portal/next-bill";
 /** Session identity is resolved here; URL property filters can only narrow
  * the signed-in customer's own records. Only customer-visible DTOs are read. */
@@ -44,6 +45,8 @@ export async function getPortalHome(rawAddressId?: string) {
     openRequestCount,
     openVisits,
     nextBills,
+    awaitingSignature,
+    allActiveRentals,
   ] = await Promise.all([
     prisma.rentalAgreement.count({ where: rentalWhere }),
     prisma.job.count({ where: jobWhere }),
@@ -94,6 +97,8 @@ export async function getPortalHome(rawAddressId?: string) {
         amountDueCents: true,
         amountPaidCents: true,
         dueDate: true,
+        stripeInvoiceId: true,
+        saleKind: true,
       },
     }),
     prisma.maintenanceRequest.count({
@@ -109,6 +114,15 @@ export async function getPortalHome(rawAddressId?: string) {
       select: { id: true, type: true, status: true, createdAt: true, scheduledAt: true, customerPickupHandoff: true },
     }),
     getNextBills(customer.id, addressId),
+    prisma.rentalAgreement.findMany({
+      where: { customerId: customer.id, status: "AWAITING_SIGNATURE" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, signature: { select: { id: true } } },
+    }),
+    prisma.rentalAgreement.findMany({
+      where: rentalWhere,
+      select: { lines: { select: { monthlyPriceCents: true } } },
+    }),
   ]);
   return {
     customerId: customer.id,
@@ -117,8 +131,39 @@ export async function getPortalHome(rawAddressId?: string) {
     activeRentalCount,
     upcomingVisitCount,
     nextVisit,
-    rentals,
-    invoice,
+    rentals: rentals.map((rental) => ({
+      ...rental,
+      monthlyTotalCents: rentalMonthlyTotalCents(rental.lines),
+    })),
+    // The whole account's monthly rent (every active rental in scope,
+    // not just the six shown), summed in the domain.
+    monthlyTotalCents: allActiveRentals.reduce(
+      (sum, rental) => sum + rentalMonthlyTotalCents(rental.lines),
+      0,
+    ),
+    // The raw Stripe invoice id and the sale kind stay inside the
+    // domain: the page receives the derived flags (isLocalInvoice /
+    // isShopSale), never the provider identifier itself.
+    invoice: invoice
+      ? {
+          ...(({ stripeInvoiceId: _stripeInvoiceId, saleKind: _saleKind, ...rest }) => rest)(invoice),
+          balanceCents: Math.max(0, invoice.amountDueCents - invoice.amountPaidCents),
+          isLocalInvoice: invoice.stripeInvoiceId === null,
+          isShopSale: invoice.saleKind === "SHOP_SALE",
+        }
+      : null,
+    // What the customer still owes on the first open bill (never below
+    // zero); pages format this, they never subtract in page code.
+    balanceCents: invoice
+      ? Math.max(0, invoice.amountDueCents - invoice.amountPaidCents)
+      : 0,
+    // Rentals waiting for this customer's signature, oldest first; the
+    // sign-in link uses the signature record's id (the /sign/[id] route).
+    signingWaiting: awaitingSignature.flatMap((agreement) =>
+      agreement.signature
+        ? [{ agreementId: agreement.id, signHref: `/sign/${agreement.signature.id}` }]
+        : [],
+    ),
     openRequestCount,
     openVisits,
     nextBills,

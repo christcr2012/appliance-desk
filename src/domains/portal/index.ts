@@ -11,6 +11,8 @@ import {
   getActiveApplianceOptionsForUser,
 } from "@/domains/agreements/active-appliances";
 
+import { rentalMonthlyTotalCents } from "@/domains/agreements/totals";
+
 import { customerSigningSummary } from "./signing-status";
 
 export const PORTAL_PAGE_SIZE = 20;
@@ -28,6 +30,7 @@ const jobSelect = {
   id: true,
   type: true,
   status: true,
+  createdAt: true,
   scheduledAt: true,
   performedOn: true,
   customerPickupHandoff: true,
@@ -41,6 +44,7 @@ const maintenanceRequestSelect = {
   priority: true,
   openedAt: true,
   createdAt: true,
+  _count: { select: { photos: true } },
   appliance: {
     select: {
       id: true,
@@ -165,6 +169,7 @@ export async function getPortalData(userId: string) {
       // Do not advertise an unsigned/order-draft visit to the customer.
       // Existing scheduled visits keep their normal visibility.
       jobs: signature?.signedAt ? agreement.jobs : agreement.jobs.filter(job => job.scheduledAt !== null),
+      monthlyTotalCents: rentalMonthlyTotalCents(agreement.lines),
       signingPaymentSummary: customerSigningSummary(signingPaymentObligation, customer.id),
     })),
     jobs: customer.jobs.slice(0, PORTAL_PAGE_SIZE),
@@ -192,12 +197,26 @@ export async function getPortalJobsPage(userId: string, rawPage: number) {
   };
 }
 
-export async function getPortalMaintenancePage(userId: string, rawPage: number) {
+const MAINTENANCE_OPEN_STATUSES = ["SUBMITTED", "REVIEWING", "SCHEDULED", "IN_PROGRESS"] as const;
+const MAINTENANCE_DONE_STATUSES = ["RESOLVED", "CLOSED"] as const;
+
+export async function getPortalMaintenancePage(
+  userId: string,
+  rawPage: number,
+  status?: "open" | "done",
+) {
   const customerId = await portalCustomerId(userId);
   if (!customerId) return null;
   const page = pageNumber(rawPage);
   const rows = await prisma.maintenanceRequest.findMany({
-    where: { customerId },
+    where: {
+      customerId,
+      ...(status === "open"
+        ? { status: { in: [...MAINTENANCE_OPEN_STATUSES] } }
+        : status === "done"
+          ? { status: { in: [...MAINTENANCE_DONE_STATUSES] } }
+          : {}),
+    },
     select: maintenanceRequestSelect,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     skip: (page - 1) * PORTAL_PAGE_SIZE,
@@ -208,6 +227,21 @@ export async function getPortalMaintenancePage(userId: string, rawPage: number) 
     items: rows.slice(0, PORTAL_PAGE_SIZE),
     hasMore: rows.length > PORTAL_PAGE_SIZE,
   };
+}
+
+/** Tab counts for the Repairs page, still keyed on the signed-in customer. */
+export async function getPortalMaintenanceCounts(userId: string) {
+  const customerId = await portalCustomerId(userId);
+  if (!customerId) return null;
+  const [open, done] = await Promise.all([
+    prisma.maintenanceRequest.count({
+      where: { customerId, status: { in: [...MAINTENANCE_OPEN_STATUSES] } },
+    }),
+    prisma.maintenanceRequest.count({
+      where: { customerId, status: { in: [...MAINTENANCE_DONE_STATUSES] } },
+    }),
+  ]);
+  return { open, done };
 }
 
 export async function getPortalApplianceOptions(userId: string) {

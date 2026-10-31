@@ -22,7 +22,7 @@ export function NewRequestForm({
   initialApplianceId = "",
   initialProblem = "",
   requestKind = "maintenance",
-  requestTitle = "Report a problem",
+  requestTitle = "Ask for a repair",
 }: {
   appliances: ApplianceOption[];
   customerId: string;

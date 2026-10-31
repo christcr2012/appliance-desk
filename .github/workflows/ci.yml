@@ -460,6 +460,39 @@ jobs:
       - name: Accessibility, security and end-to-end tests (${{ matrix.shard }})
         run: node scripts/ci-phase.mjs --budget-seconds 180 -- node scripts/e2e-shard.mjs ${{ matrix.shard }}
 
+      # portal.spec.ts runs alone, in its own step of this same job
+      # (group "browser-e-portal" in e2e/shards.json), against a
+      # freshly reset copy of the job's database. Its photo submit needs the server's
+      # photo-ownership check to pass: the check only accepts photo
+      # URLs from the customer's folder in the configured private
+      # store, and CI has no real store. The throwaway identity below
+      # (assembled so no token-shaped literal sits in the repo) is
+      # prefixed onto this step's test command only, so it reaches
+      # this step's server process and nothing else in the job. Fix
+      # cycles 5-6 (PR #781) proved the identity cannot be shared
+      # per-job: feedback and decisions pin the no-store behavior in
+      # browser-e, business-records is store-sensitive in browser-c,
+      # and the heavy serial portal file also proved a bad group
+      # neighbor under load (w22 signing poll in browser-b,
+      # settings/spanish timings in browser-a). The database reset is
+      # required because Playwright's global setup enrolls the
+      # fixture accounts' two-factor auth on first login; a second
+      # global setup against the same database stalls at the
+      # two-factor challenge (the same reason the local run-checks
+      # harness uses a fresh database per group). The reset keeps the
+      # name appliance_desk_test: prisma/seed.ts refuses its admin
+      # fixture on any other database name. The spec stubs the Blob
+      # network legs themselves.
+      - name: Portal spec, isolated, with the throwaway private photo store identity
+        if: matrix.shard == 'browser-e'
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-portal
+        run: |
+          node -e "const { Client } = require('pg'); (async () => { const c = new Client({ connectionString: 'postgresql://test:test@localhost:5432/postgres' }); await c.connect(); await c.query(\"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'appliance_desk_test' AND pid <> pg_backend_pid()\"); await c.query('DROP DATABASE appliance_desk_test'); await c.query('CREATE DATABASE appliance_desk_test'); await c.end(); })();"
+          npx prisma migrate deploy
+          npm run db:seed
+          PRIVATE_PHOTO_BLOB_STORE_ID=store_e2eteststore PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN=$(printf 'vercel_blob_rw_%s_%s' 'e2eteststore' 'throwawaytoken') node scripts/ci-phase.mjs --budget-seconds 180 -- node scripts/e2e-shard.mjs browser-e-portal
+
       # Only kept when something failed.
       - name: Upload Playwright report
         if: failure()
@@ -467,6 +500,14 @@ jobs:
         with:
           name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
+          retention-days: 3
+
+      - name: Upload Playwright report (portal step)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report-${{ matrix.shard }}-portal
+          path: playwright-report-portal/
           retention-days: 3
 
   # One final gate named `ci`. It passes only when every job that was supposed

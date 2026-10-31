@@ -652,6 +652,15 @@ const AS_BUILT_SUBJECTS: DecisionSubject[] = [
     doingNow: "Spanish wording is reviewed by fluent people Chris knows before it is used",
     affects: [{ label: "Spanish wording", href: "/desk/settings" }],
   }),
+  // PORTAL-1 (docs/pr-cards/PORTAL-1.md): every changed portal string is
+  // listed in the PORTAL-1 pull request for the translator.
+  asBuiltSubject({
+    id: "PORTAL-WORDING-2026-10-30", legacyIds: [], area: "WORDING", audience: "TRANSLATOR",
+    title: "Portal wording, October 30, 2026",
+    question: "Are the new and changed English wordings in the redesigned customer portal — and the Spanish drafts written for them — correct and natural?",
+    doingNow: "The portal runs on the new English wording with drafted Spanish beside it; Spanish display stays on English until the reviewed copy is recorded (the wording digest gate), as with IN-83",
+    affects: [{ label: "Spanish wording", href: "/desk/settings" }],
+  }),
   asBuiltSubject({
     id: "IN-84", legacyIds: ["IN-84"], area: "RENTAL_TERMS", audience: "ATTORNEY",
     title: "Late fee wording",

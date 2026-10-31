@@ -1,6 +1,7 @@
 "use client";
 // AR-0 kit 4.15: in-house toasts. Mount <Toaster /> once per layout; call toast() from any client code.
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useKitWords } from "./words";
 import Link from "next/link";
 import { Icon } from "./icons";
 import type { Tone } from "./types";
@@ -56,6 +57,7 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 function ToastItem({ entry }: { entry: ToastEntry }) {
+  const words = useKitWords();
   const [undoing, setUndoing] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => dismissToast(entry.id), entry.undo ? TOAST_UNDO_MS : TOAST_MS);
@@ -92,7 +94,7 @@ function ToastItem({ entry }: { entry: ToastEntry }) {
           }}
           className="min-h-11 rounded-field px-3 font-extrabold underline underline-offset-2 disabled:opacity-60"
         >
-          Undo
+          {words.undo}
         </button>
       ) : null}
       <button

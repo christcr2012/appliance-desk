@@ -22,23 +22,10 @@ export type ActionButtonProps = {
   icon?: IconName;
 };
 
-const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-field font-bold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed disabled:opacity-60";
-const SIZE = { md: "min-h-11 px-4 text-[15px] lg:min-h-10", lg: "min-h-12 px-5 text-base" } as const;
-const VARIANT = {
-  primary: "bg-primary text-on-primary hover:bg-primary-dark",
-  secondary: "border border-line-strong bg-surface text-ink hover:bg-tint",
-} as const;
-
-export function actionButtonClass({
-  spec,
-  size = "md",
-  variant,
-  className,
-}: Pick<ActionButtonProps, "spec" | "size" | "variant" | "className">): string {
-  const look = variant ?? (spec.primary ? "primary" : "secondary");
-  return [BASE, SIZE[size], VARIANT[look], className].filter(Boolean).join(" ");
-}
+// actionButtonClass lives in ./action-button-class (server-safe) and is
+// re-exported here for existing importers of this module.
+export { actionButtonClass } from "./action-button-class";
+import { actionButtonClass } from "./action-button-class";
 
 function Content({ label, icon, iconOnly }: { label: ReactNode; icon?: IconName; iconOnly?: IconName }) {
   if (iconOnly) return <Icon name={iconOnly} size={24} />;

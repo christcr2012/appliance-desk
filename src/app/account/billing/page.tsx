@@ -1,34 +1,39 @@
+import { ScreenHeader, StatStrip, EmptyState, type Tone } from "@/components/kit";
+import { InfoNote } from "@/components/portal/info-note";
 import { portalLanguage } from "@/domains/language/portal";
-import { portalLabel } from "@/domains/language/portal-copy";
-import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
-import Link from "next/link";
+import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
+import { businessDateKey, formatMonthYear, relativeBusinessDay } from "@/lib/business-date";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import { getCustomerStatement } from "@/domains/billing";
 import { formatCents } from "@/domains/pricing/money";
-import {
-  invoiceStatusLabel,
-  invoiceStatusTone,
-} from "@/lib/status-labels";
-import {
-  Button,
-  ButtonLink,
-  Card,
-  EmptyState,
-  PageHeader,
-  StatusPill,
-} from "@/components/ui";
+import { invoiceStatusLabel, invoiceStatusTone } from "@/lib/status-labels";
 import { ManageBillingButton } from "./manage-billing-button";
-import { NextBillCard } from "@/components/portal/next-bill-card";
+import { BillsExplorer, type BillRow } from "./bills-explorer";
 import { getNextBills } from "@/domains/portal/next-bill";
 import { isPayNowEligible } from "@/domains/portal/pay-now";
 
-export const metadata = { title: "Billing" };
+export const metadata = { title: "Bills" };
+
+const TO_PAY_STATUSES = new Set(["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"]);
 
 function previousBusinessMonth(): string {
   const current = businessDateKey(new Date()).slice(0, 7);
   const [year, month] = current.split("-").map(Number);
   return new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
+}
+
+function kitTone(status: string): Tone {
+  const tone = invoiceStatusTone(status);
+  if (tone === "success") return "good";
+  if (tone === "progress") return "info";
+  if (tone === "stopped") return "danger";
+  if (tone === "attention") return "attention";
+  return "neutral";
+}
+
+function calendarDaysBetween(fromKey: string, toKey: string): number {
+  return Math.round((Date.parse(toKey) - Date.parse(fromKey)) / 86_400_000);
 }
 
 export default async function AccountBillingPage() {
@@ -40,125 +45,120 @@ export default async function AccountBillingPage() {
   if (!customer) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title={t("Billing")} />
-        <EmptyState
-          title={t("No rental account attached to this login")}
-          description={t("Contact the business if you expected to see billing history here.")}
-        />
+        <h1 className="pb-4 text-xl font-bold text-ink">{t("Bills")}</h1>
+        <EmptyState title={t("No rental account attached to this login")} />
       </div>
     );
   }
 
-  const statement = await getCustomerStatement(customer.id, { customerVisible: true });
-  const hasMultipleProperties = (statement?.properties.length ?? 0) > 1;
+  const now = new Date();
+  const todayKey = businessDateKey(now);
+  const [statement, nextBills] = await Promise.all([
+    getCustomerStatement(customer.id, { customerVisible: true }),
+    getNextBills(customer.id),
+  ]);
   const statementMonth = previousBusinessMonth();
+  const [stmtYear, stmtMonth] = statementMonth.split("-").map(Number);
+  const statementLabel = `${t("Monthly statement")} (${formatMonthYear(new Date(Date.UTC(stmtYear, stmtMonth - 1, 2)))})`;
+
+  const rows: BillRow[] = [];
+  const properties: { id: string; label: string }[] = [];
+  for (const property of statement?.properties ?? []) {
+    const propertyId = property.serviceAddressId ?? "no-property";
+    properties.push({ id: propertyId, label: property.addressLabel });
+    for (const invoice of property.invoices) {
+      const tab = TO_PAY_STATUSES.has(invoice.status) ? ("topay" as const) : ("paid" as const);
+      const dueKey = invoice.dueDate ? businessDateKey(invoice.dueDate) : null;
+      const daysLate =
+        tab === "topay" && invoice.balanceCents > 0 && dueKey && dueKey < todayKey
+          ? calendarDaysBetween(dueKey, todayKey)
+          : 0;
+      rows.push({
+        id: invoice.id,
+        number: invoice.invoiceNumber,
+        propertyId,
+        propertyLabel: property.addressLabel,
+        statusLabel: invoiceStatusLabel(invoice.status, locale),
+        statusTone: kitTone(invoice.status),
+        amountText: invoice.balanceCents > 0 ? formatCents(invoice.balanceCents) : t("Paid"),
+        paidText:
+          invoice.balanceCents > 0 && invoice.amountPaidCents > 0
+            ? `${formatCents(invoice.amountPaidCents)} ${t("paid")}`
+            : null,
+        dueText:
+          daysLate > 0
+            ? portalStatement(locale, "daysLate", { count: daysLate, plural: daysLate === 1 ? "" : "s" })
+            : invoice.dueDate
+              ? `${t("due")} ${relativeBusinessDay(invoice.dueDate, now)}`
+              : null,
+        dueLate: daysLate > 0,
+        tab,
+        payNowEligible: isPayNowEligible(invoice, now),
+        payAsArranged: invoice.balanceCents > 0 && invoice.isLocalInvoice && !invoice.isShopSale,
+      });
+    }
+  }
+
+  const totalOwed = statement?.totalBalanceCents ?? 0;
+  const nextBill = nextBills[0];
 
   return (
     <div className="max-w-5xl">
-      <PageHeader
-        title={t("Billing")}
-        description={t("Update your payment method and review your recorded invoice history.")}
-        secondaryActions={
-          <ButtonLink
-            href={`/api/documents/statement/${statementMonth}`}
-            target="_blank"
-            variant="secondary"
-          >
-            {t("View frozen statement")} · {statementMonth}
-          </ButtonLink>
-        }
+      <ScreenHeader
+        title={t("Bills")}
+        overflow={[
+          { kind: "link", label: statementLabel, href: `/api/documents/statement/${statementMonth}` },
+        ]}
       />
 
       <div className="mb-6">
-        <Card
-          title={t("Payment method")}
-          description={t("Stripe opens a secure billing page for card or bank-account changes.")}
-        >
-          <ManageBillingButton />
-        </Card>
+        <ManageBillingButton />
       </div>
 
-      <div className="mb-6 max-w-md"><NextBillCard bills={await getNextBills(customer.id)} locale={locale} /></div>
-
-      {statement && statement.totalBalanceCents > 0 && (
-        <div className="mb-6 rounded-card border border-warning-ink bg-warning-bg p-4">
-          <p className="font-semibold text-warning-ink">
-            {formatCents(statement.totalBalanceCents)} {t("currently owed")}
-            {hasMultipleProperties ? ` ${t("across all your properties")}` : ""}.
-          </p>
+      <div className="mb-2 flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <StatStrip
+            items={[
+              {
+                label: t("You owe"),
+                value: formatCents(totalOwed),
+                tone: totalOwed > 0 ? "attention" : "neutral",
+              },
+              {
+                label: t("Next bill"),
+                value: nextBill ? formatCents(nextBill.rentCents) : "—",
+                sub: nextBill ? `${t("due")} ${relativeBusinessDay(nextBill.date, now)}` : undefined,
+              },
+            ]}
+          />
         </div>
-      )}
-
-      <p className="mb-6 text-sm text-ink-soft">{t("Invoice amounts can include deposits, fees and tax. A required deposit is separate from a confirmed payment. Payment status shows the last recorded update.")}</p>
+        <span className="pt-3.5">
+          <InfoNote
+            label={t("Bills can include deposits, fees and tax, so they can differ from your monthly rent.")}
+            text={t("Bills can include deposits, fees and tax, so they can differ from your monthly rent.")}
+          />
+        </span>
+      </div>
 
       {!statement || statement.properties.length === 0 ? (
-        <EmptyState
-          title={t("No invoices yet")}
-          description={t("An invoice is created automatically each time you're billed.")}
-        />
+        <EmptyState title={t("No invoices yet")} />
       ) : (
-        <div className="space-y-6">
-          {statement.properties.map((property) => (
-            <Card
-              key={property.serviceAddressId ?? "no-property"}
-              title={hasMultipleProperties ? property.addressLabel : t("Invoices")}
-              description={
-                hasMultipleProperties
-                  ? t("Invoices recorded for this property.")
-                  : undefined
-              }
-            >
-              <ul className="divide-y divide-line">
-                {property.invoices.map((invoice) => (
-                  <li
-                    key={invoice.id}
-                    className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <Link
-                        href={`/account/billing/invoice/${invoice.id}`}
-                        className="font-semibold text-ink underline-offset-4 hover:underline"
-                      >
-                        {t("Invoice")} #{invoice.invoiceNumber}
-                      </Link>
-                      <p className="mt-1 text-sm text-ink-soft">
-                        {invoice.billingPeriodStart
-                          ? formatBusinessDate(invoice.billingPeriodStart)
-                          : "—"}
-                      </p>
-                      <div className="mt-2">
-                        <StatusPill
-                          tone={invoiceStatusTone(invoice.status)}
-                          label={invoiceStatusLabel(invoice.status, locale)}
-                        />
-                      </div>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <p className="font-semibold text-ink">
-                        {formatCents(invoice.amountPaidCents)} {t("paid")}
-                      </p>
-                      {invoice.balanceCents > 0 && (
-                        <>
-                          <p className="mt-1 text-sm font-semibold text-warning-ink">
-                            {formatCents(invoice.balanceCents)} {t("owed")}
-                          </p>
-                          {invoice.isLocalInvoice && !invoice.isShopSale && (
-                            <p className="mt-1 text-sm text-ink-soft">{t("Pay as arranged with Robinson Appliance Rentals.")}</p>
-                          )}
-                          {isPayNowEligible(invoice, new Date()) && (
-                            <form method="post" action={`/account/billing/invoice/${invoice.id}/pay`} className="mt-2">
-                              <Button type="submit">{t("Pay now")}</Button>
-                            </form>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))}
-        </div>
+        <BillsExplorer
+          rows={rows}
+          properties={properties}
+          labels={{
+            bills: t("Bills"),
+            bill: t("Bill"),
+            toPay: t("To pay"),
+            paidTab: t("Paid"),
+            property: t("Property"),
+            allProperties: t("All properties"),
+            payNow: t("Pay now"),
+            payAsArranged: t("Pay as arranged with Robinson Appliance Rentals."),
+            noBillsToPay: t("No bills to pay"),
+            noPaidBills: t("No paid bills yet"),
+          }}
+        />
       )}
     </div>
   );

@@ -28,7 +28,16 @@ describe("AR-10 sweep guards", () => {
     const registered = registry
       .map((entry) => (typeof entry === "string" ? entry : entry.file))
       .sort();
-    const onDisk = deskPageFiles(path.join(root, "src/app/desk")).sort();
+    // PORTAL-1 (spec section 7) registered the customer portal on the
+    // same registry: every /account page except the feedback surface
+    // (MCP-10a's pages, which register when that surface migrates).
+    const portalOnDisk = deskPageFiles(path.join(root, "src/app/account")).filter(
+      (file) => !file.includes("/feedback/"),
+    );
+    const onDisk = [
+      ...deskPageFiles(path.join(root, "src/app/desk")),
+      ...portalOnDisk,
+    ].sort();
     expect(onDisk).toEqual(registered);
   });
 
