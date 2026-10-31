@@ -3468,7 +3468,7 @@
       "dependencies": [
         "W-10"
       ],
-      "status": "IN PROGRESS — researched IN-44 defaults, provenance and settings building (Lane 4, 2026-10-31); the return-file slice waits on IN-62 + the schema recorded in the runbook",
+      "status": "GATE SLICE MERGED 2026-10-31 (PR #795) — researched IN-44 defaults, provenance and the owner/accountant editor are on main; the return-file slice (S3) waits on IN-62 + the schema recorded in the runbook; card stays open",
       "migration": "none",
       "budget": 500,
       "units": [
