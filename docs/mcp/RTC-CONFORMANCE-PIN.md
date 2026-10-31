@@ -12,6 +12,8 @@ independently proved the pinned two-server HTTP limiter using one disposable Pos
 database (120 admitted and 60 refused), and tested the app's synthetic HTTP journal
 with separate owner approval and idempotent confirmation. The upstream generic
 direct-setter write probe still does not match Appliance Desk's mandatory owner journal,
-and real-client acceptance is NOT_TRIED. Local PKCE OAuth refresh selection-preservation
-evidence is being added separately; do not mark it proven before exact-head CI.
+and real-client acceptance is NOT_TRIED. The local PKCE OAuth refresh selection-preservation test executes the unmodified
+pinned oracle against the actual OAuth token endpoint and persisted grants; first
+full CI passed at `5462fad2` (run #41203243797). This remains local synthetic
+engineering evidence, not proof of any external client or full upstream write compatibility.
 No real owner credentials, production accounts or outside repository changes are involved.
