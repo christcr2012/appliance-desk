@@ -8,6 +8,9 @@ import { isGreeleyJurisdiction, subjectForTaxCell } from "@/domains/decisions/ta
 import { ruleAsOf } from "@/domains/rules/reads";
 import { saveRuleVersion, saveRuleVersionInTx } from "@/domains/rules/changes";
 import { assertRdfHandlingChangeable } from "./rdf-handling-lock";
+import {
+  RESEARCHED_DEDUCTION_DEFAULTS, parseDeductionLabels, recommendedDeductionLabels,
+} from "./deduction-labels";
 import { licenseDefaultExpiry, nextLicenseExpiry } from "./license-dates";
 
 function textField(value: string | null, max: number, name: string) {
@@ -137,7 +140,7 @@ export type FilingAccountInput = {
   filingNotes: string | null;
   licenseExpiresOn?: Date | null;
   screenLabels?: Record<string, string>;
-  deductionLabels?: Record<string, { label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS" }>;
+  deductionLabels?: Record<string, { label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS"; source?: "OWNER" | "RESEARCHED_DEFAULT" | "ACCOUNTANT" }>;
   excelUploadAvailable?: boolean | null;
   bulkXmlAvailable?: boolean | null;
   setupCheckedOn?: Date | null;
@@ -163,14 +166,20 @@ function safeDeductionLabels(value: FilingAccountInput["deductionLabels"]) {
   if (value === undefined) return undefined;
   if (!value || Array.isArray(value) || Object.keys(value).length > 35)
     throw new Error("Invalid SUTS deduction labels.");
-  const out: Record<string, { label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS" }> = {};
+  const out: Record<string, { label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS"; source: "OWNER" | "RESEARCHED_DEFAULT" | "ACCOUNTANT" }> = {};
   for (const [key, row] of Object.entries(value)) {
     if (!/^[A-Z][A-Z0-9_]{0,49}$/.test(key) || !row ||
       !["DEDUCTION", "LEAVE_OUT_OF_GROSS"].includes(row.reportAs))
       throw new Error("Invalid deduction SUTS mapping.");
     const label = textField(row.label, 120, "deduction label");
     if (!label) throw new Error("Enter a deduction label.");
-    out[key] = { label, reportAs: row.reportAs };
+    // W-12: provenance rides along so the packet can mark researched
+    // defaults as pending CPA confirmation; anything else is owner wording.
+    out[key] = {
+      label, reportAs: row.reportAs,
+      source: row.source === "RESEARCHED_DEFAULT" || row.source === "ACCOUNTANT"
+        ? row.source : "OWNER",
+    };
   }
   return out;
 }
@@ -260,6 +269,11 @@ export async function saveTaxFilingAccount(
       id = input.id;
     } else {
       if (expectedUpdatedAt) throw new Error("A new account cannot have an old version.");
+      // W-12 / IN-44: a new filing account starts with the researched
+      // deduction labels (marked as researched defaults) unless the owner
+      // supplied their own wording at creation.
+      if (!data.deductionLabels || Object.keys(data.deductionLabels).length === 0)
+        data.deductionLabels = recommendedDeductionLabels();
       if (data.kind === "SALES_RETURN" && data.licenseExpiresOn == null)
         data.licenseExpiresOn = await licenseExpiryDefaultInTx(tx, new Date());
       id = (await tx.taxFilingAccount.create({ data, select: { id: true } })).id;
@@ -344,6 +358,62 @@ export async function saveTaxFilingAccount(
           configured: Boolean(data.accountNumber && data.firstPeriodStart && data.basis !== "UNDECIDED") } },
     });
     return { id };
+  });
+}
+
+/**
+ * W-12 / IN-44 (Chris's amendment, 2026-10-31): the deduction labels are
+ * the one filing-account setting the business's accountant may also edit —
+ * the CPA the IN-44 question is addressed to can answer it in the app.
+ * Provenance follows the editor, per bucket: an entry whose wording did
+ * not change keeps its provenance; a changed entry is stamped ACCOUNTANT
+ * when an accountant saved it, RESEARCHED_DEFAULT when the owner saved
+ * exactly the researched wording, and OWNER otherwise. (So an accountant
+ * confirming the researched default clears that bucket's "CPA confirmation
+ * still pending" label.) Every save is audit-logged with the per-bucket
+ * old and new values and the saver's role.
+ */
+export async function saveDeductionLabels(
+  actorId: string, accountId: string,
+  labels: FilingAccountInput["deductionLabels"], expectedUpdatedAt: Date,
+): Promise<{ id: string }> {
+  const clean = safeDeductionLabels(labels) ?? {};
+  date(expectedUpdatedAt, "account version");
+  return prisma.$transaction(async tx => {
+    const actor = await assertActiveTeamActor(tx, actorId, ["OWNER", "ACCOUNTANT"]);
+    await tx.$queryRaw`SELECT "id" FROM "TaxFilingAccount" WHERE "id" = ${accountId} FOR UPDATE`;
+    const before = await tx.taxFilingAccount.findUniqueOrThrow({
+      where: { id: accountId }, select: { updatedAt: true, deductionLabels: true },
+    });
+    if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
+      throw new Error("Filing account changed in another session.");
+    const previous = parseDeductionLabels(before.deductionLabels);
+    const stamped: NonNullable<ReturnType<typeof safeDeductionLabels>> = {};
+    for (const [key, entry] of Object.entries(clean)) {
+      const prior = previous[key];
+      if (prior && prior.label === entry.label && prior.reportAs === entry.reportAs) {
+        stamped[key] = { ...entry, source: prior.source };
+        continue;
+      }
+      const def = RESEARCHED_DEDUCTION_DEFAULTS[key];
+      stamped[key] = {
+        ...entry,
+        source: actor.role === "ACCOUNTANT"
+          ? "ACCOUNTANT"
+          : def && entry.label === def.label && entry.reportAs === def.reportAs
+            ? "RESEARCHED_DEFAULT" : "OWNER",
+      };
+    }
+    await tx.taxFilingAccount.update({
+      where: { id: accountId }, data: { deductionLabels: stamped },
+    });
+    await tx.auditLog.create({
+      data: { userId: actorId, action: "tax.setup.deduction_labels_saved",
+        entityType: "TaxFilingAccount", entityId: accountId,
+        oldValue: { deductionLabels: previous },
+        newValue: { actorRole: actor.role, deductionLabels: stamped } },
+    });
+    return { id: accountId };
   });
 }
 
