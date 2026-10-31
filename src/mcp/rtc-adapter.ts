@@ -12,6 +12,8 @@ import type { AgentContext } from "@/domains/agent-control/authorization";
 type ClientTool = Awaited<ReturnType<Client["listTools"]>>["tools"][number];
 type Authorized = { ctx: AgentContext } | { response: Response };
 const flags = { "Cache-Control": "no-store", "Content-Type": "application/json; charset=utf-8" };
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
 export const rtcJson = (payload: object, status = 200) =>
   Response.json(payload, { status, headers: flags });
@@ -100,8 +102,8 @@ export async function rtcToolCall(ctx: AgentContext, name: string,
       name, arguments: decision.domainArgs,
     }));
     if (write.isError) throw new Error("refused_by_guard");
-    const payload: Record<string, unknown> =
-      write.structuredContent ?? { content: write.content };
+    const payload: Record<string, unknown> = isRecord(write.structuredContent)
+      ? write.structuredContent : { content: write.content };
     if (name === "appliance_action_preview") {
       if (typeof payload.previewId !== "string") throw new Error("refused_by_guard");
       return { ok: true, result: {
@@ -128,7 +130,7 @@ export async function rtcToolCall(ctx: AgentContext, name: string,
       const page = await mcpRead(ctx, client => client.callTool({
         name, arguments: pageArgs,
       }));
-      if (page.isError || !page.structuredContent)
+      if (page.isError || !isRecord(page.structuredContent))
         throw new Error("refused_by_guard");
       return page.structuredContent;
     });
