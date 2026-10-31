@@ -22,7 +22,7 @@ describe("MCP-9 real client evidence is never inferred from developer tests", ()
       { ...receipt, client: "No proof", evidence: [] },
       { ...receipt, client: "Blank proof", evidence: [" "] },
       { ...receipt, client: "Bad SHA", revision: "release unknown" },
-      { ...receipt, client: "Blank name", client: "  " },
+      { ...receipt, client: "  " },
     ];
     expect(verifiedRtcClients(rows)).toEqual([receipt]);
   });
