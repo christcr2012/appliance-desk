@@ -95,12 +95,14 @@ export async function retryBackupAction(): Promise<void> {
 }
 
 import { saveMonitorRule } from "@/domains/agent-control/monitoring";
+import { measure } from "@/domains/agent-control/performance";
+import { createOptimizationProposal, decideOptimizationProposal } from "@/domains/agent-control/optimization";
 
 /** Saving this rule alone grants no assistant or provider permission. */
 export async function saveMonitorRuleAction(formData: FormData): Promise<void> {
   const session = await requireRole("OWNER");
   const rawVersion = String(formData.get("version") ?? "");
-  await saveMonitorRule(session.user.id, {
+  await measure("ACTION", "monitor-rule-save", () => saveMonitorRule(session.user.id, {
     key: String(formData.get("key") ?? ""),
     enabled: formData.get("enabled") === "on",
     failuresBeforeAlert: Number(formData.get("failuresBeforeAlert")),
@@ -110,6 +112,37 @@ export async function saveMonitorRuleAction(formData: FormData): Promise<void> {
     autoActionConnectionId: String(formData.get("autoActionConnectionId") ?? "") || null,
     expectedVersion: rawVersion ? Number(rawVersion) : null,
     restore: formData.get("operation") === "restore",
+  }));
+  revalidatePath("/desk/automations");
+}
+
+/**
+ * MCP-8: accepted proposals are engineering-review evidence, not permission to
+ * change an app setting, payment, provider or production database.
+ */
+export async function createOptimizationProposalAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const [kind, name] = String(formData.get("measurement") ?? "").split("::");
+  if (!["PAGE", "ACTION", "JOB", "QUERY"].includes(kind) || !name)
+    throw new Error("Choose a recorded measurement.");
+  await measure("ACTION", "optimization-proposal-create", () => createOptimizationProposal(session.user.id, {
+    title: String(formData.get("title") ?? ""),
+    observation: { window: "7d", kind: kind as "PAGE" | "ACTION" | "JOB" | "QUERY", name },
+    settingKeys: [],
+    expectedBenefit: String(formData.get("expectedBenefit") ?? ""),
+    risk: String(formData.get("risk") ?? ""),
+    costNote: String(formData.get("costNote") ?? ""),
+    measurementPlan: String(formData.get("measurementPlan") ?? ""),
+    rollback: String(formData.get("rollback") ?? ""),
+  }));
+  revalidatePath("/desk/automations");
+}
+
+export async function reviewOptimizationProposalAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  await decideOptimizationProposal(session.user.id, {
+    id: String(formData.get("id") ?? ""),
+    accept: formData.get("decision") === "accept",
   });
   revalidatePath("/desk/automations");
 }

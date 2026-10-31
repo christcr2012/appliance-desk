@@ -1,3 +1,6 @@
+## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
+
+MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
 ## October 30 — CU1-VIEW COMPLETE: customer_list_v1 view retired (Workshop card)
 
 **What changed:** the `customer_list_v1` view is dropped (migration
