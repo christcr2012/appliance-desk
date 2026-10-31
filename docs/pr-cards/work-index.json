@@ -4981,7 +4981,7 @@
       "dependencies": [
         "MCP-5"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #738, squash cad8f9cd (2026-10-29); verified and closed out 2026-10-31 by Lane 5 (MCP-6-CLOSEOUT): four repair suites green on current main, browser line green in CI browser-e",
       "migration": "additive (RepairCase, RepairEvidence)",
       "budget": 450,
       "units": [
@@ -6183,6 +6183,10 @@
     {
       "id": "MCP-5-CLOSEOUT",
       "path": "docs/pr-cards/execution/MCP-5-CLOSEOUT.json"
+    },
+    {
+      "id": "MCP-6-CLOSEOUT",
+      "path": "docs/pr-cards/execution/MCP-6-CLOSEOUT.json"
     },
     {
       "id": "AR-5B",

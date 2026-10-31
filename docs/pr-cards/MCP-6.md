@@ -8,7 +8,7 @@ Build spec: `docs/build-specs/engines/REPAIR-CASES.md`. Approved by Chris 2026-1
 - [x] PR open / merged / live / checked are separate and only set from what the app verified itself (fake GitHub tests).
 - [x] Foreign repositories, made-up PRs and claimed results are rejected.
 - [x] A fix that doesn't pass its check keeps the problem open.
-- [ ] Repairs list on System health; `ci` green at the exact head; every review comment read.
+- [x] Repairs list on System health; `ci` green at the exact head; every review comment read.
 
 ## Acceptance plan — committed before implementation (October 27)
 
@@ -112,3 +112,32 @@ only when absent; inspect the final prerequisite exports once before coding.
    role-checked list/detail and the Repairs screen. Human reject/supersede needs a reason and current version.
 5. Use `tests/mcp-repair-cases-integration.test.ts` as specified; no live GitHub request in CI. Do not modify
    GitHub, deploy code or label a repair live from PR merge alone.
+
+## Close-out — October 31 (Lane 5, MCP-6-CLOSEOUT)
+
+The implementation merged 2026-10-29 via PR #738 (squash `cad8f9cd`) but the
+card was never closed out: the final acceptance box stayed unticked and the
+work-index still read APPROVED. Verified on current main (`80406b47`) under
+packet MCP-6-CLOSEOUT; nothing was rebuilt and no behavior changed.
+
+- **Suites:** the four repair suites re-ran focused on the lane database —
+  20 tests, all passed, none skipped (`tests/mcp-repair-evidence.test.ts`,
+  `tests/mcp-repair-tools.test.ts`, `tests/mcp-repair-cases-integration.test.ts`,
+  `tests/mcp-repair-journal-integration.test.ts`). They cover the first four
+  acceptance lines: one active case per fingerprint under concurrent
+  duplicates, feedback consent rechecked on withdraw/delete, foreign-repo and
+  fabricated-PR rejection, claimed results ignored, the open → merged →
+  deployed → independently checked chain, a failed check keeping the source
+  issue open, no execution before owner approval, and replay safety.
+- **Implementation read:** `src/domains/agent-control/repair-cases.ts` matches
+  REPAIR-CASES.md line-by-line — fixed-repository constant, allowlisted GitHub
+  paths (pulls / check-runs / compare only) with redirects refused, 10 s
+  timeout, 1 MB cap, the `ci` check-run required on the exact merge SHA,
+  deployment by running-revision equality or compare ancestry, VERIFIED only
+  after a later successful run of the issue's own automation fingerprint with
+  the issue resolved, and owner-only reject/supersede with a reason.
+- **Browser:** `e2e/mcp-repair-cases.spec.ts` is registered in
+  `e2e/shards.json` and green in CI's browser-e shard at heads containing the
+  merged implementation — most recently the fully green CI run at `ee975e75`
+  (PR #784). The fifth acceptance box is ticked on that evidence plus PR
+  #738's own exact-head CI and review lap, completed at its merge.
