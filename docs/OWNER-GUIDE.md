@@ -1,3 +1,10 @@
+## Verify an AI assistant client (MCP-9, pending normal release)
+
+System health → AI assistants shows which outside clients were actually verified. An untried
+client is never marked as working merely because developer tests pass. The owner can
+follow [the direct MCP / optional RTC trial and revocation steps](runbooks/MCP-9-CLIENT-ACCEPTANCE.md)
+on the dedicated testing app; never paste a pass or customer record into a support chat.
+
 ## Five areas and quick search (AR-1, awaiting CI and normal release)
 
 On a phone the bottom bar has **Today, Customers, Schedule, Equipment and Money** (only areas
