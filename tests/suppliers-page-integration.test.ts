@@ -25,7 +25,7 @@ const enabled =
 // active by default, search over name and contact person, and the
 // "{n} orders" count = purchase orders + appliance purchases.
 const MARK = "AR6BS";
-const OWNER_ID = "8c1bea0e-b847-42a8-a6a9-cef8021420aa"; // seeded CI owner fixture
+let OWNER_ID = ""; // the seeded OWNER row's id — the seed generates it, so resolve it in beforeAll
 const ids: string[] = [];
 
 async function supplier(data: { name: string; contactName?: string; phone?: string; archived?: boolean }) {
@@ -43,6 +43,7 @@ async function supplier(data: { name: string; contactName?: string; phone?: stri
 
 describe.skipIf(!enabled)("AR-6b getSuppliersPage", () => {
   beforeAll(async () => {
+    OWNER_ID = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
     const alpha = await supplier({ name: `${MARK} Alpha`, contactName: "Ann Alpha", phone: "970-555-0101" });
     await supplier({ name: `${MARK} Beta`, contactName: "Bob Beta" });
     await supplier({ name: `${MARK} Old`, archived: true });
@@ -91,13 +92,15 @@ describe.skipIf(!enabled)("AR-6b getSuppliersPage", () => {
     // "Bob Beta" is unique to this suite's Beta; other suites' suppliers
     // share the bench database, so the walk below stays on the MARK names.
     expect((await getSuppliersPage({ q: "Bob Beta" })).rows.map((r) => r.name)).toEqual([`${MARK} Beta`]);
+    // Walk the whole default list by cursor and keep only this suite's
+    // rows: other suites share the database, so no name can be assumed to
+    // sort first. The walk still proves the cursor visits every row once —
+    // a stuck or skipping cursor would duplicate or drop a MARK name.
     const seen: string[] = [];
     let cursor: { name: string; id: string } | undefined;
-    // take 1, walking by name: "AR6BS ..." sorts before other suites'
-    // suppliers (e.g. "Ledger ..."), so the first two steps are ours.
-    for (let pageNo = 0; pageNo < 2; pageNo++) {
-      const { rows, nextCursor } = await getSuppliersPage({ take: 1, cursor });
-      seen.push(...rows.map((r) => r.name));
+    for (let pageNo = 0; pageNo < 200; pageNo++) {
+      const { rows, nextCursor } = await getSuppliersPage({ take: 25, cursor });
+      seen.push(...rows.map((r) => r.name).filter((n) => n.startsWith(MARK)));
       if (!nextCursor) break;
       cursor = nextCursor;
     }
