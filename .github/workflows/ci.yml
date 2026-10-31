@@ -420,15 +420,18 @@ jobs:
         if: matrix.shard != 'browser-e'
         run: echo "COMPLIANCE_ENCRYPTION_KEY=$(printf '0123456789abcdef0123456789abcdef' | base64)" >> "$GITHUB_ENV"
       - name: Set the test-only private photo store identity
-        # The portal spec (browser-e) submits a maintenance request with a
-        # photo; the server only accepts photo URLs that belong to the
-        # customer's folder in the configured private store, and CI has no
-        # real store. This throwaway identity (assembled here so no
-        # token-shaped literal sits in the repo) lets the server recognize
-        # the spec's stubbed upload as its own; the spec stubs the Blob
-        # network legs themselves. Only browser-e gets it, so the other
-        # shards keep testing the no-store behavior (e.g. feedback).
-        if: matrix.shard == 'browser-e'
+        # The portal spec (browser-c since fix cycle 5) submits a
+        # maintenance request with a photo; the server only accepts photo
+        # URLs that belong to the customer's folder in the configured
+        # private store, and CI has no real store. This throwaway identity
+        # (assembled here so no token-shaped literal sits in the repo)
+        # lets the server recognize the spec's stubbed upload as its own;
+        # the spec stubs the Blob network legs themselves. Only browser-c
+        # gets it, so the other shards keep testing the no-store behavior:
+        # feedback and decisions pin that behavior in browser-e, which is
+        # why the portal spec moved shards in fix cycle 5 - this identity
+        # is per-job, not per-spec.
+        if: matrix.shard == 'browser-c'
         run: |
           echo "PRIVATE_PHOTO_BLOB_STORE_ID=store_e2eteststore" >> "$GITHUB_ENV"
           echo "PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN=$(printf 'vercel_blob_rw_%s_%s' 'e2eteststore' 'throwawaytoken')" >> "$GITHUB_ENV"
