@@ -1,12 +1,12 @@
-## October 31 — W-12 started + IN-44 researched defaults (Lane 4, in progress, branch ai/vivienne/w-12)
+## October 31 — W-12 gate slice MERGED (PR #795, squash ee559632) — IN-44 researched defaults + owner/accountant editor (Lane 4)
 
-**What changed:** W-12 (sales tax return XML upload file) is unblocked for everything except the file itself. On Chris's instruction, IN-44 was researched instead of parked (docs/research/2026-10-31-in-44-deduction-reporting.md): every packet deduction bucket is included in gross and deducted on Schedule A — short-term exempt rent A13-1 (MEDIUM confidence), nontaxable services A3-1, exempt entities A4-1, outside-area A2-1 (HIGH). Those researched mappings become the configurable starting values of `TaxFilingAccount.deductionLabels`, labelled "Researched default — CPA confirmation still pending"; IN-44 stays open (DECISIONS.md 2026-10-31; OWNER-INPUTS row updated; D-WA5 amendment note records the revised file-offering rule — original text untouched). Card + execution packet written (docs/pr-cards/W-12.md, execution/W-12.json, registered in the work index; activeExecution untouched).
+**What changed:** the filing packet's four deduction buckets now start from researched Colorado DR 0100 Schedule A defaults (short-term exempt rent A13-1, nontaxable services A3-1, exempt entities A4-1, outside-area A2-1 — all counted in gross, then deducted), labelled "Researched default — CPA confirmation still pending" until someone with authority saves wording. The wording is edited per bucket on its own page by the owner or the business's accountant (Chris's amendment): the save is role-checked in the transaction, provenance follows the editor (accountant-set clears the pending label), and every save is audit-logged per bucket. IN-44 stays open for the CPA's confirmation.
 
-**How it was checked:** bucket keys and the current setup surface read in the code (filing-packet.ts, setup.ts, account page); research verified against the current DR 0100/Schedule A editions with a skeptic pass (the July 2025 form renumbered "Other exempt sales" A12-1 → A13-1).
+**How it was checked:** local preflight passed on the branch (checks, selected + related tests including the new provenance/audit integration suite, sales-tax setup browser spec); exact-head CI green on PR #795 (one billing-drift timestamp flake cleared on the single guarded rerun; this PR touches no billing code) and the review gate waived on the self-review. The registrations the guards require (shared-settings test list, migrated-pages registry, desk JS budget 340 KB vs 330.78 measured) landed in the same PR.
 
-**What needs you:** nothing new — IN-62 stays your send when the LLC exists; the XML serializer slice starts only when that answer is yes AND the schema version is recorded in docs/runbooks/colorado-filing-channels.md.
+**What needs you:** nothing. IN-62 stays your send when the LLC exists.
 
-**Next:** build slice S1 (defaults table, packet provenance, per-bucket settings editor) on this branch, one PR, exact-head CI.
+**Next:** W-12 stays open for slice S3 only — the SUTS bulk-XML file starts when IN-62 is answered yes AND the exact schema version is recorded in docs/runbooks/colorado-filing-channels.md.
 
 ## October 31 — MCP-9 PR #794: one-worker browser-b recovery (not yet proven)
 
