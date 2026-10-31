@@ -1,3 +1,7 @@
+## October 30 — Lane 2: MCP-8 merged; MCP-9 RTC foundation remains under conformance review
+
+MCP-8 merged in PR #764 after exact-head CI and protected review. MCP-9 draft #780 on `ai/chatgpt/mcp-9-rtc-clean` has digest-only owner RTC pass credentials, independently scoped read tools, 24-hour owned result handles, database-backed limits, a synthetic-only guarded journaled write path and pinned upstream RTC 1 conformance source. The owner UI remains read-only and does not issue writable credentials. CI on an earlier head passed; new changes remain **unverified** until clean-history exact-head CI. The pinned upstream app-wire probes and two-instance limiter still need complete confirmation. Do not claim RTC 1 compatibility or finished MCP-9 until those tests, the client matrix and review are verified. No live customer communication, payments or production data were touched.
+
 ## October 30 — MCP-5 COMPLETE: assistant actions verified and closed out (Lane 5)
 
 **What changed:** no app behavior. MCP-5's implementation (assistant actions with

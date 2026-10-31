@@ -350,6 +350,8 @@ export function buildMcpServer(context: AgentContext): McpServer {
   const writePolicy = {
     readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false,
   } as const;
+  // Execute may change a live configuration; RTC and MCP both mark it guarded.
+  const guardedWritePolicy = { ...writePolicy, destructiveHint: true } as const;
   const actionName = z.enum([
     "RUN_DIAGNOSTIC_SWEEP", "RETRY_DATABASE_BACKUP", "RETRY_MEDIA_COPY",
     "PAUSE_AUTOMATION", "RESUME_AUTOMATION", "VERIFY_RECOVERY_ARTIFACT", "APPLY_DECISION_ANSWERS",
@@ -506,7 +508,7 @@ export function buildMcpServer(context: AgentContext): McpServer {
       requestKey: z.string().min(12).max(128).regex(/^[a-zA-Z0-9_-]+$/),
     }),
     outputSchema: operationResult,
-    annotations: writePolicy,
+    annotations: guardedWritePolicy,
   }, async ({ previewId, requestKey }) => actionCall(
     null, () => executeAgentOperation(context, { previewId, requestKey }),
   ));

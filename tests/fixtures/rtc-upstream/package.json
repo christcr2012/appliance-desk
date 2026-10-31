@@ -1,0 +1,13 @@
+{
+  "name": "@robinson-ai-systems/conformance",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "rtc-conformance": "bin/rtc-conformance.js"
+  },
+  "exports": {
+    "./run": "./src/run.js",
+    "./fake-server": "./fake-server/server.js"
+  }
+}
