@@ -243,6 +243,10 @@ export async function checkRepairCase(
         stage = "VERIFIED";
         evidence.push({ kind: "RUNTIME_CHECK", ref: rule, status: "VERIFIED",
           verifier: "health-rule", detail: { runId: run.id, checkedAfter: priorDeployment.checkedAt.toISOString() } });
+      } else if (record.sourceKind === "OPTIMIZATION") {
+        // A deployment is not proof of an improvement. The owner must compare
+        // fresh samples to the stored proposal baseline before verification.
+        blocker = "Waiting for owner review of new measurements against the improvement proposal.";
       } else {
         // Feedback confirmations are handled by the separately consent-checked MCP-11 workflow.
         blocker = "Waiting for the reporter to check the fix.";

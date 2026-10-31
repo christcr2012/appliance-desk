@@ -22,9 +22,8 @@ const SCHEMA_MODELS = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(
 const EXCLUDED_MODELS = ["Session", "Account", "Verification", "RateLimit", "TwoFactor", "KnownDevice", "OpsAgentKey", "TeamInvitation", "StoredFileCleanup", "VaultUnlock", "EmergencyAccessRequest",
   // OAuth credentials, signing keys, grants and tokens never belong in a business backup.
   "Jwks", "OauthClient", "OauthResource", "OauthClientResource", "OauthRefreshToken", "OauthAccessToken", "OauthConsent", "OauthClientAssertion",
-  // AR-13: notifications are short-lived per-person desk state — leaving them out of backups loses
-  // nothing important (NOTIFICATIONS.md section 2). Preferences ARE exported.
-  "Notification"];
+  // Both MCP-8's temporary performance samples and AR-13's notifications are disposable.
+  "PerfSample", "Notification"];
 const BACKUP_TABLES = SCHEMA_MODELS.filter((model) => !EXCLUDED_MODELS.includes(model))
   .map((model) => model[0]!.toLowerCase() + model.slice(1));
 const ALL_TABLES = SCHEMA_MODELS.map((model) => model[0]!.toLowerCase() + model.slice(1));

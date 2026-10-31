@@ -40,3 +40,12 @@ PR #776, squash fa170dbd) — the Customers list reads run on base tables;
 the two budgets the redesign could not meet at the 20,000-customer seed
 (attention sort, segment counts) were amended to 300 ms by the owner's
 2026-10-30 ruling (CUSTOMERS.md §1). See the top STATUS entry.
+
+**The CU-1 chain is now fully closed:** CU1-VIEW (packet CU1-VIEW, following
+CU1-PERF) retired the `customer_list_v1` view itself — CU1-PERF had moved
+every production read to base tables and left the view "for other readers
+until a separate card retires it"; its only remaining readers were the two
+oracle queries in `tests/customer-list-integration.test.ts`, which now
+compute the segment facts from the base tables directly. Migration
+`20261218000000_customer_list_view_retire` drops the view; no table, column
+or data changes. See the top STATUS entry.

@@ -26,6 +26,9 @@ export const BACKUP_MODEL_POLICY = {
   AgentOperation: "agentOperation",
   MonitorRule: "monitorRule",
   MonitorRun: "monitorRun",
+  // MCP-8 samples are temporary telemetry, but approved proposals are durable business evidence.
+  PerfSample: null,
+  OptimizationProposal: "optimizationProposal",
   // MCP-6: keep repair provenance and verification evidence in backup/restore.
   RepairCase: "repairCase",
   RepairEvidence: "repairEvidence",

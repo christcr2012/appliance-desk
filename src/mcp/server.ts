@@ -3,6 +3,9 @@ import { z } from "zod";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import type { McpScope } from "@/mcp/scopes";
 import { listRepairCases, getRepairCase } from "@/domains/agent-control/repair-cases";
+import { getObservations, measure } from "@/domains/agent-control/performance";
+import { createOptimizationProposal, listOptimizationProposals } from "@/domains/agent-control/optimization";
+import { findSettings } from "@/mcp/settings-map";
 import { listFeedbackForAgent, getFeedbackForAgent } from "@/domains/feedback/agent";
 import { previewAgentOperation, executeAgentOperation, getAgentOperation } from "@/domains/agent-control/operations";
 import {
@@ -294,6 +297,56 @@ export function buildMcpServer(context: AgentContext): McpServer {
     } : null };
   }));
 
+  server.registerTool("appliance_where_is_setting", {
+    title: "Where is this setting?",
+    description: "Find the real owner screen and the assistant's actual authority for a setting.",
+    inputSchema: z.strictObject({ query: z.string().trim().min(2).max(100) }),
+    outputSchema: z.object({ entries: z.array(z.object({
+      key: z.string(), label: z.string(), href: z.string(), who: z.string(),
+      mcpStatus: z.enum(["TOOL", "PLANNED", "NOT_APPLICABLE", "PROVIDER_MANUAL"]),
+      reason: z.string(), action: z.string().optional(),
+    })) }), annotations: readOnly,
+  }, async ({ query }) => read("ops:read", async () => ({ entries: (await measure("QUERY", "settings-map-search", async () => findSettings(query))).map(item => ({
+    key: item.key, label: item.label, href: item.href,
+    who: item.who, mcpStatus: item.mcpStatus, reason: item.reason,
+    ...(item.action ? { action: item.action } : {}),
+  })) })));
+
+  server.registerTool("appliance_optimization_get_observations", {
+    title: "Measured app speed",
+    description: "Read sampled durations and errors; fewer than 30 observations means not enough data.",
+    inputSchema: z.strictObject({
+      window: z.enum(["7d", "30d"]),
+      kind: z.enum(["PAGE", "ACTION", "JOB", "QUERY"]).optional(),
+    }),
+    outputSchema: z.object({
+      window: z.string(), start: z.string(), end: z.string(), truncated: z.boolean(),
+      entries: z.array(z.object({
+        kind: z.string(), name: z.string(), samples: z.number(), status: z.string(),
+        message: z.string(), p50Ms: z.number().nullable(), p95Ms: z.number().nullable(),
+        errorRatePercent: z.number().nullable(), previousSamples: z.number(),
+        previousP95Ms: z.number().nullable(), p95ChangePercent: z.number().nullable(),
+      })),
+    }), annotations: readOnly,
+  }, async ({ window, kind }) => read("ops:read", async () => {
+    const result = await getObservations({ window, kind });
+    return { ...result, entries: result.rows };
+  }));
+
+  server.registerTool("appliance_optimization_list_proposals", {
+    title: "App improvement proposals",
+    description: "View evidence-backed suggestions; no configuration change is applied automatically.",
+    inputSchema: z.strictObject({ limit: z.number().int().min(1).max(20).default(10) }),
+    outputSchema: z.object({ entries: z.array(z.object({
+      number: z.number(), title: z.string(), state: z.string(), createdUtc: z.string(),
+    })) }), annotations: readOnly,
+  }, async ({ limit }) => read("ops:read", async () => ({ entries:
+    (await listOptimizationProposals(context.userId, limit)).map(item => ({
+      number: item.number, title: item.title, state: item.state,
+      createdUtc: item.createdAt.toISOString(),
+    })),
+  })));
+
   const writePolicy = {
     readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false,
   } as const;
@@ -331,6 +384,29 @@ export function buildMcpServer(context: AgentContext): McpServer {
       return toolError(code);
     }
   }
+
+  server.registerTool("appliance_optimization_create_proposal", {
+    title: "Propose an app improvement",
+    description: "Record measured evidence and a reversible engineering suggestion, without changing app settings.",
+    inputSchema: z.strictObject({
+      title: z.string().min(3).max(160),
+      window: z.enum(["7d", "30d"]),
+      kind: z.enum(["PAGE", "ACTION", "JOB", "QUERY"]),
+      name: z.string().min(2).max(100),
+      settingKeys: z.array(z.string().max(100)).max(12).default([]),
+      expectedBenefit: z.string().min(3).max(2000),
+      risk: z.string().min(3).max(2000),
+      costNote: z.string().min(3).max(500),
+      measurementPlan: z.string().min(3).max(2000),
+      rollback: z.string().min(3).max(2000),
+    }),
+    outputSchema: z.object({ id: z.string(), number: z.number(), state: z.string(), title: z.string() }),
+    annotations: writePolicy,
+  }, async ({ title, window, kind, name, settingKeys, expectedBenefit, risk, costNote, measurementPlan, rollback }) =>
+    actionCall("repairs:write", () => createOptimizationProposal(context.userId, {
+      title, observation: { window, kind, name },
+      settingKeys, expectedBenefit, risk, costNote, measurementPlan, rollback,
+    })));
 
   server.registerTool("appliance_action_preview", {
     title: "Preview a safe assistant action",

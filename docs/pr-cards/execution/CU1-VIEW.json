@@ -1,0 +1,91 @@
+{
+ "acceptance": [
+  "tests/customer-list-integration.test.ts passes with the view dropped: the same 32 fixtures land in the same segments, segment counts match the tab sizes, and the staff no-money assertions are unchanged",
+  "A fresh database migrates cleanly through 20261218000000_customer_list_view_retire (the Workshop run-checks and CI unit shards build their databases with prisma migrate deploy), and afterwards no file in src, tests, e2e or scripts reads customer_list_v1 (one historical comment in the suite names it as the retired oracle source)",
+  "tests/customer-segments.test.ts and tests/customer-keys.test.ts pass unchanged",
+  "No behavior change anywhere else: the only production-source edits are two comments in segments.ts; the migration drops the view object and nothing else"
+ ],
+ "baseline": "f7794889006c157c8c596dfe127f5c6293a25697",
+ "card": "docs/pr-cards/AR-4.md",
+ "checks": {
+  "browser": [],
+  "db": [
+   "tests/customer-list-integration.test.ts"
+  ],
+  "node": [],
+  "unit": [
+   "tests/customer-segments.test.ts",
+   "tests/customer-keys.test.ts"
+  ]
+ },
+ "gates": [],
+ "id": "CU1-VIEW",
+ "invariants": [
+  "Segment membership is a contract: the integration suite must keep proving the tab query returns exactly the customers whose pure customerSegments() includes the segment — the oracle changes source (the base tables, computed by the test itself), never strength",
+  "No production behavior change: list, counts, search, record page and export read the same base-table facts as after CU1-PERF; the migration drops only the view object — no table, column, index or data changes",
+  "Money stays integer cents and role-shaped at the query boundary; staff rows still carry no money values (the suite's staff assertions stay green and untouched)"
+ ],
+ "next": "Nothing. The CU-1 chain (AR-4c, CU1-PERF, CU1-VIEW) is closed; the stored-summary escalation in CUSTOMERS.md section 1 stays a written-up-first option if the amended 300 ms budgets are ever breached.",
+ "outcome": "The customer_list_v1 database view is retired. CU1-PERF moved every production Customers read to grouped base-table aggregates and deliberately left the view in the schema for its remaining readers; a repo-wide drift check at main f7794889 shows the only remaining readers are the two oracle queries in tests/customer-list-integration.test.ts. This card drops the view (migration 20261218000000_customer_list_view_retire) and re-points the suite's oracle at the base tables, so the segment contract keeps its proof while the second, unmaintained copy of the facts definition disappears.",
+ "parent": "AR-4",
+ "proposedFiles": [
+  "prisma/migrations/20261218000000_customer_list_view_retire/migration.sql",
+  "tests/customer-list-integration.test.ts",
+  "src/domains/customers/segments.ts",
+  "docs/pr-cards/execution/CU1-VIEW.json",
+  "docs/pr-cards/work-index.json",
+  "docs/pr-cards/AR-4.md",
+  "docs/STATUS.md",
+  "docs/DATABASE.md"
+ ],
+ "references": [
+  {
+   "anchor": "the customer_list_v1 view itself stays in the schema for other readers until a separate card retires it",
+   "path": "docs/pr-cards/execution/CU1-PERF.json",
+   "purpose": "The parent packet's invariant that created this card: the view stays only until a separate card retires it."
+  },
+  {
+   "anchor": "remain a possible separate retirement card",
+   "path": "docs/STATUS.md",
+   "purpose": "The CU-1 close-out's named follow-up: the view's remaining readers remain a possible separate retirement card."
+  },
+  {
+   "anchor": "tab query = pure rule, for every segment",
+   "path": "tests/customer-list-integration.test.ts",
+   "purpose": "The parity test whose view oracle this card re-points at the base tables; its segment proof must not weaken."
+  },
+  {
+   "anchor": "customer_list_v1 view, whose six per-customer LATERAL aggregates ran for",
+   "path": "src/domains/customers/list.ts",
+   "purpose": "CU1-PERF's own record that production reads no longer touch the view; factsFromSql in this file is the surviving facts definition."
+  },
+  {
+   "anchor": "CREATE OR REPLACE VIEW \"customer_list_v1\" AS",
+   "path": "prisma/migrations/20261026040000_customer_list/migration.sql",
+   "purpose": "The migration that created the view (CU-1); the new migration drops exactly this object and nothing else from that migration."
+  },
+  {
+   "anchor": "customerSegments() includes the segment, on 30 fixtures",
+   "path": "src/domains/customers/segments.ts",
+   "purpose": "The segment contract the suite pins; this file also carries the two stale view comments the card corrects."
+  }
+ ],
+ "risk": "The suite's parity proof could silently weaken if the new oracle copied the production SQL's mistakes. Mitigation: the oracle is written from the fixture semantics and the CUSTOMERS spec definitions with plain Prisma reads (counts and minimums over the rows the test itself created), sharing no SQL with list.ts; the one shared helper is billOwedWhere, the Bills money rule the suite already pins independently in its owed test. The drop itself is a single database object with no dependents, verified by the drift grep.",
+ "sequence": [
+  "S1 packet + drift: this packet registered against main f7794889; the drift check confirms the view's only readers are the two oracle queries in tests/customer-list-integration.test.ts (repo-wide grep for customer_list_v1 across src, tests, e2e, scripts and prisma)",
+  "S2 retire: the drop-view migration; the integration suite's oracle computes the six segment facts from the base tables with plain Prisma reads (the Bills money rule via billOwedWhere); the stale view comments in segments.ts corrected; DATABASE.md and the AR-4 card record the retirement",
+  "S3 verify + publish: Workshop run-checks (static and unit phases) green at the branch head on chris-agent-01; pre-push conflict-marker grep clean; PR with the drift table; ci and review-gate green at the exact head, then squash merge"
+ ],
+ "slices": [
+  {
+   "acceptance": [
+    "Migration 20261218000000_customer_list_view_retire drops customer_list_v1 and nothing else; a fresh migrate deploy runs it cleanly after the CU-1 migration that created the view",
+    "The integration suite's oracle computes the six segment facts from the base tables and the suite passes in full, staff assertions included",
+    "Repo-wide grep: no remaining reader of customer_list_v1 in src, tests, e2e or scripts"
+   ],
+   "id": "CU1-VIEW-S1",
+   "title": "Drop the view, re-point the oracle, record the retirement"
+  }
+ ],
+ "version": 1
+}

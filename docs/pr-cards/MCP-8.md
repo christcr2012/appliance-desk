@@ -11,7 +11,19 @@ MCP-6. Risk: **extra database writes** (sampled, capped, pruned).
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Implementation is under review on PR #764. The first GitHub CI pass exposed missing backup policy and read-tool inventory fixtures; the root causes were reproduced and corrected together. Local focused observations/control tests are 8/8 green and backup/tool registry tests are 17/17 green; Prisma schema validation and focused ESLint passed. The first corrected exact-head full CI passed. Owner-accepted proposals now open an MCP-6 case with immutable source provenance; new real-PostgreSQL tests check the case and lack of duplicate effects. Fresh exact-head CI and review gate are still required.
+
+## MCP-8 acceptance plan — observations, proposals, and settings map (October 29)
+
+- [ ] Persist only fixed, sanitized PAGE/ACTION/JOB/QUERY names, durations and outcome using sampled bounded instrumentation; a failed metrics write cannot affect the business action. Retain 30 days, deleting no more than 5,000 stale samples per sweep.
+- [ ] Display sourced 7-day and 30-day observations, exact p50/p95, error percentages and previous-window deltas. Below 30 samples say "Not enough data yet" and do not infer an improvement or degradation.
+- [ ] Proposals store the baseline evidence, expected benefit, risk, cost, verification and rollback; neither creating nor viewing a proposal changes business configuration. Protected price, fee, tax, legal and signature subjects are ineligible.
+- [ ] Generate the searchable settings map from the actual AR-8 catalog plus System health controls and decisions, with screen links, role and honest assistant capability labels. Never claim a TOOL row unless its real MCP-5 action and authorization are covered by tests.
+- [ ] Owner screen makes observation quality, proposal status and controls visible. Disposable-PostgreSQL tests exercise sampling/privacy, retained boundary, concurrency-safe capped prune, percentile and insufficiency fixtures, proposal denials and catalog coverage; full exact-head CI and review must pass before merging.
+
+This bundle covers the measurement engine, proposal workflow and settings discovery together.
+No provider settings are changed, no financial/legal value is auto-tuned, and no
+production database is used for test fixtures.
 
 ## Implementation route (reconciled October 28, 2026)
 
