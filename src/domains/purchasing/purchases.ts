@@ -1,4 +1,5 @@
 import { queueStoredFileCleanup } from "@/domains/stored-files/cleanup";
+import { requireRole } from "@/lib/session";
 import { createHash } from "node:crypto";
 import type { AcquisitionTaxStatus, Prisma, PurchaseDocumentKind, PurchaseSellerTaxKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -254,7 +255,7 @@ async function readRecorded(tx: Prisma.TransactionClient, purchaseId: string, re
     purchasedOn: purchase.purchasedOn,
     subtotalCents: purchase.subtotalCents, sellerTaxCents: purchase.sellerTaxCents,
     otherChargesCents: purchase.otherChargesCents,
-    receiptTotalCents: purchase.subtotalCents + purchase.sellerTaxCents + purchase.otherChargesCents,
+    receiptTotalCents: purchaseReceiptTotalCents(purchase),
     taxBasis: split.basis,
     appliances: purchase.appliances.map((a, i) => ({
       id: a.id, assetNumber: a.assetNumber, typeName: a.applianceType.name,
@@ -378,8 +379,19 @@ export async function recordPurchase(actorId: string, input: RecordPurchaseInput
 // Reading
 // ---------------------------------------------------------------------------
 
+/** AR-6 fix 4: the receipt total lives in the domain, never in a page.
+ * The one sum every purchase surface shows. */
+export function purchaseReceiptTotalCents(purchase: {
+  subtotalCents: number;
+  sellerTaxCents: number;
+  otherChargesCents: number;
+}): number {
+  return purchase.subtotalCents + purchase.sellerTaxCents + purchase.otherChargesCents;
+}
+
 export async function listPurchases(options: { supplierId?: string; take?: number; skip?: number } = {}) {
-  return prisma.purchase.findMany({
+  await requireRole("OWNER", "ADMIN");
+  const rows = await prisma.purchase.findMany({
     where: options.supplierId ? { supplierId: options.supplierId } : undefined,
     orderBy: [{ purchasedOn: "desc" }, { createdAt: "desc" }, { id: "desc" }],
     take: Math.min(options.take ?? 50, 200), skip: options.skip ?? 0,
@@ -388,9 +400,11 @@ export async function listPurchases(options: { supplierId?: string; take?: numbe
       _count: { select: { appliances: true, documents: true } },
     },
   });
+  return rows.map((row) => ({ ...row, receiptTotalCents: purchaseReceiptTotalCents(row) }));
 }
 
 export async function countPurchases(options: { supplierId?: string } = {}) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.purchase.count({ where: options.supplierId ? { supplierId: options.supplierId } : undefined });
 }
 
@@ -398,6 +412,7 @@ export type PurchaseDetail = NonNullable<Awaited<ReturnType<typeof getPurchaseDe
 
 /** One purchase with its appliances, receipt pages, split and shared next steps. */
 export async function getPurchaseDetail(id: string, now = new Date()) {
+  await requireRole("OWNER", "ADMIN");
   const purchase = await prisma.purchase.findUnique({
     where: { id },
     include: {
@@ -422,7 +437,7 @@ export async function getPurchaseDetail(id: string, now = new Date()) {
   return {
     ...purchase,
     taxBasis: split.basis,
-    receiptTotalCents: purchase.subtotalCents + purchase.sellerTaxCents + purchase.otherChargesCents,
+    receiptTotalCents: purchaseReceiptTotalCents(purchase),
     // False if someone later corrected a price on an appliance page; the page says so.
     pricesStillMatchReceipt: currentSubtotal === purchase.subtotalCents,
     appliances: purchase.appliances.map((a, i) => ({

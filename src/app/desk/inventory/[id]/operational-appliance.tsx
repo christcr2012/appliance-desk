@@ -1,25 +1,41 @@
-import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getOperationalApplianceById } from "@/domains/desk-access";
-import { APPLIANCE_STATUS_LABELS } from "@/domains/inventory/lifecycle";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
+import { RecordHeader } from "@/components/kit";
+import {
+  APPLIANCE_PILL,
+  applianceSubtitle,
+  applianceTitle,
+} from "@/domains/inventory/words";
 
+/**
+ * The staff view of an appliance (AR-6 section 4): the shared record
+ * header and the Overview facts only — no money, tax, parts prices or
+ * history. Everything here comes from the operational DTO, which never
+ * carries those fields in the first place.
+ */
 export async function OperationalAppliance({ id }: { id: string }) {
   const appliance = await getOperationalApplianceById(id);
   if (!appliance) notFound();
+  const pill = APPLIANCE_PILL[appliance.status];
   return (
     <div className="max-w-2xl">
-      <Link
-        href="/desk/inventory"
-        className="text-sm text-ink-soft hover:underline"
-      >
-        ← Back to inventory
-      </Link>
-      <h1 className="mt-2 text-xl font-semibold">
-        {appliance.assetNumber} — {appliance.applianceType.name}
-      </h1>
-      <p className="mt-2">{APPLIANCE_STATUS_LABELS[appliance.status]}</p>
+      <RecordHeader
+        title={applianceTitle(appliance)}
+        subtitle={applianceSubtitle(appliance)}
+        back={{ href: "/desk/inventory", label: "Fleet" }}
+        pills={[
+          {
+            label: pill.label,
+            tone: pill.tone,
+            info: appliance.status === "AWAITING_INSPECTION" ? "awaiting-inspection" : undefined,
+          },
+        ]}
+        actions={[
+          { kind: "link", label: "Print QR label", href: `/desk/inventory/${id}/qr` },
+        ]}
+      />
       <dl className="mt-4 space-y-2">
         {Object.entries({
           Manufacturer: appliance.manufacturer,
@@ -38,12 +54,6 @@ export async function OperationalAppliance({ id }: { id: string }) {
             </div>
           ))}
       </dl>
-      <Link
-        href={`/desk/inventory/${id}/qr`}
-        className="mt-4 inline-block text-primary hover:underline"
-      >
-        Print QR label
-      </Link>
       <section className="mt-6">
         <h2 className="font-medium">Condition photos</h2>
         {appliance.photos.length === 0 ? (
