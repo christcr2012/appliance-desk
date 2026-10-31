@@ -260,11 +260,11 @@
   },
   {
     "file": "src/app/desk/inventory/page.tsx",
-    "kind": "list"
+    "kind": "other"
   },
   {
     "file": "src/app/desk/inventory/retired/page.tsx",
-    "kind": "list"
+    "kind": "other"
   },
   "src/app/desk/jobs/[id]/page.tsx",
   "src/app/desk/jobs/[id]/work-order/page.tsx",

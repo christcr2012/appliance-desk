@@ -129,6 +129,13 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
       page.getByRole("link", { name: /Open full page/ }),
     ).toHaveAttribute("href", `/desk/inventory/${ids[25]}`);
     await page.goto(`/desk/inventory/${ids[0]}`);
+    // AR-6: the earnings summary (with the incomplete-cost label and the
+    // repair review links) lives on the record's Money tab now.
+    await page
+      .getByRole("navigation", { name: "Appliance sections" })
+      .getByRole("link", { name: "Money", exact: true })
+      .click();
+    await expect(page).toHaveURL(/tab=money/);
     await expect(page.getByText("Unknown — costs incomplete")).toBeVisible();
     await expect(
       page.getByRole("link", { name: `Review repair ${jobId}`, exact: true }),

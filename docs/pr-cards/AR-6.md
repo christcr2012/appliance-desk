@@ -50,3 +50,5 @@ only when absent; inspect the final prerequisite exports once before coding.
    caller/result shape before writing an adapter. Parallelize only independent record reads.
 5. Reuse current inventory/purchasing suites and add the spec’s missing refusal/cursor/DTO regressions. Keep
    the card’s split rationale if purchasing merits AR-6b; do not block fleet completion on that separate UI.
+
+- 2026-10-31 (CI cycle 1, head 731c14df): four red shards. Ours, fixed together and verified (kit-guards 182/182 after returning the fleet+retired registry kinds to their pre-AR-6 "other" — kind "list" is the guard's DataTable contract; built-in-views green after the inventory views went back to status params, which the fleet parser maps to tabs, keeping the AR-12 invariant; fleet-report green on the Workshop bench after its earnings assertions moved to the record's Money tab). Not ours: staff-security's dispatch-board case (passed in full on the bench; queue-volume-dependent, the family main's STATUS already records) and website-editor's edit/preview case (fails on the bench with a different symptom; no shared file or domain with this PR). Cycle 2 decides.
