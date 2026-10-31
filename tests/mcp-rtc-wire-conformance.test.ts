@@ -108,8 +108,8 @@ async function fixtureAppServer() {
           method === "POST" ? await toolPost(input, context) :
             Response.json(errorBody("not_found"), { status: 404 });
       } else response = Response.json(errorBody("not_found"), { status: 404 });
-      const headers = Object.fromEntries(response.headers.entries());
-      outgoing.writeHead(response.status, headers);
+      const responseHeaders = Object.fromEntries(response.headers.entries());
+      outgoing.writeHead(response.status, responseHeaders);
       outgoing.end(Buffer.from(await response.arrayBuffer()));
     } catch {
       outgoing.writeHead(500, { "Content-Type": "application/json" });
