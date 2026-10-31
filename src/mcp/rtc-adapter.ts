@@ -92,7 +92,13 @@ export async function rtcToolDescribe(ctx: AgentContext, name: string) {
 export async function rtcToolCall(ctx: AgentContext, name: string,
   args: Record<string, unknown> = {}) {
   const tool = (await rtcTools(ctx)).find(item => item.name === name);
-  if (!tool) throw new Error("outside_scope");
+  if (!tool) {
+    // RTC 1 distinguishes a recognized, journaled write refused to a
+    // read-only pass from a tool absent from this connection altogether.
+    if (RTC_JOURNALED_WRITES.includes(name as (typeof RTC_JOURNALED_WRITES)[number]))
+      throw new Error("refused_by_guard");
+    throw new Error("outside_scope");
+  }
   if (tool.annotations?.readOnlyHint !== true) {
     const decision = rtcWriteDecision(name, args, ctx.rtcAllowWrites === true);
     if (!decision.call) return { ok: true, result: decision.result };
