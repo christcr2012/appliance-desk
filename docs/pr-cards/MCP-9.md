@@ -45,6 +45,13 @@ MCP-8 must merge first. The distinct MCP-9 protocol bundle stays separate from
 the performance/settings PR. No live pass or production credential will be issued
 during tests.
 
+## Two-process HTTP acceptance addition — October 31, 2026
+
+- [ ] Launch **two independently started Node HTTP servers** running the real `/api/whoami` handler against **one disposable PostgreSQL database**; issue one synthetic, two-factor-enrolled owner pass in that same database and send concurrent requests through both ports.
+- [ ] Run the **unchanged pinned upstream** `verifyTwoInstanceRateLimit` oracle at the existing 120 requests/10 minutes policy: exactly 120 successful replies, all excess replies HTTP 429 with RTC `rate_limited` and a positive Retry-After. A single-process limiter unit test is not sufficient evidence.
+- [ ] Prove revocation is denied by both servers after the probe, remove synthetic pass/user/audit/limiter records, never log or encode the pass in source or command-line arguments, and never touch production data.
+- [ ] Keep MCP-9 draft unless the remaining **upstream journaled-write and OAuth-refresh** probes are actually proven; a green new test does not change the status of skipped probes. Capture exact-head test and review evidence before checking a box.
+
 ## Implementation route (reconciled October 28, 2026)
 
 This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
