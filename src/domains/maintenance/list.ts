@@ -87,7 +87,7 @@ function filtersWhere(params: RepairListParams): Prisma.MaintenanceRequestWhereI
   return parts.length ? { AND: parts } : {};
 }
 
-const ROW_SELECT = {
+const ROW_SELECT: Prisma.MaintenanceRequestSelect = {
   id: true,
   status: true,
   priority: true,
