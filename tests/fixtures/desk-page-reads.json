@@ -79,19 +79,6 @@
     "reason": "Static form shell: renders no data; submissions go through guarded server actions."
   },
   {
-    "page": "src/app/desk/maintenance/page.tsx",
-    "reads": [
-      {
-        "name": "getMaintenanceRequestsCount",
-        "guard": "requireRole"
-      },
-      {
-        "name": "getMaintenanceRequestsPage",
-        "guard": "requireRole"
-      }
-    ]
-  },
-  {
     "page": "src/app/desk/more/page.tsx",
     "reads": [],
     "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
