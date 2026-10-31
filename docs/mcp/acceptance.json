@@ -505,5 +505,13 @@
       "nextAction": "Submit synthetic report, permission-controlled review, reply, repair linkage, verification and cleanup.",
       "evidence": []
     }
+  ],
+  "rtcClients": [
+    { "client": "Official MCP SDK", "status": "NOT_TRIED", "revision": null, "evidence": [] },
+    { "client": "Claude remote connector", "status": "NOT_TRIED", "revision": null, "evidence": [] },
+    { "client": "ChatGPT or Codex remote client", "status": "NOT_TRIED", "revision": null, "evidence": [] },
+    { "client": "Other MCP clients", "status": "NOT_TRIED", "revision": null, "evidence": [] },
+    { "client": "RTC CLI", "status": "NOT_TRIED", "revision": null, "evidence": [] },
+    { "client": "Optional Robinson Hub", "status": "NOT_TRIED", "revision": null, "evidence": [] }
   ]
 }

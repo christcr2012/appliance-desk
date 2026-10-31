@@ -6,7 +6,7 @@ export async function AssistantConnections({ userId, canSeeAll }: { userId: stri
   const issuer = getMcpIssuer();
   // Never hide a live assistant behind disconnected history. All active
   // connections remain reachable for Disconnect; only old history is capped.
-  const filter = canSeeAll ? {} : { userId };
+  const filter = canSeeAll ? { kind: "CONNECTOR" } : { userId, kind: "CONNECTOR" };
   const [active, disconnected] = issuer ? await Promise.all([
     prisma.mcpConnection.findMany({
       where: { ...filter, revokedAt: null }, include: { user: { select: { name: true } } },

@@ -1,3 +1,7 @@
+## October 30 — Lane 2: MCP-8 merged; MCP-9 RTC compatibility engineering in progress
+
+MCP-8 PR #764 merged after protected exact-head CI and review. MCP-9 draft PR #780 is on `ai/chatgpt/mcp-9-rtc-clean`, replacing old draft #766. The read-only owner pass UI uses digest-only credentials, separate OAuth/pass doors, revocation, expiry, area and scope isolation, 24-hour owned results, UTF-8 byte limits and database-backed two-process request limits. CI #41161221030 passed on prior head `cbea87db`. Additional unverified changes make selected read areas match actual MCP scopes, add a strictly test-only full-pass profile with *only* MCP-5 journal preview/execute tools behind independent RTC confirmation and owner approval, and build genuinely large RTC reads by combining authorized MCP issue pages. The owner UI still cannot issue writable passes. Fresh exact-head CI, pinned upstream RTC 1 full conformance (including real writes, refresh, two-process overlap), and real client acceptance remain **NOT PROVEN**. No live payments, emails, SMS, production data or providers were used.
+
 ## October 30 — MCP-5 COMPLETE: assistant actions verified and closed out (Lane 5)
 
 **What changed:** no app behavior. MCP-5's implementation (assistant actions with
@@ -25,9 +29,7 @@ shard; the local checks phase (lint, typecheck, shard registration) passed.
 Approval gating and the action surface are unchanged; later cards' REPAIR_*
 (MCP-6) and FEEDBACK_* (MCP-11) journal actions are their own scope.
 
-## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
 
-MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
 ## October 30 — CU1-VIEW COMPLETE: customer_list_v1 view retired (Workshop card)
 
 **What changed:** the `customer_list_v1` view is dropped (migration

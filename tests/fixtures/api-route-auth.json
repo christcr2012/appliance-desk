@@ -14,5 +14,13 @@
   {
     "file": "src/app/api/site-media/[assetId]/route.ts",
     "reason": "Public website media: serves only assets stored as public site content (findServableAsset with the public scope); private assets are served by the guarded desk route."
+  },
+  {
+    "file": "src/app/api/contract/route.ts",
+    "reason": "Public RTC 1 versioned manifest only; contains fixed protocol metadata and no private settings or credentials."
+  },
+  {
+    "file": "src/app/api/openapi.json/route.ts",
+    "reason": "Public read-only OpenAPI endpoint schema only; protected calls continue to require an RTC pass."
   }
 ]

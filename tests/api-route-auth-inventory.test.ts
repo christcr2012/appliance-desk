@@ -21,7 +21,7 @@ const SESSION_GUARDS = [
 ];
 const CRON_CHECKS = ["cronAuthorized"];
 const SIGNATURE_CHECKS = ["constructEvent", "validateRequest", "verifyVoiceRequest"];
-const TOKEN_CHECKS = ["authorizeOpsRequest", "authenticateMcpRequest"];
+const TOKEN_CHECKS = ["authorizeOpsRequest", "authenticateMcpRequest", "authenticateRtcPass"];
 
 const root = process.cwd();
 const apiRoot = path.join(root, "src/app/api");

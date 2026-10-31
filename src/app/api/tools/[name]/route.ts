@@ -1,0 +1,31 @@
+import { rtcAuthorized, rtcError, rtcJson, rtcToolCall, rtcToolDescribe } from "@/mcp/rtc-adapter";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+type Context = { params: Promise<{ name: string }> };
+export async function GET(req: Request, { params }: Context) {
+  const auth = await rtcAuthorized(req);
+  if ("response" in auth) return auth.response;
+  const { name } = await params;
+  // Unknown, syntactically harmless names are 404 RTC not_found; malformed
+  // paths remain invalid arguments. Neither form dispatches a domain command.
+  if (!/^[a-z][a-z0-9_]{0,100}$/.test(name)) return rtcError("invalid_args");
+  if (!name.startsWith("appliance_")) return rtcError("not_found", 404);
+  const tool = await rtcToolDescribe(auth.ctx, name);
+  return tool ? rtcJson({ ok: true, result: tool }) : rtcError("not_found", 404);
+}
+export async function POST(req: Request, { params }: Context) {
+  const auth = await rtcAuthorized(req);
+  if ("response" in auth) return auth.response;
+  const { name } = await params;
+  if (!/^appliance_[a-z0-9_]{1,80}$/.test(name)) return rtcError("invalid_args");
+  if (Number(req.headers.get("content-length") ?? 0) > 65536) return rtcError("invalid_args", 413);
+  let raw: unknown;
+  try { raw = await req.json(); } catch { return rtcError("invalid_args"); }
+  if (!raw || Array.isArray(raw) || typeof raw !== "object") return rtcError("invalid_args");
+  const args = raw as Record<string, unknown>;
+  try { return rtcJson(await rtcToolCall(auth.ctx, name, args)); }
+  catch (error) { return error instanceof Error && error.message === "invalid_args"
+    ? rtcError("invalid_args", 400) :
+    error instanceof Error && error.message === "outside_scope"
+      ? rtcError("outside_scope", 403) : rtcError("refused_by_guard", 403); }
+}

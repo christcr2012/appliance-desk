@@ -63,7 +63,7 @@ describe("MCP-4 diagnostic tool registry", () => {
             "appliance_repair_link_evidence", "appliance_feedback_reply",
             "appliance_feedback_update_report", "appliance_feedback_link_case",
             "appliance_optimization_create_proposal"].includes(tool.name),
-          destructiveHint: false, idempotentHint: true,
+          destructiveHint: tool.name === "appliance_action_execute", idempotentHint: true,
         });
         expect(tool.inputSchema.type).toBe("object");
         expect(tool.outputSchema?.type).toBe("object");
