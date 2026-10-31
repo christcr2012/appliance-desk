@@ -31,7 +31,7 @@ check their branch as well as open PRs before claiming a card. No PR is evidence
 | AR-9 Insights / Lane 5 | PR #734 open | Finish review/CI; declared dependencies are not proof all AR-4/6/7 acceptance is done. |
 | AR-13 notifications | AR-1/2 source prerequisites landed | Event hooks → per-person reads → bell/preferences → retention, per [card](pr-cards/AR-13.md). |
 | AR-10 sweep / Lane 4 handoff | Final sweep waits for relevant screen conversions | Security inventory (10b) can start independently now; do not delete a still-used component. |
-| PORTAL-1 | Approved; card not started, scheduled after desk units | Preserve customer isolation, existing Pay now and Spanish review gates. |
+| PORTAL-1 | COMPLETE — landed #781 (squash 1524af0f, 2026-10-31) | Preserve customer isolation, existing Pay now and Spanish review gates. |
 | MCP / Lane 2 | MCP-1 #602, MCP-2 #611, MCP-3 #692, MCP-4 #704 landed; MCP-5 #717 open | Finish #717, then 6/7 independently, then 8/11, then 9 with all actual prerequisites. |
 | Books engine / Lane 3 | BA-1…3 built; BA-4/5 absorbed by AR-7 | No duplicate engine or second Books home. |
 | Tax/compliance | TFA-3 #646, ZONE-1 #604, TAXBEN-2 #714/#715, FEETAX-1 #718 and FEETAX-2 #684 landed | Reuse rules/readiness; remaining professional/provider proof stays separate. |
