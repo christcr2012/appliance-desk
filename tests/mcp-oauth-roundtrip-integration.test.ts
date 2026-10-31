@@ -159,18 +159,53 @@ describe.skipIf(!enabled)("MCP OAuth local loopback client on disposable Postgre
     };
     expect(granted.access_token).toBeTruthy();
     expect(granted.refresh_token).toBeTruthy();
-    const refreshResponse = await fetch(origin + "/api/auth/oauth2/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token", refresh_token: granted.refresh_token!, client_id: clientId,
-      }).toString(),
-    });
-    expect(refreshResponse.status, await refreshResponse.clone().text()).toBe(200);
-    const renewed = await refreshResponse.json() as { access_token: string; refresh_token?: string };
-    expect(renewed.access_token).toBeTruthy();
-
+    // Pinned upstream OAuth refresh probe against this local PKCE client and
+    // a real, disposable PostgreSQL connection. The connector's display
+    // preferences are fixture-local; only account and scopes are server grants.
     const { decodeJwt } = await import("jose");
+    const { MCP_SCOPES } = await import("@/mcp/scopes");
+    const { verifyRefreshSettings } = await import("./fixtures/rtc-upstream/src/oauth.js");
+    let refreshedAccessToken = "";
+    let refreshCalls = 0;
+    await verifyRefreshSettings({
+      inspect: async (accessToken?: string) => {
+        const current = await prisma.mcpConnection.findUniqueOrThrow({ where: { id: connection.id } });
+        expect(current.id).toBe(connection.id);
+        expect(current.kind).toBe("CONNECTOR");
+        expect(current.grantVersion).toBe(connection.grantVersion);
+        expect(current.scopes.slice().sort()).toEqual(connection.scopes.slice().sort());
+        expect(current.revokedAt).toBeNull();
+        if (accessToken) {
+          const token = decodeJwt(accessToken);
+          expect(token.sub).toBe(current.userId);
+          expect(token.appliance_connection_version).toBe(current.grantVersion);
+          const grantedScopes = (typeof token.scope === "string" ? token.scope.split(/\\s+/) : [])
+            .filter(scope => MCP_SCOPES.includes(scope as typeof MCP_SCOPES[number]));
+          expect(grantedScopes.sort()).toEqual(current.scopes.slice().sort());
+        }
+        return {
+          profile: "local-scoped-client", listing: "compact",
+          areas: current.scopes.slice().sort(), mode: "oauth", account: current.userId,
+        };
+      },
+      refresh: async () => {
+        refreshCalls++;
+        const response = await fetch(origin + "/api/auth/oauth2/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "refresh_token", refresh_token: granted.refresh_token!, client_id: clientId,
+          }).toString(),
+        });
+        expect(response.status, await response.clone().text()).toBe(200);
+        const result = await response.json() as { access_token: string };
+        refreshedAccessToken = result.access_token;
+        expect(refreshedAccessToken).toBeTruthy();
+        return refreshedAccessToken;
+      },
+    });
+    expect(refreshCalls).toBe(1);
+    const renewed = { access_token: refreshedAccessToken };
     const signedClaims = decodeJwt(renewed.access_token);
     expect(signedClaims).toEqual(expect.objectContaining({ sub: expect.any(String), aud: expect.anything() }));
     expect(signedClaims.appliance_connection_version).toBe(connection.grantVersion);
