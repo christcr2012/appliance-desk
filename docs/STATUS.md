@@ -13,6 +13,27 @@ packet unit/db suites and decisions suites green on real Postgres; plain-words p
 Local browser evidence is degraded (the sandbox production build was OOM-killed under
 multi-lane load), so CI's browser shards at the exact head carry the new portal spec.
 
+**Fix cycle 3 + merge lap (replacement seat, 2026-10-30 evening):** CI at aacb4252
+failed browser-b on one real bug — the portal Home (a server component) called
+`actionButtonClass()`, which lived in the "use client" kit module, so the page
+crashed at render ("Attempted to call actionButtonClass() from the server"; the
+location-contacts spec's portal visit caught it). The helper now lives in the
+server-safe `src/components/kit/action-button-class.ts`, re-exported from the
+client module and the kit index. The same batch dates an unscheduled Rentals
+visit by its `createdAt` instead of the epoch and stops the visit timeline
+repeating the property address. Current main (efda8171: MCP-8 #764, CU1-VIEW
+#783) is merged in for real; the only conflicts were STATUS and the work index,
+resolved as unions. Re-verified at the merged tree on Lane 4's own Postgres
+(5434): fresh full typecheck clean (exit code read directly), kit guards and
+packet unit suites 200/200, customer isolation 15/15, portal completion 4/4
+(incl. the new createdAt DTO pin), customer-list integration 7/7, migrations
+applied. The Performance Baselines failure at aacb4252 (customers-list
+rent-desc 158.28 ms vs the 150 ms budget) is not portal code and the list
+query is byte-identical at this head (CU1-VIEW touched comments and the test
+oracle only; the same perf workflow passed at eb42a17f) — it is the known
+marginal-measurement family, not a budget change in this PR; perf is not a
+required merge check.
+
 **Next:** merge on green CI + review gate; then a close-out records PR marks the card
 complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
 docs land.
