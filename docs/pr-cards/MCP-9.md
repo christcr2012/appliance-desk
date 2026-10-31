@@ -66,6 +66,13 @@ during tests.
 - [x] Run the unchanged pinned RTC verifyRefreshSettings oracle against an actual local OAuth refresh adapter, using explicit per-client selections and persisted identity as the before/after source. Assert denied or revoked authorization stays denied after refresh. Distinguish client-owned selections from server-enforced scopes.
 - [ ] Final exact-head CI/review and evidence close-out: pinned OAuth local probe passed at code head `5462fad2` (full CI #41203243797); do not treat synthetic client settings as authorized real-client acceptance, upstream generic-write conformance, or deployment evidence. Update STATUS and acceptance notes honestly. Exact-head CI/review required before merge.
 
+## Real-client evidence and owner trial walkthrough"éÝyø§yÔ October 31, 2026
+
+- [ ] System health's optional RTC pass area shows only clients with an explicit PASSED result, nonempty release revision and human/provider evidence in the existing declared client matrix. Without one, say that no external client is verified. A local SDK, conformance harness, connection record or one green CI run is never a real-client PASS.
+- [ ] Keep client evidence server-rendered and out of generated pass credentials, logs, URLs or browser bundles. Do not add owner-only secrets or fake a trial. An incomplete PASS row is treated as NOT_VERIFIED.
+- [ ] Give the owner a single client-neutral direct MCP and optional RTC/Hub walkthrough covering setup, a safe read and scoped result, refresh/redeploy, revocation and evidence recording (client/version/deployed SHA/date/outcome), with no live write/payment/message trial.
+- [ ] Add focused matrix filtering/UI tests (missing evidence, not tried, actual verified fixture) and a truthful current-ledger fallback; verify exact-head CI/review before merge. Keep all actual untried clients NOT_TRIED.
+
 ## Implementation route (reconciled October 28, 2026)
 
 This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
