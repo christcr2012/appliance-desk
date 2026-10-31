@@ -4566,11 +4566,12 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #797 (squash baeaabf2) + close-out #799, 2026-10-31; sections 5–7 follow as AR-6b",
       "migration": "none",
       "budget": 600,
       "units": [
-        "AR-6"
+        "AR-6",
+        "AR-6b"
       ],
       "evidence": [
         "docs/build-specs/screens/EQUIPMENT.md",
@@ -6203,6 +6204,10 @@
     {
       "id": "AR-6",
       "path": "docs/pr-cards/execution/AR-6.json"
+    },
+    {
+      "id": "AR-6B",
+      "path": "docs/pr-cards/execution/AR-6B.json"
     },
     {
       "id": "W-12",

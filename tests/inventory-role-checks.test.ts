@@ -28,9 +28,10 @@ import {
 } from "@/domains/inventory";
 import {
   getPurchaseOrderById,
-  getPurchaseOrders,
+  getPurchaseOrdersPage,
   getSupplierById,
   getSuppliers,
+  getSuppliersPage,
 } from "@/domains/purchasing";
 import {
   countPurchases,
@@ -61,9 +62,12 @@ const inventoryReads: Array<[string, () => Promise<unknown>]> = [
 ];
 
 const purchasingReads: Array<[string, () => Promise<unknown>]> = [
-  ["getPurchaseOrders", () => getPurchaseOrders()],
+  // AR-6b: getPurchaseOrdersPage / getSuppliersPage replace getPurchaseOrders
+  // and the suppliers-list read; getSuppliers stays for the form pickers.
+  ["getPurchaseOrdersPage", () => getPurchaseOrdersPage()],
   ["getPurchaseOrderById", () => getPurchaseOrderById("ar6-no-such-order")],
   ["getSuppliers", () => getSuppliers()],
+  ["getSuppliersPage", () => getSuppliersPage()],
   ["getSupplierById", () => getSupplierById("ar6-no-such-supplier")],
   ["listPurchases", () => listPurchases()],
   ["countPurchases", () => countPurchases()],

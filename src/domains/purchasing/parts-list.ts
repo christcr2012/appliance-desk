@@ -50,6 +50,10 @@ export type PartListRow = {
   retailPriceCents?: number | null;
   resaleCostOnHandCents?: number;
   resaleUnitsOnHand?: number;
+  /** Average cost of one resale unit on hand; null when none are on hand. */
+  averageResaleCostCents?: number | null;
+  /** Whether the part is usually bought to resell (order-form pre-tick). */
+  defaultForResale?: boolean;
 };
 
 const TEAM: Role[] = ["OWNER", "ADMIN", "STAFF"];
@@ -129,6 +133,9 @@ export async function getPartsList(
       base.retailPriceCents = r.retailPriceCents;
       base.resaleCostOnHandCents = r.resaleCostOnHandCents;
       base.resaleUnitsOnHand = r.resaleUnitsOnHand;
+      base.averageResaleCostCents =
+        r.resaleUnitsOnHand > 0 ? Math.round(r.resaleCostOnHandCents / r.resaleUnitsOnHand) : null;
+      base.defaultForResale = r.defaultForResale;
     }
     return base;
   });
@@ -138,4 +145,19 @@ export async function getPartsList(
     rows,
     nextCursor: hasMore && last ? { modelNumber: last.modelNumber, id: last.id } : null,
   };
+}
+
+/** Active appliance types for the Parts page's Type filter (the fleet
+ * read's option shape; parts filter by type id, not slug). */
+export async function getPartsTypeOptions(
+  actor: PartsActor,
+): Promise<{ id: string; name: string }[]> {
+  if (!TEAM.includes(actor.role)) {
+    throw new Error("Only the team can see parts.");
+  }
+  return prisma.applianceType.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true },
+  });
 }
