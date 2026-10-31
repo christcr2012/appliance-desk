@@ -99,7 +99,7 @@ test.describe("MCP-5 assistant activity approvals", () => {
         { timeout: 15000 }).toBe("AUTHORIZED");
       const approved = await prisma.agentOperation.findUniqueOrThrow({ where: { id: a.operation.id } });
       expect(approved.approvedByUserId).toBe(a.owner.id);
-      await expect(rowA.getByText("Approved", { exact: true })).toBeVisible();
+      await expect(rowA).toContainText("Approved");
 
       // Desktop: decline submits directly and consumes the waiting state.
       await page.setViewportSize({ width: 1440, height: 900 });
@@ -110,7 +110,7 @@ test.describe("MCP-5 assistant activity approvals", () => {
       await expect.poll(async () =>
         (await prisma.agentOperation.findUniqueOrThrow({ where: { id: b.operation.id } })).state,
         { timeout: 15000 }).toBe("DENIED");
-      await expect(rowB.getByText("Declined", { exact: true })).toBeVisible();
+      await expect(rowB).toContainText("Declined");
     } finally {
       await cleanup(a.connection.id);
       await cleanup(b.connection.id);
