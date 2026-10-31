@@ -1,7 +1,7 @@
-# MCP-9 â€” Tool-contract compatibility and the honest client list
+# MCP-9 Ã¢â‚¬â€ Tool-contract compatibility and the honest client list
 
-Build spec: `docs/build-specs/engines/RTC.md`. Approved by Chris 2026-10-25. Depends on MCP-4â€¦MCP-8. Risk: **a
-second way in (passes)** â€” same catalog, same checks. The Robinson toolkit/hub repositories are read-only references.
+Build spec: `docs/build-specs/engines/RTC.md`. Approved by Chris 2026-10-25. Depends on MCP-4Ã¢â‚¬Â¦MCP-8. Risk: **a
+second way in (passes)** Ã¢â‚¬â€ same catalog, same checks. The Robinson toolkit/hub repositories are read-only references.
 
 ## Acceptance
 - [ ] RTC 1 routes pass the pinned conformance probes; passes and OAuth tokens never cross doors.
@@ -16,7 +16,7 @@ second way in (passes)** â€” same catalog, same checks. The Robinson toolki
 ## Progress
 Upstream RTC 1 contract verified and pinned; the acceptance plan is committed. Initial read-only pass issuance/authorization, owner UI, RTC HTTP tool routing, owned 24-hour handles, backup exclusions, and unit/real-database tests are committed on the feature branch. Initial GitHub CI exposed a missing source brace and a generic secret-scanner match on a synthetic rate-limiter fixture; both are corrected without weakening lint or scan rules. First clean-history CI passed secret scan, static checks and all initial browser shards; the next full run identified a CommonJS top-level-await error in the real two-process rate-limit helper and a 360px mobile overflow in System health. Both were corrected without weakening the tests. Exact-head CI at `58d638e` passed before the new scope mapping changes. Owner-selected read areas now map to the actual underlying MCP scopes; catalog discovery is also gated by those same scopes. `tests/mcp-rtc-read-scopes.test.ts` and the updated HTTP catalog tests cover least privilege, missing grants and refusal of implicit feedback-content or write access. New exact-head CI and the upstream full conformance probes remain pending. MCP-8 has now merged as PR #764 (exact-head CI and review gate completed). The present PR #780 remains a read-only foundation; full RTC 1 conformance, carefully confirmed MCP-5 writes and authenticated real-client acceptance are separate unfinished MCP-9 work. Do not mark all MCP-9 criteria complete or claim RTC 1 compatibility from a green source test alone. The owner-facing pass form still issues read-only passes only. Engineering has added an internal test-only full-pass profile and a strictly allowlisted RTC preview/execute bridge to the existing MCP-5 journal, with a second wire confirmation and unchanged independent owner approval; no real user can issue a writable pass from the UI until the full conformance and review gate are proven. No live provider integration is activated. The new `tests/mcp-rtc-write-policy.test.ts`, `tests/mcp-rtc-full-issues.test.ts` and `tests/mcp-rtc-full-read-handler.test.ts` check guarded journal-only writes and genuine large reads without bypassing existing MCP authorization; a full pinned upstream wire probe and authenticated real-client verification are still required. Full RTC 1 compatibility is **NOT PROVEN** until all applicable upstream write/confirmation, OAuth-refresh and two-process probes pass. A discovered full-pass RTC batch-routing defect is corrected locally: batches refuse writes even for full passes, with a regression test. Read-only production status access is not automatic: the owner must explicitly opt in when issuing a pass, and the UI lists this grant for later revocation; no writable production pass is issued. This remains unverified until next exact-head CI.
 
-## MCP-9 acceptance plan â€” pinned RTC 1 protocol, two credential doors and conformance (October 29)
+## MCP-9 acceptance plan Ã¢â‚¬â€ pinned RTC 1 protocol, two credential doors and conformance (October 29)
 
 Upstream authority (READ-ONLY): `Robinson-AI-Systems/robinsons-toolkit-hub`,
 commit `e6cfb98266728ce0e986ab068569a5d1117a4334`,
@@ -36,7 +36,7 @@ MCP remains at `/api/mcp`, using a different credential kind.
 - [ ] Exact-head CI, required review gate, drift/roadmap/status/database notes and merge requirements all pass before marking complete.
 
 **Resolved specification difference:** The older local MCP-9 build draft proposed 30/90/365-day passes (90 days initially).
-Pinned RTC 1 Â§2 instead specifies 24 hours by default, maximum 30 days for ordinary passes
+Pinned RTC 1 Ã‚Â§2 instead specifies 24 hours by default, maximum 30 days for ordinary passes
 (hub-specific long-lived exception is separate). Implement the upstream-compatible
 24-hour default and 30-day cap, and document that user-facing difference in acceptance.
 Do not claim RTC 1 compatibility on app-generated tests alone.
@@ -45,46 +45,47 @@ MCP-8 must merge first. The distinct MCP-9 protocol bundle stays separate from
 the performance/settings PR. No live pass or production credential will be issued
 during tests.
 
-## Two-process HTTP acceptance addition â€” October 31, 2026
+## Two-process HTTP acceptance addition Ã¢â‚¬â€ October 31, 2026
 
 - [ ] Launch **two independently started Node HTTP servers** running the real `/api/whoami` handler against **one disposable PostgreSQL database**; issue one synthetic, two-factor-enrolled owner pass in that same database and send concurrent requests through both ports.
 - [ ] Run the **unchanged pinned upstream** `verifyTwoInstanceRateLimit` oracle at the existing 120 requests/10 minutes policy: exactly 120 successful replies, all excess replies HTTP 429 with RTC `rate_limited` and a positive Retry-After. A single-process limiter unit test is not sufficient evidence.
 - [ ] Prove revocation is denied by both servers after the probe, remove synthetic pass/user/audit/limiter records, never log or encode the pass in source or command-line arguments, and never touch production data.
 - [ ] Keep MCP-9 draft unless the remaining **upstream journaled-write and OAuth-refresh** probes are actually proven; a green new test does not change the status of skipped probes. Capture exact-head test and review evidence before checking a box.
 
-## Real-database RTC journal acceptance addition â€” October 31, 2026
+## Real-database RTC journal acceptance addition Ã¢â‚¬â€ October 31, 2026
 
 - [ ] In throwaway PostgreSQL create a synthetic OWNER with two-factor and an **internal test-only** full RTC pass; no live, UI-issued or production-writable credential is created.
 - [ ] Call the actual RTC HTTP tool route and shared MCP-5 journal: preview without `dryRun: true` must not persist a preview; a real preview must require an independent owner approval for a guarded synthetic backup-retry operation; execution without wire `confirm: true` or owner approval must have **no** business effect.
 - [ ] After explicit test-owner approval, simultaneous confirmed executions and replays must yield exactly one durable, independently verified synthetic effect and a single journal claim. Revocation must deny subsequent RTC use, with fixture/limiter/audit cleanup.
 - [ ] This proves the **application-specific journal**, not the upstream generic write/refresh probes. Keep RTC 1 conformance and client acceptance NOT_PROVEN until each distinct protocol requirement is actually exercised.
 
-## OAuth refresh selection preservation ºw^~)Þt follow-up acceptance (October 31, 2026)
+## OAuth refresh selection preservation Âºw^~)Ãžt follow-up acceptance (October 31, 2026)
 
 - [x] Use the existing locally registered PKCE OAuth client and disposable PostgreSQL integration test to renew a real granted access token, not a fabricated token or mock provider.
 - [x] Independently read the persisted McpConnection id, grantVersion and approved scopes before and after refresh; verify that no additional permission appears in either the record or signed refreshed JWT and that the refreshed client still reaches only authorized MCP reads.
 - [x] Run the unchanged pinned RTC verifyRefreshSettings oracle against an actual local OAuth refresh adapter, using explicit per-client selections and persisted identity as the before/after source. Assert denied or revoked authorization stays denied after refresh. Distinguish client-owned selections from server-enforced scopes.
 - [ ] Final exact-head CI/review and evidence close-out: pinned OAuth local probe passed at code head `5462fad2` (full CI #41203243797); do not treat synthetic client settings as authorized real-client acceptance, upstream generic-write conformance, or deployment evidence. Update STATUS and acceptance notes honestly. Exact-head CI/review required before merge.
 
-## Real-client evidence and owner trial walkthrough"��y��y� October 31, 2026
+## Real-client evidence and owner trial walkthrough"éÝyø§yÔ October 31, 2026
 
 - [ ] System health's optional RTC pass area shows only clients with an explicit PASSED result, nonempty release revision and human/provider evidence in the existing declared client matrix. Without one, say that no external client is verified. A local SDK, conformance harness, connection record or one green CI run is never a real-client PASS.
 - [ ] Keep client evidence server-rendered and out of generated pass credentials, logs, URLs or browser bundles. Do not add owner-only secrets or fake a trial. An incomplete PASS row is treated as NOT_VERIFIED.
 - [ ] Give the owner a single client-neutral direct MCP and optional RTC/Hub walkthrough covering setup, a safe read and scoped result, refresh/redeploy, revocation and evidence recording (client/version/deployed SHA/date/outcome), with no live write/payment/message trial.
 - [ ] Add focused matrix filtering/UI tests (missing evidence, not tried, actual verified fixture) and a truthful current-ledger fallback; verify exact-head CI/review before merge. Keep all actual untried clients NOT_TRIED.
+- [ ] CI browser-b shared-settings correction: the existing W-22 V2 signing spec uses a synthetic global BusinessSettings revision and must execute in its own Playwright process, after other shard-b specs have stopped; retain every assertion, fixture, run/skip check and the existing five GitHub CI runners. Diagnose any additional failures independently, then require exact-head green CI.
 
 ## Implementation route (reconciled October 28, 2026)
 
 This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
 only when absent; inspect the final prerequisite exports once before coding.
 
-1. Read RTC sections 1â€“3; pin the referenced upstream contract before choosing wire paths/envelopes. If it
+1. Read RTC sections 1Ã¢â‚¬â€œ3; pin the referenced upstream contract before choosing wire paths/envelopes. If it
    cannot be read, record the exact source problem and continue independent local pass/authorization tests;
    do not invent a compatible-looking contract or modify the upstream repo.
-2. Reuse current MCP authorization/catalog and MCP-5â€™s final dispatcher. Inventory actual exports first:
+2. Reuse current MCP authorization/catalog and MCP-5Ã¢â‚¬â„¢s final dispatcher. Inventory actual exports first:
    `src/mcp/server.ts` exists at this baseline; `catalog.ts` in the spec is a target integration, not evidence
    it already exists. Refactor one shared registry if needed, preserving every existing tool/refusal test.
-3. Prove the two doors reject each otherâ€™s credential type, expired/revoked passes fail, and queued writes
+3. Prove the two doors reject each otherÃ¢â‚¬â„¢s credential type, expired/revoked passes fail, and queued writes
    recheck both the wire confirmation and MCP-5 preview/approval. Do not bypass scopes with a pass.
 4. Test payload at/below/above the specified 8 KB boundary, owned 24-hour result handles, expiry and revoked
    access on handle read. Test limits through two server processes sharing one throwaway database.
