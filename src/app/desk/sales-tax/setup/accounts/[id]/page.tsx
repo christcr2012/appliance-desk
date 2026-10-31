@@ -5,6 +5,10 @@ import { saveTaxAccountAction, markLicenseRenewedAction } from "../../actions";
 import { TaxActionForm } from "../../forms";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { nextLicenseExpiry } from "@/domains/tax/license-dates";
+import {
+  DEDUCTION_BUCKET_KEYS, RESEARCHED_DEDUCTION_DEFAULTS,
+  deductionSourceNote, parseDeductionLabels, resolveDeductionLabels,
+} from "@/domains/tax/deduction-labels";
 import { RecordHeader } from "@/components/kit";
 const css="w-full rounded border border-input bg-background p-2 text-sm";
 const label="grid gap-1 text-sm font-medium";
@@ -30,6 +34,14 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
     : account.kind === "USE_TAX_RETURN"
       ? !row.useTaxFilingAccountId || row.useTaxFilingAccountId === account.id : false);
   const mapping = (value: unknown) => JSON.stringify(value ?? {}, null, 2);
+  // W-12 / IN-44: per-bucket deduction wording — the owner's saved entry,
+  // else the researched default (provenance shown on each row).
+  const storedLabels = parseDeductionLabels(account.deductionLabels);
+  const resolvedLabels = resolveDeductionLabels(account.deductionLabels);
+  const deductionKeys = [
+    ...DEDUCTION_BUCKET_KEYS,
+    ...Object.keys(storedLabels).filter(key => !DEDUCTION_BUCKET_KEYS.includes(key)),
+  ];
   const missing = [
     !account.accountNumber && "Official account/license number",
     !account.firstPeriodStart && "First filing period",
@@ -71,12 +83,9 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
       </label>
       <fieldset className="space-y-3 rounded border border-border p-3">
         <legend className="font-semibold">SUTS portal fields and export capabilities</legend>
-        <p className="text-sm text-muted-foreground">Copy labels from your actual SUTS account. Leave an empty JSON object when the wording is not decided. SUTS credentials are never stored.</p>
+        <p className="text-sm text-muted-foreground">Copy labels from your actual SUTS account. SUTS credentials are never stored.</p>
         <label className={label}>Screen wording (JSON mapping of screen keys to labels)
           <textarea name="screenLabels" className={css} rows={3} defaultValue={mapping(account.screenLabels)} />
-        </label>
-        <label className={label}>Deductions (JSON key to label and reportAs: DEDUCTION or LEAVE_OUT_OF_GROSS)
-          <textarea name="deductionLabels" className={css} rows={4} defaultValue={mapping(account.deductionLabels)} />
         </label>
         <div className="grid gap-3 md:grid-cols-2">
           {([["excelUploadAvailable", "Excel upload"], ["bulkXmlAvailable", "Bulk XML"]] as const).map(([key, label]) =>
@@ -89,6 +98,19 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
         <input type="hidden" name="setupCheckedOn" value={account.setupCheckedOn?.toISOString() ?? ""} />
         <p className="text-sm">Last verified against SUTS: {account.setupCheckedOn?.toISOString().slice(0, 10) ?? "Not confirmed"}</p>
         <label className="flex gap-2 text-sm"><input type="checkbox" name="confirmSetupToday" />I checked these details against SUTS today</label>
+      </fieldset>
+      <fieldset className="space-y-3 rounded border border-border p-3">
+        <legend className="font-semibold">Deduction wording on the return</legend>
+        <p className="text-sm text-muted-foreground">When part of a sale is not taxed, Colorado&apos;s return (form DR 0100) counts it in gross sales and takes it off under these names on Schedule A. The wording is edited on its own page — your accountant can edit it too, and every change is recorded.</p>
+        <ul className="space-y-1 text-sm">
+          {deductionKeys.map(key => {
+            const def = RESEARCHED_DEDUCTION_DEFAULTS[key];
+            const effective = resolvedLabels[key];
+            if (!effective) return null;
+            return <li key={key}><span className="font-medium">{def?.bucketName ?? key}:</span> {effective.label} — {deductionSourceNote(effective.source)}</li>;
+          })}
+        </ul>
+        <p className="text-sm"><a className="underline" href={`/desk/sales-tax/deduction-labels?account=${account.id}`}>Edit deduction wording</a></p>
       </fieldset>
       {account.kind !== "RETAIL_DELIVERY_FEE_RETURN" && <fieldset className="space-y-3 rounded border border-border p-3">
         <legend className="font-semibold">Tax areas on this return</legend>
