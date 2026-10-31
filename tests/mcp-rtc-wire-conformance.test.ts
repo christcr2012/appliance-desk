@@ -88,7 +88,7 @@ async function fixtureAppServer() {
       }
       const input = new Request("http://localhost" + url.pathname + url.search, {
         method, headers,
-        ...(method === "POST" ? { body: Buffer.concat(bytes) } : {}),
+        ...(method === "POST" ? { body: Buffer.concat(bytes).toString("utf8") } : {}),
       });
       let response: Response;
       if (url.pathname === "/api/contract" && method === "GET") response = await contractGet();
