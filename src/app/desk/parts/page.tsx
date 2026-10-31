@@ -1,151 +1,100 @@
 import { redirect } from "next/navigation";
-import { getAllPartRecords } from "@/domains/inventory";
-import { getLowStockParts } from "@/domains/purchasing";
-import {
-  ButtonLink,
-  Card,
-  EmptyState,
-  StatusPill,
-} from "@/components/ui";
-import { DataTable, ScreenHeader, Toolbar, type Column, type FilterDef } from "@/components/kit";
-import { PartStockPanel } from "./part-stock-panel";
-import { PartSaleSettings } from "./part-sale-settings";
+import { requireRole } from "@/lib/session";
+import { getPartsList, getPartsTypeOptions } from "@/domains/purchasing/parts-list";
+import { EmptyState } from "@/components/ui";
+import { ScreenHeader, StatusTabs, Toolbar, type FilterDef } from "@/components/kit";
+import { Toaster } from "@/components/kit/toaster";
+import { PARTS_TABS, encodePartsCursor, parsePartsParams, partsHref } from "./params";
+import { PartsList } from "./parts-list";
 
 export const metadata = { title: "Parts" };
 
-type PartRow = Awaited<ReturnType<typeof getAllPartRecords>>[number];
-
+/**
+ * AR-6b section 6: the Parts page on getPartsList alone — the AR-6
+ * role-shaped cursor read. Staff see stock counts and low-stock pills;
+ * the finance columns and edit controls exist only for OWNER/ADMIN
+ * (their staff DTOs carry no price keys to render in the first place).
+ */
 export default async function PartsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string; open?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const partsParams = await searchParams;
-  // The kit table's row click sets ?open=<id> (its side-panel convention).
-  // Parts have no side panel — the record page IS the destination, as it
-  // was before the redesign — so an ?open= link goes straight there.
-  if (partsParams.open) redirect(`/desk/parts/${encodeURIComponent(partsParams.open)}`);
-  const showArchived = partsParams.archived === "1";
-  const [partRecords, lowStockParts] = await Promise.all([
-    getAllPartRecords({ includeArchived: showArchived }),
-    getLowStockParts(),
-  ]);
-  const lowStockIds = new Set(lowStockParts.map((part) => part.id));
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const raw = await searchParams;
+  // Stale ?open= links (the old table's side-panel convention) go straight
+  // to the part's record, as before.
+  if (raw.open) redirect(`/desk/parts/${encodeURIComponent(raw.open)}`);
+  const role = session.user.role;
+  const canManage = role === "OWNER" || role === "ADMIN";
+  const params = parsePartsParams(raw);
 
-  const columns: Column<PartRow>[] = [
+  const [list, types] = await Promise.all([
+    getPartsList(
+      { status: params.status, q: params.q, type: params.type, cursor: params.cursor },
+      { role },
+    ),
+    getPartsTypeOptions({ role }),
+  ]);
+
+  const filters: FilterDef[] = [
     {
-      key: "part",
-      header: "Part",
-      cell: (part) => (
-        <div>
-          <span className="font-semibold text-ink">
-            {part.modelNumber}
-            {part.manufacturer ? ` (${part.manufacturer})` : ""}
-            {part.applianceType ? ` — ${part.applianceType.name}` : ""}
-          </span>
-          <p className="mt-1 text-sm font-normal text-ink-soft">
-            Part {part.partNumber}
-            {part.partName ? ` — ${part.partName}` : ""}
-          </p>
-          {part.notes && (
-            <p className="mt-1 text-sm font-normal text-ink-soft">
-              {part.notes}
-            </p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "state",
-      header: "State",
-      cell: (part) =>
-        part.archivedAt ? (
-          <StatusPill tone="stopped" label="Archived" />
-        ) : lowStockIds.has(part.id) ? (
-          <StatusPill tone="attention" label="Low stock" />
-        ) : (
-          <StatusPill tone="success" label="In stock" />
-        ),
-    },
-    {
-      key: "stock",
-      header: "Stock",
-      cell: (part) => (
-        <PartStockPanel
-          partRecordId={part.id}
-          quantityOnHand={part.quantityOnHand}
-          reorderThreshold={part.reorderThreshold}
-          lowStock={lowStockIds.has(part.id)}
-          archived={part.archivedAt !== null}
-        />
-      ),
-    },
-    {
-      key: "selling",
-      header: "Selling",
-      cell: (part) => (
-        <PartSaleSettings
-          partRecordId={part.id}
-          sellable={part.sellable}
-          retailPriceCents={part.retailPriceCents}
-          defaultForResale={part.defaultForResale}
-          averageCostCents={part.resaleUnitsOnHand > 0 ? Math.round(part.resaleCostOnHandCents / part.resaleUnitsOnHand) : null}
-          archived={part.archivedAt !== null}
-        />
-      ),
+      kind: "select",
+      param: "type",
+      label: "Type",
+      options: types.map((t) => ({ value: t.id, label: t.name })),
     },
   ];
+  const filtered = Boolean(params.q || params.type);
 
   return (
     <div>
-      <ScreenHeader title="Parts" list />
-      <Toolbar
-        filters={[{ kind: "toggle", param: "archived", label: "Show archived parts" }] satisfies FilterDef[]}
+      <Toaster />
+      <ScreenHeader
+        title="Parts"
+        list
+        primary={
+          canManage && params.status === "low" && list.rows.length > 0
+            ? { kind: "link", label: "New order", href: "/desk/purchase-orders/new" }
+            : undefined
+        }
       />
       <p className="-mt-2 pb-2 text-sm text-ink-soft">
         Every part you&apos;ve logged, grouped by model number. Add new parts from an appliance record for that model.
       </p>
 
-      {lowStockParts.length > 0 && (
-        <div className="mb-6">
-          <Card
-            title={`${lowStockParts.length} ${
-              lowStockParts.length === 1 ? "part is" : "parts are"
-            } running low`}
-            description="Restock before these parts fall below their configured thresholds."
-            actions={
-              <ButtonLink href="/desk/purchase-orders/new" variant="secondary">
-                Start purchase order
-              </ButtonLink>
-            }
-          >
-            <ul className="space-y-1 text-sm text-warning-ink">
-              {lowStockParts.map((part) => (
-                <li key={part.id}>
-                  {part.modelNumber} — {part.partNumber} (
-                  {part.quantityOnHand} on hand, flagged at{" "}
-                  {part.reorderThreshold})
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
-      )}
+      <div className="mb-4">
+        <StatusTabs
+          label="Filter parts by stock"
+          param="status"
+          current={params.status}
+          items={PARTS_TABS.map((t) => ({ value: t.value, label: t.label }))}
+        />
+      </div>
 
-      <DataTable
-        rows={partRecords}
-        rowKey={(part) => part.id}
-        columns={columns}
-        caption="Parts"
-        rowHref={(part) => `/desk/parts/${part.id}`}
-        mobileCard={(part) => columns[0].cell(part)}
-        empty={
+      <Toolbar
+        search={{ param: "q", placeholder: "Model number, part number or name", label: "Search parts" }}
+        filters={filters}
+      />
+
+      {list.rows.length === 0 ? (
+        filtered || params.status === "archived" ? (
+          <EmptyState title="No parts here" description="Nothing matches. Clear the search or filters to see more parts." />
+        ) : params.status === "low" ? (
+          <EmptyState title="Nothing is low right now" description="Parts at or below the amount you flag them at will show here." />
+        ) : (
           <EmptyState
             title="No parts logged yet"
-            description="Parts appear here after you save them from an appliance record."
+            description="Add parts from an appliance's Parts tab."
           />
-        }
-      />
+        )
+      ) : (
+        <PartsList
+          rows={list.rows}
+          canManage={canManage}
+          nextHref={list.nextCursor ? partsHref(params, { cursor: encodePartsCursor(list.nextCursor) }) : null}
+        />
+      )}
     </div>
   );
 }
