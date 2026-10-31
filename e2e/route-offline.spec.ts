@@ -88,6 +88,30 @@ test("the saved route shows on the offline page, read-only", async ({ context, p
     }
     await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
 
+    // My route also warms the offline page while the connection is up (its
+    // own scripts are only in the worker's cache once fetched online). Wait
+    // until that warming has settled — the count of cached static files
+    // holds steady across three reads — before simulating the drop, the
+    // same precondition a real phone has after sitting on the route page.
+    const cachedStaticCount = () =>
+      page.evaluate(async () => {
+        const cache = await caches.open("desk-shell-v1");
+        return (await cache.keys()).filter((request) => request.url.includes("/_next/static/")).length;
+      });
+    let previousCount = -1;
+    let stableReads = 0;
+    await expect
+      .poll(
+        async () => {
+          const count = await cachedStaticCount();
+          stableReads = count === previousCount ? stableReads + 1 : 0;
+          previousCount = count;
+          return stableReads >= 2;
+        },
+        { intervals: [750, 750, 750] },
+      )
+      .toBe(true);
+
     await context.setOffline(true);
     await page.reload();
     await expect(page.getByRole("heading", { name: /Today's route \(saved/ })).toBeVisible();
