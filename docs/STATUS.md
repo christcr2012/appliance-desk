@@ -1,3 +1,30 @@
+## October 30 — MCP-5 COMPLETE: assistant actions verified and closed out (Lane 5)
+
+**What changed:** no app behavior. MCP-5's implementation (assistant actions with
+preview, owner approval, once-only execution and readback verification) merged on
+2026-10-29 as PR #717 (squash `62a1cd84`) but the card was never closed out: its
+acceptance boxes stayed unticked, the work-index still read APPROVED, and one named
+acceptance artifact — the Assistant Activity browser spec — did not exist. This
+close-out (packet MCP-5-CLOSEOUT) verifies the merged work, adds the missing spec
+(`e2e/mcp-activity.spec.ts`, registered in `e2e/shards.json`), ticks the card's
+boxes with evidence, and corrects the work-index.
+
+**How it was checked:** on main at `f7794889` the two named integration suites
+re-ran focused on the lane database — `tests/mcp-operations-integration.test.ts`
+(10) and `tests/mcp-decisions-apply-integration.test.ts` (3), 13 passed, 0
+skipped — and the merged implementation was read against every testable line on
+the card (canonical args + tamper hash, OWNER-only approval under row locks,
+grant-version rechecks at approve/claim/dispatch, lease fencing, UNKNOWN
+readback-only reconciliation, the six actions plus DEC-1 application). The new
+browser spec seeds waiting operations, approves on phone through the confirm
+dialog (journal records AUTHORIZED with the owner id), declines on desktop
+(DENIED), and axe-scans the page at 360/390/1440 in light and dark. Local launcher
+execution of the spec was degraded — the shared VM had ~1 GB free and production
+builds died collecting page data — so its execution evidence is CI's browser
+shard; the local checks phase (lint, typecheck, shard registration) passed.
+Approval gating and the action surface are unchanged; later cards' REPAIR_*
+(MCP-6) and FEEDBACK_* (MCP-11) journal actions are their own scope.
+
 ## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
 
 MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
