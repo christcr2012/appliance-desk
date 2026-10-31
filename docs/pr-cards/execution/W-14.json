@@ -96,7 +96,7 @@
     "unit": [
       "tests/purchase-math-and-next-step.test.ts",
       "tests/remediation-r2-purchase-date.test.ts",
-      "tests/desk-navigation.test.ts",
+      "tests/w8-menu-sections.test.ts",
       "tests/private-photo-read-route.test.ts"
     ],
     "db": [

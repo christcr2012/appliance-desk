@@ -71,7 +71,7 @@ export function SigningChargeForm({ settings, editable, activeTaxTreatment, upco
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">Apply reviewed rule from this date
         <input type="date" name="setupFeeTaxEffectiveFrom" defaultValue={settings.setupFeeTaxEffectiveFrom?.toISOString().slice(0,10)} className="min-w-0 w-full max-w-full rounded-control border border-line p-2" />
-        <span className="font-normal text-ink-soft">Changes apply to eligible future actions; previous signed agreements and bills remain frozen.</span>
+        <span className="font-normal text-ink-soft">Changes apply to eligible future actions; previous signed rentals and bills remain frozen.</span>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium md:col-span-2">CPA name and traceable reference (email subject, opinion date or memo reference; no credentials)
         <input name="setupFeeTaxAdviserReference" maxLength={500} defaultValue={settings.setupFeeTaxAdviserReference ?? ""} className="min-w-0 w-full max-w-full rounded-control border border-line p-2" />

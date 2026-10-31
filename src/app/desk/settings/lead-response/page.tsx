@@ -81,7 +81,10 @@ export default async function LeadResponseSettingsPage() {
               <option key={person.id} value={person.id}>{person.name}</option>
             ))}
           </select>
-          <p className="text-xs text-ink-soft">Only used when “One person” is chosen above. If that person can no longer be given leads, new leads go to you instead. The starting value is “Me”, because a new business has one person selling.</p>
+          <p className="text-xs text-ink-soft">
+            Only used when “One person” is chosen above. If that person can no longer be given leads, new leads go to you instead.
+            The starting value is “Me”, because a new business has one person selling.
+          </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button type="submit" className="rounded-md border px-4 py-2 font-medium">Save</button>

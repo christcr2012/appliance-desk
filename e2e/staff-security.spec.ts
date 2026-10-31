@@ -50,10 +50,18 @@ test.describe("staff permissions", () => {
     page,
   }) => {
     await page.goto("/desk/customers");
+    // The kit list renders each customer twice (phone cards + desktop
+    // table); click through the visible row, as the CRM workspace spec does.
     await page
-      .getByRole("link", { name: /Test Customer/ })
+      .locator("main tr:visible, main li:visible")
+      .filter({ hasText: "Test Customer" })
+      .first()
+      .getByRole("link")
       .first()
       .click();
+    // CU-1 (AR-4c): a row click opens the customer SidePanel on the list;
+    // the record itself is the panel's "Open full page" link.
+    await page.getByRole("link", { name: /Open full page/ }).click();
     await expect(
       page.getByRole("heading", { name: "Service addresses" }),
     ).toBeVisible();
@@ -66,7 +74,10 @@ test.describe("staff permissions", () => {
     );
     await page.goto("/desk/agreements");
     await page
-      .getByRole("link", { name: /Test Customer/ })
+      .locator("main tr:visible, main li:visible")
+      .filter({ hasText: "Test Customer" })
+      .first()
+      .getByRole("link")
       .first()
       .click();
     await expect(
@@ -81,7 +92,15 @@ test.describe("staff permissions", () => {
     test(`${route} keeps staff job access without offering scheduling`, async ({ page }) => {
       await page.goto(route);
       await expect(page.getByRole("link", { name: /schedule a job/i })).toHaveCount(0);
-      await expect(page.locator('a[href="/desk/jobs/ci-security-job"]').first()).toBeVisible();
+      // The job is listed and its row opens the job record: the jobs list's
+      // kit row link goes through ?open= (which that page sends straight to
+      // the record); the dispatch board links to the record directly.
+      const jobLink = page
+        .locator('main a[href="/desk/jobs/ci-security-job"]:visible, main a[href*="open=ci-security-job"]:visible')
+        .first();
+      await expect(jobLink).toBeVisible();
+      await jobLink.click();
+      await expect(page).toHaveURL(/\/desk\/jobs\/ci-security-job$/);
     });
   }
 
@@ -110,7 +129,13 @@ test.describe("staff permissions", () => {
     const saved = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
-        response.url().includes("/desk/jobs/ci-security-job"),
+        response.url().includes("/desk/jobs/ci-security-job") &&
+        // The desk shell's notification bell POSTs its own server action to
+        // the current page URL on mount, so any POST to this URL returning
+        // OK no longer proves the checklist save landed — the reload below
+        // could beat it. Only the checklist save carries the checklist
+        // items in its request body; wait for that response specifically.
+        (response.request().postData() ?? "").includes("CI operational check"),
     );
     await page.getByRole("checkbox", { name: "CI operational check" }).check();
     expect((await saved).ok()).toBe(true);

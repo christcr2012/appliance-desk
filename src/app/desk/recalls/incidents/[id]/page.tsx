@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
-import { Card, PageHeader } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { RecordHeader } from "@/components/kit";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { getSafetyIncident } from "@/domains/recalls/reads";
 import { CPSC_REPORT_URL } from "@/domains/recalls/hold";
@@ -17,8 +17,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   const deadline = new Date(incident.createdAt.getTime() + 24 * 60 * 60 * 1000);
   return (
     <div className="space-y-6">
-      <Link href="/desk/today" className="text-sm text-ink-soft hover:underline">&larr; Back to To do</Link>
-      <PageHeader title="Injury or safety incident" />
+      <RecordHeader title="Injury or safety incident" back={{ href: "/desk/today", label: "To do" }} />
       <Card>
         <p className="text-sm">{incident.description}</p>
         <p className="mt-2 text-sm text-ink-soft">

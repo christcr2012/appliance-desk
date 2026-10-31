@@ -36,7 +36,7 @@ export function RepairCasesSection({ rows, canManage }: { rows: RepairRow[]; can
         </Card>
       ) : rows.map(row => (
         <Card key={row.id} title={`Repair #${row.number}: ${row.title}`}
-          description={`Recorded ${formatBusinessDate(row.createdAt)} · ${row.sourceKind === "FEEDBACK" ? "Report" : "System problem"}`}
+          description={`Recorded ${formatBusinessDate(row.createdAt)} · ${row.sourceKind === "FEEDBACK" ? "Report" : row.sourceKind === "OPTIMIZATION" ? "Measured improvement" : "System problem"}`}
           actions={<StatusPill tone={row.stage === "VERIFIED" ? "success" : row.stage === "FAILED" ? "attention" : "pending"} label={WORDS[row.stage]} />}>
           <div className="space-y-3 text-sm">
             {row.blocker && <p role="status" className="text-ink-soft">Why it is waiting: {row.blocker.replaceAll("_", " ").toLowerCase()}</p>}

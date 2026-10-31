@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { StatusPill } from "@/components/kit";
+import { RecordHeader } from "@/components/kit";
 import { requireRole } from "@/lib/session";
 import { formatMoney } from "@/lib/money-ui";
 import { getComplianceFiling, getFilingReview, submissionKeyFor } from "@/domains/compliance/filings";
@@ -80,15 +79,11 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-5">
-      <p>
-        <Link href="/desk/compliance" className="text-sm underline">
-          ← All compliance
-        </Link>
-      </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-xl font-bold text-ink">{obligation?.title ?? filing.obligationKey}</h2>
-        <StatusPill label={filing.state.replaceAll("_", " ").toLowerCase()} tone="neutral" />
-      </div>
+      <RecordHeader
+        title={obligation?.title ?? filing.obligationKey}
+        pills={[{ label: filing.state.replaceAll("_", " ").toLowerCase(), tone: "neutral" }]}
+        back={{ href: "/desk/compliance", label: "All compliance" }}
+      />
       <p className="max-w-3xl text-sm text-ink-soft">{obligation?.explain}</p>
 
       <dl className="grid max-w-3xl grid-cols-2 gap-3 text-sm sm:grid-cols-4">

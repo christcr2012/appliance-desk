@@ -17,8 +17,8 @@ test.describe("COM-L15 owner launch proof (non-sending CI)",()=>{
   // AR-9: the cost evidence section moved onto this settings page from Reports.
   await expect(page.getByRole("heading",{name:"Communications cost evidence"})).toBeVisible();
   await page.goto("/desk/communications");
-  await expect(page.getByRole("heading",{name:"Communications",exact:true})).toBeVisible();
-  await expect(page.getByText(/Sending stays off until separately approved/)).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Messages",exact:true})).toBeVisible();
+  await expect(page.getByText(/Texting with customers isn't turned on yet/)).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect((await new AxeBuilder({page}).withTags([
     "wcag2a","wcag2aa","wcag21a","wcag21aa",
@@ -37,7 +37,7 @@ test.describe("COM-L15 staff launch privacy",()=>{
   await expect(page.getByRole("heading",{name:"Phone, texts and provider costs"})).toHaveCount(0);
   await expect(page.getByText(/verified telecom statement|provider invoice total/i)).toHaveCount(0);
   await page.goto("/desk/communications");
-  await expect(page.getByRole("heading",{name:"Communications",exact:true})).toBeVisible();
-  await expect(page.getByText(/Staff see only threads assigned to them/)).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Messages",exact:true})).toBeVisible();
+  await expect(page.getByRole("link",{name:/Needs a reply/})).toBeVisible();
  });
 });

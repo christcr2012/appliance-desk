@@ -47,6 +47,7 @@ const DOMAIN_GATE =
 // money actions, settings, customers, sales-tax setup — must refuse the role at its own gate.
 const APP_ALLOWLIST = [
   "app/desk/account/actions.ts",
+  "app/desk/account/notifications/page.tsx",
   "app/desk/account/page.tsx",
   "app/desk/billing/page.tsx",
   "app/desk/books/accountant/page.tsx",

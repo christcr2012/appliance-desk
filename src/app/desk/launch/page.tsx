@@ -2,20 +2,18 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getLaunchSettings, launchEmailBlockReason } from "@/domains/launch";
 import { LAUNCH_STEPS } from "@/domains/launch/messages";
-import {
-  Button,
+import { Button,
   ButtonLink,
   Card,
-  DataList,
   EmptyState,
-  PageHeader,
-  StatCard,
+    StatCard,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
 import { Pagination } from "@/components/pagination";
 import { LaunchSettingsForm } from "./settings-form";
 import { suppressLaunchSubscriber } from "./actions";
+
+import { DataTable, ScreenHeader, type Column } from "@/components/kit";
 
 export const metadata = { title: "Launch interest list" };
 
@@ -76,11 +74,10 @@ export default async function LaunchDeskPage({
   const reason = launchEmailBlockReason(settings);
   type SubscriberRow = (typeof rows)[number];
 
-  const subscriberColumns: DataListColumn<SubscriberRow>[] = [
+  const subscriberColumns: Column<SubscriberRow>[] = [
     {
       key: "person",
       header: "Person",
-      primary: true,
       cell: (subscriber) => (
         <div>
           <p className="font-semibold text-ink">{subscriber.name}</p>
@@ -164,26 +161,17 @@ export default async function LaunchDeskPage({
 
   return (
     <div>
-      <PageHeader
+      <ScreenHeader
         title="Launch interest list"
-        description="Local interest in the upcoming launch. These are opt-in subscribers, not booked rentals or quote requests."
-        secondaryActions={
-          <>
-            <ButtonLink
-              href="/launch?utm_source=instagram"
-              variant="secondary"
-            >
-              Instagram signup link
-            </ButtonLink>
-            <ButtonLink
-              href="/launch?utm_source=facebook"
-              variant="secondary"
-            >
-              Facebook signup link
-            </ButtonLink>
-          </>
-        }
+        list
+        overflow={[
+          { kind: "link", label: "Instagram signup link", href: "/launch?utm_source=instagram" },
+          { kind: "link", label: "Facebook signup link", href: "/launch?utm_source=facebook" },
+        ]}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Local interest in the upcoming launch. These are opt-in subscribers, not booked rentals or quote requests.
+      </p>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label="Total signups" value={String(total)} />
@@ -252,9 +240,11 @@ export default async function LaunchDeskPage({
         </Card>
 
         <Card title="Subscribers">
-          <DataList
+          <DataTable
             rows={rows}
+            rowKey={(subscriber) => subscriber.id}
             columns={subscriberColumns}
+            mobileCard={(subscriber) => subscriberColumns[0].cell(subscriber)}
             caption={`Launch subscribers, page ${page}`}
             empty={
               <EmptyState
@@ -279,8 +269,11 @@ export default async function LaunchDeskPage({
 
         <Card
           title="The automated welcome sequence"
-          description="Provider acceptance is recorded; inbox delivery and opens are not tracked here. Launch announcements require a separate, reviewed send once the opening date is confirmed."
+          description="Provider acceptance is recorded; inbox delivery and opens are not tracked here."
         >
+          <p className="mb-3 text-sm text-ink-soft">
+            Launch announcements require a separate, reviewed send once the opening date is confirmed.
+          </p>
           <ol className="space-y-4">
             {LAUNCH_STEPS.map((step, index) => (
               <li

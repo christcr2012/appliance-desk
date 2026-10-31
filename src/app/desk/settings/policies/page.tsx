@@ -11,10 +11,10 @@ import {
   Button,
   ButtonLink,
   Card,
-  PageHeader,
   StatusPill,
   Textarea,
 } from "@/components/ui";
+import { ScreenHeader } from "@/components/kit";
 import { approveLegalPageAction, publishChecklistAction } from "./actions";
 
 export const metadata = { title: "Rental policies" };
@@ -42,21 +42,22 @@ export default async function InspectionChecklistSettingsPage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader
-        title="Rental policies"
-        description="Version operational checklists and record owner approval of the exact legal-page versions that may be treated as final."
-        secondaryActions={
-          <ButtonLink href="/desk/settings?section=policies" variant="secondary">
-            Rental policies
-          </ButtonLink>
-        }
-      />
+      <div className="flex justify-end">
+        <ButtonLink href="/desk/settings?section=policies" variant="secondary">
+          Rental policies
+        </ButtonLink>
+      </div>
+      <ScreenHeader title="Rental policies" />
+      <p className="-mt-2 text-sm text-ink-soft">
+        Version operational checklists and record owner approval of the exact legal-page versions that may be treated as final.
+      </p>
 
       <div className="space-y-6">
         <Card
           title="Legal page approval"
-          description="This records that the owner approved the exact text version shown. It is an internal publication record, not legal advice or a substitute for legal review."
+          description="This records that the owner approved the exact text version shown."
         >
+          <p className="text-sm text-ink-soft">It is an internal publication record, not legal advice or a substitute for legal review.</p>
           <div className="space-y-4">
             {LEGAL_PAGES.map(({ page, label, href }) => {
               const currentVersion = LEGAL_PAGE_VERSIONS[page];
@@ -146,8 +147,11 @@ export default async function InspectionChecklistSettingsPage() {
 
         <Card
           title="Return inspection checklist"
-          description="Publish the checklist used when appliances come back. A new version only affects inspections from now on; completed inspections keep the exact checklist they used."
+          description="Publish the checklist used when appliances come back."
         >
+          <p className="text-sm text-ink-soft">
+            A new version only affects inspections from now on; completed inspections keep the exact checklist they used.
+          </p>
           <form action={publishChecklistAction} className="space-y-4">
             <Textarea
               id="items"

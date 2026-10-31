@@ -9,9 +9,9 @@
   "next": "Plan frozen; implementation, tests and docs follow. W-10 (File now panel and DR 0252 PDF) is the next bundle after verified merge.",
   "references": [
     {
-      "path": "src/lib/desk-navigation.ts",
-      "anchor": "export function deskNavigation",
-      "purpose": "The role-filtered menu"
+      "path": "src/lib/desk-areas.ts",
+      "anchor": "export function visibleAreas",
+      "purpose": "The role-filtered menu (AR-10a: desk-navigation.ts retired; the areas model in desk-areas.ts is its successor)"
     },
     {
       "path": "src/domains/tax/filing-attention.ts",
@@ -71,8 +71,7 @@
     "unit": [
       "tests/w8-menu-sections.test.ts",
       "tests/w8-section-tabs.test.tsx",
-      "tests/desk-navigation.test.ts",
-      "tests/e2-app-shell.test.tsx"
+      "tests/kit/area-tabs.test.tsx"
     ],
     "db": [
       "tests/w9-filing-autopilot-integration.test.ts",

@@ -1,0 +1,165 @@
+{
+  "acceptance": [
+    "Old URLs keep working: /desk/customers stays the URL, ?page= ignored (params tests); the export route accepts the new list params with the current filters",
+    "Segments: for 30 fixture customers the tab query returns exactly those whose customerSegments() includes the segment (integration); the pure rule table is unit-tested incl. multi-segment customers",
+    "Owed per customer equals the Bills open total on one fixture (view owedCents vs billTabWhere(\"open\") compared in the integration test)",
+    "Staff rows carry no money fields in type or runtime (monthlyRentCents/owedCents/pastDueCents/autopay absent from the staff SELECT); staff get no Owes tab and money sorts fall back to the default",
+    "Search: phone digits (>= 4 digits via phoneDigits), name/email/company/address ILIKE, exact appliance assetNumber on a current assignment (integration)",
+    "Cursor paging returns each row once across pages for every sort (integration); walk-in never appears in rows or counts",
+    "Capacity: 20,000 customers / 60,000 addresses / 30,000 agreements / 120,000 invoices / 40,000 jobs — list (each sort), counts and search each under 150 ms in the Performance Baselines job, timings output",
+    "ci green at the exact head; every review comment read; axe + 5 sizes in the browser spec"
+  ],
+  "baseline": "c9924f069825cf2e1a9d1d1bb292ac22a26b7534",
+  "card": "docs/pr-cards/AR-4.md",
+  "checks": {
+    "browser": [
+      "e2e/customers-list.spec.ts"
+    ],
+    "db": [
+      "tests/customer-list-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/customer-segments.test.ts",
+      "tests/customer-keys.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "AR-4C",
+  "invariants": [
+    "No stored CustomerSummary table: facts are computed live in the customer_list_v1 SQL view (spec section 1 design change); a cache follow-up only if the capacity test fails its 150 ms budget, and only after a STATUS + card write-up",
+    "Roles filtered at the query/DTO boundary: the STAFF select omits money columns entirely (two SQL selects); the page never renders money for staff",
+    "getCustomers() stays ungated: on current main five staff-used picker pages call it too (the spec assumed the export route was the only caller — drift, recorded in the S3 commit); the export route enforces OWNER/ADMIN itself and moves to the new list query (max 10,000 rows)",
+    "Money is integer cents; times stored UTC, shown America/Denver (past-due uses start of today Denver, computed in the reading query, never in the view)",
+    "Migrations additive only; Customer.phoneDigits maintained by every customer create/update that sets phone, following the leads contactKeys pattern",
+    "Every money or irreversible action on the screen goes through its existing confirmation and existing actions (payPathFor target, jobs/new, estimates/new links only — no new write paths)"
+  ],
+  "next": "AR-4d — Quotes and Messages (QUOTES-MESSAGES.md): paged quotes, role checks on quote reads, inbox words, \"Link to a person…\" — Lane 5, after AR-4c lands.",
+  "outcome": "The Customers list becomes the CU-1 working tool at the same /desk/customers URL: an additive migration adds Customer.phoneDigits (backfilled, trigram GIN indexes, plain btree indexes where missing) and the customer_list_v1 SQL view computing counts/rent/owed/next-visit/next-bill/ending/pickup facts live per customer; a pure segments module (setting-up/active/owes/ending/past/new) whose rules and SQL fragments are proven equal on fixtures; a cursor-paged list query with role-shaped selects (staff see no money), search across name/phone/email/company/address/appliance number, filters, six sorts and segment counts from the same view; next-event text; and the KIT 5.1 screen — StatusTabs with counts, toolbar with the AR-12 built-in customers views, segment pills, row actions (Call, Take payment, Schedule a visit, New quote, Open), a SidePanel record summary, and the filtered CSV export.",
+  "parent": "AR-4",
+  "proposedFiles": [
+    "docs/DATABASE.md",
+    "docs/STATUS.md",
+    "docs/pr-cards/AR-4.md",
+    "docs/pr-cards/execution/AR-4C.json",
+    "docs/pr-cards/work-index.json",
+    "e2e/customers-list.spec.ts",
+    "e2e/shards.json",
+    "prisma/migrations/20261026040000_customer_list/migration.sql",
+    "prisma/schema.prisma",
+    "src/app/desk/customers/export/route.ts",
+    "src/app/desk/customers/page.tsx",
+    "src/components/kit/built-in-views.ts",
+    "src/domains/customers/index.ts",
+    "src/domains/customers/keys.ts",
+    "src/domains/customers/list.ts",
+    "src/domains/customers/segments.ts",
+    "src/lib/glossary.ts",
+    "tests/customer-keys.test.ts",
+    "tests/customer-list-integration.test.ts",
+    "tests/customer-segments.test.ts",
+    "tests/perf/customers-list.perf.test.ts"
+  ],
+  "references": [
+    {
+      "anchor": "# Screen + engine spec — Customers list as a working tool (CU-1 + AR-4c)",
+      "path": "docs/build-specs/screens/CUSTOMERS.md",
+      "purpose": "The AR-4c spec: the no-summary-table design change, the view columns, segment rules, list query contract, screen layout, exact words, named tests"
+    },
+    {
+      "anchor": "## Split (four PRs, any order after their prerequisites)",
+      "path": "docs/pr-cards/AR-4.md",
+      "purpose": "The parent card's split: AR-4c is the Customers list (CU-1 engine and screen); AR-4d follows, not started early"
+    },
+    {
+      "anchor": "## 4. CU-1 — The customer list as a working tool (and data foundations)",
+      "path": "docs/designs/CUSTOMERS-WORKSPACE.md",
+      "purpose": "Design section 4: the segment definitions the pure rules implement (the spec changes only the section 1 storage choice)"
+    },
+    {
+      "anchor": "export async function getCustomers() {",
+      "path": "src/domains/customers/index.ts",
+      "purpose": "The existing read that gains requireRole(\"OWNER\",\"ADMIN\"); getCustomersCount below it is replaced by view-based counts (walk-in bug fixed for good)"
+    },
+    {
+      "anchor": "export function billTabWhere(tab: BillTab, now: Date): Prisma.InvoiceWhereInput {",
+      "path": "src/domains/billing/bill-status.ts",
+      "purpose": "The Bills open-tab rule the view's owedCents must equal per customer (spec section 2 comparison test)"
+    },
+    {
+      "anchor": "export function payPathFor(b: {",
+      "path": "src/domains/billing/bill-status.ts",
+      "purpose": "The existing payment path the row's Take payment action opens for the oldest open bill"
+    },
+    {
+      "anchor": "export function leadContactKeys(input: {",
+      "path": "src/domains/leads/keys.ts",
+      "purpose": "The LD-1 contact-keys pattern Customer.phoneDigits maintenance copies (customers/keys.ts)"
+    },
+    {
+      "anchor": "export async function getRentalEndingNoticeDays(): Promise<number> {",
+      "path": "src/domains/agreements/ending-notice.ts",
+      "purpose": "The owner setting that supplies endingDays for the ending segment and sort"
+    },
+    {
+      "anchor": "model Customer {",
+      "path": "prisma/schema.prisma",
+      "purpose": "The Customer model gaining phoneDigits + its index; enum and relation names for the view SQL are checked against this schema"
+    }
+  ],
+  "risk": "Money display and customer contact data. The conservative direction is structural: the list engine only reads — money facts come from the same invoice rows the Bills tab counts (proven equal on one fixture), staff money is removed in the SQL select itself (not hidden in the page), and every action on the screen links to an existing flow (payment via payPathFor, jobs/new, estimates/new) with its own confirmations. The migration is additive (one nullable column, indexes, one view); the one behavior change with reach is getCustomers() gaining its OWNER/ADMIN role check, whose only callers are the export route and tests.",
+  "sequence": [
+    "S1 migration (phoneDigits + backfill, trigram/btree indexes, customer_list_v1 view) + DATABASE.md + keys.ts maintenance at every customer phone write",
+    "S2 segments.ts (pure rules + segmentWhereSql) with the rule-table unit tests",
+    "S3 list.ts (role-shaped selects, search, filters, sorts, cursor, counts, nextEventText) + integration tests + getCustomers role check + export route move",
+    "S4 /desk/customers screen (KIT 5.1: StatusTabs, toolbar + AR-12 views, pills, row actions, SidePanel, Fab, empties) + built-in view param mapping",
+    "S5 perf/capacity test + browser spec + shards + docs + STATUS"
+  ],
+  "slices": [
+    {
+      "id": "AR-4C-S1",
+      "title": "Data: phoneDigits + indexes + customer_list_v1 view (additive migration)",
+      "acceptance": [
+        "Migration 20261026040000_customer_list: Customer.phoneDigits + index, backfill via regexp_replace, pg_trgm no-op, trigram GIN on User.name/User.email/Customer.companyName/ServiceAddress.line1/city, btree indexes where missing, CREATE OR REPLACE VIEW customer_list_v1 with the spec's columns",
+        "keys.ts customerContactKeys follows the leads pattern; every customer create/update that sets phone also sets phoneDigits (grep + tests/customer-keys.test.ts)",
+        "docs/DATABASE.md documents the column and the view"
+      ]
+    },
+    {
+      "id": "AR-4C-S2",
+      "title": "Segments: pure rules + SQL fragments",
+      "acceptance": [
+        "customerSegments(row, now, endingDays) implements setting-up/active/owes/ending/past/new exactly per spec section 3 (unit rule table incl. multi-segment)",
+        "segmentWhereSql(segment) fragments express the same conditions for the reading query"
+      ]
+    },
+    {
+      "id": "AR-4C-S3",
+      "title": "List query: role-shaped selects, search, filters, sorts, cursor, counts; export move",
+      "acceptance": [
+        "getCustomerList + getCustomerSegmentCounts per spec section 4; STAFF select omits money columns and rejects owes segment/money sorts (fallback to default)",
+        "Integration: each tab = rule on 30 fixtures; owed equals Bills open total; staff rows have no money fields at runtime; search by phone digits/address/asset number; cursor once-each per sort; walk-in never appears or counts",
+        "getCustomers() requires OWNER/ADMIN; /desk/customers/export serves the new list query with the current filters, max 10,000 rows"
+      ]
+    },
+    {
+      "id": "AR-4C-S4",
+      "title": "Screen: /desk/customers as the KIT 5.1 work queue",
+      "acceptance": [
+        "StatusTabs with counts (Owes money OWNER/ADMIN only; 0-count tabs hidden except Active; All in the views menu); toolbar search/filters/sorts with the spec's exact words; AR-12 customers built-in views mapped to the new params",
+        "Rows: segment pill priority per spec, money + autopay OWNER/ADMIN only, next-event text, Call / Take payment / Schedule a visit / New quote / Open actions; desktop columns per spec; row click opens the SidePanel summary with Open full page",
+        "Fab New customer (OWNER/ADMIN); empty states per spec; ?page= ignored"
+      ]
+    },
+    {
+      "id": "AR-4C-S5",
+      "title": "Proof: capacity, browser, docs",
+      "acceptance": [
+        "tests/perf/customers-list.perf.test.ts: 20k/60k/30k/120k/40k fixtures; list (each sort), counts, search each < 150 ms with timings output",
+        "e2e/customers-list.spec.ts: tabs, search, side panel, staff sees no money and no Owes tab, export downloads the filtered rows; axe + 5 sizes; registered in e2e/shards.json",
+        "STATUS + AR-4 Progress + DATABASE.md current"
+      ]
+    }
+  ],
+  "version": 1
+}

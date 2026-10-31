@@ -7,7 +7,8 @@ import { OBLIGATIONS } from "@/domains/compliance/registry";
 import { PAPERWORK_STATUS_LABEL, type PaperworkStatusValue } from "@/domains/paperwork/rules";
 import { businessDateKey } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
-import { Button, Card, PageHeader, StatusPill } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
+import { RecordHeader, type Tone } from "@/components/kit";
 import { deletePaperworkAction, markPaperworkDoneAction, updatePaperworkAction } from "../actions";
 import {
   archiveRecordAction,
@@ -38,6 +39,9 @@ const HISTORY_LABEL: Record<string, string> = {
 };
 
 
+// The paperwork status words take the kit header pill tones (ui pill: success/progress/stopped/pending).
+const STATUS_TONE: Record<string, Tone> = { DONE: "good", IN_PROGRESS: "attention", NOT_NEEDED: "neutral" };
+
 export default async function PaperworkItemPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const isOwner = session.user.role === "OWNER";
@@ -63,18 +67,18 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <RecordHeader
         title={record.title}
-        description={record.whatItIs ?? undefined}
-        secondaryActions={<Link href="/desk/paperwork" className="text-sm font-semibold text-action underline">Back to all records</Link>}
+        subtitle={record.whatItIs ?? undefined}
+        pills={[
+          {
+            label: PAPERWORK_STATUS_LABEL[record.status as PaperworkStatusValue],
+            tone: STATUS_TONE[record.status] ?? "info",
+          },
+          { label: record.kindLabel, tone: "neutral" },
+        ]}
+        back={{ href: "/desk/paperwork", label: "All records" }}
       />
-      <p>
-        <StatusPill
-          tone={record.status === "DONE" ? "success" : record.status === "IN_PROGRESS" ? "progress" : record.status === "NOT_NEEDED" ? "stopped" : "pending"}
-          label={PAPERWORK_STATUS_LABEL[record.status as PaperworkStatusValue]}
-        />{" "}
-        <span className="ml-2 inline-block rounded bg-accent px-1.5 py-0.5 text-xs font-semibold">{record.kindLabel}</span>
-      </p>
       <div className="flex flex-wrap gap-4 text-sm">
         {record.officialUrl && (
           <a href={record.officialUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-action underline">
@@ -135,7 +139,7 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
       </Card>
 
       {isOwner && (
-        <Card title="Login" description="The vault login for this account, if you've saved one. The password itself lives in the vault — it's shown only there, after a fresh sign-in code.">
+        <Card title="Login" description="The vault login for this account, if you've saved one. The password stays in the vault — shown only there, after a fresh sign-in code.">
           {linkedLogin ? (
             <p className="text-sm">
               Login:{" "}

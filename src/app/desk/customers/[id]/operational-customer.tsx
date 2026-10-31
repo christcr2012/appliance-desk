@@ -61,7 +61,7 @@ export async function OperationalCustomer({ id }: { id: string }) {
       <section className="mt-6 rounded-lg border border-line bg-white p-5">
         <h2 className="font-medium">Rental status</h2>
         {customer.rentalAgreements.length === 0 ? (
-          <p>No agreements yet.</p>
+          <p>No rentals yet.</p>
         ) : (
           <ul className="mt-2 space-y-2">
             {customer.rentalAgreements.map((a) => (

@@ -30,6 +30,9 @@ export const BACKUP_MODEL_POLICY = {
   AgentOperation: "agentOperation",
   MonitorRule: "monitorRule",
   MonitorRun: "monitorRun",
+  // MCP-8 samples are temporary telemetry, but approved proposals are durable business evidence.
+  PerfSample: null,
+  OptimizationProposal: "optimizationProposal",
   // MCP-6: keep repair provenance and verification evidence in backup/restore.
   RepairCase: "repairCase",
   RepairEvidence: "repairEvidence",
@@ -295,6 +298,10 @@ export const BACKUP_MODEL_POLICY = {
   OwnerInsurancePolicy: "ownerInsurancePolicy",
   InsuranceCertificateRequest: "insuranceCertificateRequest",
   TeamCertification: "teamCertification",
+  // AR-13: notifications are short-lived messages (nothing important is lost by leaving them out of
+  // backups); the per-kind channel preferences are restored like other personal settings.
+  Notification: null,
+  NotificationPreference: "notificationPreference",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

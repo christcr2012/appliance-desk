@@ -15,10 +15,11 @@ export default async function SplitOldSetPage({ params }: { params: Promise<{ id
   const { appliance } = plan;
   return (
     <div className="max-w-3xl">
-      <PageHeader
-        title={`Split ${appliance.assetNumber} into separate machines`}
-        description={`A ${plan.packageName} is now a set of separate machines, each with its own model, serial number and history. This record becomes the first machine and keeps everything recorded so far; the others are added with new asset numbers.`}
-      />
+      <PageHeader title={`Split ${appliance.assetNumber} into separate machines`} />
+      <p className="-mt-2 mb-6 max-w-2xl text-sm leading-6 text-ink-soft">
+        A {plan.packageName} is now a set of separate machines, each with its own model, serial number and history.
+        This record becomes the first machine and keeps everything recorded so far; the others are added with new asset numbers.
+      </p>
       <Card>
         <ul className="mb-4 space-y-1 text-sm text-ink-soft">
           <li>Status stays: {appliance.status.toLowerCase().replaceAll("_", " ")}.</li>

@@ -6,7 +6,7 @@ vi.mock("@/lib/session", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { getCustomersPage } from "@/domains/customers";
+import { getCustomerList } from "@/domains/customers/list";
 import { getJobsPage } from "@/domains/jobs";
 import { getChurnRiskCustomers, getWinBackLeads } from "@/domains/growth";
 
@@ -95,7 +95,7 @@ describe.skipIf(!enabled)("Batch E large-list baseline (isolated CI Postgres)", 
   it("keeps customer, job and growth lists bounded and records wall time", async () => {
     const asOf = new Date("2026-10-05T18:00:00Z");
     const customers = await measured("customers page / 1000 customers", () =>
-      getCustomersPage(0, PAGE_SIZE),
+      getCustomerList({ segment: "all" }),
     );
     const jobs = await measured("jobs page / 500 jobs", () =>
       getJobsPage(undefined, 0, PAGE_SIZE),
@@ -107,7 +107,7 @@ describe.skipIf(!enabled)("Batch E large-list baseline (isolated CI Postgres)", 
       getChurnRiskCustomers(asOf),
     );
 
-    expect(customers.value).toHaveLength(PAGE_SIZE);
+    expect(customers.value.rows).toHaveLength(PAGE_SIZE);
     expect(jobs.value).toHaveLength(PAGE_SIZE);
     expect(winBack.value.length).toBeLessThanOrEqual(100);
     expect(churn.value.length).toBeLessThanOrEqual(100);

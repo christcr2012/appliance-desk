@@ -1,17 +1,14 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { JobStatus } from "@prisma/client";
 import { requireRole } from "@/lib/session";
 import { getJobsPage, getJobsCount } from "@/domains/jobs";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { FilterBar } from "@/components/desk/workspace";
 import {
-  DataList,
   EmptyState,
-  PageHeader,
   StatusPill,
-  type DataListColumn,
 } from "@/components/ui";
+import { DataTable, ScreenHeader, StatusTabs, type Column } from "@/components/kit";
 import {
   jobStatusLabel,
   jobStatusTone,
@@ -42,12 +39,16 @@ type JobRow = Awaited<ReturnType<typeof getJobsPage>>[number];
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; page?: string; open?: string }>;
 }) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const canScheduleJobs =
     session.user.role === "OWNER" || session.user.role === "ADMIN";
-  const { status: rawStatus, page: rawPage } = await searchParams;
+  const { status: rawStatus, page: rawPage, open } = await searchParams;
+  // The kit table's row click sets ?open=<id> (its side-panel convention).
+  // Jobs have no side panel — the record page IS the destination, as it
+  // was before the redesign — so an ?open= link goes straight there.
+  if (open) redirect(`/desk/jobs/${encodeURIComponent(open)}`);
   const status = isJobStatus(rawStatus) ? rawStatus : undefined;
   const filter = status ? { status } : undefined;
 
@@ -66,21 +67,17 @@ export default async function JobsPage({
     return qs ? `/desk/jobs?${qs}` : "/desk/jobs";
   }
 
-  const columns: DataListColumn<JobRow>[] = [
+  const columns: Column<JobRow>[] = [
     {
       key: "job",
       header: "Job",
-      primary: true,
       cell: (job) => (
         <div>
-          <Link
-            href={`/desk/jobs/${job.id}`}
-            className="font-semibold text-ink underline-offset-4 hover:underline"
-          >
+          <span className="font-semibold text-ink">
             {jobKindLabel(job)}
             {job.customer &&
               ` — ${job.customer.user.name ?? job.customer.user.email}`}
-          </Link>
+          </span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
             {job.serviceAddress
               ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
@@ -111,29 +108,34 @@ export default async function JobsPage({
 
   return (
     <div>
-      <PageHeader
+      <ScreenHeader
         title="Jobs"
-        description="Review scheduled, active, completed, and cancelled service work."
-        primaryAction={
-          canScheduleJobs
-            ? { href: "/desk/jobs/new", label: "Schedule a job" }
-            : undefined
-        }
+        list
+        primary={canScheduleJobs ? { kind: "link", label: "Schedule a job", href: "/desk/jobs/new" } : undefined}
       />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Review scheduled, active, completed, and cancelled service work.
+      </p>
 
-      <FilterBar
+      <StatusTabs
         label="Filter jobs by status"
-        items={STATUS_TABS.map((tab) => ({
-          href: jobsHref(1, tab.value),
-          label: tab.label,
-          active: (status ?? "ALL") === tab.value,
-        }))}
+        param="status"
+        current={status ?? "ALL"}
+        items={STATUS_TABS.map((tab) => ({ value: tab.value, label: tab.label }))}
       />
 
-      <DataList
+      <DataTable
         rows={jobs}
+        rowKey={(job) => job.id}
         columns={columns}
         caption="Jobs"
+        rowHref={(job) => `/desk/jobs/${job.id}`}
+        mobileCard={(job) => (
+          <div className="space-y-1">
+            {columns[0].cell(job)}
+            {columns[1].cell(job)}
+          </div>
+        )}
         empty={
           <EmptyState
             title={status ? "No jobs with this status" : "No jobs scheduled yet"}

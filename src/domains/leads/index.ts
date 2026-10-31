@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { requestInvitationEmail } from "@/lib/password-email";
 import { deliverMessage } from "@/domains/messaging/deliver";
+import { notifySafely } from "@/domains/notifications";
 import {
   createTrustedCredentialUserInTx,
   generateUnusedAccountPassword,
@@ -14,6 +15,7 @@ import { readZoneSettings, zoneForPoint } from "@/domains/delivery/zone";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
 import { leadContactKeys } from "./keys";
+import { customerContactKeys } from "@/domains/customers/keys";
 import { recordRealContactInTx, markFirstContactInTx } from "./contact";
 import { chooseOwnerForNewLeadInTx, lockLeadAssignmentInTx } from "./assignment";
 import { findDuplicateForNewLeadInTx } from "./duplicates";
@@ -145,6 +147,20 @@ export async function createLead(input: LeadFormInput) {
     return created;
   });
 
+  // AR-13: the bell notification (per person, with their own preferences) — separate from the
+  // long-standing owner email below. Fired after the create committed; it can never fail the form.
+  const firstRequest = lead.applianceRequests[0];
+  notifySafely({
+    kind: "LEAD_NEW",
+    dedupeKey: `LEAD_NEW:${lead.id}`,
+    title: `New lead: ${lead.contactName}`,
+    body: `${lead.city ?? "No city"} · ${firstRequest?.applianceType?.name ?? firstRequest?.package?.name ?? "No appliance chosen"}. It's on your To do list.`,
+    href: `/desk/leads/${lead.id}`,
+    entityType: "Lead",
+    entityId: lead.id,
+    assigneeId: lead.assignedToUserId,
+  });
+
   const notifyTo = process.env.LEAD_NOTIFICATION_EMAIL || settings.publicEmail;
   const applianceSummary = summarizeApplianceRequests(lead.applianceRequests);
 
@@ -200,7 +216,21 @@ export type ManualLeadInput = {
 export async function createLeadManually(userId: string, input: ManualLeadInput) {
   // LD-1: one transaction, so the owner choice and the lead are never split
   // (in ROTATE mode the settings-row lock also keeps concurrent creates apart).
-  return prisma.$transaction((tx) => createLeadManuallyInTx(tx, userId, input));
+  const lead = await prisma.$transaction((tx) => createLeadManuallyInTx(tx, userId, input));
+  // AR-13: the bell notification, after the create commits. The person who created the lead by
+  // hand never receives it; the assignee and the other owners/admins do.
+  notifySafely({
+    kind: "LEAD_NEW",
+    dedupeKey: `LEAD_NEW:${lead.id}`,
+    title: `New lead: ${lead.contactName}`,
+    body: `${lead.city ?? "No city"} · No appliance chosen. It's on your To do list.`,
+    href: `/desk/leads/${lead.id}`,
+    entityType: "Lead",
+    entityId: lead.id,
+    assigneeId: lead.assignedToUserId,
+    excludeUserId: userId,
+  });
+  return lead;
 }
 
 /**
@@ -764,6 +794,7 @@ export async function convertLeadToCustomerInTx(
       data: {
         userId: account.id,
         phone: lead.phone,
+        ...customerContactKeys({ phone: lead.phone }),
         isBusiness: lead.isBusiness,
         isPropertyManager: lead.isPropertyManager,
         companyName: lead.companyName,

@@ -4,6 +4,7 @@ import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
   "tests/books-home-integration.test.ts", // AR-7 changes and restores the shared books start date and books problem counters.
+  "tests/notification-hooks-integration.test.ts", // AR-13 sets and restores the shared write-off approval limit.
   "tests/mcp-decisions-apply-integration.test.ts", // MCP-5 briefly applies and restores shared DEC-1 business settings.
   "tests/books-poster-integration.test.ts", // K-2A changes/restores the books start date; no parallel writes to singleton.
   "tests/settings-row-save-integration.test.ts", // AR-8 saves and restores shared settings rows through the row save.

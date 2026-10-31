@@ -10,14 +10,11 @@ import {
   DEFAULT_PAGE_SIZE,
 } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
-import { FilterBar } from "@/components/desk/workspace";
 import {
   Card,
-  DataList,
   EmptyState,
-  PageHeader,
-  type DataListColumn,
 } from "@/components/ui";
+import { DataTable, ScreenHeader, StatusTabs, type Column } from "@/components/kit";
 
 export const metadata = { title: "Activity" };
 
@@ -72,11 +69,10 @@ export default async function ActivityPage({
     return qs ? `/desk/activity?${qs}` : "/desk/activity";
   }
 
-  const columns: DataListColumn<ActivityRow>[] = [
+  const columns: Column<ActivityRow>[] = [
     {
       key: "activity",
       header: "Activity",
-      primary: true,
       cell: (entry) => (
         <div>
           <p className="font-semibold text-ink">
@@ -103,17 +99,20 @@ export default async function ActivityPage({
 
   return (
     <div>
-      <PageHeader
-        title="Activity"
-        description={`A read-only record of who changed what and when across pricing, settings, leads, estimates, jobs, and billing. ${DEFAULT_PAGE_SIZE} per page.`}
-      />
+      <div>
+        <ScreenHeader title="Activity" />
+        <p className="-mt-2 text-sm text-ink-soft">
+          {`A read-only record of who changed what and when across pricing, settings, leads, estimates, jobs, and billing. ${DEFAULT_PAGE_SIZE} per page.`}
+        </p>
+      </div>
 
-      <FilterBar
+      <StatusTabs
         label="Filter activity by time range"
+        param="range"
+        current={range}
         items={RANGE_TABS.map((tab) => ({
+          value: tab.value,
           label: tab.label,
-          href: href(1, tab.value),
-          active: range === tab.value,
         }))}
       />
 
@@ -153,10 +152,17 @@ export default async function ActivityPage({
         </div>
       )}
 
-      <DataList
+      <DataTable
         rows={entries}
+        rowKey={(entry) => entry.id}
         columns={columns}
         caption="Activity log"
+        mobileCard={(entry) => (
+          <div>
+            {columns[0].cell(entry)}
+            <p className="mt-1 text-sm text-ink-soft">{columns[1].cell(entry)}</p>
+          </div>
+        )}
         empty={
           <EmptyState
             title="Nothing recorded yet"

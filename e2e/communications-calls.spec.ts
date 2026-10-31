@@ -12,9 +12,9 @@ test.describe("owner call and voicemail navigation", () => {
   });
   test("opens missed-call list directly from Communications with no external audio", async ({ page }) => {
     await page.goto("/desk/communications");
-    const callLink = page.getByRole("link", { name: "Open missed-call inbox" });
-    await expect(callLink).toBeVisible();
-    await callLink.click();
+    // AR-4d: the calls inbox now lives in the Messages header overflow.
+    await page.getByRole("button", { name: "More for Messages" }).click();
+    await page.getByRole("menuitem", { name: "Calls & voicemail" }).click();
     await expect(page).toHaveURL(/\/desk\/communications\/calls$/);
     await expect(page.getByRole("heading", { name: "Calls & voicemail" })).toBeVisible();
     await expect(page.getByText("Calls requiring review")).toBeVisible();

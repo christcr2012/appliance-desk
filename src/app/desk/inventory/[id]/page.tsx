@@ -33,6 +33,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { RetiredPlanPanel } from "./retired-plan-panel";
 import { RefrigerantPanel } from "./refrigerant-panel";
 import { loadRefrigerantPanel } from "@/domains/refrigerant/actions";
+import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Appliance" };
 
@@ -93,28 +94,18 @@ export default async function ApplianceDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <Link href="/desk/inventory" className="text-sm text-ink-soft hover:underline">
-        &larr; Back to inventory
-      </Link>
-
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-2">
-        <h1 className="text-xl font-semibold">
-          {appliance.assetNumber} — {appliance.applianceType.name}
-        </h1>
-        <Link
-          href={`/desk/inventory/${id}/qr`}
-          className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
-        >
-          Print QR label
-        </Link>
-      </div>
-      <p className="mt-1 text-sm text-ink-soft">
-        Added {new Date(appliance.createdAt).toLocaleDateString()}
-        {appliance.acquisitionCostCents !== null &&
-          ` · cost ${formatCents(appliance.acquisitionCostCents)}`}
-        {appliance.purchaseDate &&
-          ` · purchased ${formatBusinessDate(appliance.purchaseDate)}`}
-      </p>
+      <RecordHeader
+        title={`${appliance.assetNumber} — ${appliance.applianceType.name}`}
+        subtitle={`Added ${new Date(appliance.createdAt).toLocaleDateString()}${appliance.acquisitionCostCents !== null ? ` · cost ${formatCents(appliance.acquisitionCostCents)}` : ""}${appliance.purchaseDate ? ` · purchased ${formatBusinessDate(appliance.purchaseDate)}` : ""}`}
+        back={{ href: "/desk/inventory", label: "Inventory" }}
+        actions={[
+          {
+            kind: "link",
+            label: "Print QR label",
+            href: `/desk/inventory/${id}/qr`,
+          },
+        ]}
+      />
 
       {awayForRepair && (
         <p className="mt-4 rounded-card border border-line bg-subtle p-3 text-sm text-ink">

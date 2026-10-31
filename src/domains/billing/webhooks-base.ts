@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { RDF_LINE_DESCRIPTION, RDF_LINE_DESCRIPTION_LEGACY } from "@/domains/tax/rdf-charges";
 import { completeProviderOperation } from "./provider-ops";
 import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
+import { notifySafely } from "@/domains/notifications";
+import { formatMoney } from "@/lib/money-ui";
 import {
   attachProviderIdsToReceiptPayments,
   createReceiptWithAllocations,
@@ -832,16 +834,52 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
   );
 }
 
+/**
+ * AR-13: what the caller needs to fire the PAYMENT_FAILED bell notification AFTER the webhook
+ * transaction commits. Handlers only collect it (inside the transaction); processStripeWebhookEvent
+ * sends it post-commit, exactly like the referral settlements. null = this failure has no bill
+ * (a deposit or signing payment), so the bill-shaped notification does not apply.
+ */
+export type PaymentFailureNotice = {
+  invoiceId: string;
+  customerId: string;
+  customerName: string;
+  amountCents: number;
+  invoiceNumber: number;
+  stripeEventId: string;
+};
+
+async function customerDisplayName(db: Prisma.TransactionClient, customerId: string): Promise<string> {
+  const customer = await db.customer.findUnique({
+    where: { id: customerId },
+    select: { companyName: true, user: { select: { name: true } } },
+  });
+  return customer?.companyName ?? customer?.user?.name ?? "A customer";
+}
+
 async function handleCheckoutSessionAsyncPaymentFailed(
   db: Prisma.TransactionClient,
   session: Stripe.Checkout.Session,
   event: Stripe.Event,
-): Promise<void> {
+): Promise<PaymentFailureNotice | null> {
   assertNoUnsettledW22Checkout(session);
   if (isLocalInvoiceSession(session)) {
     await recordLocalInvoiceCheckoutFailure(db, session);
     await onLocalCheckoutAsyncResult(db, session, event, "FAILED");
-    return;
+    const invoiceId = session.metadata!.localInvoiceId!;
+    const invoice = await db.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { customerId: true, invoiceNumber: true },
+    });
+    if (!invoice) return null;
+    return {
+      invoiceId,
+      customerId: invoice.customerId,
+      customerName: await customerDisplayName(db, invoice.customerId),
+      amountCents: session.amount_total ?? 0,
+      invoiceNumber: invoice.invoiceNumber,
+      stripeEventId: event.id,
+    };
   }
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
@@ -856,11 +894,11 @@ async function handleCheckoutSessionAsyncPaymentFailed(
         },
       },
     });
-    return;
+    return null;
   }
 
   const agreementId = session.metadata?.agreementId;
-  if (!agreementId) return;
+  if (!agreementId) return null;
   await db.auditLog.create({
     data: {
       userId: null,
@@ -872,6 +910,7 @@ async function handleCheckoutSessionAsyncPaymentFailed(
       },
     },
   });
+  return null;
 }
 
 async function rewardingReferralForCustomer(
@@ -943,19 +982,19 @@ async function handleInvoicePaymentFailed(
   evidence: WebhookEvidence,
   webhookInvoice: Stripe.Invoice,
   event: Stripe.Event,
-): Promise<void> {
+): Promise<PaymentFailureNotice | null> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
-  if (!subscriptionId) return;
+  if (!subscriptionId) return null;
 
   const agreement = await db.rentalAgreement.findUnique({
     where: { stripeSubscriptionId: subscriptionId },
     select: { id: true, customerId: true },
   });
-  if (!agreement) return;
+  if (!agreement) return null;
 
   const existing = await db.invoice.findUnique({
     where: { stripeInvoiceId: webhookInvoice.id },
-    select: { id: true },
+    select: { id: true, invoiceNumber: true },
   });
   if (existing) {
     // A subscription invoice is commonly mirrored as OPEN before Stripe
@@ -974,7 +1013,14 @@ async function handleInvoicePaymentFailed(
     });
     await attachInFlightRowsToBill(db, webhookInvoice.id, existing.id);
     await clearRowForFailedInvoice(db, extractPaymentIntentId(webhookInvoice), event);
-    return;
+    return {
+      invoiceId: existing.id,
+      customerId: agreement.customerId,
+      customerName: await customerDisplayName(db, agreement.customerId),
+      amountCents: webhookInvoice.amount_due,
+      invoiceNumber: existing.invoiceNumber,
+      stripeEventId: event.id,
+    };
   }
 
   const stripeInvoice = evidence.invoice(webhookInvoice.id as string);
@@ -1021,6 +1067,14 @@ async function handleInvoicePaymentFailed(
   // BILL-1: a bank payment that was being confirmed before this bill existed now belongs to it; a failure clears it.
   await attachInFlightRowsToBill(db, stripeInvoice.id, invoice.id);
   await clearRowForFailedInvoice(db, extractPaymentIntentId(stripeInvoice) ?? extractPaymentIntentId(webhookInvoice), event);
+  return {
+    invoiceId: invoice.id,
+    customerId: agreement.customerId,
+    customerName: await customerDisplayName(db, agreement.customerId),
+    amountCents: stripeInvoice.amount_due,
+    invoiceNumber: invoice.invoiceNumber,
+    stripeEventId: event.id,
+  };
 }
 
 async function handleChargeRefunded(
@@ -1173,12 +1227,14 @@ async function processLockedEvent(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   event: Stripe.Event,
-): Promise<string[]> {
+): Promise<{ referralIdsToSettle: string[]; paymentFailureNotices: PaymentFailureNotice[] }> {
   if (await alreadyProcessed(db, event.id)) {
-    return referralSettlementForProcessedEvent(db, event);
+    // A replayed event fires no new notifications: the first delivery already collected them.
+    return { referralIdsToSettle: await referralSettlementForProcessedEvent(db, event), paymentFailureNotices: [] };
   }
 
   const referralIdsToSettle: string[] = [];
+  const paymentFailureNotices: PaymentFailureNotice[] = [];
   switch (event.type) {
     case "checkout.session.completed":
       if (await processSigningCheckoutEvent(
@@ -1202,16 +1258,18 @@ async function processLockedEvent(
         event,
       );
       break;
-    case "checkout.session.async_payment_failed":
+    case "checkout.session.async_payment_failed": {
       if (await processSigningCheckoutEvent(
         db, evidence, event, event.data.object as Stripe.Checkout.Session,
       )) break;
-      await handleCheckoutSessionAsyncPaymentFailed(
+      const notice = await handleCheckoutSessionAsyncPaymentFailed(
         db,
         event.data.object as Stripe.Checkout.Session,
         event,
       );
+      if (notice) paymentFailureNotices.push(notice);
       break;
+    }
     case "invoice.paid": {
       const referralId = await handleInvoicePaid(
         db,
@@ -1222,9 +1280,11 @@ async function processLockedEvent(
       if (referralId) referralIdsToSettle.push(referralId);
       break;
     }
-    case "invoice.payment_failed":
-      await handleInvoicePaymentFailed(db, evidence, event.data.object as Stripe.Invoice, event);
+    case "invoice.payment_failed": {
+      const notice = await handleInvoicePaymentFailed(db, evidence, event.data.object as Stripe.Invoice, event);
+      if (notice) paymentFailureNotices.push(notice);
       break;
+    }
     // BILL-1: a bank payment the bank is confirming ("Being confirmed"), or that did not go through.
     case "payment_intent.processing":
       await handlePaymentIntentProcessing(db, evidence, event);
@@ -1252,7 +1312,7 @@ async function processLockedEvent(
   }
 
   await markProcessed(db, event);
-  return referralIdsToSettle;
+  return { referralIdsToSettle, paymentFailureNotices };
 }
 
 export type StripeWebhookProcessingResult = {
@@ -1292,12 +1352,12 @@ export async function processStripeWebhookEvent(
   const evidence = await gatherWebhookEvidence(event);
   for (let refill = 0; ; refill += 1) {
     try {
-      const referralIdsToSettle = await prisma.$transaction(
+      const { referralIdsToSettle, paymentFailureNotices } = await prisma.$transaction(
         async (db) => {
           await db.$queryRaw`SELECT pg_advisory_xact_lock(174831, 1)::text`;
           if (options.actorUserId) await assertActiveTeamActor(db, options.actorUserId, ["OWNER", "ADMIN"]);
           const wasProcessed = options.audit ? await alreadyProcessed(db, event.id) : true;
-          const ids = await processLockedEvent(db, evidence, event);
+          const outcome = await processLockedEvent(db, evidence, event);
           if (options.audit && !wasProcessed) {
             await db.auditLog.create({
               data: {
@@ -1309,10 +1369,23 @@ export async function processStripeWebhookEvent(
               },
             });
           }
-          return ids;
+          return outcome;
         },
         { maxWait: 10_000, timeout: 30_000 },
       );
+      // AR-13: the payment-failed bell notifications follow the committed webhook transaction and
+      // never change its result (the dedupe key is the Stripe event id, so a retry cannot double up).
+      for (const notice of paymentFailureNotices) {
+        notifySafely({
+          kind: "PAYMENT_FAILED",
+          dedupeKey: `PAYMENT_FAILED:${notice.stripeEventId}`,
+          title: `Payment failed: ${notice.customerName}`,
+          body: `${formatMoney(notice.amountCents)} for bill #${notice.invoiceNumber}. It's on your To do list.`,
+          href: `/desk/billing/customer/${notice.customerId}/invoice/${notice.invoiceId}`,
+          entityType: "Invoice",
+          entityId: notice.invoiceId,
+        });
+      }
       // This follows the committed webhook transaction and never changes its result.
       if(event.type==="invoice.paid")await postPaidInvoiceAfterWebhook(
        (event.data.object as Stripe.Invoice).id as string);

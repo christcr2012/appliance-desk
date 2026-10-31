@@ -24,7 +24,7 @@ export async function SmsTemplatePreview() {
   const reminder = previewDayOfReminder(limit);
   return (
     <div className="space-y-6">
-      <Card title="Scheduled job reminder (review only)" description="Legacy cron sending is held until a consent-checked, owner-approved automation is implemented.">
+      <Card title="Scheduled job reminder (review only)" description="The old scheduled sending is held until a consent-checked, owner-approved automation is implemented.">
         <p className="whitespace-pre-wrap text-sm">{reminder.sample.text}</p>
         <p className="mt-2 text-sm text-ink-soft">
           Sample: {reminder.sample.sms.segments} segments ({reminder.sample.sms.encoding});

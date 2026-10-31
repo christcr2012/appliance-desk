@@ -74,22 +74,40 @@ export default async function BudgetBackingPage({searchParams}:{
  }
  return <div className="space-y-6">
   <header className="space-y-2">
-   <Link className="underline" href="/desk/books/cash/checks">Back to bank statement reconciliation</Link>
+   <Link className="underline" href="/desk/books/cash/checks">Back to bank statement check</Link>
    <h1 className="text-2xl font-bold">Budget backing</h1>
-   <nav aria-label="Budget views" className="flex flex-wrap gap-3">
-    <Link className="underline p-2" href="/desk/books/budget" aria-current="page">My money</Link>
-    <Link className="underline p-2" href="/desk/books/budget?tab=plan">Plan ahead</Link>
-    <Link className="underline p-2" href="/desk/books/budget?tab=review">Monthly review</Link>
-    <Link className="underline p-2" href="/desk/books/reports">Review</Link>
-    <Link className="underline p-2" href="/desk/books/cash/checks">Bank checks</Link>
-    <Link className="underline p-2" href="/desk/books/budget#source-setup">Setup</Link>
+   <nav aria-label="Budget views">
+    <ul className="flex flex-wrap gap-3">
+     <li>
+      <Link className="underline p-2" href="/desk/books/budget" aria-current="page">My money</Link>
+     </li>
+     <li>
+      <Link className="underline p-2" href="/desk/books/budget?tab=plan">Plan ahead</Link>
+     </li>
+     <li>
+      <Link className="underline p-2" href="/desk/books/budget?tab=review">Monthly review</Link>
+     </li>
+     <li>
+      <Link className="underline p-2" href="/desk/books/reports">Review</Link>
+     </li>
+     <li>
+      <Link className="underline p-2" href="/desk/books/cash/checks">Bank checks</Link>
+     </li>
+     <li>
+      <Link className="underline p-2" href="/desk/books/budget#source-setup">Setup</Link>
+     </li>
+    </ul>
    </nav>
-   <p>Discretionary envelopes do not move money out of the bank. Protected tax, card and customer obligations are reserved first. A CSV or estimated rent is never spendable cash.</p>
+   <p>Discretionary envelopes do not move money out of the bank.
+    Protected tax, card and customer obligations are reserved first.
+    A CSV or estimated rent is never spendable cash.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
   </header>
   {owner&&preview&&<section id="funding-preview" className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Review before and after — no change has been submitted</h2>
-   <p>The displayed balance and protection calculations are read-only. Confirming rechecks the exact revision and source evidence inside one serializable transaction; if something changes, nothing is moved.</p>
+   <p>The displayed balance and protection calculations are read-only.
+    Confirming rechecks the exact revision and source evidence inside one serializable transaction;
+    if something changes, nothing is moved.</p>
    <p>Current unprotected ready balance: {dollars(snap.readyCents)}. After proposal: {dollars(preview.after)}.</p>
    {preview.changed.map(row=><p key={row.id}>{row.name}: {formatMoney(row.prior)} → {formatMoney(row.next)}</p>)}
    {preview.problem?<p role="alert">{preview.problem} The proposed movement cannot be confirmed.</p>:
@@ -115,7 +133,7 @@ export default async function BudgetBackingPage({searchParams}:{
   <section className="rounded-lg border border-border p-4 space-y-2">
    <h2 className="text-lg font-semibold">Cash ready to assign — {snap.status}</h2>
    <p role="status">Budget setup is {snap.enabled?"ON":"OFF"}. Funding approval: {snap.mayAssign?"Source conditions verified":"NOT AUTHORIZED"}.</p>
-   <p className="text-sm text-muted-foreground">Evidence date: {snap.asOf}. Source hash: <span className="break-all">{snap.sourceHash}</span>. The check is tied to the latest Books posting revision, bank/account review and protected liabilities.</p>
+   <p className="text-sm text-muted-foreground">Evidence date: {snap.asOf}. Source hash: <span className="break-all">{snap.sourceHash}</span>. The check is tied to the latest Books revision, bank review and protected liabilities.</p>
    <div className="grid gap-2 sm:grid-cols-2">
     <p>Source-backed bank cash: <strong>{dollars(snap.eligibleBankCents)}</strong></p>
     <p>Protected customer, tax and card debt: <strong>{formatMoney(snap.protectedTotalCents)}</strong></p>
@@ -131,7 +149,8 @@ export default async function BudgetBackingPage({searchParams}:{
   </section>
   <section className="rounded-lg border border-border p-4 space-y-2">
    <h2 className="text-lg font-semibold">Required protected obligations</h2>
-   <p>Customer deposits/credits are protected first, then tax and Colorado delivery fees, then business-card debt. A filing is not proof that tax was paid.</p>
+   <p>Customer deposits/credits are protected first, then tax and Colorado delivery fees, then business-card debt.
+    A filing is not proof that tax was paid.</p>
    {snap.protectedLiabilities.length?snap.protectedLiabilities.map(x=><p key={x.accountId}>
     {x.name}: required {formatMoney(x.requiredCents)} · currently backed {formatMoney(x.fundedCents)} · shortage {formatMoney(x.shortageCents)}
    </p>):<p>No classified liabilities were available; that does not establish absence of debt.</p>}
@@ -139,14 +158,17 @@ export default async function BudgetBackingPage({searchParams}:{
   </section>
   {owner&&<section id="source-setup" className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Owner review and activation</h2>
-   <p>Record references to independent bank statements, the current business-card debt and customer/tax liability review. No account or card numbers, passwords or unreviewed guessed amounts. This review expires when the day or journal changes.</p>
+   <p>Record references to independent bank statements, the current business-card debt and customer/tax liability review.
+    No account or card numbers, passwords or unreviewed guessed amounts.
+    This review expires when the day or journal changes.</p>
    <form action={attestBudgetAction} className="grid gap-3">
     <input type="hidden" name="asOf" value={asOf}/><input type="hidden" name="revision" value={snap.stateRevision}/>
     <label>Actual bank statement reference<input name="bankReference" minLength={12} maxLength={250} required className={input}/></label>
     <label>Current card balance/debt source<input name="cardReference" minLength={12} maxLength={250} required className={input}/></label>
     <label>Customer deposits, refunds, sales/use tax and fee obligations source<input name="liabilityReference" minLength={12} maxLength={250} required className={input}/></label>
     <label className="flex gap-2 items-start"><input type="checkbox" name="confirmed" value="confirmed" required/>
-     <span>I independently checked every active bank account and known protected obligation through today, with no omitted business card or pending customer refund.</span></label>
+     <span>I independently checked every active bank account and known protected obligation through today,
+      with no omitted business card or pending customer refund.</span></label>
     <button className={btn}>Save dated owner source review (does not enable funding)</button>
    </form>
    <form action={activateBudgetAction} className="grid gap-3 sm:grid-cols-2">
@@ -174,7 +196,10 @@ export default async function BudgetBackingPage({searchParams}:{
   </section>}
   <section className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Posted business spending — classification only</h2>
-   <p>Review existing Books bank outflows, not imported CSV duplicates. A real expense can post even when there is no envelope balance. This form only labels that posted debit; it cannot create a payment or bank transaction. Protected tax/card/deposit repayments are not discretionary spending.</p>
+   <p>Review existing Books bank outflows, not imported CSV duplicates.
+    A real expense can post even when there is no envelope balance.
+    This form only labels that posted debit; it cannot create a payment or bank transaction.
+    Protected tax/card/deposit repayments are not discretionary spending.</p>
    <p role="status">{snap.unassignedCount} unclassified business bank outflow(s); outstanding classification {formatMoney(snap.unassignedCents)}.</p>
    {!spending.length?<p>No recent discretionary bank outflows were found.</p>:spending.map(s=><article key={s.id} className="rounded border border-border p-3 space-y-2">
     <h3 className="font-semibold">{s.entry.memo} · {formatMoney(s.amountCents)}</h3>
@@ -199,7 +224,8 @@ export default async function BudgetBackingPage({searchParams}:{
   </section>
   <section className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Cleared supplier refunds — return original envelope funding</h2>
-   <p>Only real matched business-bank receipts credited against an expense may restore the exact original expense envelope. Customer refunds, card payments and un-cleared receipts are excluded.</p>
+   <p>Only real matched business-bank receipts credited against an expense may restore the exact original expense envelope.
+    Customer refunds, card payments and un-cleared receipts are excluded.</p>
    {owner&&refunds.clearedRefunds.length>0&&refunds.originals.length>0?
    <form action={applyRefundAction} className="grid gap-2 sm:grid-cols-2">
     <input type="hidden" name="revision" value={snap.stateRevision}/><input type="hidden" name="key" value={randomUUID()}/>
@@ -216,7 +242,8 @@ export default async function BudgetBackingPage({searchParams}:{
   </section>
   {owner&&<section className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Transfer already-funded cash between envelopes</h2>
-   <p>One atomic reviewed command releases the source and assigns the same amount to the destination. This is not a bank transfer and cannot move customer, tax or card reserves.</p>
+   <p>One atomic reviewed command releases the source and assigns the same amount to the destination.
+    This is not a bank transfer and cannot move customer, tax or card reserves.</p>
    <form action="/desk/books/budget" method="get" className="grid gap-2 sm:grid-cols-2">
     <input type="hidden" name="previewKind" value="TRANSFER"/>
     <input type="hidden" name="asOf" value={asOf}/><input type="hidden" name="revision" value={snap.stateRevision}/>
@@ -234,7 +261,9 @@ export default async function BudgetBackingPage({searchParams}:{
   </section>}
   <section className="rounded-lg border border-border p-4 space-y-4">
    <h2 className="text-lg font-semibold">One shared set of discretionary envelopes</h2>
-   <p>These balances carry forward between months. Releasing returns positive backing to the shared pool; assigning spends none of the bank cash by itself. Negative balances remain visible.</p>
+   <p>These balances carry forward between months.
+    Releasing returns positive backing to the shared pool; assigning spends none of the bank cash by itself.
+    Negative balances remain visible.</p>
    <div className="grid gap-3 md:grid-cols-2">{snap.envelopes.map(e=><article key={e.id} className="rounded border border-border p-3 space-y-2">
     <h3 className="font-semibold">{e.name}</h3>
     <p>{e.groupLabel} · {e.active?"Active":"Archived"} · balance {formatMoney(e.balanceCents)}</p>

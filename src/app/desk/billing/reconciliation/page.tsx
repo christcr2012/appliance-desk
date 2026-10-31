@@ -3,18 +3,15 @@ import {
   formatBusinessDate,
   formatBusinessTime,
 } from "@/lib/business-date";
-import {
-  ButtonLink,
+import { ButtonLink,
   DataList,
   EmptyState,
-  PageHeader,
-  type DataListColumn,
-} from "@/components/ui";
+    type DataListColumn } from "@/components/ui";
 import { formatMoney } from "@/lib/money-ui";
 import { loadBillingReconciliationPageData } from "./data";
 import { recordBankPaymentAction } from "./actions";
 
-export const metadata = { title: "Billing reconciliation" };
+export const metadata = { title: "Billing check" };
 
 type ReconciliationRow = Awaited<
   ReturnType<typeof loadBillingReconciliationPageData>
@@ -75,15 +72,12 @@ export default async function BillingReconciliationPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Billing reconciliation"
-        description="Read-only provider and ledger mismatches that may need investigation. This page never repairs or retries anything."
-        secondaryActions={
-          <ButtonLink href="/desk/billing" variant="secondary">
-            Back to billing
-          </ButtonLink>
-        }
-      />
+      <Link href="/desk/billing" className="text-sm text-ink-soft hover:underline">
+        &larr; Back to billing
+      </Link>
+
+      <h1 className="mt-2 text-xl font-semibold">Billing check</h1>
+      <p className="mt-1 text-sm text-ink-soft">Read-only provider and record mismatches that may need investigation. This page never repairs or retries anything.</p>
 
       <p className="mb-4 text-sm text-ink-soft">
         Last checked {formatBusinessDate(checkedAt)} at{" "}
@@ -97,7 +91,7 @@ export default async function BillingReconciliationPage() {
         empty={
           <EmptyState
             title="No billing/provider drift detected"
-            description="The bounded reconciliation scan did not find any mismatches that need investigation."
+            description="The bounded check did not find any mismatches that need investigation."
           />
         }
       />

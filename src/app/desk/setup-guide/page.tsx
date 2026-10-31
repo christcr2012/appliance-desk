@@ -2,8 +2,10 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getSetupGuideState } from "@/domains/setup/guide";
 import { WALKTHROUGHS } from "@/domains/setup/walkthroughs";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { dismissWalkthroughAction, restoreWalkthroughAction } from "./actions";
+
+import { ScreenHeader } from "@/components/kit";
 
 export const metadata = { title: "Set up your business" };
 export const dynamic = "force-dynamic";
@@ -45,10 +47,12 @@ export default async function SetupGuidePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Set up your business"
-        description="Guided walkthroughs for the accounts and papers the business needs — your LLC, tax numbers, bank, licenses, insurance and backups. Each step says exactly what to do, and where it produces a number or a file, you save it straight onto the business record. Steps the app can check, it checks itself."
-      />
+      <ScreenHeader title="Set up your business" />
+      <p className="-mt-2 pb-2 text-sm text-ink-soft">
+        Guided walkthroughs for the accounts and papers the business needs — your LLC, tax numbers, bank, licenses, insurance and backups.
+        Each step says exactly what to do, and where it produces a number or a file, you save it straight onto the business record.
+        Steps the app can check, it checks itself.
+      </p>
 
       {suggested ? (
         <Card

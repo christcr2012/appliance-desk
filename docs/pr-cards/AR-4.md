@@ -27,7 +27,25 @@ Reason: each list is an independent, usable screen with its own data and risks; 
 - [ ] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
 
 ## Progress
-AR-4a (Rentals) is merged (PR #723). AR-4b (Leads) is built in this PR — see
-the top STATUS entry and packet AR-4B: queue, record, bulk actions, board,
+AR-4a (Rentals) is merged (PR #723). AR-4b (Leads) is merged — see the top
+STATUS entry and packet AR-4B: queue, record, bulk actions, board,
 quote-for-an-existing-lead, lead editing and CSV export, all on the kit.
-AR-4c (Customers list) is next; AR-4d (Quotes and Messages) has not started.
+AR-4c (Customers list) is merged (Lane 5, packet AR-4C, PR #761, squash
+125fb162; the native-workspace pilot card — see the top STATUS entry).
+One follow-up is named: "CU-1 perf: base-table query redesign". AR-4d
+(Quotes and Messages) is merged (Lane 5, packet AR-4D, PR #773, squash
+32263c85 — see the top STATUS entry). Its packet names the same CU-1 perf
+follow-up next. **That follow-up is now complete:** CU1-PERF merged (Lane 5,
+PR #776, squash fa170dbd) — the Customers list reads run on base tables;
+the two budgets the redesign could not meet at the 20,000-customer seed
+(attention sort, segment counts) were amended to 300 ms by the owner's
+2026-10-30 ruling (CUSTOMERS.md §1). See the top STATUS entry.
+
+**The CU-1 chain is now fully closed:** CU1-VIEW (packet CU1-VIEW, following
+CU1-PERF) retired the `customer_list_v1` view itself — CU1-PERF had moved
+every production read to base tables and left the view "for other readers
+until a separate card retires it"; its only remaining readers were the two
+oracle queries in `tests/customer-list-integration.test.ts`, which now
+compute the segment facts from the base tables directly. Migration
+`20261218000000_customer_list_view_retire` drops the view; no table, column
+or data changes. See the top STATUS entry.

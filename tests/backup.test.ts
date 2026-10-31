@@ -22,7 +22,8 @@ const SCHEMA_MODELS = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(
 const EXCLUDED_MODELS = ["Session", "Account", "Verification", "RateLimit", "TwoFactor", "KnownDevice", "OpsAgentKey", "TeamInvitation", "StoredFileCleanup", "VaultUnlock", "EmergencyAccessRequest",
   // OAuth credentials, signing keys, grants and tokens never belong in a business backup.
   "Jwks", "OauthClient", "OauthResource", "OauthClientResource", "OauthRefreshToken", "OauthAccessToken", "OauthConsent", "OauthClientAssertion",
-  "AgentPass", "AgentResult"];
+  // RTC credentials/results, performance telemetry and notifications must not be restored.
+  "AgentPass", "AgentResult", "PerfSample", "Notification"];
 const BACKUP_TABLES = SCHEMA_MODELS.filter((model) => !EXCLUDED_MODELS.includes(model))
   .map((model) => model[0]!.toLowerCase() + model.slice(1));
 const ALL_TABLES = SCHEMA_MODELS.map((model) => model[0]!.toLowerCase() + model.slice(1));

@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
 import { getSuppliers } from "@/domains/purchasing";
 import { getAllApplianceTypes } from "@/domains/settings";
 import { businessDateKey } from "@/lib/business-date";
-import { ButtonLink, Card, PageHeader } from "@/components/ui";
+import { ButtonLink, Card } from "@/components/ui";
 import { RecordPurchaseForm } from "./record-purchase-form";
 
 export const metadata = { title: "Record a purchase" };
@@ -14,11 +15,12 @@ export default async function NewPurchasePage() {
   const [suppliers, types] = await Promise.all([getSuppliers(), getAllApplianceTypes()]);
   return (
     <div className="max-w-4xl">
-      <PageHeader
-        title="Record a purchase"
-        description="One receipt, one seller, any number of appliances. Each appliance gets its own record and its own share of the tax."
-        secondaryActions={<ButtonLink href="/desk/purchases" variant="secondary">All purchases</ButtonLink>}
-      />
+      <Link href="/desk/purchases" className="text-sm text-ink-soft hover:underline">
+        &larr; Back to purchases
+      </Link>
+
+      <h1 className="mt-2 text-xl font-semibold">Record a purchase</h1>
+      <p className="mt-1 text-sm text-ink-soft">One receipt, one seller, any number of appliances. Each appliance gets its own record and its own share of the tax.</p>
       <Card title="Purchase details">
         <RecordPurchaseForm
           operationKey={randomUUID()}
