@@ -2,10 +2,22 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 const m = vi.hoisted(() => ({ jobs: vi.fn() }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { job: { findMany: m.jobs }, businessSettings: { findUnique: async () => ({ defaultJobDurationMinutes: 120 }) } },
+  prisma: {
+    job: { findMany: m.jobs },
+    // AR-5: the Board page also reads the assignable team members for its Who picker.
+    user: { findMany: async () => [] },
+    businessSettings: { findUnique: async () => ({ defaultJobDurationMinutes: 120 }) },
+  },
 }));
 vi.mock("@/lib/session", () => ({
   requireRole: async () => ({ user: { role: "OWNER" } }),
+}));
+// AR-5: the Board's rows are client islands (the Schedule sheet) that read the router;
+// a static render has no app router mounted, so the test supplies inert navigation.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/desk/dispatch",
 }));
 import {
   dayKey,
@@ -82,6 +94,9 @@ it("flags adjacent-day conflicts while returning only visible-day jobs", async (
 it("renders Colorado day/time and a boundary conflict without leaking adjacent jobs", async () => {
   const fixture = {
     type: "DELIVERY",
+    // AR-5: board rows render the visit's status pill; the operational select always
+    // carries a status, so the fixture does too.
+    status: "SCHEDULED",
     checklist: [],
     customer: null,
     serviceAddress: null,
@@ -109,10 +124,10 @@ it("renders Colorado day/time and a boundary conflict without leaking adjacent j
   );
   expect(html).toContain("Thursday, October 1");
   expect(html).toContain("12:30 AM MDT");
-  expect(html).toContain("Double-booked around this time");
+  expect(html).toContain("Double-booked");
   expect(html).toContain("Assigned to Sam Driver");
   expect(html).toContain("45 minutes");
-  expect(html).toContain("for Sam Driver");
+  expect(html).toContain("Actions for Delivery");
   expect(html).toContain("/desk/jobs/visible");
   expect(html).not.toContain("/desk/jobs/before");
 });

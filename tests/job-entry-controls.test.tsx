@@ -7,12 +7,23 @@ const mocks = vi.hoisted(() => ({
   jobs: vi.fn(),
   board: vi.fn(),
   maintenance: vi.fn(),
+  visits: vi.fn(),
+  visitCounts: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/domains/jobs", () => ({
   getJobsPage: mocks.jobs,
   getJobsCount: vi.fn(async () => 1),
   getDispatchBoardJobs: mocks.board,
+}));
+// AR-5: the Visits list reads its own cursor module, and both list pages read the
+// assignable team members for the Who picker — mock both surfaces.
+vi.mock("@/domains/jobs/visits-list", () => ({
+  getVisits: mocks.visits,
+  getVisitCounts: mocks.visitCounts,
+}));
+vi.mock("@/domains/staff", () => ({
+  getAssignableTeamMembers: vi.fn(async () => []),
 }));
 vi.mock("@/components/desk/context-communication-panel", () => ({
   ContextCommunicationPanel: () => null,
@@ -62,6 +73,31 @@ beforeEach(() => {
     return { user: { role: mocks.role } };
   });
   mocks.jobs.mockResolvedValue([job]);
+  mocks.visits.mockResolvedValue({
+    rows: [
+      {
+        id: "job-1",
+        type: "DELIVERY",
+        status: "SCHEDULED",
+        scheduledAt: new Date(2026, 8, 30, 10),
+        durationMinutes: 60,
+        assignedTo: { id: "u-1", name: "Sam Driver" },
+        customerName: "Customer",
+        customerEmail: "customer@example.test",
+        addressLine: "123 Test, Greeley",
+        appliances: [],
+        applianceNumbers: [],
+        noShowAt: null,
+      },
+    ],
+    nextCursor: null,
+  });
+  mocks.visitCounts.mockResolvedValue({
+    upcoming: 1,
+    noTime: 0,
+    done: 0,
+    cancelled: 0,
+  });
   mocks.board.mockResolvedValue({
     scheduled: [job],
     conflictCandidates: [job],
@@ -95,13 +131,18 @@ describe.each(["STAFF", "OWNER", "ADMIN"])(
       ],
       [
         "maintenance",
-        () => MaintenancePage({ params: Promise.resolve({ id: "request-1" }) }),
+        () =>
+          MaintenancePage({
+            params: Promise.resolve({ id: "request-1" }),
+            // AR-5: the record page takes a tab search param (Problem/Visits/Messages).
+            searchParams: Promise.resolve({}),
+          }),
       ],
     ] as const) {
       it(`${name} matches the role while retaining operational content`, async () => {
         mocks.role = role;
         render(await load());
-        const links = screen.queryAllByRole("link", { name: /schedule a job/i });
+        const links = screen.queryAllByRole("link", { name: /schedule a visit/i });
         if (role === "STAFF") expect(links).toHaveLength(0);
         else {
           // The kit list header renders the primary action twice (header
@@ -115,7 +156,7 @@ describe.each(["STAFF", "OWNER", "ADMIN"])(
         }
         if (name === "maintenance")
           expect(
-            screen.getByRole("button", { name: "Mark Reviewing" }),
+            screen.getByRole("button", { name: "Look at it" }),
           ).toBeEnabled();
         else
           expect(
@@ -140,9 +181,9 @@ it("the maintenance panel hides scheduling unless the server grants it", () => {
     />,
   );
   expect(
-    screen.queryByRole("link", { name: /schedule a job/i }),
+    screen.queryByRole("link", { name: /schedule a visit/i }),
   ).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Mark Reviewing" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Look at it" })).toBeEnabled();
 });
 
 it.each(["day", "week", "agenda"])(

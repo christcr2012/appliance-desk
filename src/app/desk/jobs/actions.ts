@@ -20,6 +20,8 @@ import {
   type JobConflict,
 } from "@/domains/jobs/scheduling";
 import { businessDateTimeFromLocal } from "@/lib/business-date";
+import { prisma } from "@/lib/prisma";
+import type { JobHandoff } from "@/domains/jobs/handoff";
 import { parsePerformedOn } from "@/domains/billing/pickup-billing-events";
 import { updateApplianceStatus } from "@/domains/inventory";
 import { scheduleMaintenanceRequest } from "@/domains/maintenance";
@@ -29,7 +31,7 @@ import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
 
 export type JobActionState =
   | { status: "idle" }
-  | { status: "success" }
+  | { status: "success"; handoff?: JobHandoff }
   | { status: "error"; message: string };
 
 const ALL_JOB_TYPES: JobType[] = [
@@ -234,8 +236,9 @@ export async function completeJobAction(jobId: string, raw: Record<string, unkno
   const performed = parsePerformedOn(data.performedOn);
   if (!performed.ok) return { status: "error", message: performed.message };
 
+  let result: Awaited<ReturnType<typeof completeJob>>;
   try {
-    await completeJob(session.user.id, {
+    result = await completeJob(session.user.id, {
       jobId,
       expectedVersion: data.expectedVersion,
       completionKey: data.completionKey,
@@ -251,6 +254,48 @@ export async function completeJobAction(jobId: string, raw: Record<string, unkno
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't complete that job." };
   }
 
+  // AR-5 section 7: the hand-off the screen announces. completeJob deliberately does not hand
+  // its return-close outcome to callers, so "the rental closed" is read from the agreement's
+  // state after the completion (a fully returned rental's agreement is ENDED), and "billing
+  // starts" from the durable billing hand-offs this completion created.
+  const jobFacts = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: { type: true, agreementId: true, maintenanceRequestId: true },
+  });
+  let rentalClosed = false;
+  let depositId: string | null = null;
+  if (jobFacts?.type === "REMOVAL" && jobFacts.agreementId) {
+    const agreement = await prisma.rentalAgreement.findUnique({
+      where: { id: jobFacts.agreementId },
+      select: { status: true },
+    });
+    rentalClosed = agreement?.status === "ENDED";
+    if (rentalClosed) {
+      const deposit = await prisma.deposit.findFirst({
+        where: { agreementId: jobFacts.agreementId, refundedAt: null, refundable: true },
+        select: { id: true },
+      });
+      depositId = deposit?.id ?? null;
+    }
+  }
+  const billingHandoff =
+    result.handoffIds.length > 0
+      ? await prisma.jobBillingHandoff.findFirst({
+          where: { id: { in: result.handoffIds }, kind: "START_RECURRING_BILLING" },
+          select: { id: true },
+        })
+      : null;
+  const handoff: JobHandoff = {
+    type: jobFacts?.type ?? "DELIVERY",
+    outcome: result.outcome,
+    replayed: result.replayed,
+    startedBilling: Boolean(billingHandoff),
+    rentalClosed,
+    depositId,
+    agreementId: jobFacts?.agreementId ?? null,
+    maintenanceRequestId: jobFacts?.maintenanceRequestId ?? null,
+  };
+
   revalidatePath("/desk/jobs");
   revalidatePath(`/desk/jobs/${jobId}`);
   revalidatePath("/desk/dashboard");
@@ -258,7 +303,7 @@ export async function completeJobAction(jobId: string, raw: Record<string, unkno
   revalidatePath("/desk/today");
   revalidatePath("/desk/tasks");
   revalidatePath("/desk/inventory");
-  return { status: "success" };
+  return { status: "success", handoff };
 }
 
 /** Owner/admin: take a never-delivered item off its agreement and credit everything billed for it. */

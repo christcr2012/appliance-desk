@@ -62,6 +62,10 @@ export async function getMaintenanceRequestsPage(
 }
 
 export async function getMaintenanceRequestById(id: string) {
+  // AR-5 section 1 fix 4: this read had no role check of its own (its page callers checked, but
+  // layouts do not re-render on navigation — the same reason as PR #594). Check here, like its
+  // sibling reads in this file.
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.maintenanceRequest.findUnique({
     where: { id },
     include: {
