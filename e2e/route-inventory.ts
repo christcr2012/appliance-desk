@@ -301,6 +301,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/sales-tax/area", role: "OWNER", fixture: "/desk/sales-tax/area" },
   { path: "/desk/sales-tax/benefits", role: "OWNER", fixture: "/desk/sales-tax/benefits" },
   { path: "/desk/sales-tax/delivery-fees", role: "OWNER", fixture: "/desk/sales-tax/delivery-fees" },
+  { path: "/desk/sales-tax/deduction-labels", role: "OWNER", fixture: "/desk/sales-tax/deduction-labels" },
   { path: "/desk/sales-tax/exemptions", role: "OWNER", fixture: "/desk/sales-tax/exemptions" },
   { path: "/desk/sales-tax/returns", role: "OWNER", fixture: "/desk/sales-tax/returns" },
   { path: "/desk/sales-tax/returns/[periodId]", role: "OWNER", fixture: "/desk/sales-tax/returns/{taxPeriodId}" },

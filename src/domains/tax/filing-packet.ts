@@ -7,6 +7,9 @@ import { taxCentsForLine } from "@/domains/billing/tax";
 import { assignDueUseTaxRowsToPeriod } from "./use-tax";
 import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { legalDueOn } from "./filing-calendar";
+import {
+  CPA_PENDING_LABEL, resolveDeductionLabels, type DeductionLabelSource,
+} from "./deduction-labels";
 import { buildRdfPacketInTx, type RdfPacket } from "./rdf-filing";
 import { shopSaleFeeKeptOnReturnInTx } from "./rdf-shop-sale";
 import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
@@ -17,7 +20,11 @@ export type FilingPacketRow = {
   filingCode: string | null;
   administration: "STATE_COLLECTED" | "SELF_COLLECTED";
   grossSalesCents: number;
-  deductions: { key: string; label: string; cents: number }[];
+  deductions: {
+    key: string; label: string; cents: number;
+    /** W-12: where the printed wording came from; absent on input rows. */
+    source?: DeductionLabelSource | "UNDECIDED";
+  }[];
   netTaxableCents: number;
   rateMilliPercent: number;
   taxCents: number;
@@ -63,19 +70,6 @@ export type FilingPacketLoad =
   | { status: "READY"; packet: FilingPacket }
   | { status: "BLOCKED"; problems: string[] };
 
-type Labels = Record<string, { label: string; reportAs: "DEDUCTION" | "LEAVE_OUT_OF_GROSS" }>;
-function labelsFrom(value: unknown): Labels {
-  if (!value || Array.isArray(value) || typeof value !== "object") return {};
-  const result: Labels = {};
-  for (const [key, v] of Object.entries(value)) {
-    if (!v || Array.isArray(v) || typeof v !== "object") continue;
-    const item = v as { label?: unknown; reportAs?: unknown };
-    if (typeof item.label !== "string" || !item.label.trim()) continue;
-    if (item.reportAs !== "DEDUCTION" && item.reportAs !== "LEAVE_OUT_OF_GROSS") continue;
-    result[key] = { label: item.label.trim(), reportAs: item.reportAs };
-  }
-  return result;
-}
 function money(cents: number): string {
   return (cents / 100).toFixed(2);
 }
@@ -91,8 +85,12 @@ export function buildFilingPacket(input: {
   useTax: FilingPacket["useTax"];
   viewedOn: Date;
 }): FilingPacket {
-  const config = labelsFrom(input.account.deductionLabels);
+  // W-12 / IN-44: buckets with no owner-saved wording resolve to the
+  // researched defaults (marked RESEARCHED_DEFAULT); only a bucket with
+  // neither stays "not decided".
+  const config = resolveDeductionLabels(input.account.deductionLabels);
   const warnings: string[] = [];
+  let usesResearchedDefault = false;
   const onTime = businessDateKey(input.viewedOn) <= businessDateKey(input.period.legalDueOn);
   const rows = input.rows.map(row => {
     if (![row.grossSalesCents, row.netTaxableCents, row.taxCents, row.serviceFeeCents]
@@ -105,11 +103,16 @@ export function buildFilingPacket(input: {
       if (!mapped) warnings.push(
         "Deduction " + d.key + " not decided — ask your CPA how it appears in SUTS.",
       );
+      if (mapped?.source === "RESEARCHED_DEFAULT") usesResearchedDefault = true;
       if (mapped?.reportAs === "LEAVE_OUT_OF_GROSS") {
         excludedFromGross += d.cents;
         return [];
       }
-      return [{ ...d, label: mapped?.label ?? "Not decided — ask your CPA" }];
+      return [{
+        ...d,
+        label: mapped?.label ?? "Not decided — ask your CPA",
+        source: mapped ? mapped.source : "UNDECIDED" as const,
+      }];
     });
     if (excludedFromGross > row.grossSalesCents) {
       throw new Error("Amounts excluded from gross exceed recorded gross sales.");
@@ -139,7 +142,8 @@ export function buildFilingPacket(input: {
     ...rows.map(row =>
       row.name + (row.filingCode ? " (" + row.filingCode + ")" : "") +
       ": gross sales $" + money(row.grossSalesCents) +
-      ", deductions " + (row.deductions.map(d => d.label + " $" + money(d.cents)).join("; ") || "$0.00") +
+      ", deductions " + (row.deductions.map(d => d.label + " $" + money(d.cents) +
+        (d.source === "RESEARCHED_DEFAULT" ? " (" + CPA_PENDING_LABEL + ")" : "")).join("; ") || "$0.00") +
       ", taxable $" + money(row.netTaxableCents) + ", recorded tax $" + money(row.taxCents) + ".",
     ),
     ...input.useTax.map(row => row.name + ": purchase $" + money(row.purchaseCents) +
@@ -155,6 +159,10 @@ export function buildFilingPacket(input: {
     "After " + legal + " the return may carry penalty and interest. Use the amount shown by the filing portal.",
   );
   if (!input.account.accountNumber) warnings.push("Filing account number has not been entered.");
+  if (usesResearchedDefault) warnings.push(
+    "Some deduction lines use researched defaults — CPA confirmation still pending (IN-44). " +
+    "Review or change them under Taxes, Setup, on the filing account.",
+  );
   warnings.push("Official SUTS field names must be verified with your CPA or filing account.");
   return {
     account: {

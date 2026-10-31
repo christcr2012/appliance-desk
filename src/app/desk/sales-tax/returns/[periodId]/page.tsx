@@ -114,7 +114,7 @@ export default async function ReturnDetailPage({
           <p className="font-semibold">{r.name}</p>
           {r.filingCode && <FilingCopyField label={r.name+" filing code"} value={r.filingCode} />}
           <FilingCopyField label={r.name+" gross sales"} value={money(r.grossSalesCents)} />
-          {r.deductions.map(d => <FilingCopyField key={d.key} label={r.name+" "+d.label} value={money(d.cents)} />)}
+          {r.deductions.map(d => <FilingCopyField key={d.key} label={r.name+" "+d.label+(d.source === "RESEARCHED_DEFAULT" ? " — researched default, CPA confirmation still pending" : "")} value={money(d.cents)} />)}
           <FilingCopyField label={r.name+" taxable"} value={money(r.netTaxableCents)} />
           <FilingCopyField label={r.name+" tax"} value={money(r.taxCents)} />
         </div>)}
