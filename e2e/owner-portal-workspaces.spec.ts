@@ -316,6 +316,9 @@ for (const role of ["owner", "customer"] as const) {
         const savedRequest = page.getByRole("listitem").getByText(text, { exact: true });
         await expect(savedRequest).toBeVisible();
         await page.reload();
+        // The deep link auto-opens the sheet again after the reload; close
+        // it so the persisted list is reachable in the accessibility tree.
+        await page.getByRole("button", { name: "Close" }).click();
         await expect(savedRequest).toBeVisible();
       });
     }

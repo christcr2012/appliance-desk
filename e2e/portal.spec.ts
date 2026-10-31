@@ -82,14 +82,15 @@ test.describe("PORTAL-1 customer portal", () => {
   });
 
   test("repairs deep link opens the sheet; a request with a photo submits", async ({ page }) => {
-    // CI runs with no Blob store by design (no repository secrets; the
-    // uploads route fails closed without one), so the two Blob network legs
-    // are stubbed at the route level: the app's own token request and its
-    // @vercel/blob upload() call still run, and the request still submits
-    // with the uploaded photo URL. The client token is shaped exactly like
-    // the real one (vercel_blob_client_<store>_<base64 wrapper whose payload
-    // names the requested pathname), built from the pathname the app asks
-    // for so the client's own payload checks pass.
+    // CI runs with no real Blob store (no repository secrets), so the two
+    // Blob network legs are stubbed at the route level: the app's own token
+    // request and its @vercel/blob upload() call still run, and the request
+    // still submits with the uploaded photo URL. The client token is shaped
+    // exactly like the real one (vercel_blob_client_<store>_<base64 wrapper
+    // whose payload names the requested pathname), built from the pathname
+    // the app asks for so the client's own payload checks pass. The browser-e
+    // CI job configures a matching throwaway private-store identity so the
+    // server accepts the stubbed URL as this customer's own upload.
     const blobStoreId = "e2eteststore";
     await page.route("**/api/uploads/photo", async (route) => {
       const body = route.request().postDataJSON() as {

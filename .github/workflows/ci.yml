@@ -419,6 +419,19 @@ jobs:
         # when NO key is configured — so browser-e must not get one.
         if: matrix.shard != 'browser-e'
         run: echo "COMPLIANCE_ENCRYPTION_KEY=$(printf '0123456789abcdef0123456789abcdef' | base64)" >> "$GITHUB_ENV"
+      - name: Set the test-only private photo store identity
+        # The portal spec (browser-e) submits a maintenance request with a
+        # photo; the server only accepts photo URLs that belong to the
+        # customer's folder in the configured private store, and CI has no
+        # real store. This throwaway identity (assembled here so no
+        # token-shaped literal sits in the repo) lets the server recognize
+        # the spec's stubbed upload as its own; the spec stubs the Blob
+        # network legs themselves. Only browser-e gets it, so the other
+        # shards keep testing the no-store behavior (e.g. feedback).
+        if: matrix.shard == 'browser-e'
+        run: |
+          echo "PRIVATE_PHOTO_BLOB_STORE_ID=store_e2eteststore" >> "$GITHUB_ENV"
+          echo "PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN=$(printf 'vercel_blob_rw_%s_%s' 'e2eteststore' 'throwawaytoken')" >> "$GITHUB_ENV"
       - name: Set the test-only vault encryption key
         # Same throwaway construction, a different string so the two keys
         # really are different keys in tests. Every shard gets this one: the

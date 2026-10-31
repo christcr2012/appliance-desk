@@ -56,7 +56,13 @@ in connect-src, with the reason written into the policy's comment block.
 The pickup test also closes the modal sheet before reading the saved
 request list: while the sheet is open the page behind it is hidden from
 the accessibility tree, so the list item the save revalidates into place
-was unreachable until the sheet closed. signature-focus reads the help card by its §7 name
+was unreachable until the sheet closed (the same close is repeated after
+the reload, whose deep link auto-opens the sheet again). The photo submit
+also needed the server to recognize the stubbed upload as the customer's
+own: the browser-e CI job now sets a throwaway private-store identity
+(assembled in the workflow like the other test keys, browser-e only, so
+the other shards keep the no-store behavior), and the spec's stubbed URL
+uses that store's host. signature-focus reads the help card by its §7 name
 ("Need help?") and the rentals visit line again carries a scheduled visit's
 full date and time. Perf failed again on the same marginal line (rent-desc
 160.5 ms vs the 150 ms budget; the query is unchanged) — not a required
