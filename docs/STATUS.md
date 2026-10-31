@@ -6,6 +6,10 @@
 
 **What needs you:** nothing to decide. One spec item was already delivered before this card (section 1 fix 6, the Repairs area layout, shipped with AR-1) and a few small readings are recorded as drift in the PR body (the "My visits this week" view is owner/admin-only because it carries the who filter; Text the customer goes to the visit record where the text panel lives).
 
+## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
+
+MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
+
 ## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 
 **What changed:** the Customers list, segment counts and searches no longer read the
