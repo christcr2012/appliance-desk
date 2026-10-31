@@ -12,10 +12,15 @@ const context: AgentContext = {
   connectionId: "synthetic-pass-connection", connectionLabel: "Test pass",
   scopes: ["ops:read"],
 };
+const fullContext: AgentContext = {
+  ...context, connectionId: "synthetic-full-pass",
+  scopes: ["ops:read", "ops:maintain"], rtcAllowWrites: true,
+};
 vi.mock("@/domains/agent-control/passes", () => ({
   authenticateRtcPass: vi.fn(async (request: Request) =>
-    request.headers.get("authorization") === "Bearer test-fixture"
-      ? context : new Response("RTC pass required.", { status: 401 })),
+    request.headers.get("authorization") === "Bearer test-fixture-full"
+      ? fullContext : request.headers.get("authorization") === "Bearer test-fixture"
+        ? context : new Response("RTC pass required.", { status: 401 })),
 }));
 
 const req = (path: string, method: "GET" | "POST" = "GET", json?: unknown) =>
@@ -77,6 +82,23 @@ describe("MCP-9 RTC read-only HTTP adapter uses the actual MCP catalog", () => {
       { name: "appliance_action_preview", args: {} },
     ] }));
     expect(notAllowed.status).toBe(403);
+  });
+  it("rejects every full-pass write in a batch before dispatch, including journal previews", async () => {
+    const batchAsFull = (calls: unknown[]) => new Request("http://localhost/api/tools/_batch", {
+      method: "POST",
+      headers: { Authorization: "Bearer test-fixture-full", "Content-Type": "application/json" },
+      body: JSON.stringify({ calls }),
+    });
+    const read = await toolBatch(batchAsFull([{ name: "appliance_whoami", args: {} }]));
+    expect(read.status).toBe(200);
+    for (const name of ["appliance_action_preview", "appliance_action_execute"]) {
+      const denied = await toolBatch(batchAsFull([
+        { name: "appliance_whoami", args: {} },
+        { name, args: { dryRun: true, confirm: true } },
+      ]));
+      expect(denied.status).toBe(403);
+      expect((await denied.json()).error.code).toBe("refused_by_guard");
+    }
   });
   it("supports paged, scoped catalog and compact listings without exposing writer tools", async () => {
     const catalog = await toolSearch(req("/api/tools?listing=catalog&limit=100&page=1"));
