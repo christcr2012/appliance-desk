@@ -186,7 +186,10 @@ describe.skipIf(!enabled)("custody episodes", () => {
     expect(await prisma.appliance.findUniqueOrThrow({ where: { id: shop } }).then((a) => a.status)).toBe("AVAILABLE");
     const out = await unit("RENTED");
     await prisma.applianceCustodyEpisode.create({ data: { applianceId: out, customerId, startEvidence: "MANUAL" } });
-    await expect(updateApplianceStatus(owner, out, "RETIRED")).rejects.toThrow(/pickup job/);
+    // AR-6 fix 3: the plain change refuses RETIRED outright now (retiring
+    // goes through retireAppliance, which keeps the custody rule — see the
+    // guided test below).
+    await expect(updateApplianceStatus(owner, out, "RETIRED")).rejects.toThrow(/Use Retire this appliance so the reason is kept/);
     await updateApplianceStatus(owner, out, "AWAITING_PICKUP");
     expect(await prisma.appliance.findUniqueOrThrow({ where: { id: out } }).then((a) => a.status)).toBe("AWAITING_PICKUP");
   });

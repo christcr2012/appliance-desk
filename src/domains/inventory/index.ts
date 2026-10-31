@@ -37,6 +37,26 @@ export {
   APPLIANCE_STATUS_LABELS,
 } from "./lifecycle";
 
+export {
+  getFleet,
+  getFleetCounts,
+  getFleetTypeOptions,
+  FLEET_TAB_STATUSES,
+  type FleetCounts,
+  type FleetParams,
+  type FleetRow,
+  type FleetSort,
+  type FleetTab,
+} from "./fleet-list";
+export {
+  APPLIANCE_PILL,
+  AWAY_FOR_REPAIR_PILL,
+  applianceSubtitle,
+  applianceTitle,
+  type PillSpec,
+  type PillTone,
+} from "./words";
+
 /** Thrown by updateApplianceDetails/updateApplianceStatus when the record
  * changed since the caller last read it — see the "optimistic concurrency"
  * comment on updateApplianceDetails below. A distinct class (rather than a
@@ -74,6 +94,7 @@ export { buildAssetNumber };
 export async function getApplianceCountsByStatus(): Promise<
   Record<ApplianceStatus, number>
 > {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const counts = await prisma.appliance.groupBy({
     by: ["status"],
     _count: { _all: true },
@@ -88,6 +109,7 @@ export async function getApplianceCountsByStatus(): Promise<
 }
 
 export async function getAppliances(filter?: { status?: ApplianceStatus; rentableOnly?: boolean }) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.appliance.findMany({
     // OPS-1: a machine on a recall hold is never offered to rent.
     where: filter?.status || filter?.rentableOnly
@@ -105,6 +127,7 @@ export async function getAppliancesCount(filter?: {
   status?: ApplianceStatus;
   taxStatus?: AcquisitionTaxStatus;
 }): Promise<number> {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.appliance.count({
     where: { ...(filter?.status ? { status: filter.status } : {}), ...(filter?.taxStatus ? { acquisitionTaxStatus: filter.taxStatus } : {}) },
   });
@@ -119,6 +142,7 @@ export async function getAppliancesPage(
   skip: number,
   pageSize: number,
 ) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.appliance.findMany({
     where: { ...(filter?.status ? { status: filter.status } : {}), ...(filter?.taxStatus ? { acquisitionTaxStatus: filter.taxStatus } : {}) },
     select: {
@@ -338,6 +362,12 @@ export async function updateApplianceStatus(
   applianceId: string,
   newStatus: ApplianceStatus,
 ) {
+  // AR-6 fix 3: retiring always goes through retireAppliance so the reason
+  // (and the retired plan that follows) is kept. The bulk change loops
+  // through this function, so it is covered by the same refusal.
+  if (newStatus === "RETIRED") {
+    throw new Error("Use Retire this appliance so the reason is kept.");
+  }
   return prisma.$transaction(async (tx) => {
     // The plain status change is for owners and admins. Staff go through the job-scoped one.
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
@@ -458,6 +488,7 @@ export async function bulkUpdateApplianceStatus(
 /** Case-insensitive on purpose — model numbers get typed in by hand and
  * capitalization is inconsistent (e.g. "wfw5620hw0" vs "WFW5620HW0"). */
 export async function getPartRecordsForModel(modelNumber: string) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.partRecord.findMany({
     where: { modelNumber: { equals: modelNumber, mode: "insensitive" }, archivedAt: null },
     orderBy: [{ createdAt: "desc" }],

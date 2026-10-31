@@ -44,6 +44,13 @@ export const GLOSSARY = {
   "set-price": { title: "Set price", description: "A washer and dryer set groups two individually tracked machines. It is not one inventory appliance." },
   "prepaid-discount": { title: "Prepaid discount", description: "An approved reduction for paying a longer rental term in advance. The signed agreement controls each customer's amount." },
   "custody": { title: "Custody", description: "Who has an appliance and when it moved. Each machine keeps its own delivery, pickup, and inspection history." },
+  // AR-6 Equipment.
+  "awaiting-inspection": { title: "Awaiting inspection", description: "The appliance came back and needs a check for damage and wear before it can be cleaned and rented again." },
+  "away-for-repair": { title: "Away for repair", description: "The appliance is out at a repair shop. It stays on your books and shows here until it comes back or is replaced." },
+  "equipment-value": { title: "Equipment value", description: "What your appliances are worth based on what you paid for them. It is a working number for the business, not a tax depreciation figure." },
+  "purchase-tax-status": { title: "Purchase tax", description: "Whether the sales tax question on this purchase has been answered: seller tax paid, use tax due or paid, or bought tax-free for lease. Answering it keeps your filings straight." },
+  "retired-plan": { title: "Retired plan", description: "What happens to a retired appliance next: sell it, strip it for parts, scrap it or throw it away. Picking one keeps retired machines from piling up forgotten." },
+  "low-stock": { title: "Low stock", description: "A part is low when what's on hand is at or below the reorder point you set for it. Parts with no reorder point never show as low." },
   // AR-0b reference screens (Today, Money › Bills, Customer record).
   "week-money-in": { title: "Money in", description: "Payments received since Monday, after refunds." },
   "out-renting": { title: "Out renting", description: "Appliances with a customer now, out of all the appliances you can rent." },

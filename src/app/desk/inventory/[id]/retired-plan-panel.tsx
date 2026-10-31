@@ -6,6 +6,8 @@ import { Button, Card, Field, Select } from "@/components/ui";
 import {
   addSalvagedPartsAction, completeRetiredPlanAction, reopenRetiredPlanAction, setRetiredPlanAction,
 } from "../retired-actions";
+import { SearchablePicker } from "@/components/kit";
+import { searchPartsAction } from "../actions";
 
 type Choice = "SELL" | "STRIP" | "SCRAP" | "DISPOSE" | "OTHER";
 const CHOICES: Array<{ value: Choice; label: string; help: string }> = [
@@ -20,13 +22,12 @@ export type PlanPanelProps = {
   applianceId: string;
   plan: { choice: Choice; note: string | null; remainder: string | null; doneOn: string | null; doneNote: string | null; reopenReason: string | null } | null;
   salvaged: Array<{ id: string; label: string; quantity: number }>;
-  parts: Array<{ id: string; label: string }>;
   today: string;
   isOwner: boolean;
 };
 
 /** "What's next for it?" for a retired appliance (Batch M-2). Nothing here books money. */
-export function RetiredPlanPanel({ applianceId, plan, salvaged, parts, today, isOwner }: PlanPanelProps) {
+export function RetiredPlanPanel({ applianceId, plan, salvaged, today, isOwner }: PlanPanelProps) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +38,10 @@ export function RetiredPlanPanel({ applianceId, plan, salvaged, parts, today, is
   const [remainder, setRemainder] = useState<"" | "SCRAPPED" | "THROWN_AWAY">("");
   const [reopenReason, setReopenReason] = useState("");
   const [reopening, setReopening] = useState(false);
-  const [rows, setRows] = useState<Array<{ key: number; partId: string; modelNumber: string; partNumber: string; partName: string; quantity: string }>>([
-    { key: 0, partId: "", modelNumber: "", partNumber: "", partName: "", quantity: "1" },
-  ]);
+  // AR-6 fix 6: salvage rows pick an existing part with the searchable
+  // picker over getPartsList; row values are read from the form at submit
+  // (FormData), so this state only tracks which rows exist.
+  const [rows, setRows] = useState<Array<{ key: number }>>([{ key: 0 }]);
   const nextKey = useRef(1);
   // One identity per screen load of the "add parts" form, so a double tap cannot add the parts twice.
   const salvageKey = useRef(`salvage-${crypto.randomUUID()}`);
@@ -109,17 +111,31 @@ export function RetiredPlanPanel({ applianceId, plan, salvaged, parts, today, is
                 className="space-y-3"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  const lines = rows.filter((r) => r.partId || r.partNumber).map((r) =>
-                    r.partId
-                      ? { partRecordId: r.partId, quantity: Number(r.quantity) }
-                      : { newPart: { modelNumber: r.modelNumber, partNumber: r.partNumber, partName: r.partName || undefined }, quantity: Number(r.quantity) });
+                  const fd = new FormData(e.currentTarget);
+                  const lines = rows
+                    .map((row) => {
+                      const partId = String(fd.get(`partId-${row.key}`) ?? "");
+                      const quantity = Number(fd.get(`qty-${row.key}`) ?? 1);
+                      if (partId) return { partRecordId: partId, quantity };
+                      const partNumber = String(fd.get(`number-${row.key}`) ?? "").trim();
+                      if (!partNumber) return null;
+                      return {
+                        newPart: {
+                          modelNumber: String(fd.get(`model-${row.key}`) ?? ""),
+                          partNumber,
+                          partName: String(fd.get(`name-${row.key}`) ?? "") || undefined,
+                        },
+                        quantity,
+                      };
+                    })
+                    .filter((line) => line !== null);
                   run(async () => {
                     const r = await addSalvagedPartsAction(applianceId, { operationKey: salvageKey.current, lines });
                     if (r.status === "success") {
                       // New key AND empty rows, so "add another part" never re-sends what was just saved.
                       salvageKey.current = `salvage-${crypto.randomUUID()}`;
                       nextKey.current = 1;
-                      setRows([{ key: 0, partId: "", modelNumber: "", partNumber: "", partName: "", quantity: "1" }]);
+                      setRows([{ key: 0 }]);
                     }
                     return r;
                   });
@@ -127,22 +143,16 @@ export function RetiredPlanPanel({ applianceId, plan, salvaged, parts, today, is
               >
                 {rows.map((row, i) => (
                   <div key={row.key} className="grid gap-2 rounded-control border border-line p-3 sm:grid-cols-2">
-                    <Select id={`salv-part-${row.key}`} label={`Part ${i + 1}`} value={row.partId} onChange={(e) => setRows((c) => c.map((r) => (r.key === row.key ? { ...r, partId: e.target.value } : r)))}>
-                      <option value="">A new part (fill in below)</option>
-                      {parts.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                    </Select>
-                    <Field id={`salv-qty-${row.key}`} label="How many" type="number" min={1} max={100} value={row.quantity} onChange={(e) => setRows((c) => c.map((r) => (r.key === row.key ? { ...r, quantity: e.target.value } : r)))} />
-                    {!row.partId && (
-                      <>
-                        <Field id={`salv-model-${row.key}`} label="Fits model" value={row.modelNumber} onChange={(e) => setRows((c) => c.map((r) => (r.key === row.key ? { ...r, modelNumber: e.target.value } : r)))} />
-                        <Field id={`salv-number-${row.key}`} label="Part number" value={row.partNumber} onChange={(e) => setRows((c) => c.map((r) => (r.key === row.key ? { ...r, partNumber: e.target.value } : r)))} />
-                        <Field id={`salv-name-${row.key}`} label="Part name (optional)" value={row.partName} onChange={(e) => setRows((c) => c.map((r) => (r.key === row.key ? { ...r, partName: e.target.value } : r)))} />
-                      </>
-                    )}
+                    <SearchablePicker name={`partId-${row.key}`} label={`Part ${i + 1}`} search={searchPartsAction} />
+                    <Field id={`salv-qty-${row.key}`} name={`qty-${row.key}`} label="How many" type="number" min={1} max={100} defaultValue="1" />
+                    <p className="text-xs text-ink-soft sm:col-span-2">…or a new part not on the shelf yet:</p>
+                    <Field id={`salv-model-${row.key}`} name={`model-${row.key}`} label="Fits model" />
+                    <Field id={`salv-number-${row.key}`} name={`number-${row.key}`} label="Part number" />
+                    <Field id={`salv-name-${row.key}`} name={`name-${row.key}`} label="Part name (optional)" />
                   </div>
                 ))}
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="secondary" onClick={() => setRows((c) => [...c, { key: nextKey.current++, partId: "", modelNumber: "", partNumber: "", partName: "", quantity: "1" }])}>Add another part</Button>
+                  <Button type="button" variant="secondary" onClick={() => setRows((c) => [...c, { key: nextKey.current++ }])}>Add another part</Button>
                   <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Add parts to stock"}</Button>
                 </div>
               </form>

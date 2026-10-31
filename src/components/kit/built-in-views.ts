@@ -23,8 +23,12 @@ export const BUILT_IN_VIEWS: Record<ListKey, BuiltInView[]> = {
     { id:"waiting-signature", label:"Waiting for signature", params:{status:"signing"} },
   ],
   inventory: [
+    // AR-6: views keep speaking statuses (the AR-12 invariant); the fleet
+    // parser maps each status to its tab — AVAILABLE to Ready to rent,
+    // MAINTENANCE to Needs work, RENTED to Out, AWAITING_PICKUP to
+    // Coming back — so a view lands on the tab that contains its units.
     { id:"ready-to-rent", label:"Ready to rent", params:{status:"AVAILABLE"} },
-    { id:"needs-repair", label:"Needs repair", params:{status:"MAINTENANCE"} },
+    { id:"needs-repair", label:"Needs work", params:{status:"MAINTENANCE"} },
     { id:"out-with-customers", label:"Out with customers", params:{status:"RENTED"} },
     { id:"coming-back", label:"Coming back", params:{status:"AWAITING_PICKUP"} },
   ],

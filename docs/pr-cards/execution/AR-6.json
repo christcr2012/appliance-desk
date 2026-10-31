@@ -1,0 +1,150 @@
+{
+ "acceptance": [
+  "Every section 1 fix in this PR's scope is done, each with a test: role checks on the five inventory reads (OWNER/ADMIN/STAFF) and the seven purchasing reads (OWNER/ADMIN), updateApplianceStatus refusing RETIRED in plain and bulk changes while retireAppliance still works, purchaseReceiptTotalCents in the domain (unit-tested), getPartsList returning a staff DTO whose price/cost keys are absent (asserted absent, not hidden), the low-stock rule in SQL matching getLowStockParts",
+  "Fleet: status tabs with counts from one groupBy, search by appliance number prefix / serial exact / model contains, cursor (createdAt desc, id desc) with same-instant units appearing once each across pages, bulk Change status offering only statuses at least one selected unit can move to, built-in views registered for the fleet list",
+  "Appliance record: header, stat strip, pure applianceNextStep, status-based primary action, Retire behind a danger confirmation with a required reason, tabs; staff keep the operational Overview only; custody form uses the kit SearchablePicker over domain search (no getCustomers preload); the record's independent reads run in one Promise.all",
+  "Retired page restyled with FILTERS tabs and counts, bulk Mark done with confirmation; the page's local follow-up-days setting block is REMOVED (drift: AR-8 already shipped the Settings row retiredFollowUpDays with writer setRetiredFollowUpDays)",
+  "Purchases, Parts and Suppliers PAGES are split into AR-6b per the card's ~1,500-line rule (six pages plus eight domain fixes cannot stay reviewable in one PR); their section 1 domain fixes land here so AR-6b is pages over ready reads",
+  "ci green at the exact head; every review comment read"
+ ],
+ "baseline": "02b350509843cc29074b49fa65c4b639943f1a95",
+ "card": "docs/pr-cards/AR-6.md",
+ "checks": {
+  "browser": [
+   "e2e/equipment.spec.ts"
+  ],
+  "db": [
+   "tests/fleet-list-integration.test.ts",
+   "tests/inventory-role-checks.test.ts",
+   "tests/parts-list-integration.test.ts",
+   "tests/appliance-status-retire-guard.test.ts"
+  ],
+  "node": [],
+  "unit": [
+   "tests/appliance-words.test.ts",
+   "tests/appliance-next-step.test.ts",
+   "tests/purchase-total.test.ts",
+   "tests/equipment-params.test.ts"
+  ]
+ },
+ "gates": [],
+ "id": "AR-6",
+ "invariants": [
+  "No inventory rule changes beyond spec section 1: every button calls an existing server action; transitions still come from ALLOWED_APPLIANCE_TRANSITIONS",
+  "Roles are enforced at the query/DTO boundary: requireRole inside the read functions themselves (layouts do not re-run on navigation), and staff part DTOs omit the money keys entirely",
+  "Money stays integer cents through existing helpers; the receipt total is computed in the domain, never in a page",
+  "Retiring always goes through retireAppliance with its reason and retired plan; the plain and bulk status changes can never reach RETIRED",
+  "Accountant access approved by ACCT-1 stays exactly as it is; this card adds no role and widens none"
+ ],
+ "next": "AR-6b \u2014 Purchases and orders pages, Parts page, Suppliers (spec sections 5-7) over the role-checked reads this PR lands",
+ "outcome": "Equipment's domain reads are role-checked and bounded, the fleet list and appliance record run on the kit with cursor paging, and the retired page is restyled \u2014 with Purchases/Parts/Suppliers pages split to AR-6b under the card's size rule",
+ "parent": "AR-6",
+ "proposedFiles": [
+  "docs/pr-cards/execution/AR-6.json",
+  "docs/pr-cards/work-index.json",
+  "docs/pr-cards/AR-6.md",
+  "docs/STATUS.md",
+  "src/domains/inventory/index.ts",
+  "src/domains/inventory/words.ts",
+  "src/domains/inventory/fleet-list.ts",
+  "src/domains/inventory/next-step.ts",
+  "src/domains/purchasing/index.ts",
+  "src/domains/purchasing/purchases.ts",
+  "src/domains/purchasing/parts-list.ts",
+  "src/app/desk/inventory/params.ts",
+  "src/app/desk/inventory/page.tsx",
+  "src/app/desk/inventory/inventory-list.tsx",
+  "src/app/desk/inventory/[id]/page.tsx",
+  "src/app/desk/inventory/[id]/operational-appliance.tsx",
+  "src/app/desk/inventory/retired/page.tsx",
+  "src/components/kit/built-in-views.ts",
+  "src/lib/glossary.ts",
+  "docs/build-specs/migrated-pages.json",
+  "e2e/shards.json",
+  "e2e/equipment.spec.ts",
+  "tests/appliance-words.test.ts",
+  "tests/appliance-next-step.test.ts",
+  "tests/purchase-total.test.ts",
+  "tests/equipment-params.test.ts",
+  "tests/fleet-list-integration.test.ts",
+  "tests/inventory-role-checks.test.ts",
+  "tests/parts-list-integration.test.ts",
+  "tests/appliance-status-retire-guard.test.ts"
+ ],
+ "references": [
+  {
+   "anchor": "## 1. Fixes found while specifying (do them in this card)",
+   "path": "docs/build-specs/screens/EQUIPMENT.md",
+   "purpose": "The spec: the eight section 1 fixes this card must land, each with a test"
+  },
+  {
+   "anchor": "## 3. Fleet",
+   "path": "docs/build-specs/screens/EQUIPMENT.md",
+   "purpose": "Fleet params, data contract (getFleet/getFleetCounts, cursor rule), layout, tabs, bulk change and built-in views"
+  },
+  {
+   "anchor": "diff passes ~1,500 changed lines, split Purchases/Parts/Suppliers into AR-6b and write the reason in the PR.",
+   "path": "docs/pr-cards/AR-6.md",
+   "purpose": "The card's split rule \u2014 invoked at packet time: this PR is fixes + fleet + record + retired; AR-6b takes sections 5-7 pages"
+  },
+  {
+   "anchor": "export async function getAppliancesPage(",
+   "path": "src/domains/inventory/index.ts",
+   "purpose": "One of the five inventory reads gaining requireRole; its createdAt-only offset paging is what the fleet cursor replaces"
+  },
+  {
+   "anchor": "export async function updateApplianceStatus(",
+   "path": "src/domains/inventory/index.ts",
+   "purpose": "The plain status change that gains the RETIRED refusal in fix 3"
+  },
+  {
+   "anchor": "export const ALLOWED_APPLIANCE_TRANSITIONS: Record<ApplianceStatus, ApplianceStatus[]> = {",
+   "path": "src/domains/inventory/lifecycle.ts",
+   "purpose": "The transition table the bulk select and APPLIANCE_STATUS_LABELS both read; APPLIANCE_PILL labels come from here"
+  },
+  {
+   "anchor": "export async function getLowStockParts()",
+   "path": "src/domains/purchasing/index.ts",
+   "purpose": "The low-stock rule getPartsList must reproduce in SQL so the low tab can page"
+  },
+  {
+   "anchor": "<ScreenHeader title=\"Retired appliances\" />",
+   "path": "src/app/desk/inventory/retired/page.tsx",
+   "purpose": "Drift: the retired page's local follow-up-days setting block \u2014 REMOVED in this card because AR-8 shipped the Settings row"
+  },
+  {
+   "anchor": "row({ key: \"retiredFollowUpDays\"",
+   "path": "src/domains/settings/catalog.ts",
+   "purpose": "The AR-8 Settings catalog row (writer setRetiredFollowUpDays) that replaces the retired page's local setting"
+  },
+  {
+   "anchor": "export function SearchablePicker({ name, label, search, value, addNew }: {",
+   "path": "src/components/kit/selection-controls.tsx",
+   "purpose": "The kit picker the custody form and the retired panel's part picker use instead of preload-everything reads (fix 6)"
+  },
+  {
+   "anchor": "export const BUILT_IN_VIEWS: Record<ListKey, BuiltInView[]> = {",
+   "path": "src/components/kit/built-in-views.ts",
+   "purpose": "AR-12's built-in views registry; the fleet entry is added here (the registry already maps the inventory ListKey to /desk/inventory)"
+  },
+  {
+   "anchor": "export async function OperationalAppliance({ id }: { id: string }) {",
+   "path": "src/app/desk/inventory/[id]/operational-appliance.tsx",
+   "purpose": "The staff record view (data via getOperationalApplianceById): restyled with RecordHeader + Overview only, no money, no tax"
+  }
+ ],
+ "risk": "Role checks on shared reads can break other pages' tests that call them without a session (the PR #594 pattern is the cure); staff losing part prices is a deliberate product change (spec fix 2); the retired page losing its local setting depends on the AR-8 Settings row being reachable (verified in the catalog)",
+ "sequence": [
+  "S1: section 1 domain fixes \u2014 role checks on all twelve reads (+ existing tests given sessions), RETIRED refusal, purchaseReceiptTotalCents, getPartsList role-shaped DTO; new tests inventory-role-checks, appliance-status-retire-guard, parts-list, purchase-total",
+  "S2: shared pieces (words.ts APPLIANCE_PILL/title/subtitle, glossary entries) + Fleet (params.ts, fleet-list.ts cursor reads, page rebuild, bulk sheet, built-in views) + appliance-words/equipment-params/fleet-list tests",
+  "S3: appliance record \u2014 next-step.ts (+ test), header/stat strip/action bar/tabs, custody SearchablePicker, retired-panel part picker, Promise.all reads, staff operational restyle",
+  "S4: retired page restyle + local setting block removal, migrated-pages.json, e2e/equipment.spec.ts, STATUS + card record"
+ ],
+ "slices": [
+  "S1 domain fixes (spec section 1)",
+  "S2 shared words + Fleet",
+  "S3 appliance record",
+  "S4 retired + registration + browser/docs"
+ ],
+ "version": 1
+}

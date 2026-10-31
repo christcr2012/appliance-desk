@@ -57,6 +57,7 @@
     "browser-c": [
       "sales-tax.spec.ts",
       "appliance-price-save-feedback.spec.ts",
+      "equipment.spec.ts",
       "purchasing-review.spec.ts",
       "accessibility-routes-desk-a.spec.ts",
       "owner-guide-screenshots.spec.ts",

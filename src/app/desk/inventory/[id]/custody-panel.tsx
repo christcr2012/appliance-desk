@@ -1,54 +1,79 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { recordManualCustodyAction } from "../actions";
-
-type CustomerOption = { id: string; name: string; serviceAddresses: { id: string; label: string }[] };
+import { SearchablePicker } from "@/components/kit";
+import {
+  getCustomerAddressOptionsAction,
+  recordManualCustodyAction,
+  searchCustomersAction,
+} from "../actions";
 
 /**
- * Who has this appliance right now (from its custody record). When the status says the unit is out but no
- * record says who has it, the owner can record the customer by hand.
+ * Who has this appliance right now (from its custody record). When the
+ * status says the unit is out but no record says who has it, the owner can
+ * record the customer by hand.
+ *
+ * AR-6 fix 6: the customer is picked with the searchable picker (the desk
+ * search), never a select holding every customer. The address options load
+ * for the picked customer when the address field is first used.
  */
 export function CustodyPanel({
   applianceId,
   current,
   needsRecord,
-  customers,
   canRecord,
 }: {
   applianceId: string;
   current: { customerId: string; customerName: string; since: string | null; address: string | null } | null;
   needsRecord: boolean;
-  customers: CustomerOption[];
   canRecord: boolean;
 }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
-  const [customerId, setCustomerId] = useState("");
-  const [addressId, setAddressId] = useState("");
-  const [since, setSince] = useState("");
-  const [reason, setReason] = useState("");
+  const [addresses, setAddresses] = useState<{ id: string; label: string }[]>([]);
+  const [addressesFor, setAddressesFor] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
-  const addresses = customers.find((c) => c.id === customerId)?.serviceAddresses ?? [];
+  if (!current && !needsRecord) return null;
 
-  function handleSubmit(e: React.FormEvent) {
+  function loadAddresses() {
+    const form = formRef.current;
+    if (!form) return;
+    const customerId = String(new FormData(form).get("customerId") ?? "");
+    if (!customerId || customerId === addressesFor) return;
+    setAddressesFor(customerId);
+    getCustomerAddressOptionsAction(customerId)
+      .then(setAddresses)
+      .catch(() => setAddresses([]));
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    const fd = new FormData(e.currentTarget);
+    const customerId = String(fd.get("customerId") ?? "");
+    if (!customerId) {
+      setError("Pick the customer first — type at least 2 letters to search.");
+      return;
+    }
     startTransition(async () => {
-      const result = await recordManualCustodyAction(applianceId, { customerId, serviceAddressId: addressId, startedOn: since, reason });
+      const result = await recordManualCustodyAction(applianceId, {
+        customerId,
+        serviceAddressId: String(fd.get("serviceAddressId") ?? ""),
+        startedOn: String(fd.get("startedOn") ?? ""),
+        reason: String(fd.get("reason") ?? ""),
+      });
       if (result.status === "error") setError(result.message);
       else router.refresh();
     });
   }
 
-  if (!current && !needsRecord) return null;
-
   return (
-    <div className="rounded-lg border border-line bg-white p-5">
+    <div id="custody" className="rounded-lg border border-line bg-white p-5">
       <h2 className="font-medium text-ink">Who has it <InfoTip term="custody" /></h2>
       {current ? (
         <p className="mt-2 text-sm text-ink-soft">
@@ -65,58 +90,36 @@ export function CustodyPanel({
             This appliance is marked as out with a customer, but no delivery record says which one.
           </p>
           {canRecord ? (
-            <form onSubmit={handleSubmit} className="mt-3 space-y-3">
+            <form ref={formRef} onSubmit={handleSubmit} className="mt-3 space-y-3">
+              <SearchablePicker name="customerId" label="Customer" search={searchCustomersAction} />
               <div>
-                <label htmlFor="custody-customer" className="block text-sm font-medium text-ink-soft">
-                  Customer
+                <label htmlFor="custody-address" className="block text-sm font-medium text-ink-soft">
+                  Address (optional)
                 </label>
                 <select
-                  id="custody-customer"
-                  required
-                  value={customerId}
-                  onChange={(e) => {
-                    setCustomerId(e.target.value);
-                    setAddressId("");
-                  }}
+                  id="custody-address"
+                  name="serviceAddressId"
+                  defaultValue=""
+                  onFocus={loadAddresses}
+                  onClick={loadAddresses}
                   className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 >
-                  <option value="">Choose a customer</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                  <option value="">Not sure</option>
+                  {addresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.label}
                     </option>
                   ))}
                 </select>
               </div>
-              {addresses.length > 0 && (
-                <div>
-                  <label htmlFor="custody-address" className="block text-sm font-medium text-ink-soft">
-                    Address (optional)
-                  </label>
-                  <select
-                    id="custody-address"
-                    value={addressId}
-                    onChange={(e) => setAddressId(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
-                  >
-                    <option value="">Not sure</option>
-                    {addresses.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div>
                 <label htmlFor="custody-since" className="block text-sm font-medium text-ink-soft">
                   Since (optional)
                 </label>
                 <input
                   id="custody-since"
+                  name="startedOn"
                   type="date"
-                  value={since}
-                  onChange={(e) => setSince(e.target.value)}
                   className="mt-1 rounded-md border border-line-strong px-3 py-2 text-sm"
                 />
                 <p className="mt-1 text-xs text-ink-soft">Leave blank if you don&apos;t know. The app never guesses a date.</p>
@@ -127,9 +130,8 @@ export function CustodyPanel({
                 </label>
                 <input
                   id="custody-reason"
+                  name="reason"
                   required
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
                   placeholder="e.g. confirmed by phone"
                   className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
                 />

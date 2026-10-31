@@ -31,32 +31,37 @@ test("bulk inventory reports distinct skipped units and persists the successful 
     });
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto("/desk/inventory");
-    for (const asset of assets)
+    // AR-6: retired units are not part of the working fleet (they live on
+    // the Retired page), so the retired unit has no checkbox here at all.
+    // Its bulk refusal is covered at the domain level
+    // (tests/appliance-status-retire-guard.test.ts).
+    await expect(
+      page.getByLabel(`Select ${assets[1]}`, { exact: true }),
+    ).toHaveCount(0);
+    for (const asset of [assets[0], assets[2]])
       await page.getByLabel(`Select ${asset}`, { exact: true }).check();
+    // AR-6: the bulk status change lives in the Change status sheet, which
+    // only offers statuses at least one selected unit can move to.
+    await page.getByRole("button", { name: "Change status…", exact: true }).click();
     await page
       .getByLabel("Set status to", { exact: true })
       .selectOption("AVAILABLE");
     await page.getByRole("button", { name: "Apply", exact: true }).click();
     const status = page
       .getByRole("status")
-      .filter({ hasText: "Updated 1. Skipped 2." });
+      .filter({ hasText: "1 changed, 1 skipped." });
     await expect(status).toBeVisible();
-    await expect(status).toContainText(assets[1]);
     await expect(status).toContainText(assets[2]);
-    await expect(status).toContainText("Retired");
     await expect(status).toContainText("already its current status");
     await expect(
       page.getByLabel(`Select ${assets[0]}`, { exact: true }),
     ).not.toBeChecked();
     await expect(
-      page.getByLabel(`Select ${assets[1]}`, { exact: true }),
-    ).toBeChecked();
-    await expect(
       page.getByLabel(`Select ${assets[2]}`, { exact: true }),
     ).toBeChecked();
     // The mutation refresh streams metadata separately from the updated list.
     // Audit the completed document, rather than the temporary refresh state.
-    await expect(page).toHaveTitle(/Inventory/);
+    await expect(page).toHaveTitle(/Equipment/);
     expect(
       (
         await new AxeBuilder({ page })

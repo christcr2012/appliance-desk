@@ -346,7 +346,7 @@ export async function listRetiredAppliances(actorUserId: string, filter: Retired
     orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     take: RETIRED_LIST_LIMIT,
     select: {
-      id: true, assetNumber: true, manufacturer: true, model: true, serialNumber: true, updatedAt: true,
+      id: true, assetNumber: true, manufacturer: true, model: true, color: true, serialNumber: true, updatedAt: true,
       applianceType: { select: { name: true } },
       retiredPlan: { select: { choice: true, note: true, remainder: true, doneOn: true, doneNote: true, decidedAt: true } },
     },

@@ -43,6 +43,7 @@ export type NewSupplierInput = {
 };
 
 export async function getSuppliers(options: { includeArchived?: boolean } = {}) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.supplier.findMany({
     where: options.includeArchived ? {} : { archivedAt: null },
     include: { _count: { select: { purchaseOrders: true } } },
@@ -51,6 +52,7 @@ export async function getSuppliers(options: { includeArchived?: boolean } = {}) 
 }
 
 export async function getSupplierById(id: string) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.supplier.findUnique({
     where: { id },
     include: {
@@ -170,6 +172,7 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
 }
 
 export async function getPurchaseOrders() {
+  await requireRole("OWNER", "ADMIN");
   return prisma.purchaseOrder.findMany({
     include: { supplier: true, lines: true },
     orderBy: [{ createdAt: "desc" }],
@@ -177,6 +180,7 @@ export async function getPurchaseOrders() {
 }
 
 export async function getPurchaseOrderById(id: string) {
+  await requireRole("OWNER", "ADMIN");
   return prisma.purchaseOrder.findUnique({
     where: { id },
     include: {
@@ -604,6 +608,8 @@ export const restoreSupplier = (userId: string, supplierId: string) => setArchiv
  * "flag when a part I use often is low on hand" ask. A part with no
  * threshold set (the default) never appears here, since Chris hasn't
  * told the system he tracks stock of it. */
+export { getPartsList, type PartsListParams, type PartsListStatus, type PartListRow, type PartsActor } from "./parts-list";
+
 export async function getLowStockParts() {
   await requireRole("OWNER", "ADMIN", "STAFF");
   const parts = await prisma.partRecord.findMany({

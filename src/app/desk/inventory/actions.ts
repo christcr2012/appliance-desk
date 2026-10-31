@@ -510,3 +510,55 @@ export async function markCleaningDoneAction(applianceId: string): Promise<Inven
   revalidatePath("/desk/today");
   return { status: "success" };
 }
+
+// --- AR-6: searchable-picker feeds for the appliance record -------------
+// The record's pickers search as you type (fix 6): no page ever renders
+// every customer or every part into the HTML again.
+
+/** Customers for the custody form's picker, via the desk-wide search. */
+export async function searchCustomersAction(
+  query: string,
+): Promise<{ id: string; label: string; detail?: string }[]> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  void session;
+  const { searchAll } = await import("@/domains/search");
+  const results = await searchAll(query);
+  return results.customers.map((c) => ({
+    id: c.id,
+    label: c.companyName ?? c.name,
+    detail: c.companyName ? (c.name ?? c.email) : c.email,
+  }));
+}
+
+/** The picked customer's addresses for the custody form's address select. */
+export async function getCustomerAddressOptionsAction(
+  customerId: string,
+): Promise<{ id: string; label: string }[]> {
+  await requireRole("OWNER", "ADMIN", "STAFF");
+  if (!customerId) return [];
+  const { prisma } = await import("@/lib/prisma");
+  const addresses = await prisma.serviceAddress.findMany({
+    where: { customerId },
+    orderBy: [{ createdAt: "asc" }],
+    select: { id: true, line1: true, city: true },
+    take: 20,
+  });
+  return addresses.map((a) => ({ id: a.id, label: `${a.line1}, ${a.city}` }));
+}
+
+/** Parts for the retired panel's salvage picker, via getPartsList (S1). */
+export async function searchPartsAction(
+  query: string,
+): Promise<{ id: string; label: string; detail?: string }[]> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const { getPartsList } = await import("@/domains/purchasing/parts-list");
+  const page = await getPartsList(
+    { q: query, status: "in-stock" },
+    { role: session.user.role },
+  );
+  return page.rows.map((p) => ({
+    id: p.id,
+    label: `${p.partName?.trim() || `Part ${p.partNumber}`} (${p.modelNumber})`,
+    detail: `${p.quantityOnHand} on hand`,
+  }));
+}
