@@ -36,7 +36,7 @@ Approval gating and the action surface are unchanged; later cards' REPAIR_*
 (MCP-6) and FEEDBACK_* (MCP-11) journal actions are their own scope.
 
 
-## October 30 — PORTAL-1: Customer portal redesign built, in review (Lane 4)
+## October 30–31 — PORTAL-1: Customer portal redesign COMPLETE (PR #781, Lane 4)
 
 **What changed:** every customer portal page (Home, Rentals, Repairs, Bills + the bill
 page, Properties, Account + Privacy) is redesigned on the kit in one PR: money totals
@@ -192,9 +192,22 @@ Workshop pass for business-records is also corrected here: the box's
 network path surfaced the fake-store error through the accepted
 fallback, so that part of the cycle-5 pass was degraded evidence.
 
-**Next:** merge on green CI + review gate; then a close-out records PR marks the card
-complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
-docs land.
+**Merge lap (2026-10-31):** PR #781 squash-merged to main as 1524af0f at exact
+head 66599ada — ci green (browser-c passed on the one guarded rerun after a
+60-second timeout flake in Lane 6's new schedule spec; the same code had
+passed at the previous head), review-gate waived green, 0 unresolved
+threads. Auto-merge arming refused "unstable" over the failed Performance
+Baselines run (customers-list sorts over budget on a loaded runner —
+attention median 213 ms against the 150 ms class budget; the run is not a
+required check and the budget question stays open for Chris), so the merge
+went direct at the exact head, the Lane 6 #782 route. Fix cycles 5–7 are
+recorded above: portal isolation as its own browser-e step with a
+same-name database reset, the Spanish skeleton chunk-hold, and the W-6
+lead To do DST expectation fix. This close-out PR marks the card complete.
+
+**Next:** W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
+docs land; Lane 4's next card is per Chris's direction from the remaining
+approved list (M-2C, M-3, O-3B, COM-N).
 ## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
 
 MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
