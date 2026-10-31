@@ -222,6 +222,15 @@ the app records the confirmation like any return. Until then (or if the answer i
 checklist that exists today. Deduction lines stay "not decided" until IN-44 is answered, and the file is not offered for
 a period with an undecided line.
 
+**Amendment 2026-10-31 (Chris's decision, recorded — the paragraph above is unchanged):** IN-44 no longer leaves
+deduction lines undecided by default. On Chris's instruction the most likely outcome of the CPA's review was
+researched (docs/research/2026-10-31-in-44-deduction-reporting.md) and applied as the starting value of
+`TaxFilingAccount.deductionLabels` for every bucket, labelled "Researched default — CPA confirmation still pending"
+wherever the packet shows provenance; IN-44 stays open and the CPA's answer, when it comes, is entered as owner
+settings with no code change. The file-offering rule in the paragraph above now reads: the file is not offered for a
+period whose deduction lines are undecided **and have no researched default applied**; a period filed on researched
+defaults is flagged in the packet as pending CPA confirmation. The IN-62 gate and the schema gate are unchanged.
+
 **D-WA6 — Every purchase answer leads to exactly one next step (Chris, 2026-10-09: "realize when I did or did not pay
 sales and use tax to the seller, and choose the next remaining step … know and follow filing deadlines").** The
 answer model already exists (`AcquisitionTaxStatus`, choices `SELLER_CHARGED` / `NONE_CHARGED` / `LESSOR_PERMISSION` /

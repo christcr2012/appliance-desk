@@ -1,3 +1,13 @@
+## October 31 — W-12 started + IN-44 researched defaults (Lane 4, in progress, branch ai/vivienne/w-12)
+
+**What changed:** W-12 (sales tax return XML upload file) is unblocked for everything except the file itself. On Chris's instruction, IN-44 was researched instead of parked (docs/research/2026-10-31-in-44-deduction-reporting.md): every packet deduction bucket is included in gross and deducted on Schedule A — short-term exempt rent A13-1 (MEDIUM confidence), nontaxable services A3-1, exempt entities A4-1, outside-area A2-1 (HIGH). Those researched mappings become the configurable starting values of `TaxFilingAccount.deductionLabels`, labelled "Researched default — CPA confirmation still pending"; IN-44 stays open (DECISIONS.md 2026-10-31; OWNER-INPUTS row updated; D-WA5 amendment note records the revised file-offering rule — original text untouched). Card + execution packet written (docs/pr-cards/W-12.md, execution/W-12.json, registered in the work index; activeExecution untouched).
+
+**How it was checked:** bucket keys and the current setup surface read in the code (filing-packet.ts, setup.ts, account page); research verified against the current DR 0100/Schedule A editions with a skeptic pass (the July 2025 form renumbered "Other exempt sales" A12-1 → A13-1).
+
+**What needs you:** nothing new — IN-62 stays your send when the LLC exists; the XML serializer slice starts only when that answer is yes AND the schema version is recorded in docs/runbooks/colorado-filing-channels.md.
+
+**Next:** build slice S1 (defaults table, packet provenance, per-bucket settings editor) on this branch, one PR, exact-head CI.
+
 ## October 31 — MCP-9 PR #794: one-worker browser-b recovery (not yet proven)
 
 Exact-head CI #41208669802 at merge-resolved SHA `1b44a076` passed the static checks and three unit/database shards, but browser-b failed before the isolated W-22 signing test ran: its *second* Playwright process repeated global login setup, which timed out waiting to leave /login. The first red run #41205088503 had instead failed inside W-22 after an owner review because parallel settings tests may invalidate a frozen synthetic order. The follow-up correction now executes **all original browser-b specs once in one Playwright process, with one worker**: no duplicate login setup and no concurrent BusinessSettings mutations. All assertions, fixtures, skipped-test checks, other shard runners and release gates remain intact. The corrected head is **NOT YET CI-VERIFIED**; do not claim this cause resolved until the fresh CI passes.

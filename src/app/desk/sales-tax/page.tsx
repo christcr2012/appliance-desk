@@ -100,6 +100,9 @@ export default async function SalesTaxRootPage() {
         No open scheduled returns. Check the account start dates and filing calendar before assuming nothing is owed.
       </p>}
       <Link className="text-sm underline" href="/desk/sales-tax/returns">All returns and filing history</Link>
+      {(actor.user.role === "OWNER" || actor.user.role === "ACCOUNTANT") && <span className="block">
+        <Link className="text-sm underline" href="/desk/sales-tax/deduction-labels">Deduction wording on the return</Link>
+      </span>}
     </section>
     <section className="space-y-3">
       <h2 className="text-base font-extrabold text-ink">Setup and verification</h2>

@@ -50,15 +50,19 @@ describe("T-6b1 filing packet from persisted integer-cent evidence", () => {
   });
 
   it("shows undecided deduction mappings without secretly adjusting tax", () => {
+    // W-12: the four researched buckets now resolve to researched defaults
+    // (covered in tests/w12-deduction-defaults.test.ts); a bucket with no
+    // researched default and no saved label keeps the undecided behavior.
     const p = buildFilingPacket(input({
       rows: [row({
-        deductions: [{ key: "EXEMPT_SHORT_TERM_RENTAL", label: "old", cents: 5000 }],
+        deductions: [{ key: "EXEMPT_UNRESEARCHED_KIND", label: "old", cents: 5000 }],
         grossSalesCents: 15000, netTaxableCents: 10000, taxCents: 290,
       })],
     }));
     expect(p.rows[0].deductions[0].label).toContain("ask your CPA");
+    expect(p.rows[0].deductions[0].source).toBe("UNDECIDED");
     expect(p.totals.taxCents).toBe(290);
-    expect(p.warnings.join(" ")).toContain("EXEMPT_SHORT_TERM_RENTAL");
+    expect(p.warnings.join(" ")).toContain("EXEMPT_UNRESEARCHED_KIND");
   });
 
   it("honors LEAVE_OUT_OF_GROSS without changing stored taxable tax", () => {

@@ -3468,7 +3468,7 @@
       "dependencies": [
         "W-10"
       ],
-      "status": "APPROVED",
+      "status": "IN PROGRESS — researched IN-44 defaults, provenance and settings building (Lane 4, 2026-10-31); the return-file slice waits on IN-62 + the schema recorded in the runbook",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -3478,9 +3478,15 @@
         "docs/designs/BATCH-W.md",
         "src/domains/tax/filing-packet.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-12.md"
+      "tests": [
+        "tests/w12-deduction-defaults.test.ts",
+        "tests/tax-filing-packet.test.ts",
+        "tests/accountant-allowlist.test.ts",
+        "tests/w12-deduction-labels-integration.test.ts"
+      ],
+      "readiness": "CARD_WRITTEN",
+      "plannedCard": "docs/pr-cards/W-12.md",
+      "card": "docs/pr-cards/W-12.md"
     },
     {
       "id": "W-13",
@@ -6181,6 +6187,10 @@
     {
       "id": "AR-5B",
       "path": "docs/pr-cards/execution/AR-5B.json"
+    },
+    {
+      "id": "W-12",
+      "path": "docs/pr-cards/execution/W-12.json"
     }
   ]
 }

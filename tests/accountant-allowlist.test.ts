@@ -80,6 +80,8 @@ const APP_ALLOWLIST = [
   "app/desk/sales-tax/audit-pack/page.tsx",
   "app/desk/sales-tax/benefits/actions.ts",
   "app/desk/sales-tax/benefits/page.tsx",
+  "app/desk/sales-tax/deduction-labels/actions.ts",
+  "app/desk/sales-tax/deduction-labels/page.tsx",
   "app/desk/sales-tax/delivery-fees/page.tsx",
   "app/desk/sales-tax/layout.tsx",
   "app/desk/sales-tax/page.tsx",

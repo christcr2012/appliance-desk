@@ -1,0 +1,146 @@
+{
+  "acceptance": [
+    "Every deduction bucket the packet can produce (EXEMPT_SHORT_TERM_RENTAL, EXEMPT_CUSTOMER_OTHER, OUTSIDE_AREA, NOT_TAXED_CATEGORY) has a researched recommended default — Schedule A label plus DEDUCTION treatment — in one code table with a plain-words reason and its source, and a packet built for an account with no saved labels shows those defaults instead of \"Not decided — ask your CPA\".",
+    "A deduction line whose wording came from the researched default is marked \"Researched default — CPA confirmation still pending\" wherever the packet shows it; a line with owner-saved wording is not marked; totals and tax due are identical either way.",
+    "The deduction wording is edited per bucket on its own page — label text and how the amount is reported, in plain words — with the recommended default and its reason shown and a per-bucket restore; saving never requires editing JSON.",
+    "New filing accounts start with the researched defaults as their starting labels, marked as researched defaults until the owner edits a bucket.",
+    "A bucket with no researched default and no saved label still shows \"Not decided — ask your CPA\" with the packet warning, so an uncomputable or unresearched bucket (S-T9) stays visibly undecided.",
+    "The deduction wording is also editable by the business's accountant (Accountant role): the dedicated save re-checks the actor in the transaction (owner or active accountant only), writes only the deduction labels, audit-logs saver, role and per-bucket old and new values, and stamps provenance from the editor — a bucket an accountant sets or confirms reads as accountant-set and its pending-CPA label clears.",
+    "The decision is recorded: a dated research note in docs/research/, a DECISIONS.md entry, the IN-44 row in OWNER-INPUTS.md updated to \"researched default applied 2026-10-31 on Chris's instruction; CPA confirmation still sought\", and a dated amendment note on D-WA5 in BATCH-W.md (the original text is not rewritten)."
+  ],
+  "baseline": "02b350509843cc29074b49fa65c4b639943f1a95",
+  "card": "docs/pr-cards/W-12.md",
+  "checks": {
+    "browser": [
+      "e2e/sales-tax-setup.spec.ts"
+    ],
+    "db": [
+      "tests/tax-filing-packet-accountant-integration.test.ts",
+      "tests/w12-deduction-labels-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/w12-deduction-defaults.test.ts",
+      "tests/tax-filing-packet.test.ts",
+      "tests/accountant-allowlist.test.ts"
+    ]
+  },
+  "gates": [
+    {
+      "id": "IN-62",
+      "affected": "The \"Download the return file\" offering rule, XML serializer, schema-validation test and download route (slice W-12-S3)",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Chris sends the DOR email when the LLC exists and forwards the reply; the schema files are downloaded from the SUTS bulk-filer portal",
+      "reopen": "IN-62 answered yes AND the exact Colorado XML schema version is recorded in docs/runbooks/colorado-filing-channels.md"
+    },
+    {
+      "id": "S-T9",
+      "affected": "Any deduction bucket that cannot be computed from InvoiceTaxLine plus the taxability matrix",
+      "source": "docs/designs/BATCH-W.md",
+      "remedy": "Stop and write a design note; never invent a calculation",
+      "reopen": "Design note accepted and the bucket becomes computable"
+    }
+  ],
+  "id": "W-12",
+  "invariants": [
+    "The app never files or pays a return.",
+    "Tax due and packet totals never depend on deduction labels or their provenance.",
+    "An owner-saved label is never overwritten or re-marked by a default; defaults fill only buckets with no saved label.",
+    "Researched defaults are always labelled \"Researched default — CPA confirmation still pending\", never \"CPA-approved\"; IN-44 stays open until the CPA answers.",
+    "No XML element, endpoint or schema detail is guessed: the file slice starts only from the schema version recorded in the runbook (BATCH-W section 6.4 stop-and-ask).",
+    "If a needed deduction bucket cannot be computed from InvoiceTaxLine plus the taxability matrix, stop and write a design note (S-T9); do not invent a calculation.",
+    "The lane writes no production data: defaults resolve in code, and stored labels change only through the owner's own setup actions."
+  ],
+  "next": "Gate slice (defaults, provenance, settings) builds now in one PR with the research note and decision records. The file slice (offering rule, XML serializer, schema validation, download route) waits on IN-62 answered yes AND the schema version recorded in docs/runbooks/colorado-filing-channels.md; the card stays open until then.",
+  "outcome": "The sales tax return packet stops saying \"Not decided\" for deduction wording: every deduction bucket carries the researched most-likely SUTS reporting (Schedule A line and treatment) as a configurable owner setting with an honest \"CPA confirmation still pending\" provenance, and the return file download is fully designed and gated so it can be built the day Colorado's answer and the XML schema are in writing",
+  "parent": "W-12",
+  "proposedFiles": [
+    "src/domains/tax/deduction-labels.ts",
+    "src/domains/tax/filing-packet.ts",
+    "src/domains/tax/setup.ts",
+    "src/app/desk/sales-tax/setup/accounts/[id]/page.tsx",
+    "src/app/desk/sales-tax/setup/actions.ts",
+    "tests/w12-deduction-defaults.test.ts",
+    "docs/research/2026-10-31-in-44-deduction-reporting.md",
+    "docs/pr-cards/W-12.md",
+    "docs/pr-cards/execution/W-12.json",
+    "docs/pr-cards/work-index.json",
+    "docs/STATUS.md",
+    "docs/DECISIONS.md",
+    "docs/OWNER-INPUTS.md",
+    "docs/designs/BATCH-W.md",
+    "src/app/desk/sales-tax/deduction-labels/page.tsx",
+    "src/app/desk/sales-tax/deduction-labels/actions.ts",
+    "src/app/desk/sales-tax/page.tsx",
+    "tests/w12-deduction-labels-integration.test.ts",
+    "tests/accountant-allowlist.test.ts",
+    "e2e/route-inventory.ts",
+    "scripts/desk-bundle-budget.json",
+    "docs/build-specs/migrated-pages.json",
+    "vitest.config.mts"
+  ],
+  "references": [
+    {
+      "anchor": "export function buildFilingPacket",
+      "path": "src/domains/tax/filing-packet.ts",
+      "purpose": "Frozen return packet: builds deduction lines from TaxFilingAccount.deductionLabels, unmapped buckets show \"Not decided — ask your CPA\""
+    },
+    {
+      "anchor": "function safeDeductionLabels",
+      "path": "src/domains/tax/setup.ts",
+      "purpose": "Filing-account setup: validates and saves deductionLabels today"
+    },
+    {
+      "anchor": "Deduction wording on the return",
+      "path": "src/app/desk/sales-tax/setup/accounts/[id]/page.tsx",
+      "purpose": "Filing-account setup page: the per-bucket deduction editor (label, report-as, provenance, restore) this card builds"
+    },
+    {
+      "anchor": "**D-WA5 — Sales tax XML return file.**",
+      "path": "docs/designs/BATCH-W.md",
+      "purpose": "The approved design decision for this card, including its gates"
+    },
+    {
+      "anchor": "model TaxFilingAccount {",
+      "path": "prisma/schema.prisma",
+      "purpose": "Filing account record: deductionLabels Json, bulkXmlAvailable flag"
+    }
+  ],
+  "risk": "A researched default that misstates a Schedule A line on a real return, provenance displayed as if it were CPA approval, an owner-saved label silently overwritten by a default, the setup editor breaking the filing-account save, or an XML field guessed before the schema is recorded (forbidden by BATCH-W section 6.4).",
+  "sequence": [
+    "Research note and decision records (IN-44 researched defaults, owner decision 2026-10-31)",
+    "Recommended-defaults table and packet resolution with provenance",
+    "Per-bucket settings editor with restore, creation starting values",
+    "Tests on Lane 4 Postgres (5434)",
+    "Docs, one push and exact-head CI; the file slice stays gated and recorded"
+  ],
+  "slices": [
+    {
+      "acceptance": [
+        "Every deduction bucket the packet can produce (EXEMPT_SHORT_TERM_RENTAL, EXEMPT_CUSTOMER_OTHER, OUTSIDE_AREA, NOT_TAXED_CATEGORY) has a researched recommended default — Schedule A label plus DEDUCTION treatment — in one code table with a plain-words reason and its source, and a packet built for an account with no saved labels shows those defaults instead of \"Not decided — ask your CPA\".",
+        "A deduction line whose wording came from the researched default is marked \"Researched default — CPA confirmation still pending\" wherever the packet shows it; a line with owner-saved wording is not marked; totals and tax due are identical either way.",
+        "The deduction wording is edited per bucket on its own page — label text and how the amount is reported, in plain words — with the recommended default and its reason shown and a per-bucket restore; saving never requires editing JSON.",
+        "New filing accounts start with the researched defaults as their starting labels, marked as researched defaults until the owner edits a bucket.",
+        "A bucket with no researched default and no saved label still shows \"Not decided — ask your CPA\" with the packet warning, so an uncomputable or unresearched bucket (S-T9) stays visibly undecided.",
+        "The deduction wording is also editable by the business's accountant (Accountant role): the dedicated save re-checks the actor in the transaction (owner or active accountant only), writes only the deduction labels, audit-logs saver, role and per-bucket old and new values, and stamps provenance from the editor — a bucket an accountant sets or confirms reads as accountant-set and its pending-CPA label clears."
+      ],
+      "id": "W-12-S1",
+      "outcome": "Researched IN-44 defaults: recommended-defaults table, packet resolution with provenance, per-bucket settings editor with restore, creation starting values"
+    },
+    {
+      "acceptance": [
+        "The decision is recorded: a dated research note in docs/research/, a DECISIONS.md entry, the IN-44 row in OWNER-INPUTS.md updated to \"researched default applied 2026-10-31 on Chris's instruction; CPA confirmation still sought\", and a dated amendment note on D-WA5 in BATCH-W.md (the original text is not rewritten)."
+      ],
+      "id": "W-12-S2",
+      "outcome": "Records: research note, DECISIONS.md entry, OWNER-INPUTS IN-44 row, D-WA5 amendment note, STATUS"
+    },
+    {
+      "acceptance": [
+        "When IN-62 is answered yes and the schema version is recorded in the runbook, the sales tax return page offers \"Download the return file\" only for a period whose deduction lines are all decided (owner-saved or researched default applied), the file is built from the frozen packet in the recorded schema, and a test validates the file against that schema before the download is offered."
+      ],
+      "id": "W-12-S3",
+      "outcome": "WAITING — the return file itself: offering rule, XML serializer validated against the recorded schema, download route (gate: IN-62 yes + schema version in the runbook)"
+    }
+  ],
+  "version": 1
+}
