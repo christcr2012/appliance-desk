@@ -125,6 +125,49 @@ failed jobs as the verdict route if they recur. No assertion weakened:
 feedback, portal and location-contacts all check the same product
 behavior as before.
 
+**Fix cycle 6 (from CI at 34cf6d53 + Workshop placement trials):** the
+cycle-5 placement itself failed in CI — business-records (browser-c) is
+photo-store-sensitive too: with the identity configured, its small-file
+attach reaches the real Blob API and surfaces "This store does not
+exist.", neither of its two accepted outcomes. Workshop trials of the
+remaining groups then closed the placement question for good:
+portal.spec.ts is a bad group neighbor everywhere — in browser-b its
+presence deterministically starved the w22 signing poll (pair run
+reproduced it; w22 alone with the identity passes, so the identity was
+never the cause there), and in browser-a three timing failures appeared
+under its load, including the portal spanish test's own rentals heading.
+The durable shape is isolation, not placement: portal.spec.ts now lives
+in its own group "browser-e-portal", run as a dedicated second step of
+the browser-e job with the throwaway identity prefixed onto that step's
+command only — its own server process, no shared job environment, no
+neighbors. The group is not a sixth matrix shard (the CI layout policy
+pins five); e2e-shard.mjs validates it like any group (126 files, each
+in exactly one). The step first resets the job's database (drop and
+recreate under the same name, then migrate and seed in the step):
+Playwright's global setup enrolls the fixture accounts' two-factor
+auth on first login, so a second global setup against the job's main
+database stalls at the two-factor challenge — the same reason the
+Workshop run-checks harness uses a fresh database per group. The
+reset keeps the name appliance_desk_test because prisma/seed.ts
+refuses its admin fixture on any other database name.
+Browser-e's main step returns to the exact configuration that was
+green at 6fa43ced and 34cf6d53. One spec fix rides along, intent
+unchanged: the spanish test's "Cargando…" skeleton assertion raced
+the renderer. Request logging on the Workshop proved the router
+paints the skeleton at navigation commit, not while the fetch is
+in flight, so on a fast machine the loaded page replaces it
+within a frame (it failed in browser-e CI, in browser-a, and
+isolated; it passed only under heavier server load). The test now
+registers its rentals-fetch hold before the billing page loads
+(so no prefetch can make the click instant) and also holds the
+rentals page's lazy chunk — the one request its content still
+needs after commit — so the skeleton stays on screen for the
+whole hold while the label is read. Every assertion is
+untouched. The cycle-5
+Workshop pass for business-records is also corrected here: the box's
+network path surfaced the fake-store error through the accepted
+fallback, so that part of the cycle-5 pass was degraded evidence.
+
 **Next:** merge on green CI + review gate; then a close-out records PR marks the card
 complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
 docs land.

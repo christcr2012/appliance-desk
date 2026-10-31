@@ -276,6 +276,33 @@ test.describe("PORTAL-1 customer portal", () => {
         data: { preferredLanguage: "es" },
       });
 
+      // Kit words ride the same provider: hold the rentals fetch
+      // (prefetches aborted so the click makes a real one) and read
+      // the skeleton's spoken label while the page loads. The hold is
+      // registered BEFORE the billing page loads, so no rentals
+      // prefetch can complete ahead of it and make the click instant.
+      await page.route("**/account/rentals**", async (route) => {
+        if (route.request().headers()["next-router-prefetch"]) {
+          return route.abort();
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        await route.continue();
+      });
+      // The router paints the skeleton at navigation commit, not
+      // while the fetch is in flight (observed directly with request
+      // logging, fix cycle 6, PR #781): on a fast machine the loaded
+      // page replaces it within a frame and the Cargando assertion
+      // races the renderer. The one request the rentals content
+      // still needs after commit is its lazy page chunk, so hold
+      // chunk requests from here on: the skeleton then stays on
+      // screen for the whole hold, deterministically. (The billing
+      // page's own chunks are already loaded; only the rentals
+      // chunk is requested after this point.)
+      await page.route("**/_next/static/chunks/**", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await route.continue();
+      });
+
       await page.goto("/account/billing");
       await expect(
         page.getByRole("button", { name: "Datos de tarjeta o banco" }),
@@ -284,16 +311,6 @@ test.describe("PORTAL-1 customer portal", () => {
       await expect(nav.getByRole("link", { name: "Facturas", exact: true })).toBeVisible();
       await expect(nav.getByRole("link", { name: "Reparaciones", exact: true })).toBeVisible();
 
-      // Kit words ride the same provider: hold the rentals fetch
-      // (prefetches aborted so the click makes a real one) and read
-      // the skeleton's spoken label while the page loads.
-      await page.route("**/account/rentals**", async (route) => {
-        if (route.request().headers()["next-router-prefetch"]) {
-          return route.abort();
-        }
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-        await route.continue();
-      });
       await nav.getByRole("link", { name: "Alquileres", exact: true }).click();
       await expect(page.getByText("Cargando…")).toBeAttached({ timeout: 8_000 });
       await expect(
