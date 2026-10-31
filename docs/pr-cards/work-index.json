@@ -4950,7 +4950,7 @@
         "MCP-2",
         "DEC-1"
       ],
-      "status": "APPROVED \u2014 Chris 2026-10-25",
+      "status": "MERGED \u2014 PR #717, squash 62a1cd84 (2026-10-29); verified and closed out 2026-10-30 by Lane 5 (MCP-5-CLOSEOUT): both integration suites green on current main, e2e/mcp-activity.spec.ts added for the browser acceptance line",
       "migration": "additive (AgentOperation)",
       "budget": 650,
       "units": [
@@ -6169,6 +6169,10 @@
     {
       "id": "CU1-VIEW",
       "path": "docs/pr-cards/execution/CU1-VIEW.json"
+    },
+    {
+      "id": "MCP-5-CLOSEOUT",
+      "path": "docs/pr-cards/execution/MCP-5-CLOSEOUT.json"
     }
   ]
 }

@@ -129,6 +129,7 @@
       "vault.spec.ts",
       "service-area-map.spec.ts",
       "mcp-repair-cases.spec.ts",
+      "mcp-activity.spec.ts",
       "navigation.spec.ts",
       "rentals.spec.ts",
       "today-inline.spec.ts",
