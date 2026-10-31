@@ -292,7 +292,12 @@ for (const role of ["owner", "customer"] as const) {
           .first()
           .click();
         await expect(page).toHaveURL(/request=pickup$/);
-        await expect(page.getByRole("status")).toContainText("does not cancel");
+        // The pickup sheet's intro is announced as a status region; scope to
+        // it — the kit Toaster is a second, always-present status region on
+        // the redesigned portal, so a bare getByRole("status") is ambiguous.
+        await expect(
+          page.getByRole("status").filter({ hasText: "does not cancel" }),
+        ).toBeVisible();
         await expect(page.getByLabel("What's going on?")).toHaveValue("");
         await page.getByRole("button", { name: "Submit request" }).click();
         await expect(page.getByLabel("What's going on?")).toBeFocused();
