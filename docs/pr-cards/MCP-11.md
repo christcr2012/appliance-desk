@@ -5,12 +5,12 @@ Build spec: `docs/build-specs/engines/FEEDBACK-AGENT.md`. Design: `docs/mcp/FEED
 reports whose author allowed it.
 
 ## Acceptance
-- [ ] Reporters choose, per report, whether the assistant may read it; off by default; can withdraw any time.
-- [ ] Without permission, no tool returns what was written — even for the owner's assistant (test).
-- [ ] Assistant replies are labelled; internal notes never reach reporters; pictures never go to an assistant.
-- [ ] "Fixed" needs a verified repair case; reporters can reopen.
-- [ ] Prompt-injection text in a report causes no action (test).
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Reporters choose, per report, whether the assistant may read it; off by default; can withdraw any time.
+- [x] Without permission, no tool returns what was written — even for the owner's assistant (test).
+- [x] Assistant replies are labelled; internal notes never reach reporters; pictures never go to an assistant.
+- [x] "Fixed" needs a verified repair case; reporters can reopen.
+- [x] Prompt-injection text in a report causes no action (test).
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Acceptance plan — October 28
 
@@ -41,3 +41,44 @@ only when absent; inspect the final prerequisite exports once before coding.
    text and assert it creates zero operations and grants zero scopes.
 5. Run the spec’s two new integration suites plus existing feedback privacy tests; add the reporter permission
    browser journey. Keep the existing feedback service functional if assistant permission is never enabled.
+
+## Close-out — October 31 (Lane 5, MCP-11-CLOSEOUT)
+
+The implementation merged as PR #748 on 2026-10-29 but the card was never
+closed out: every acceptance box stayed unticked, the Progress section still
+ended at "review-gate and the final squash merge remain pending", and the
+work-index still read APPROVED. Verified on current main (`ec131333`) under
+packet MCP-11-CLOSEOUT; nothing was rebuilt and no behavior changed.
+
+- **Suites:** the feedback suites re-ran per-file on the lane database —
+  journaled-feedback integration 5/5, the existing feedback workflow suite
+  13/13, feedback privacy 2/2 and the no-AI bridge guards 4/4 (24 total, zero
+  skipped). The first run of the batch failed at the environment level (vite
+  config-write EPERM and Prisma connection errors, all suites at once) because
+  this VM was replaced mid-verification — uptime had reset when the batch was
+  retried; a direct probe then passed and the full batch ran green unchanged.
+- **Implementation read:** consent is reporter-owned — reports start
+  HUMAN_ONLY, and `setFeedbackAiReview` runs under the reporter report lock
+  with a version check and records an AI_PERMISSION_CHANGED event; withdrawal
+  moves ALLOWED to WITHDRAWN. Content reads require the separate
+  `feedback:content` scope AND live ALLOWED consent AND unremoved content,
+  re-checked again in the agent-control action layer at execution, so a
+  withdrawal between preview and execution cancels the queued operation (the
+  journaled suite proves it). Attachment URLs are never returned to an
+  assistant. Replies are journaled (FEEDBACK_REPLY / FEEDBACK_UPDATE /
+  FEEDBACK_LINK_CASE, `feedback:triage`) and labelled ASSISTANT; internal
+  notes never appear in reporter-visible queries; marking a report fixed
+  requires a linked VERIFIED repair case (VERIFIED_REPAIR_REQUIRED) and
+  reporters can reopen inside the reopen window. The workflow suite's
+  injection case files a report whose text is an instruction string and
+  proves it stays inert data — visible only as the consented report's
+  description, never executed.
+- **Browser:** `e2e/feedback.spec.ts` carries the reporter consent journey
+  (the "AI assistant privacy choice" opt-in, the allowed state, and
+  withdrawal) and is registered in `e2e/shards.json`; it runs in CI's browser
+  shards at heads containing the merged implementation.
+- **Index correction:** the work-index named two test files that do not exist
+  under those names (`tests/mcp-feedback-integration.test.ts`,
+  `tests/feedback-workflow-integration.test.ts`); the real suites are
+  `tests/mcp-feedback-agent-integration.test.ts` and
+  `tests/feedback-integration.test.ts`, and the index now names them.
