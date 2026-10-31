@@ -56,6 +56,22 @@ export const RTC_PUBLIC_CATALOG = [
     "readOnly": true
   },
   {
+    "name": "appliance_where_is_setting",
+    "readOnly": true
+  },
+  {
+    "name": "appliance_optimization_get_observations",
+    "readOnly": true
+  },
+  {
+    "name": "appliance_optimization_list_proposals",
+    "readOnly": true
+  },
+  {
+    "name": "appliance_optimization_create_proposal",
+    "readOnly": false
+  },
+  {
     "name": "appliance_action_preview",
     "readOnly": false
   },
