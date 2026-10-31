@@ -6161,6 +6161,10 @@
     {
       "id": "CU1-PERF",
       "path": "docs/pr-cards/execution/CU1-PERF.json"
+    },
+    {
+      "id": "CU1-VIEW",
+      "path": "docs/pr-cards/execution/CU1-VIEW.json"
     }
   ]
 }

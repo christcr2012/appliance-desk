@@ -1,0 +1,11 @@
+-- CU1-VIEW (AR-4 follow-up to CU1-PERF): retire the customer_list_v1 view.
+-- CU1-PERF (#776) moved every production read to grouped base-table
+-- aggregates (factsFromSql in src/domains/customers/list.ts); the view's
+-- only remaining readers were the two oracle queries in
+-- tests/customer-list-integration.test.ts, which now compute the segment
+-- facts from the base tables directly. Dropping the view removes the
+-- second, unmaintained copy of the segment-facts definition. No table,
+-- column or data is touched; the phoneDigits key and the trigram and
+-- composite indexes from the CU-1 migration (20261026040000_customer_list)
+-- stay.
+DROP VIEW "customer_list_v1";
