@@ -173,7 +173,21 @@ registers its rentals-fetch hold before the billing page loads
 rentals page's lazy chunk — the one request its content still
 needs after commit — so the skeleton stays on screen for the
 whole hold while the label is read. Every assertion is
-untouched. The cycle-5
+untouched.
+
+**Fix cycle 7 (from CI at 0f4a1f83):** all browser shards passed at the
+merge head, including the new two-step browser-e job; unit shard 1/3
+failed on two pre-existing expectations in
+tests/w5-w6-integration.test.ts (Lane 5's W-6 lead To dos) that the
+calendar exposed: they computed expected due dates with millisecond
+DAY arithmetic, which lands a day short across the November 1
+fall-back (a 25-hour Denver day), while the app correctly adds
+calendar days via addBusinessDays. The expectations now use
+addBusinessDays too — assertion intent unchanged (the defaults are
+still pinned to the same calendar-day counts). Verified on the
+Workshop: the file passes 11/11 on the merged tree. The same failure
+would meet main's next CI run unchanged; it is fixed here because
+this PR's CI is where it blocks. The cycle-5
 Workshop pass for business-records is also corrected here: the box's
 network path surfaced the fake-store error through the accepted
 fallback, so that part of the cycle-5 pass was degraded evidence.

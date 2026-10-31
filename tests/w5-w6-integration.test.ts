@@ -14,7 +14,7 @@ import { previewPaymentLink, sendPaymentLink, copyPaymentLink, saveTemplate, sta
 import { getLeadResponseDays, saveLeadResponseDays, setLeadFollowUp, parseFollowUpKey, defaultFollowUpKey } from "@/domains/leads/follow-up";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "@/domains/exceptions/lead-turning-points";
 import { listHeldPaymentAttention } from "@/domains/exceptions/money-turning-points";
-import { businessDateKey } from "@/lib/business-date";
+import { addBusinessDays, businessDateKey } from "@/lib/business-date";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(url.hostname) && url.pathname === "/appliance_desk_test";
@@ -150,7 +150,7 @@ describe.skipIf(!enabled)("W-5 payment links and W-6 lead To dos on real Postgre
     expect(row?.dueDateOnly).toBe(true);
     expect(businessDateKey(row!.dueOn!)).toBe(businessDateKey(lead.createdAt));
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { leadResponseDays: 3 } });
-    expect(businessDateKey((await find())!.dueOn!)).toBe(businessDateKey(new Date(lead.createdAt.getTime() + 3 * DAY)));
+    expect(businessDateKey((await find())!.dueOn!)).toBe(businessDateKey(addBusinessDays(lead.createdAt, 3)));
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { leadResponseDays: 0 } });
     await prisma.lead.update({ where: { id: lead.id }, data: { status: "CONTACTED" } });
     expect(await find()).toBeUndefined();
@@ -159,7 +159,10 @@ describe.skipIf(!enabled)("W-5 payment links and W-6 lead To dos on real Postgre
   it("the follow-up date defaults to two days out, rejects past dates, and becomes a dated To do", async () => {
     const lead = await prisma.lead.create({ data: { contactName: "Fran Follow " + tag.slice(0, 6), phone: "970-555-0101", status: "CONTACTED" } });
     leadIds.push(lead.id);
-    expect(defaultFollowUpKey(now)).toBe(businessDateKey(new Date(now.getTime() + 2 * DAY)));
+    // Expected keys use addBusinessDays (calendar days in America/Denver),
+    // never millisecond DAY arithmetic: across a DST change a 25-hour day
+    // makes getTime() + n * DAY land on the wrong date (fix cycle 7, PR #781).
+    expect(defaultFollowUpKey(now)).toBe(businessDateKey(addBusinessDays(now, 2)));
     expect(() => parseFollowUpKey("2020-01-01", now)).toThrow(/past/);
     expect(() => parseFollowUpKey("nope", now)).toThrow(/real/);
     const find = async () => (await listLeadFollowUps(50, now)).rows.find((r) => r.href.includes(lead.id));
