@@ -31,6 +31,10 @@ export const BUILT_IN_VIEWS: Record<ListKey, BuiltInView[]> = {
   jobs: [
     { id:"my-visits-today", label:"My visits today", params:{when:"today",who:"me"}, pending:true, roles:["OWNER","ADMIN","STAFF"] },
     { id:"not-scheduled", label:"Not scheduled", params:{when:"none"}, pending:true },
+    // AR-5: the Visits list (the jobs list rebuilt) understands these three today.
+    { id:"my-visits-this-week", label:"My visits this week", params:{status:"upcoming",who:"mine",when:"this-week"}, roles:["OWNER","ADMIN"] },
+    { id:"pickups-to-book", label:"Pickups to book", params:{status:"no-time",type:"pickup"} },
+    { id:"repairs-not-finished", label:"Repairs not finished", params:{status:"upcoming",type:"repair"} },
   ],
   leads: [
     { id:"new", label:"New", params:{stage:"new"} },

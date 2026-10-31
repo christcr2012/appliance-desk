@@ -90,7 +90,10 @@ test.describe("staff permissions", () => {
 
   for (const route of ["/desk/jobs", "/desk/dispatch"]) {
     test(`${route} keeps staff job access without offering scheduling`, async ({ page }) => {
-      await page.goto(route);
+      // AR-5: the seeded job has no time, so on the Visits list it lives under the
+      // "Needs a time" tab; on the Board it sits in the "Waiting for a time" card,
+      // which opens itself when the waiting list is short.
+      await page.goto(route === "/desk/jobs" ? "/desk/jobs?status=no-time" : route);
       await expect(page.getByRole("link", { name: /schedule a job/i })).toHaveCount(0);
       // The job is listed and its row opens the job record: the jobs list's
       // kit row link goes through ?open= (which that page sends straight to
@@ -98,8 +101,17 @@ test.describe("staff permissions", () => {
       const jobLink = page
         .locator('main a[href="/desk/jobs/ci-security-job"]:visible, main a[href*="open=ci-security-job"]:visible')
         .first();
+      if (!(await jobLink.isVisible().catch(() => false))) {
+        await page.getByText(/Waiting for a time/).click();
+      }
       await expect(jobLink).toBeVisible();
       await jobLink.click();
+      // AR-5 section 3: on desktop the Board row opens the visit in the side panel;
+      // the record itself is the panel's "Open full page" link (the Visits list's
+      // ?open= goes straight to the record).
+      if (route === "/desk/dispatch") {
+        await page.getByRole("link", { name: /Open full page/ }).click();
+      }
       await expect(page).toHaveURL(/\/desk\/jobs\/ci-security-job$/);
     });
   }

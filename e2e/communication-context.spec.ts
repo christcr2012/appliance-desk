@@ -9,7 +9,8 @@ test.beforeEach(()=>{
 });
 test("job context panel shows safe empty state on mobile",async({page})=>{
  await page.setViewportSize({width:390,height:844});
- await page.goto("/desk/jobs/ci-security-job");
+ // AR-5 section 6: the context panel lives in the record's Messages tab.
+ await page.goto("/desk/jobs/ci-security-job?tab=messages");
  await expect(page.getByRole("heading",{name:"Related communications"})).toBeVisible();
  await expect(page.getByText("No linked communications recorded.")).toBeVisible();
  await expect(page.getByText(/shared phone number is not evidence/i)).toBeVisible();

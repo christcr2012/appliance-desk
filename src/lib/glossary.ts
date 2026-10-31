@@ -1,5 +1,11 @@
 /** Plain-language explanations shared by owner screens. */
 export const GLOSSARY = {
+  "visit-booked": { title: "Booked", description: "This visit has a day, a time and a place on the schedule. It has not started yet." },
+  "visit-under-way": { title: "Under way", description: "Someone has started this visit and is working on it now." },
+  "nobody-home": { title: "Nobody home", description: "The team went out for this visit but nobody was there to let them in. The visit is marked as a no-show." },
+  "double-booked": { title: "Double-booked", description: "This person has another visit that overlaps this one. Change a time or the person." },
+  "unassigned-visit": { title: "Not assigned", description: "No one on the team has been given this visit yet. Someone needs to be chosen before the day comes." },
+  "repair-request": { title: "Repair request", description: "A customer or the team reported an appliance that needs fixing. Each request is looked at, then a repair visit is booked." },
   "notification-lead-new": { title: "New lead", description: "Created when a new lead comes in — from the website form, or added by hand by someone else on the team." },
   "notification-quote-viewed": { title: "Quote opened", description: "Created when a customer opens a quote that was sent to them, the first time they open it." },
   "notification-signature-done": { title: "Rental signed", description: "Created when a customer signs their rental agreement." },
