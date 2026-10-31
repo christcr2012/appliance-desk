@@ -54,7 +54,7 @@ export function canTransitionJobStatus(
   };
 }
 
-const JOB_OPERATIONAL_SELECT = {
+export const JOB_OPERATIONAL_SELECT = {
   id: true,
   type: true,
   status: true,
@@ -530,8 +530,21 @@ export async function setJobRepairCosts(
   });
 }
 
-export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
-  await requireRole("OWNER", "ADMIN", "STAFF");
+export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date, who?: string) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  // AR-5 section 3: the Board's who filter, OWNER/ADMIN only (for STAFF the board is the shared
+  // read-only calendar and the filter is ignored, as on the Visits list). "mine" is the actor,
+  // "unassigned" is nobody yet, any other value is that team member's id.
+  const whoWhere: Prisma.JobWhereInput =
+    who && (session.user.role === "OWNER" || session.user.role === "ADMIN")
+      ? who === "mine"
+        ? { assignedToUserId: session.user.id }
+        : who === "unassigned"
+          ? { assignedToUserId: null }
+          : who === "everyone"
+            ? {}
+            : { assignedToUserId: who }
+      : {};
   const padding = MAX_JOB_DURATION_MINUTES * 60 * 1000;
   const [conflictCandidates, unscheduled, defaultJobMinutes] = await Promise.all([
     prisma.job.findMany({
@@ -541,6 +554,7 @@ export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
           gte: new Date(rangeStart.getTime() - padding),
           lt: new Date(rangeEnd.getTime() + padding),
         },
+        ...whoWhere,
       },
       select: JOB_OPERATIONAL_SELECT,
       orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
@@ -549,9 +563,13 @@ export async function getDispatchBoardJobs(rangeStart: Date, rangeEnd: Date) {
       where: {
         status: { in: ["SCHEDULED", "IN_PROGRESS"] },
         scheduledAt: null,
+        ...whoWhere,
       },
       select: JOB_OPERATIONAL_SELECT,
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      // AR-5 section 3: the waiting list is capped — 50 shown plus one extra row whose presence
+      // tells the page to offer the "{n}+ waiting" link to the full Visits list.
+      take: 51,
     }),
     readDefaultJobMinutes(prisma),
   ]);

@@ -1,101 +1,90 @@
 import { redirect } from "next/navigation";
-import type { MaintenanceStatus } from "@prisma/client";
-import { getMaintenanceRequestsPage, getMaintenanceRequestsCount } from "@/domains/maintenance";
-import { parsePage, paginationMeta } from "@/domains/pagination";
-import { Pagination } from "@/components/pagination";
+import { requireRole } from "@/lib/session";
+import { getRepairCounts, getRepairRequests, type RepairTab } from "@/domains/maintenance/list";
+import { formatBusinessTime, relativeBusinessDay } from "@/lib/business-date";
+import { REPAIR_PILL, repairPriorityChip } from "@/domains/jobs/words";
 import {
-  EmptyState,
+  DataTable,
+  ScreenHeader,
   StatusPill,
-} from "@/components/ui";
-import type { StatusTone } from "@/components/status-badge";
-import { DataTable, ScreenHeader, StatusTabs, type Column } from "@/components/kit";
-import { maintenanceStatusLabel } from "@/lib/status-labels";
+  StatusTabs,
+  Toolbar,
+  type Column,
+  type FilterDef,
+} from "@/components/kit";
+import { EmptyState } from "@/components/kit";
+import { parseRepairsParams } from "./params";
+import type { RepairRow } from "@/domains/maintenance/list";
 
-export const metadata = { title: "Maintenance" };
+export const metadata = { title: "Repairs" };
 
-const STATUS_TABS: { value: MaintenanceStatus | "ALL"; label: string }[] = [
-  { value: "ALL", label: "All" },
-  { value: "SUBMITTED", label: "Submitted" },
-  { value: "REVIEWING", label: "Reviewing" },
-  { value: "SCHEDULED", label: "Scheduled" },
-  { value: "IN_PROGRESS", label: "In progress" },
-  { value: "RESOLVED", label: "Resolved" },
-  { value: "CLOSED", label: "Closed" },
-];
-
-const STATUS_TONE: Record<MaintenanceStatus, StatusTone> = {
-  SUBMITTED: "pending",
-  REVIEWING: "progress",
-  SCHEDULED: "progress",
-  IN_PROGRESS: "progress",
-  RESOLVED: "success",
-  CLOSED: "stopped",
+const EMPTY_BY_TAB: Record<RepairTab, string> = {
+  open: "No open repair requests.",
+  new: "No new requests.",
+  fixed: "Nothing fixed yet.",
+  closed: "No closed requests.",
 };
 
-function isMaintenanceStatus(
-  value: string | undefined,
-): value is MaintenanceStatus {
-  return (
-    value === "SUBMITTED" ||
-    value === "REVIEWING" ||
-    value === "SCHEDULED" ||
-    value === "IN_PROGRESS" ||
-    value === "RESOLVED" ||
-    value === "CLOSED"
-  );
-}
-
-type MaintenanceRow = Awaited<
-  ReturnType<typeof getMaintenanceRequestsPage>
->[number];
-
-export default async function MaintenancePage({
+export default async function RepairsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; page?: string; open?: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { status: rawStatus, page: rawPage, open } = await searchParams;
-  // The kit table's row click sets ?open=<id> (its side-panel convention).
-  // Maintenance requests have no side panel — the record page IS the
-  // destination, as it was before the redesign — so an ?open= link goes
-  // straight there.
-  if (open) redirect(`/desk/maintenance/${encodeURIComponent(open)}`);
-  const status = isMaintenanceStatus(rawStatus) ? rawStatus : undefined;
-  const filter = status ? { status } : undefined;
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  const ownerOrAdmin = session.user.role === "OWNER" || session.user.role === "ADMIN";
+  const raw = await searchParams;
+  // The kit table's row click convention sets ?open=<id>; repair requests have no side
+  // panel, so an ?open= link goes straight to the record (as this page has always done).
+  if (typeof raw.open === "string" && raw.open) {
+    redirect(`/desk/maintenance/${encodeURIComponent(raw.open)}`);
+  }
+  const params = parseRepairsParams(raw);
+  const now = new Date();
+  const [list, counts] = await Promise.all([
+    getRepairRequests(params),
+    getRepairCounts(params),
+  ]);
+  const filtered = Boolean(params.q || params.priority);
 
-  const totalCount = await getMaintenanceRequestsCount(filter);
-  const meta = paginationMeta(totalCount, parsePage(rawPage));
-  const requests = await getMaintenanceRequestsPage(
-    filter,
-    meta.skip,
-    meta.pageSize,
-  );
-
-  function maintenanceHref(
-    page: number,
-    forStatus: MaintenanceStatus | "ALL" = status ?? "ALL",
-  ) {
-    const params = new URLSearchParams();
-    if (forStatus !== "ALL") params.set("status", forStatus);
-    if (page > 1) params.set("page", String(page));
-    const qs = params.toString();
-    return qs ? `/desk/maintenance?${qs}` : "/desk/maintenance";
+  function repairsHref(overrides: Partial<typeof params> & { cursor?: string | null }): string {
+    const search = new URLSearchParams();
+    search.set("status", overrides.tab ?? params.tab);
+    const priority = "priority" in overrides ? overrides.priority : params.priority;
+    if (priority) search.set("priority", priority === "URGENT" ? "urgent" : "high");
+    const q = "q" in overrides ? overrides.q : params.q;
+    if (q) search.set("q", q);
+    const sort = overrides.sort ?? params.sort;
+    if (sort !== "newest") search.set("sort", sort);
+    if (overrides.cursor) search.set("cursor", overrides.cursor);
+    return `/desk/maintenance?${search.toString()}`;
   }
 
-  const columns: Column<MaintenanceRow>[] = [
+  const filters: FilterDef[] = [
+    {
+      kind: "select",
+      param: "priority",
+      label: "Priority",
+      options: [
+        { value: "urgent", label: "Urgent only" },
+        { value: "high", label: "High only" },
+      ],
+    },
+  ];
+  const sorts = [
+    { value: "newest", label: "Newest first" },
+    { value: "oldest", label: "Oldest first" },
+    { value: "priority", label: "Priority first" },
+  ];
+
+  const columns: Column<RepairRow>[] = [
     {
       key: "request",
       header: "Request",
-      cell: (request) => (
+      cell: (row) => (
         <div>
-          <span className="font-semibold text-ink">
-            {request.customer.user.name ?? request.customer.user.email}
-          </span>
+          <span className="font-semibold text-ink">{row.customerName}</span>
           <p className="mt-1 text-sm font-normal text-ink-soft">
-            {request.appliance
-              ? `${request.appliance.applianceType.name} (${request.appliance.assetNumber})`
-              : "General"}{" "}
-            · {request.problem.slice(0, 80)}
+            {row.applianceLabel ?? "General"} · {row.problemExcerpt}
           </p>
         </div>
       ),
@@ -103,73 +92,123 @@ export default async function MaintenancePage({
     {
       key: "status",
       header: "Status",
-      cell: (request) => (
-        <StatusPill
-          tone={STATUS_TONE[request.status]}
-          label={maintenanceStatusLabel(request.status)}
-        />
+      cell: (row) => {
+        const pill = REPAIR_PILL[row.status];
+        const chip = repairPriorityChip(row.priority);
+        return (
+          <span className="flex flex-wrap items-center gap-1.5">
+            <StatusPill label={pill.label} tone={pill.tone} />
+            {chip ? <StatusPill label={chip.label} tone={chip.tone} /> : null}
+          </span>
+        );
+      },
+    },
+    {
+      key: "reported",
+      header: "Reported",
+      cell: (row) => (
+        <div>
+          <span>Reported {relativeBusinessDay(row.openedAt, now)}</span>
+          <p className="mt-1 text-sm font-normal text-ink-soft">
+            {row.nextVisit
+              ? `Next visit ${relativeBusinessDay(row.nextVisit.scheduledAt, now)} at ${formatBusinessTime(row.nextVisit.scheduledAt)}`
+              : "No visit yet"}
+          </p>
+        </div>
       ),
-    },
-    {
-      key: "priority",
-      header: "Priority",
-      cell: (request) => request.priority,
-    },
-    {
-      key: "opened",
-      header: "Opened",
-      cell: (request) => new Date(request.openedAt).toLocaleDateString(),
     },
   ];
 
   return (
     <div>
-      <ScreenHeader title="Maintenance requests" list />
+      <ScreenHeader title="Repairs" list />
       <p className="-mt-2 pb-2 text-sm text-ink-soft">
-        Customer-submitted service requests from the account portal.
+        Repair requests from customers — what is broken, how urgent it is, and whether a visit is booked.
       </p>
 
-      <StatusTabs
-        label="Filter by status"
-        param="status"
-        current={status ?? "ALL"}
-        items={STATUS_TABS.map((tab) => ({ value: tab.value, label: tab.label }))}
-      />
+      <div className="flex flex-col gap-3">
+        <StatusTabs
+          label="Repair status"
+          param="status"
+          current={params.tab}
+          items={[
+            { value: "open", label: "Open", count: counts.open },
+            { value: "new", label: "New", count: counts.new, hideWhenZero: true },
+            { value: "fixed", label: "Fixed", count: counts.fixed },
+            { value: "closed", label: "Closed", count: counts.closed },
+          ]}
+        />
+        <Toolbar
+          search={{
+            param: "q",
+            placeholder: "Customer, problem or appliance number",
+            label: "Search repairs",
+          }}
+          filters={filters}
+          sorts={sorts}
+          currentSort={params.sort}
+        />
+      </div>
 
-      <DataTable
-        rows={requests}
-        rowKey={(request) => request.id}
-        columns={columns}
-        caption="Maintenance requests"
-        rowHref={(request) => `/desk/maintenance/${request.id}`}
-        mobileCard={(request) => (
-          <div className="space-y-1">
-            {columns[0].cell(request)}
-            {columns[1].cell(request)}
-          </div>
-        )}
-        empty={
-          <EmptyState
-            title={
-              status
-                ? "No requests with this status"
-                : "No maintenance requests yet"
-            }
-            description={
-              status
-                ? "Choose another status to review different requests."
-                : "Customer service requests will appear here."
-            }
-          />
-        }
-      />
-
-      <Pagination
-        page={meta.page}
-        totalPages={meta.totalPages}
-        totalCount={meta.totalCount}
-        buildHref={(page) => maintenanceHref(page)}
-      />
+      <div className="mt-2">
+        <DataTable
+          rows={list.rows}
+          rowKey={(row) => row.id}
+          columns={columns}
+          caption="Repair requests"
+          rowHref={(row) => `/desk/maintenance/${row.id}`}
+          rowActions={(row) =>
+            ownerOrAdmin &&
+            (row.status === "SUBMITTED" || row.status === "REVIEWING") &&
+            !row.hasOpenVisit
+              ? [
+                  {
+                    kind: "link" as const,
+                    label: "Schedule a visit",
+                    href: `/desk/jobs/new?maintenanceRequestId=${row.id}`,
+                  },
+                ]
+              : []
+          }
+          mobileCard={(row) => {
+            const pill = REPAIR_PILL[row.status];
+            const chip = repairPriorityChip(row.priority);
+            return (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-ink">{row.customerName}</span>
+                  <span className="flex items-center gap-1.5">
+                    {chip ? <StatusPill label={chip.label} tone={chip.tone} /> : null}
+                    <StatusPill label={pill.label} tone={pill.tone} />
+                  </span>
+                </div>
+                <span className="text-sm text-ink-soft">
+                  {row.applianceLabel ?? "General"} · {row.problemExcerpt}
+                </span>
+                <span className="text-sm text-ink-soft">
+                  Reported {relativeBusinessDay(row.openedAt, now)}
+                  {" · "}
+                  {row.nextVisit
+                    ? `Next visit ${relativeBusinessDay(row.nextVisit.scheduledAt, now)}`
+                    : "No visit yet"}
+                </span>
+              </div>
+            );
+          }}
+          empty={
+            filtered ? (
+              <EmptyState
+                title="No repairs match."
+                action={{ kind: "link", label: "Clear filters", href: repairsHref({ q: undefined, priority: undefined }) }}
+              />
+            ) : (
+              <EmptyState title={EMPTY_BY_TAB[params.tab]} />
+            )
+          }
+          nextHref={list.nextCursor ? repairsHref({ cursor: list.nextCursor }) : null}
+          capReached={list.capped}
+        />
+      </div>
     </div>
   );
 }

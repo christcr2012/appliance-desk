@@ -73,7 +73,8 @@
       "tax-benefits.spec.ts",
       "ar9-insights.spec.ts",
       "customers-list.spec.ts",
-      "quotes-messages.spec.ts"
+      "quotes-messages.spec.ts",
+      "schedule.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",
