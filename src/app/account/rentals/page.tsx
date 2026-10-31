@@ -117,8 +117,10 @@ export default async function AccountRentalsPage({
     title: jobKindLabel(job, locale),
     detail: jobStatusLabel(job.status, locale),
     tone: jobTone(job.status),
-    // No actor line: the rental cards above are headed by the property
-    // address, and repeating it here made the address appear twice.
+    // The actor line names the town, not the street address: the rental
+    // cards above are headed by the street address, and repeating the
+    // full address here made it appear twice on the page.
+    actor: job.serviceAddress ? `${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}` : "",
   }));
 
   return (
