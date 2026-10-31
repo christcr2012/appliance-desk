@@ -19,7 +19,7 @@ describe("MCP-9 pinned upstream RTC 1 conformance oracle", () => {
   it("is byte-for-byte the frozen e6cfb9826672 upstream runner, not a rewritten test", () => {
     for (const [path, expectedSha] of ORIGINAL_GIT_BLOBS) {
       const bytes = readFileSync(path);
-      const actual = createHash("sha1").update("blob " + bytes.length + "\\0")
+      const actual = createHash("sha1").update("blob " + bytes.length + "\0")
         .update(bytes).digest("hex");
       expect(actual, path).toBe(expectedSha);
     }
@@ -42,8 +42,9 @@ describe("MCP-9 pinned upstream RTC 1 conformance oracle", () => {
     try {
       const result = await runConformance({ url: broken.url, passes: broken.passes, oauth: broken.oauth });
       expect(result.ok).toBe(false);
-      expect(result.checks.find((check: { name: string }) => check.name === "passes.read_only"))
-        .toMatchObject({ ok: false, skipped: undefined });
+      const violation = result.checks.find((check: { name: string }) => check.name === "passes.read_only");
+      expect(violation?.ok).toBe(false);
+      expect(violation?.skipped).not.toBe(true);
     } finally { await broken.close(); }
   }, 30_000);
 });
