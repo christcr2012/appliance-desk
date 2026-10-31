@@ -98,6 +98,8 @@ test.describe("owner books from the Board", () => {
       expect(booked.every((job) => job.scheduledAt !== null && job.assignedToUserId === assignee)).toBe(true);
     } finally {
       await prisma.auditLog.deleteMany({ where: { entityId: { in: jobIds } } });
+      // Booking the visits writes customer notices for them; those go before the customer.
+      await prisma.customerNotice.deleteMany({ where: { customerId: customer.id } });
       await prisma.job.deleteMany({ where: { id: { in: jobIds } } });
       await tax.cleanup();
       await prisma.serviceAddress.deleteMany({ where: { id: address.id } });

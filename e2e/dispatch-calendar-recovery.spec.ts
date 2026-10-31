@@ -45,10 +45,13 @@ test("Colorado day/week/agenda retain scheduled jobs and checklist progress afte
     await expect(visible).toContainText("12:30 AM MDT");
     await expect(visible).toContainText("Double-booked");
     await expect(page.locator(`a[href="/desk/jobs/${ids[1]}"]`)).toHaveCount(0);
-    // The waiting card opens itself when the waiting list is short; only open it by
-    // hand when it starts closed.
-    if (!(await row(ids[2]).isVisible().catch(() => false))) {
+    // The waiting card opens itself when the waiting list is short; when it starts
+    // closed (or a re-render closes it), open it by hand — retrying the toggle until
+    // the row is actually visible, since one click can race the board's re-render.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (await row(ids[2]).isVisible().catch(() => false)) break;
       await page.getByText(/Waiting for a time/).click();
+      await page.waitForTimeout(300);
     }
     await expect(row(ids[2])).toBeVisible();
     expect(
