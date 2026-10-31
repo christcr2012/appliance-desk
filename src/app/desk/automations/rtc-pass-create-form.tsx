@@ -23,9 +23,9 @@ export function CreateRtcPassForm() {
           </select>
         </label>
         <label className="block min-w-0 text-sm font-medium">Read access area
-          <select name="area" defaultValue="all"
+          <select name="area" defaultValue="health"
             className="mt-1 block w-full min-w-0 max-w-full rounded-control border border-line-strong bg-surface p-2">
-            <option value="all">All allowed read-only areas</option>
+            <option value="all">All read-only areas (except private report text)</option>
             <option value="health">System health only</option>
             <option value="automation">Automation runs only</option>
             <option value="decisions">Decision status only</option>
@@ -37,7 +37,7 @@ export function CreateRtcPassForm() {
         </label>
         <label className="flex min-w-0 items-start gap-2 text-sm">
           <input type="checkbox" name="decisionsRead" className="mt-1 shrink-0" />
-          Also allow reading the status of business decisions (not their private answers)
+          Include decision statuses when All areas is selected (never private answers)
         </label>
         <button type="submit" disabled={pending}
           className="min-h-11 rounded-control border border-line-strong px-3 py-2 disabled:opacity-50">

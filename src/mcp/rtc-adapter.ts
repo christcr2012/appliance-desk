@@ -4,6 +4,7 @@ import { buildMcpServer } from "@/mcp/server";
 import { authenticateRtcPass } from "@/domains/agent-control/passes";
 import { storeRtcResult, readRtcResult } from "@/domains/agent-control/rtc-results";
 import { parseRtcReadInput, projectRtcRead } from "./rtc-projection";
+import { rtcCanDiscoverRead } from "./rtc-read-scopes";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 
 type ClientTool = Awaited<ReturnType<Client["listTools"]>>["tools"][number];
@@ -46,6 +47,7 @@ export async function rtcTools(ctx: AgentContext) {
   return mcpRead(ctx, async client => {
     const result = await client.listTools();
     return result.tools.filter(tool => tool.annotations?.readOnlyHint === true &&
+      rtcCanDiscoverRead(ctx, tool.name) &&
       (!ctx.rtcAreas?.length || ctx.rtcAreas.includes(tool.name.replace(/^appliance_/, "").split("_")[0])));
   });
 }

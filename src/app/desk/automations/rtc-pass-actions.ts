@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { issueRtcPass, revokeRtcPass } from "@/domains/agent-control/passes";
+import { rtcReadScopesForArea } from "@/mcp/rtc-read-scopes";
 
 type PassFormState = { secret: string | null; expiresAt: string | null; error: string | null };
 /** A pass is displayed only in the immediate owner response; never in URL, logs, or audit. */
@@ -10,12 +11,12 @@ export async function createRtcPassAction(
 ): Promise<PassFormState> {
   const session = await requireRole("OWNER");
   try {
+    const area = String(form.get("area") ?? "");
     const created = await issueRtcPass(session.user.id, {
       label: String(form.get("label") ?? ""),
-      scopes: form.get("decisionsRead") === "on"
-        ? ["ops:read", "decisions:read"] : ["ops:read"],
+      scopes: rtcReadScopesForArea(area, form.get("decisionsRead") === "on"),
       expiresDays: Number(form.get("days") ?? 1),
-      areas: form.get("area") === "all" ? [] : [String(form.get("area") ?? "")],
+      areas: area === "all" ? [] : [area],
     });
     revalidatePath("/desk/automations");
     return { secret: created.secret, expiresAt: created.expiresAt.toISOString(), error: null };

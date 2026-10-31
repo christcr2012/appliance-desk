@@ -108,6 +108,14 @@ describe("MCP-9 RTC read-only HTTP adapter uses the actual MCP catalog", () => {
     expect(healthOnly.every(tool => tool.area === "health")).toBe(true);
     expect(healthOnly.some(tool => tool.name === "appliance_whoami")).toBe(false);
   });
+  it("tool catalog never advertises read tools outside the pass scope", async () => {
+    const feedback = await rtcToolList({ ...context, scopes: ["feedback:triage"] }, "", 100);
+    expect(feedback.some(tool => tool.name === "appliance_feedback_list_reports")).toBe(true);
+    expect(feedback.some(tool => tool.name === "appliance_health_list_issues")).toBe(false);
+    const decisions = await rtcToolList({ ...context, scopes: ["decisions:read"] }, "", 100);
+    expect(decisions.some(tool => tool.name === "appliance_decisions_list")).toBe(true);
+    expect(decisions.some(tool => tool.name === "appliance_feedback_list_reports")).toBe(false);
+  });
   it("whoami never returns a reusable credential", async () => {
     const response = await rtcWhoami(req("/api/whoami"));
     const body = await response.json();
