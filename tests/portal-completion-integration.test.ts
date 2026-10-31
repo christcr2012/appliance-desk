@@ -181,7 +181,11 @@ describe("Batch D customer portal completion", () => {
     const job = data!.jobs[0]!;
     // ZONE-1: customerPickupHandoff (a boolean about the customer's own visit) lets the portal say "pick up" instead of
     // "delivery"; it carries no other customer's data.
+    // PORTAL-1: createdAt (the day the customer asked for the visit) is
+    // customer-visible — the rentals visit history dates an unscheduled
+    // visit by it instead of the epoch.
     expect(Object.keys(job).sort()).toEqual([
+      "createdAt",
       "customerPickupHandoff",
       "id",
       "performedOn",

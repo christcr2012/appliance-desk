@@ -30,6 +30,7 @@ const jobSelect = {
   id: true,
   type: true,
   status: true,
+  createdAt: true,
   scheduledAt: true,
   performedOn: true,
   customerPickupHandoff: true,
