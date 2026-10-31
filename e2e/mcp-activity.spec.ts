@@ -90,9 +90,9 @@ test.describe("MCP-5 assistant activity approvals", () => {
       }).toPass({ timeout: 30_000 });
       const dialog = page.getByRole("alertdialog");
       await expect(dialog.getByText("Approve assistant action?")).toBeVisible();
-      await expect(dialog.getByText("Automation " + markerA)).toBeVisible();
-      await expect(dialog.getByText("Running")).toBeVisible();
-      await expect(dialog.getByText("Paused")).toBeVisible();
+      await expect(dialog.getByText("Automation " + markerA, { exact: true })).toBeVisible();
+      await expect(dialog.getByText("Running", { exact: true })).toBeVisible();
+      await expect(dialog.getByText("Paused", { exact: true })).toBeVisible();
       await dialog.getByRole("button", { name: "Approve this action" }).click();
       await expect.poll(async () =>
         (await prisma.agentOperation.findUniqueOrThrow({ where: { id: a.operation.id } })).state,
