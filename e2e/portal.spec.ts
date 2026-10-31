@@ -157,7 +157,9 @@ test.describe("PORTAL-1 customer portal", () => {
     await page.goto("/account/billing");
     const overdue = page.locator('a[href="/account/billing/invoice/ci-a11y-overdue"]');
     const bill2 = page.locator('a[href="/account/billing/invoice/ci-a11y-bill2"]');
-    await expect(page.getByText("$103.00")).toBeVisible();
+    // Total owed across the two open fixture bills ($42 + $61), rendered
+    // in the house money format: whole dollars show no cents (formatCents).
+    await expect(page.getByText("$103", { exact: true })).toBeVisible();
     await expect(overdue).toBeVisible();
     await expect(bill2).toBeVisible();
 

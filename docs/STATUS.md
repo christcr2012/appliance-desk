@@ -62,7 +62,11 @@ also needed the server to recognize the stubbed upload as the customer's
 own: the browser-e CI job now sets a throwaway private-store identity
 (assembled in the workflow like the other test keys, browser-e only, so
 the other shards keep the no-store behavior), and the spec's stubbed URL
-uses that store's host. signature-focus reads the help card by its §7 name
+uses that store's host. With the photo test passing, the serial file's
+later tests ran for the first time and the bills test's "$103.00" literal
+met the house money format (formatCents renders whole dollars without
+cents, so the statement reads "$103"); the spec now asserts the total in
+that format. signature-focus reads the help card by its §7 name
 ("Need help?") and the rentals visit line again carries a scheduled visit's
 full date and time. Perf failed again on the same marginal line (rent-desc
 160.5 ms vs the 150 ms budget; the query is unchanged) — not a required
