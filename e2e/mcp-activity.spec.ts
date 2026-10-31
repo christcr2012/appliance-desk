@@ -86,9 +86,9 @@ test.describe("MCP-5 assistant activity approvals", () => {
       await expect(rowA.getByText("Waiting for you")).toBeVisible();
       await expect(async () => {
         await rowA.getByRole("button", { name: "Approve", exact: true }).click();
-        await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
+        await expect(page.getByRole("alertdialog")).toBeVisible({ timeout: 3000 });
       }).toPass({ timeout: 30_000 });
-      const dialog = page.getByRole("dialog");
+      const dialog = page.getByRole("alertdialog");
       await expect(dialog.getByText("Approve assistant action?")).toBeVisible();
       await expect(dialog.getByText("Automation " + markerA)).toBeVisible();
       await expect(dialog.getByText("Running")).toBeVisible();
