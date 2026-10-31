@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/lib/auth-client";
+import { deleteRouteSnapshotDatabase } from "@/lib/route-snapshot";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export type AuthedNavLink = { href: string; label: string };
@@ -61,6 +62,8 @@ export function AuthedHeader({
   // Shared here since both layouts render this one header.
   async function handleSignOut() {
     setSigningOut(true);
+    // AR-5 section 5: the saved route copy belongs to the person leaving.
+    deleteRouteSnapshotDatabase();
     await signOut();
     router.push("/login");
     router.refresh();

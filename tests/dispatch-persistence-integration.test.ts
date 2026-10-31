@@ -4,7 +4,7 @@ vi.mock("@/lib/session", () => ({
   requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }),
 }));
 import { prisma } from "@/lib/prisma";
-import { getDispatchBoardJobs, getDriverJobsForToday } from "@/domains/jobs";
+import { getDispatchBoardJobs, getRouteForToday } from "@/domains/jobs";
 import { dispatchAnchor, findConflictingJobIds } from "@/domains/jobs/dispatch";
 import { addBusinessDays } from "@/lib/business-date";
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -64,7 +64,7 @@ describe.skipIf(!enabled)(
       );
       vi.useFakeTimers({ toFake: ["Date"] });
       vi.setSystemTime(new Date("2026-11-02T01:00:00Z"));
-      const driver = await getDriverJobsForToday();
+      const driver = await getRouteForToday({ actor: { userId: "owner", role: "OWNER" }, who: "everyone" });
       expect(
         driver.filter((job) => ids.includes(job.id)).map((job) => job.id),
       ).toEqual([ids[1], ids[2]]);

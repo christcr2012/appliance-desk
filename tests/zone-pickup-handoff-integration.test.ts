@@ -16,7 +16,7 @@ vi.mock("@/lib/session", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { completeJob, createJob, getDriverJobsForToday } from "@/domains/jobs";
+import { completeJob, createJob, getRouteForToday } from "@/domains/jobs";
 import { ensureSignedDeliveryDraftInTx } from "@/domains/agreements/signed-delivery";
 import { listSignedDeliveryAttention } from "@/domains/exceptions/signed-delivery-attention";
 import { businessDateKey, businessDateFromKey } from "@/lib/business-date";
@@ -125,7 +125,7 @@ describe.skipIf(!enabled)("ZONE-1 customer pickup hand-over", () => {
     for (const job of [pickup.jobId, truck.jobId])
       await prisma.job.update({ where: { id: job }, data: { scheduledAt: today } });
     // The driver's route for today has the delivery, never the hand-over.
-    const route = (await getDriverJobsForToday()).map((job) => job.id);
+    const route = (await getRouteForToday({ actor: { userId: "handoff-owner", role: "OWNER" }, who: "everyone" })).map((job) => job.id);
     expect(route).toContain(truck.jobId);
     expect(route).not.toContain(pickup.jobId);
 

@@ -1,0 +1,167 @@
+{
+  "acceptance": [
+    "My route: staff see only their own visits (plus unassigned when the setting allows); owner/admin default to Mine and can switch to Everyone (integration test, both setting states)",
+    "The saved copy shows offline, only for the same person and today, and is removed on sign-out (route-snapshot unit tests + e2e/route-offline.spec.ts)",
+    "Snapshot fields allowlist: a snapshot never contains an email-shaped string, a money amount, or the access-notes field",
+    "Every button on a stop calls an existing action (Start = updateJobStatusAction, Finish visit goes to the visit record #finish, photo = addJobPhotoAction, On my way = the existing text family with the visit page's rule)",
+    "ci green at the exact head; every review comment read"
+  ],
+  "baseline": "94693548561584559fafb5fa53110e6cb2fc9dfd",
+  "card": "docs/pr-cards/AR-5.md",
+  "checks": {
+    "browser": [
+      "e2e/route-offline.spec.ts",
+      "e2e/desk-offline.spec.ts"
+    ],
+    "db": [
+      "tests/route-for-today-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/route-snapshot.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "AR-5B",
+  "invariants": [
+    "No scheduling, completion, billing or texting rule changes: the route page calls the same server actions the visit record calls today",
+    "Roles are enforced on the server at the query boundary: getRouteForToday applies the person filter in the query itself; getJobLocationPrivacy remains the only source of unit/access fields",
+    "The offline copy holds exactly what the signed-in person's screen shows (minus access notes, which stay online-only) and nothing else; IndexedDB access is try/catch everywhere so private-mode browsers fall back to the plain offline page",
+    "AR-11's service worker still never caches desk pages or data; the snapshot is written by the page itself, partitioned by userId and Denver dateKey"
+  ],
+  "next": "AR-6 (Equipment) is Lane 6's next card after AR-5 completes.",
+  "outcome": "The second half of the AR-5 card: SCHEDULE.md section 5. My route (/desk/driver) stops showing everyone's visits (spec section 1 fix 1): a new getRouteForToday({ actor, who }) in src/domains/jobs/route.ts replaces getDriverJobsForToday (deleted with its only caller) — STAFF see their own visits plus unassigned ones when the staffMayWorkUnassignedJobs setting allows, OWNER/ADMIN default to Mine and may switch to Everyone, no-time visits are never on a route, and each stop carries only the private location fields getJobLocationPrivacy allows that person. The page is rebuilt phone-first per the spec (numbered stop cards, Directions/Call/Start/Finish visit/Add photo/On my way through the existing actions, other people's stops visibly disabled in Everyone with the reason). The page keeps a copy of today's route on the device (IndexedDB desk-route, screen fields only — no money, no email, no access notes), the app frame stamps the signed-in user id in sessionStorage (desk-user), and AR-11's offline page shows the saved route read-only when it belongs to the same person and today (Denver).",
+  "parent": "AR-5",
+  "proposedFiles": [
+    "docs/STATUS.md",
+    "docs/pr-cards/AR-5.md",
+    "docs/pr-cards/execution/AR-5B.json",
+    "docs/pr-cards/work-index.json",
+    "e2e/route-offline.spec.ts",
+    "e2e/shards.json",
+    "package-lock.json",
+    "package.json",
+    "src/app/desk/driver/driver-job-card.tsx",
+    "src/app/desk/driver/on-my-way-text.tsx",
+    "src/app/desk/driver/page.tsx",
+    "src/app/desk/driver/route-snapshot-box.tsx",
+    "src/app/desk/layout.tsx",
+    "src/app/offline/offline-route.tsx",
+    "src/app/offline/page.tsx",
+    "src/components/account-shell.tsx",
+    "src/components/authed-header.tsx",
+    "src/components/kit/desk-user-stamp.tsx",
+    "src/domains/jobs/index.ts",
+    "src/domains/jobs/route.ts",
+    "src/lib/route-snapshot.ts",
+    "tests/dispatch-calendar-recovery.test.tsx",
+    "tests/dispatch-persistence-integration.test.ts",
+    "tests/route-for-today-integration.test.ts",
+    "tests/route-snapshot.test.ts",
+    "tests/zone-pickup-handoff-integration.test.ts"
+  ],
+  "references": [
+    {
+      "anchor": "## 5. My route",
+      "path": "docs/build-specs/screens/SCHEDULE.md",
+      "purpose": "The spec: section 5 data contract (getRouteForToday filter rules), stop-card layout and buttons, and the exact offline snapshot rules"
+    },
+    {
+      "anchor": "AR-5b** — spec section 5",
+      "path": "docs/pr-cards/AR-5.md",
+      "purpose": "The card's split: AR-5b is section 5 plus e2e/route-offline.spec.ts, its own PR"
+    },
+    {
+      "anchor": "export { getRouteForToday, type RouteStop, type RouteActor, type RouteWho } from \"./route\";",
+      "path": "src/domains/jobs/index.ts",
+      "purpose": "The jobs barrel after this PR: getDriverJobsForToday is deleted and the route read is exported from here."
+    },
+    {
+      "anchor": "staffMayWorkUnassignedJobs ?? true",
+      "path": "src/domains/jobs/scope.ts",
+      "purpose": "The write-side scope rule and settings read the route filter must mirror (singleton, default true)"
+    },
+    {
+      "anchor": "export async function getJobLocationPrivacy",
+      "path": "src/domains/customers/location-contacts.ts",
+      "purpose": "The only allowed source of unit label / access notes per actor; its STAFF branch already limits to assigned open visits"
+    },
+    {
+      "anchor": "My route",
+      "path": "src/app/desk/driver/page.tsx",
+      "purpose": "The rebuilt My route page after this PR (person filter, numbered stops, snapshot writer mounted)."
+    },
+    {
+      "anchor": "export function DriverJobCard",
+      "path": "src/app/desk/driver/driver-job-card.tsx",
+      "purpose": "The current stop card: existing Start/photo wiring through updateJobStatusAction and addJobPhotoAction"
+    },
+    {
+      "anchor": "export default function OfflinePage()",
+      "path": "src/app/offline/page.tsx",
+      "purpose": "AR-11's offline page; gains the saved-route island without changing its plain fallback"
+    },
+    {
+      "anchor": "indexedDB.deleteDatabase(\"desk-route\")",
+      "path": "src/components/kit/profile-menu.tsx",
+      "purpose": "Sign-out cleanup already deletes the snapshot database here — drift: that spec line is already delivered; verify the other desk sign-out surfaces"
+    },
+    {
+      "anchor": "desk-sw-test",
+      "path": "e2e/desk-offline.spec.ts",
+      "purpose": "AR-11's service-worker opt-in pattern the route-offline spec copies exactly"
+    },
+    {
+      "anchor": "export function businessDayBounds",
+      "path": "src/lib/business-date.ts",
+      "purpose": "Denver day bounds for the route query and the snapshot dateKey"
+    },
+    {
+      "anchor": "export const VISIT_PILL",
+      "path": "src/domains/jobs/words.ts",
+      "purpose": "AR-5a's shared pills/labels the stop cards and snapshot labels use"
+    }
+  ],
+  "risk": "Privacy boundary: the on-device copy must never hold more than the screen shows the same person (fields allowlist test pins it: no @, no $, no access-notes field). The person filter must match the write-side scope rules (scope.ts) so the route never offers a visit the server would refuse. Deleting getDriverJobsForToday is safe only because the driver page is its only caller (verified by grep at packet time).",
+  "sequence": [
+    "S1 route read: src/domains/jobs/route.ts getRouteForToday({ actor, who }) + delete getDriverJobsForToday + tests/route-for-today-integration.test.ts (two staff, owner; both setting states; no-time and hand-off exclusions; order)",
+    "S2 My route page: driver page + stop card rebuilt per spec section 5 (header, Mine/Everyone toggle, numbered stops, spec buttons, disabled-with-reason in Everyone, empty states; mileage card kept)",
+    "S3 offline copy: route-snapshot lib + RouteSnapshot writer + desk-user stamp in the desk frame + offline page saved-route island; sign-out deletion verified on every desk sign-out surface",
+    "S4 proof and paperwork: tests/route-snapshot.test.ts (fake-indexeddb 6.2.6), e2e/route-offline.spec.ts in a shard, STATUS + card Progress"
+  ],
+  "slices": [
+    {
+      "acceptance": [
+        "tests/route-for-today-integration.test.ts green: staff see own + unassigned with the setting on, own only with it off; second staff's visits never appear; owner mine vs everyone; a no-time visit and a customer-pickup hand-off never appear; two stops at the same time order by id",
+        "grep: getDriverJobsForToday has no remaining references; getJobsPage/getJobsCount untouched"
+      ],
+      "id": "AR-5B-S1",
+      "title": "Route read: src/domains/jobs/route.ts getRouteForToday({ actor, who }) replaces getDriverJobsForToday (deleted from src/domains/jobs/index.ts with its only caller); STAFF = assigned to me OR (unassigned AND staffMayWorkUnassignedJobs, default true when unset, read from the businessSettings singleton exactly as scope.ts reads it); OWNER/ADMIN who=mine (default, same as STAFF without the setting check) or who=everyone (no person filter); Denver day bounds, status SCHEDULED/IN_PROGRESS, scheduledAt set (no-time visits are not on a route), customerPickupHandoff excluded; order scheduledAt asc, id asc; JOB_OPERATIONAL_SELECT plus per-stop unit label and access notes merged ONLY from getJobLocationPrivacy for the same actor"
+    },
+    {
+      "acceptance": [
+        "Page renders from getRouteForToday only; staff session shows no Everyone toggle and no other person's stop",
+        "Start fires the existing status action and the toast text matches the spec; Finish visit… lands on the record's #finish anchor"
+      ],
+      "id": "AR-5B-S2",
+      "title": "My route page rebuilt (src/app/desk/driver/page.tsx + driver-job-card.tsx): ScreenHeader 'My route' + '{n} stops today'; OWNER/ADMIN Mine/Everyone toggle (?who=everyone); numbered stop cards in route order with formatBusinessTime + jobTypeLabel + VISIT_PILL, customer name, unit label when allowed, appliances as '{type} #{assetNumber}', notes, access notes only when the privacy read allows; buttons Directions (maps link, new tab), Call (tel: when a phone is allowed), Start on SCHEDULED via updateJobStatusAction with the kit toast 'Started — {customer} has been marked as under way', Finish visit… to /desk/jobs/{id}#finish on IN_PROGRESS, Add photo via the existing upload + addJobPhotoAction, On my way with the visit page's exact texting rule; in Everyone, a stop assigned to someone else shows its buttons disabled with 'Assigned to {name}'; empty states per spec; the AR-10b mileage card and the collections objection block stay"
+    },
+    {
+      "acceptance": [
+        "tests/route-snapshot.test.ts green (fake-indexeddb): write then read back today; yesterday's dateKey refused; another user's snapshot refused; deleteDatabase clears; allowlist test proves no '@', no '$' and no access-notes key anywhere in the stored JSON",
+        "Offline page without a valid snapshot renders exactly today's plain page (no regression to e2e/desk-offline.spec.ts)"
+      ],
+      "id": "AR-5B-S3",
+      "title": "Offline copy: src/app/desk/driver/route-snapshot.ts (save/read/clear over IndexedDB desk-route/snapshot/'today', shape { v: 1, userId, dateKey, savedAt, stops } built from exactly the rendered stop fields — id, time, type label, status label, customer name, address line, phone?, unit?, appliances[], notes? — never access notes, email or money; stale dateKey or foreign userId refused on read and overwritten on write; all access try/catch) + RouteSnapshot client component writing on every successful render + a desk-user sessionStorage stamp mounted in the desk layout with the session user id + src/app/offline saved-route island: when the snapshot matches the stamped user and today's Denver dateKey, the offline page shows 'Today's route (saved {time}) — you're offline' with read-only stops (Directions/Call links live; Start/Finish/Photo hidden behind 'Changes are paused until you're back online.'); sign-out deletion of desk-route verified present on the desk's sign-out surfaces (already in kit profile-menu; extend any desk surface missing it)"
+    },
+    {
+      "acceptance": [
+        "e2e/route-offline.spec.ts green in its shard; e2e/desk-offline.spec.ts still green",
+        "PR body carries the drift table (sign-out deletion already delivered; mileage card kept; desk-user stamp newly added)"
+      ],
+      "id": "AR-5B-S4",
+      "title": "Proof and paperwork: e2e/route-offline.spec.ts (service worker opted in exactly as e2e/desk-offline.spec.ts does; a stop assigned to the signed-in owner today; load My route online, go offline, reload, see the saved stop and the paused-changes line, no Start button) registered in e2e/shards.json; STATUS top entry and AR-5 card Progress updated; migrated-pages.json already lists the driver page (verified at packet time) so it is unchanged"
+    }
+  ],
+  "version": 1
+}

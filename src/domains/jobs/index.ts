@@ -22,6 +22,7 @@ import { assertDeliveryReadyInTx } from "@/domains/tax/delivery-readiness";
 import { assertSigningPaymentReadyForDispatchInTx } from "@/domains/billing/signing-dispatch-readiness";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
+export { getRouteForToday, type RouteStop, type RouteActor, type RouteWho } from "./route";
 export {
   completeJob,
   runPendingHandoffs,
@@ -122,22 +123,6 @@ export async function getJobsPage(
     orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
     skip,
     take: pageSize,
-  });
-}
-
-export async function getDriverJobsForToday() {
-  await requireRole("OWNER", "ADMIN", "STAFF");
-  const { start: startOfDay, end: startOfTomorrow } = businessDayBounds();
-
-  return prisma.job.findMany({
-    where: {
-      status: { in: ["SCHEDULED", "IN_PROGRESS"] },
-      scheduledAt: { gte: startOfDay, lt: startOfTomorrow },
-      // ZONE-1: a customer pickup hand-over happens at our place; it is never a stop on the driver's route.
-      customerPickupHandoff: false,
-    },
-    select: JOB_OPERATIONAL_SELECT,
-    orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
   });
 }
 
