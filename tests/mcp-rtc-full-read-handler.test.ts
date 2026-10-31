@@ -4,7 +4,7 @@ import { rtcToolCall } from "@/mcp/rtc-adapter";
 
 const fakes = vi.hoisted(() => ({
   issues: vi.fn(),
-  saved: vi.fn(async () => "rtc_result_synthetic_saved"),
+  saved: vi.fn(async (_ctx: unknown, _payload: unknown) => "rtc_result_synthetic_saved"),
 }));
 vi.mock("@/mcp/tools/diagnostics", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/mcp/tools/diagnostics")>();
