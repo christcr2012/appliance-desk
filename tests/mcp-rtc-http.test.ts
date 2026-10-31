@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import { GET as manifestGet } from "@/app/api/contract/route";
-import { rtcToolList } from "@/mcp/rtc-adapter";
+import { rtcToolList, rtcToolCall } from "@/mcp/rtc-adapter";
 import { GET as toolSearch } from "@/app/api/tools/route";
 import { GET as toolDescribe, POST as toolCall } from "@/app/api/tools/[name]/route";
 import { POST as toolBatch } from "@/app/api/tools/_batch/route";
@@ -115,6 +115,32 @@ describe("MCP-9 RTC read-only HTTP adapter uses the actual MCP catalog", () => {
     const decisions = await rtcToolList({ ...context, scopes: ["decisions:read"] }, "", 100);
     expect(decisions.some(tool => tool.name === "appliance_decisions_list")).toBe(true);
     expect(decisions.some(tool => tool.name === "appliance_feedback_list_reports")).toBe(false);
+  });
+  it("internal full-pass profile advertises only existing journaled writes", async () => {
+    const full: AgentContext = { ...context,
+      scopes: ["ops:read", "ops:maintain"], rtcAllowWrites: true,
+      rtcAreas: ["automation"] };
+    const catalog = await rtcToolList(full, "", 100);
+    const writes = catalog.filter(tool => tool.writes);
+    expect(writes.map(tool => tool.name).sort()).toEqual([
+      "appliance_action_execute", "appliance_action_preview",
+    ]);
+    expect(writes.find(tool => tool.name === "appliance_action_execute")?.destructive).toBe(true);
+    expect(writes.every(tool => tool.profiles.includes("full"))).toBe(true);
+    const initial = await rtcToolCall(full, "appliance_action_preview", {
+      action: "PAUSE_AUTOMATION",
+    });
+    expect(initial).toMatchObject({ ok: true, result: {
+      done: false, needsConfirmation: true,
+    } });
+    const unapproved = await rtcToolCall(full, "appliance_action_execute", {
+      previewId: "synthetic-preview-01", requestKey: "synthetic-request-01",
+    });
+    expect(unapproved).toMatchObject({ ok: true, result: {
+      done: false, needsConfirmation: true,
+    } });
+    await expect(rtcToolCall(full, "appliance_feedback_reply", {}))
+      .rejects.toThrow("outside_scope");
   });
   it("whoami never returns a reusable credential", async () => {
     const response = await rtcWhoami(req("/api/whoami"));
