@@ -98,6 +98,7 @@ export default async function AccountMaintenancePage({
           title={t("Ask for a pickup")}
           intro={t("Tell us which property and appliances you want picked up, and your preferred dates. This submits a request for review; it does not cancel your rental or change billing automatically.")}
           autoOpen={request === "pickup"}
+          announceIntro
         >
           <NewRequestForm
             customerId={customer.id}
