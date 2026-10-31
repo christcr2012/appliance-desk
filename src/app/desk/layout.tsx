@@ -10,6 +10,7 @@ import { AppFrame } from "@/components/kit/app-frame";
 import { visibleAreas, visibleProfileLinks } from "@/lib/desk-areas";
 import { visibleHelpGuides } from "@/lib/help-guides";
 import { IdleLogout } from "@/components/idle-logout";
+import { DeskUserStamp } from "@/components/kit/desk-user-stamp";
 import { getShownFeatures } from "@/domains/features";
 import { enforceJobRoleScreen, jobRoleScreens } from "@/lib/job-role-guard";
 import { isTwoFactorEnrollmentExemptPath } from "@/domains/security/two-factor";
@@ -49,6 +50,7 @@ export default async function DeskLayout({
     <>
       <AppFrame areas={areas} profileLinks={profileLinks} user={{ name, email: session.user.email, role, initials }} jobRoleScreens={screens} shown={[...shown]} helpGuides={helpGuides}>{children}</AppFrame>
       <IdleLogout timeoutMinutes={20} />
+      <DeskUserStamp userId={session.user.id} />
       <RegisterDeskServiceWorker />
       <DeskShortcuts role={role} />
     </>

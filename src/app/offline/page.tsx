@@ -1,6 +1,9 @@
 import Image from "next/image";
+import { OfflineRoute } from "./offline-route";
 
 // Public and content-free: safe to cache. Recovery is a plain link so no offline JavaScript is required.
+// AR-5 section 5 adds one deliberate exception: the OfflineRoute island reads the route copy the
+// My route page itself saved on this device and shows it read-only when it is this person's, today.
 export const metadata = { title: "Offline · Appliance Desk", robots: { index: false, follow: false } };
 
 export default function OfflinePage() {
@@ -12,6 +15,7 @@ export default function OfflinePage() {
       <a href="/desk/today" className="inline-flex min-h-11 items-center rounded-field bg-primary px-5 py-3 font-bold text-on-primary focus-visible:outline-2 focus-visible:outline-offset-2">
         Try again
       </a>
+      <OfflineRoute />
     </main>
   );
 }

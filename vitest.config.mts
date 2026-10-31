@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/route-for-today-integration.test.ts", // AR-5b toggles and restores the shared staffMayWorkUnassignedJobs switch.
   "tests/books-home-integration.test.ts", // AR-7 changes and restores the shared books start date and books problem counters.
   "tests/notification-hooks-integration.test.ts", // AR-13 sets and restores the shared write-off approval limit.
   "tests/mcp-decisions-apply-integration.test.ts", // MCP-5 briefly applies and restores shared DEC-1 business settings.
