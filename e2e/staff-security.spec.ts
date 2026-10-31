@@ -101,15 +101,30 @@ test.describe("staff permissions", () => {
       const jobLink = page
         .locator('main a[href="/desk/jobs/ci-security-job"]:visible, main a[href*="open=ci-security-job"]:visible')
         .first();
-      if (!(await jobLink.isVisible().catch(() => false))) {
-        await page.getByText(/Waiting for a time/).click();
+      let openedFromBoard = false;
+      if (route === "/desk/dispatch") {
+        const waiting = page.locator("main details").filter({ hasText: "Waiting for a time" });
+        // The queue can open by default, or be collapsed when it grows.
+        if (await waiting.count()) {
+          const isOpen = await waiting.evaluate((element) => (element as HTMLDetailsElement).open);
+          if (!isOpen) await waiting.locator("summary").click();
+        }
+        if (!(await jobLink.isVisible().catch(() => false))) {
+          // The Board displays only the first 50 waiting visits. Its explicit
+          // "see them all" route must still let staff reach the seeded visit.
+          const allVisits = page.getByRole("link", { name: /see them all in Visits/i });
+          await expect(allVisits).toBeVisible();
+          await allVisits.click();
+          await expect(page).toHaveURL(/\/desk\/jobs\?status=no-time/);
+        } else {
+          openedFromBoard = true;
+        }
       }
       await expect(jobLink).toBeVisible();
       await jobLink.click();
-      // AR-5 section 3: on desktop the Board row opens the visit in the side panel;
-      // the record itself is the panel's "Open full page" link (the Visits list's
-      // ?open= goes straight to the record).
-      if (route === "/desk/dispatch") {
+      // On desktop a Board row opens its panel; the Visits list's ?open=
+      // goes straight to the record. Both must preserve the staff read path.
+      if (openedFromBoard) {
         await page.getByRole("link", { name: /Open full page/ }).click();
       }
       await expect(page).toHaveURL(/\/desk\/jobs\/ci-security-job$/);

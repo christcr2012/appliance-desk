@@ -7064,6 +7064,8 @@ model McpConnection {
   userId String
   user User @relation("McpConnections", fields: [userId], references: [id], onDelete: Cascade)
   oauthClientId String
+  // RTC passes are a separate door: OAuth resource tokens never authenticate them.
+  kind String @default("CONNECTOR") @db.VarChar(12)
   label String @db.VarChar(80)
   scopes String[]
   // Changes on each new Allow. A disconnected JWT must never revive after reconnect.
@@ -7076,6 +7078,38 @@ model McpConnection {
   @@unique([userId, oauthClientId])
   @@index([userId, revokedAt])
   operations AgentOperation[]
+  rtcPasses AgentPass[]
+  rtcResults AgentResult[]
+}
+
+// MCP-9: owner-issued, digest-only, revocable RTC passes and owned 24-hour results.
+model AgentPass {
+  id String @id @default(cuid())
+  connectionId String
+  connection McpConnection @relation(fields: [connectionId], references: [id], onDelete: Restrict)
+  digest String @unique @db.Char(64)
+  label String @db.VarChar(80)
+  scopes String[]
+  profile String @default("read_only") @db.VarChar(12)
+  areas String[]
+  allowWrites Boolean @default(false)
+  allowProduction Boolean @default(false)
+  expiresAt DateTime
+  revokedAt DateTime?
+  lastUsedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([connectionId, expiresAt])
+}
+
+model AgentResult {
+  id String @id @default(cuid())
+  connectionId String
+  connection McpConnection @relation(fields: [connectionId], references: [id], onDelete: Restrict)
+  digest String @unique @db.Char(64)
+  payload Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([connectionId, expiresAt])
 }
 
 enum AgentOperationState {

@@ -22,6 +22,10 @@ export const BACKUP_MODEL_POLICY = {
   OauthClientAssertion: null,
   // Connection labels are business evidence, but a restore must leave all disconnected.
   McpConnection: "mcpConnection",
+  // RTC pass digests and temporary handle payloads are credentials/transport data,
+  // never restored with business records.
+  AgentPass: null,
+  AgentResult: null,
   // Operation attempts are durable business audit evidence, not active consent.
   AgentOperation: "agentOperation",
   MonitorRule: "monitorRule",

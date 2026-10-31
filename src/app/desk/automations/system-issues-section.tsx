@@ -32,7 +32,7 @@ export function SystemIssuesSection({ issues, nextCursor, canManage }: {
       {issues.map((issue) => (
         <div key={issue.id} data-testid={`system-issue-${issue.id}`}>
         <Card key={issue.id} title={issue.summary}
-          description={issue.detail}
+          description={issue.detail} className="[overflow-wrap:anywhere]"
           actions={<StatusPill tone={statusTone(issue)} label={`${issue.severity} · ${issue.status}`} />}>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div><dt className="text-ink-soft">First recorded</dt><dd>{occurred(issue.firstSeenAt)}</dd></div>

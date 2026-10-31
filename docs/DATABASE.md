@@ -1,3 +1,7 @@
+## October 30 — MCP-9 RTC passes and owned results (additive)
+
+Migration `20261030030000_mcp9_rtc_passes` adds a `McpConnection.kind` selector (existing rows default CONNECTOR), `AgentPass` containing only a 64-character SHA-256 digest of a one-time owner-issued 256-bit pass, scopes/profile, connection, expiry and revocation, and `AgentResult` with hashed opaque 24-hour handles and scoped payloads. Both new models are **excluded from business backups**: credentials and short-lived reply handles must not be restored or reactivated. This migration neither issues a live pass nor broadens an existing OAuth connection's authority.
+
 ## October 29 — MCP-8 performance observations and improvement proposals
 
 Migration `20261029220000_mcp8_performance_proposals` adds `PerfSample` (fixed PAGE/ACTION/JOB/QUERY label, elapsed milliseconds, success, timestamp; indexed by kind/name/time and time) and `OptimizationProposal` (owner-created evidence, benefit/risk/cost, measurement and rollback, PROPOSED/ACCEPTED/REJECTED/DONE state). The sweep deletes up to 5,000 samples older than 30 days per run. PerfSample is excluded from recoverable business backups because it is disposable telemetry; OptimizationProposal is included because reviewed proposals are durable owner records. Additive only; no production migration or provider action was executed by these tests.

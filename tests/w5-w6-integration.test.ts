@@ -156,6 +156,13 @@ describe.skipIf(!enabled)("W-5 payment links and W-6 lead To dos on real Postgre
     expect(await find()).toBeUndefined();
   });
 
+  it("uses Colorado calendar days rather than 24-hour durations across fall DST", () => {
+    const beforeFallBack = new Date("2026-10-31T18:00:00Z");
+    expect(businessDateKey(addBusinessDays(beforeFallBack, 2))).toBe("2026-11-02");
+    expect(defaultFollowUpKey(beforeFallBack)).toBe("2026-11-02");
+    expect(businessDateKey(addBusinessDays(beforeFallBack, 3))).toBe("2026-11-03");
+  });
+
   it("the follow-up date defaults to two days out, rejects past dates, and becomes a dated To do", async () => {
     const lead = await prisma.lead.create({ data: { contactName: "Fran Follow " + tag.slice(0, 6), phone: "970-555-0101", status: "CONTACTED" } });
     leadIds.push(lead.id);
