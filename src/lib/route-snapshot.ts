@@ -67,7 +67,7 @@ const DB_NAME = "desk-route";
 const STORE_NAME = "snapshot";
 const KEY = "today";
 
-function openDb(): Promise<IDBDatabase | null> {
+function openDbOnce(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
     try {
       if (typeof indexedDB === "undefined") return resolve(null);
@@ -81,6 +81,27 @@ function openDb(): Promise<IDBDatabase | null> {
       resolve(null);
     }
   });
+}
+
+async function openDb(): Promise<IDBDatabase | null> {
+  const db = await openDbOnce();
+  if (!db) return null;
+  if (db.objectStoreNames.contains(STORE_NAME)) return db;
+  // A database with our name but no store can exist if anything opened the
+  // name first without an upgrade handler. It can never gain the store at
+  // version 1, so delete it and open fresh (the upgrade then creates it).
+  db.close();
+  await new Promise<void>((resolve) => {
+    try {
+      const del = indexedDB.deleteDatabase(DB_NAME);
+      del.onsuccess = () => resolve();
+      del.onerror = () => resolve();
+      del.onblocked = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+  return openDbOnce();
 }
 
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T | null> {

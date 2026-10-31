@@ -174,6 +174,23 @@ describe("route snapshot (AR-5 section 5)", () => {
     expect(await rawStored()).toBeNull();
   });
 
+  it("recovers when a same-named database exists without the store", async () => {
+    // Anything that opens "desk-route" without an upgrade handler (a stray
+    // probe, another tool) leaves a storeless v1 database behind; the save
+    // must delete it and open fresh rather than fail silently forever.
+    await new Promise<void>((resolve) => {
+      const request = indexedDB.open("desk-route", 1);
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+      request.onerror = () => resolve();
+    });
+    await saveRouteSnapshot(buildRouteSnapshot(USER_A, [stopRow()]));
+    const read = await readRouteSnapshot(USER_A);
+    expect(read?.stops[0]?.id).toBe("job-1");
+  });
+
   it("deleting the database (the sign-out cleanup) removes the copy", async () => {
     await saveRouteSnapshot(buildRouteSnapshot(USER_A, [stopRow()]));
     expect(await readRouteSnapshot(USER_A)).not.toBeNull();

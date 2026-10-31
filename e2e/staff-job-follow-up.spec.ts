@@ -6,7 +6,7 @@ const staff = "e2e/.auth/staff.json";
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(url.hostname) && url.pathname === "/appliance_desk_test";
 test.use({ storageState: fs.existsSync(staff) ? staff : undefined });
-test("staff shared route completes a swap and both units move together", async ({ page }, info) => {
+test("staff route completes a swap and both units move together", async ({ page }, info) => {
   test.skip(!enabled || !fs.existsSync(staff), "Disposable CI database only");
   const { prisma } = await import("../src/lib/prisma");
   const tag = randomUUID(); const jobId = `follow-up-${tag}`;
@@ -58,10 +58,13 @@ test("staff shared route completes a swap and both units move together", async (
     });
     await page.setViewportSize({ width: 360, height: 900 });
     await page.goto("/desk/driver");
-    await expect(page.getByRole("heading", { name: "Shared team route" })).toBeVisible();
-    const card = page.locator("div.rounded-lg.border").filter({ has: page.getByText(assets[1], { exact: false }) }).filter({ has: page.getByRole("button", { name: "Mark complete", exact: true }) });
-    await card.getByRole("button", { name: "Mark complete", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`/desk/jobs/${jobId}$`));
+    await expect(page.getByRole("heading", { name: "My route" })).toBeVisible();
+    // AR-5 section 5: the unassigned visit sits on the staff member's own route
+    // (the owner setting allows unassigned work), and finishing starts from the
+    // card's "Finish visit…" link into the visit record's completion form.
+    const card = page.locator("article").filter({ has: page.getByText(assets[1], { exact: false }) }).filter({ has: page.getByRole("link", { name: "Finish visit…" }) });
+    await card.getByRole("link", { name: "Finish visit…" }).click();
+    await expect(page).toHaveURL(new RegExp(`/desk/jobs/${jobId}#finish$`));
     await page.getByRole("button", { name: "Complete job", exact: true }).click();
     await expect(page.getByText("Status: COMPLETED")).toBeVisible();
     // Completing the swap moves both units itself: the new one becomes Rented, the old one goes to inspection.

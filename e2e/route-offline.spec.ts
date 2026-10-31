@@ -52,29 +52,32 @@ test("the saved route shows on the offline page, read-only", async ({ context, p
     await expect(page.getByText(`AR5 Offline ${tag}`)).toBeVisible();
 
     // The page writes its on-device copy on render; wait until it is really there.
+    // Never open the database from the probe itself: a bare open would create a
+    // storeless v1 database before the page's own upgrade handler runs.
     await expect
       .poll(() =>
-        page.evaluate(
-          () =>
-            new Promise<boolean>((resolve) => {
-              const request = indexedDB.open("desk-route", 1);
-              request.onsuccess = () => {
-                const db = request.result;
-                if (!db.objectStoreNames.contains("snapshot")) {
-                  db.close();
-                  return resolve(false);
-                }
-                const get = db.transaction("snapshot", "readonly").objectStore("snapshot").get("today");
-                get.onsuccess = () => {
-                  const value = get.result as { stops?: unknown[] } | undefined;
-                  db.close();
-                  resolve(Boolean(value?.stops?.length));
-                };
-                get.onerror = () => resolve(false);
+        page.evaluate(async () => {
+          const infos = await indexedDB.databases();
+          if (!infos.some((info) => info.name === "desk-route")) return false;
+          return new Promise<boolean>((resolve) => {
+            const request = indexedDB.open("desk-route", 1);
+            request.onsuccess = () => {
+              const db = request.result;
+              if (!db.objectStoreNames.contains("snapshot")) {
+                db.close();
+                return resolve(false);
+              }
+              const get = db.transaction("snapshot", "readonly").objectStore("snapshot").get("today");
+              get.onsuccess = () => {
+                const value = get.result as { stops?: unknown[] } | undefined;
+                db.close();
+                resolve(Boolean(value?.stops?.length));
               };
-              request.onerror = () => resolve(false);
-            }),
-        ),
+              get.onerror = () => resolve(false);
+            };
+            request.onerror = () => resolve(false);
+          });
+        }),
       )
       .toBe(true);
 
