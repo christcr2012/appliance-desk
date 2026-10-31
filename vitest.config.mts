@@ -84,6 +84,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/setup-checklist-integration.test.ts", // W-7 blanks and restores shared settings, prices, filing accounts and the business address.
   "tests/w9-filing-autopilot-integration.test.ts", // W-9 creates Colorado filing accounts and periods that the whole-database filing list and health check read.
   "tests/w19-flow-gaps-integration.test.ts", // W-19 changes and restores the shared unsigned-agreement reminder setting.
+  "tests/w12-deduction-labels-integration.test.ts", // W-12 creates its own users and filing account that account lists and audit reads share the database with.
   // Tax-ready fixtures also write/restore BusinessSettings.singleton through their helper.
   "tests/bank-in-flight-nightly.test.ts", // BILL-1: the nightly check looks at every open bank-payment flag in the database, so it must not overlap the webhook suite that creates them.
   "tests/bank-in-flight-webhook-integration.test.ts", // BILL-1: same shared flag rows as the nightly suite above.

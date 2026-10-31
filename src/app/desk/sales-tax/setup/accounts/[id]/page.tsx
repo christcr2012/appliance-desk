@@ -101,7 +101,8 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
       </fieldset>
       <fieldset className="space-y-3 rounded border border-border p-3">
         <legend className="font-semibold">Deduction wording on the return</legend>
-        <p className="text-sm text-muted-foreground">When part of a sale is not taxed, Colorado&apos;s return (form DR 0100) counts it in gross sales and takes it off under these names on Schedule A. The wording is edited on its own page — your accountant can edit it too, and every change is recorded.</p>
+        <p className="text-sm text-muted-foreground">When part of a sale is not taxed, the return counts it in gross sales and takes it off under these names on Schedule A.</p>
+        <p className="text-sm text-muted-foreground">The wording is edited on its own page. Your accountant can edit it too, and every change is recorded.</p>
         <ul className="space-y-1 text-sm">
           {deductionKeys.map(key => {
             const def = RESEARCHED_DEDUCTION_DEFAULTS[key];

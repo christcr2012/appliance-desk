@@ -74,7 +74,10 @@
     "src/app/desk/sales-tax/page.tsx",
     "tests/w12-deduction-labels-integration.test.ts",
     "tests/accountant-allowlist.test.ts",
-    "e2e/route-inventory.ts"
+    "e2e/route-inventory.ts",
+    "scripts/desk-bundle-budget.json",
+    "docs/build-specs/migrated-pages.json",
+    "vitest.config.mts"
   ],
   "references": [
     {

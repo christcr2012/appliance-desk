@@ -80,6 +80,10 @@
     "kind": "other"
   },
   {
+    "file": "src/app/desk/sales-tax/deduction-labels/page.tsx",
+    "kind": "other"
+  },
+  {
     "file": "src/app/desk/sales-tax/delivery-fees/page.tsx",
     "kind": "other"
   },
