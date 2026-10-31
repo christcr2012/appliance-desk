@@ -9,7 +9,7 @@
 //   node scripts/e2e-shard.mjs all               validate, then run every group on one runner (what CI does)
 //
 // Validation fails if any e2e/*.spec.ts is missing from shards.json, listed
-// twice, or listed but no longer exists — so adding a spec file without
+// twice, or listed but no longer exists â so adding a spec file without
 // assigning it fails CI loudly instead of silently never running it.
 //
 // After a run, the slowest spec files are printed as GitHub Actions notices
@@ -117,24 +117,16 @@ if (arg !== "all" && !groups[arg]) {
 // Playwright treats each file argument as a regex matched anywhere in the
 // path, so "accessibility.spec.ts" would also match
 // "rental-address-accessibility.spec.ts". Anchor each one to exactly its file.
-// The synthetic W-22 V2 fixture temporarily sets the BusinessSettings
-// singleton. Parallel owner/tax specs can invalidate its frozen charge review.
-// Run the entire signing spec after other specs finish, in its own Playwright
-// process. No test or assertion is skipped or weakened.
+// The synthetic W-22 V2 fixture temporarily updates the shared BusinessSettings
+// singleton. Running browser-b with one Playwright worker prevents concurrent
+// owner/tax tests from invalidating a frozen order. One Playwright process also
+// avoids a second global login setup (which timed out in CI after the first run).
+// Every original spec and assertion stays enabled, including the skipped-test check.
 const files = arg === "all" ? Object.values(groups).flat() : groups[arg];
-const signingSpec = "w22-v2-complete-signing.spec.ts";
-const batches = files.length > 1 && files.includes(signingSpec)
-  ? [
-      { label: `${arg} normal`, files: files.filter((file) => file !== signingSpec) },
-      { label: `${arg} signing isolated`, files: [signingSpec] },
-    ]
-  : [{ label: arg, files }];
-let failed = false;
-for (const batch of batches) {
-  const patterns = batch.files.map((f) => `/e2e/${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
-  const result = spawnSync("npx", ["playwright", "test", ...patterns], { stdio: "inherit", cwd: root });
-  reportDurations(batch.label);
-  if ((result.status ?? 1) !== 0) failed = true;
-  if ((result.status ?? 1) === 0 && process.env.CI && !checkNothingSkipped()) failed = true;
-}
-process.exit(failed ? 1 : 0);
+const patterns = files.map((f) => `/e2e/${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+const serialSharedSettings = files.includes("w22-v2-complete-signing.spec.ts");
+const result = spawnSync("npx", ["playwright", "test", ...patterns, ...(serialSharedSettings ? ["--workers=1"] : [])],
+  { stdio: "inherit", cwd: root });
+reportDurations(arg);
+if ((result.status ?? 1) === 0 && process.env.CI && !checkNothingSkipped()) process.exit(1);
+process.exit(result.status ?? 1);

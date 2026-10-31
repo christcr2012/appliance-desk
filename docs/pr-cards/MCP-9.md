@@ -70,7 +70,7 @@ during tests.
 - [ ] Keep client evidence server-rendered and out of generated pass credentials, logs, URLs or browser bundles. Do not add owner-only secrets or fake a trial. An incomplete PASS row is treated as NOT_VERIFIED.
 - [ ] Give the owner a single client-neutral direct MCP and optional RTC/Hub walkthrough covering setup, a safe read and scoped result, refresh/redeploy, revocation and evidence recording (client/version/deployed SHA/date/outcome), with no live write/payment/message trial.
 - [ ] Add focused matrix filtering/UI tests (missing evidence, not tried, actual verified fixture) and a truthful current-ledger fallback; verify exact-head CI/review before merge. Keep all actual untried clients NOT_TRIED.
-- [ ] CI browser-b shared-settings correction: the existing W-22 V2 signing spec uses a synthetic global BusinessSettings revision and must execute in its own Playwright process, after other shard-b specs have stopped; retain every assertion, fixture, run/skip check and the existing five GitHub CI runners. Diagnose any additional failures independently, then require exact-head green CI.
+- [ ] CI browser-b shared-settings correction: the existing W-22 V2 signing spec uses a synthetic global BusinessSettings revision and must execute in the same Playwright process with one worker for shard-b, so the shared business-settings fixture cannot race owner/tax tests or trigger a second login setup; retain every assertion, fixture, run/skip check and the existing five GitHub CI runners. Diagnose any additional failures independently, then require exact-head green CI.
 
 ## Implementation route (reconciled October 28, 2026)
 This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
