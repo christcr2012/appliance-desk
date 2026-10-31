@@ -74,7 +74,7 @@ export function MaintenanceDetailPanel({
             type="button"
             disabled={isPending}
             onClick={() => handleStatusChange("REVIEWING")}
-            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-canvas hover:opacity-90 disabled:opacity-50"
           >
             Look at it
           </button>
@@ -95,7 +95,7 @@ export function MaintenanceDetailPanel({
           </p>
           <Link
             href={`/desk/jobs/${nextVisitId}`}
-            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90"
+            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-canvas hover:opacity-90"
           >
             Open the visit
           </Link>
@@ -110,7 +110,7 @@ export function MaintenanceDetailPanel({
             type="button"
             disabled={isPending}
             onClick={() => handleStatusChange("CLOSED")}
-            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="rounded-control bg-ink px-3 py-1.5 text-sm font-semibold text-canvas hover:opacity-90 disabled:opacity-50"
           >
             Close it
           </button>

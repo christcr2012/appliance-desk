@@ -126,7 +126,8 @@ test.describe("staff see a read-only Schedule area", () => {
       await expect(page.getByRole("link", { name: "Schedule a visit" })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Schedule", exact: true })).toHaveCount(0);
       await page.goto("/desk/jobs?status=no-time");
-      await expect(page.getByText(`AR5 Schedule ${tag}`)).toBeVisible();
+      // The list renders the visit in both its phone cards and its desktop table.
+      await expect(page.getByText(`AR5 Schedule ${tag}`).first()).toBeVisible();
       await expect(page.getByRole("link", { name: "Schedule a visit" })).toHaveCount(0);
     } finally {
       await prisma.job.deleteMany({ where: { id: jobId } });

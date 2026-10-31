@@ -106,6 +106,12 @@ test.describe("staff permissions", () => {
       }
       await expect(jobLink).toBeVisible();
       await jobLink.click();
+      // AR-5 section 3: on desktop the Board row opens the visit in the side panel;
+      // the record itself is the panel's "Open full page" link (the Visits list's
+      // ?open= goes straight to the record).
+      if (route === "/desk/dispatch") {
+        await page.getByRole("link", { name: /Open full page/ }).click();
+      }
       await expect(page).toHaveURL(/\/desk\/jobs\/ci-security-job$/);
     });
   }

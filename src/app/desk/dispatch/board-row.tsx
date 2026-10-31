@@ -182,7 +182,7 @@ export function BoardRow({
                 type="button"
                 disabled={isPending}
                 onClick={() => save([])}
-                className="rounded-control bg-ink px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-control bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:opacity-90 disabled:opacity-50"
               >
                 {job.scheduledAt ? "Save changes" : "Book the visit"}
               </button>
