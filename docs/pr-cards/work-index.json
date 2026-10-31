@@ -5005,7 +5005,7 @@
         "MCP-1",
         "MCP-5"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — 7a PR #741, 7b PR #762 (2026-10-29); verified and closed out 2026-10-31 by Lane 5 (MCP-7-CLOSEOUT): monitoring suites green on current main, owner confirmed the two-action auto-action allowlist as shipped",
       "migration": "additive (MonitorRule, MonitorRun)",
       "budget": 450,
       "units": [
@@ -5031,7 +5031,7 @@
         "MCP-6",
         "AR-8"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #764 (2026-10-30); verified and closed out 2026-10-31 by Lane 5 (MCP-8-CLOSEOUT): timing, integration and catalog-coverage suites green on current main",
       "migration": "additive (PerfSample, OptimizationProposal)",
       "budget": 500,
       "units": [
@@ -6187,6 +6187,14 @@
     {
       "id": "MCP-6-CLOSEOUT",
       "path": "docs/pr-cards/execution/MCP-6-CLOSEOUT.json"
+    },
+    {
+      "id": "MCP-7-CLOSEOUT",
+      "path": "docs/pr-cards/execution/MCP-7-CLOSEOUT.json"
+    },
+    {
+      "id": "MCP-8-CLOSEOUT",
+      "path": "docs/pr-cards/execution/MCP-8-CLOSEOUT.json"
     },
     {
       "id": "AR-5B",

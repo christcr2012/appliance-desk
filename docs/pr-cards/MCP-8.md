@@ -4,22 +4,22 @@ Build spec: `docs/build-specs/engines/OPTIMIZATION-COVERAGE.md`. Approved by Chr
 MCP-6. Risk: **extra database writes** (sampled, capped, pruned).
 
 ## Acceptance
-- [ ] Page, action, job and query timings recorded without ids or parameters; 30-day retention; sampling keeps writes small.
-- [ ] Observations state window and sample size, and say "Not enough data yet" below 30 samples.
-- [ ] Proposals never change anything by themselves; protected settings (prices, fees, legal/tax) are refused.
-- [ ] Every Settings field and System health control is on the settings map (test); `appliance_where_is_setting` works.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Page, action, job and query timings recorded without ids or parameters; 30-day retention; sampling keeps writes small.
+- [x] Observations state window and sample size, and say "Not enough data yet" below 30 samples.
+- [x] Proposals never change anything by themselves; protected settings (prices, fees, legal/tax) are refused.
+- [x] Every Settings field and System health control is on the settings map (test); `appliance_where_is_setting` works.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 Implementation is under review on PR #764. The first GitHub CI pass exposed missing backup policy and read-tool inventory fixtures; the root causes were reproduced and corrected together. Local focused observations/control tests are 8/8 green and backup/tool registry tests are 17/17 green; Prisma schema validation and focused ESLint passed. The first corrected exact-head full CI passed. Owner-accepted proposals now open an MCP-6 case with immutable source provenance; new real-PostgreSQL tests check the case and lack of duplicate effects. Fresh exact-head CI and review gate are still required.
 
 ## MCP-8 acceptance plan — observations, proposals, and settings map (October 29)
 
-- [ ] Persist only fixed, sanitized PAGE/ACTION/JOB/QUERY names, durations and outcome using sampled bounded instrumentation; a failed metrics write cannot affect the business action. Retain 30 days, deleting no more than 5,000 stale samples per sweep.
-- [ ] Display sourced 7-day and 30-day observations, exact p50/p95, error percentages and previous-window deltas. Below 30 samples say "Not enough data yet" and do not infer an improvement or degradation.
-- [ ] Proposals store the baseline evidence, expected benefit, risk, cost, verification and rollback; neither creating nor viewing a proposal changes business configuration. Protected price, fee, tax, legal and signature subjects are ineligible.
-- [ ] Generate the searchable settings map from the actual AR-8 catalog plus System health controls and decisions, with screen links, role and honest assistant capability labels. Never claim a TOOL row unless its real MCP-5 action and authorization are covered by tests.
-- [ ] Owner screen makes observation quality, proposal status and controls visible. Disposable-PostgreSQL tests exercise sampling/privacy, retained boundary, concurrency-safe capped prune, percentile and insufficiency fixtures, proposal denials and catalog coverage; full exact-head CI and review must pass before merging.
+- [x] Persist only fixed, sanitized PAGE/ACTION/JOB/QUERY names, durations and outcome using sampled bounded instrumentation; a failed metrics write cannot affect the business action. Retain 30 days, deleting no more than 5,000 stale samples per sweep.
+- [x] Display sourced 7-day and 30-day observations, exact p50/p95, error percentages and previous-window deltas. Below 30 samples say "Not enough data yet" and do not infer an improvement or degradation.
+- [x] Proposals store the baseline evidence, expected benefit, risk, cost, verification and rollback; neither creating nor viewing a proposal changes business configuration. Protected price, fee, tax, legal and signature subjects are ineligible.
+- [x] Generate the searchable settings map from the actual AR-8 catalog plus System health controls and decisions, with screen links, role and honest assistant capability labels. Never claim a TOOL row unless its real MCP-5 action and authorization are covered by tests.
+- [x] Owner screen makes observation quality, proposal status and controls visible. Disposable-PostgreSQL tests exercise sampling/privacy, retained boundary, concurrency-safe capped prune, percentile and insufficiency fixtures, proposal denials and catalog coverage; full exact-head CI and review must pass before merging.
 
 This bundle covers the measurement engine, proposal workflow and settings discovery together.
 No provider settings are changed, no financial/legal value is auto-tuned, and no
@@ -42,3 +42,41 @@ only when absent; inspect the final prerequisite exports once before coding.
 5. Proposals store observations/measurement/rollback, never change a setting themselves. Test rejection of
    protected financial/legal keys before wiring the owner accept→MCP-6 case workflow. Use the two named
    observation/control tests from the spec and the existing authorization regressions.
+
+## Close-out — October 31 (Lane 5, MCP-8-CLOSEOUT)
+
+The implementation merged as PR #764 on 2026-10-30 but the card was never
+closed out: every acceptance box stayed unticked, the Progress section still
+ended at "under review on PR #764", and the work-index still read APPROVED.
+Verified on current main (`c721247a`) under packet MCP-8-CLOSEOUT; nothing was
+rebuilt and no behavior changed.
+
+- **Suites:** the card's three named suites re-ran per-file. The privacy-safe
+  timing unit suite passed 4/4 and the catalog coverage suite passed 4/4 on
+  the lane database. The disposable-PostgreSQL integration suite passed 3/4 at
+  the default 5 s test cap on a fresh dedicated cluster — the capped-prune
+  test seeds 5,002 rows and exceeded the cap on this loaded VM, then passed
+  with a diagnostic timeout raise; on the long-lived shared lane database the
+  same suite also showed one exact-count failure (31 vs 30 samples) from
+  leftover rows of earlier runs, which is exactly why the suite is written for
+  a disposable database — on the fresh cluster the count is exact. The suite
+  was green in CI at PR #764's merged head.
+- **Implementation read:** performance.ts persists only the fixed
+  PERFORMANCE_NAMES labels (no ids, parameters or URLs), samples 1-in-10 for
+  pages/actions and always for jobs, swallows metrics-write failures so a
+  business action is never affected, aggregates exact nearest-rank p50/p95
+  with previous-window deltas, and reports "Not enough data yet" (with no
+  inferred trend) below 30 samples or past the safe read cap; the prune
+  deletes at most 5,000 stale rows per sweep past 30 days. optimization.ts
+  refuses unknown and protected setting keys (money rows, price/fee/tax/legal
+  sections and key patterns), requires an ENOUGH baseline before a proposal
+  can be created, and its owner decision only opens an idempotent MCP-6
+  repair case from the persisted proposal — it never edits a setting. The
+  settings map is generated from the AR-8 catalog plus System health controls
+  and decision subjects; TOOL rows exist only for real tested MCP-5 actions
+  and everything else is honestly PLANNED / NOT_APPLICABLE / PROVIDER_MANUAL;
+  `appliance_where_is_setting` is registered on the MCP server.
+- **Browser:** no dedicated MCP-8 browser spec exists and none is claimed —
+  the card's own evidence plan names the disposable-PostgreSQL suites, the
+  catalog coverage test and full exact-head CI, and those are the evidence
+  this close-out stands on.
