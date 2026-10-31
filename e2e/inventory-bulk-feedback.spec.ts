@@ -33,13 +33,16 @@ test("bulk inventory reports distinct skipped units and persists the successful 
     await page.goto("/desk/inventory");
     for (const asset of assets)
       await page.getByLabel(`Select ${asset}`, { exact: true }).check();
+    // AR-6: the bulk status change lives in the Change status sheet, which
+    // only offers statuses at least one selected unit can move to.
+    await page.getByRole("button", { name: "Change status…", exact: true }).click();
     await page
       .getByLabel("Set status to", { exact: true })
       .selectOption("AVAILABLE");
     await page.getByRole("button", { name: "Apply", exact: true }).click();
     const status = page
       .getByRole("status")
-      .filter({ hasText: "Updated 1. Skipped 2." });
+      .filter({ hasText: "1 changed, 2 skipped." });
     await expect(status).toBeVisible();
     await expect(status).toContainText(assets[1]);
     await expect(status).toContainText(assets[2]);
@@ -56,7 +59,7 @@ test("bulk inventory reports distinct skipped units and persists the successful 
     ).toBeChecked();
     // The mutation refresh streams metadata separately from the updated list.
     // Audit the completed document, rather than the temporary refresh state.
-    await expect(page).toHaveTitle(/Inventory/);
+    await expect(page).toHaveTitle(/Equipment/);
     expect(
       (
         await new AxeBuilder({ page })

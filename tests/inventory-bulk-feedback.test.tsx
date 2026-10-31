@@ -19,7 +19,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: m.refresh }),
 }));
 import { bulkUpdateApplianceStatusAction } from "@/app/desk/inventory/actions";
-import { InventoryList } from "@/app/desk/inventory/inventory-list";
+import { FleetList } from "@/app/desk/inventory/fleet-list";
+// AR-6: the fleet list's row shape (FleetRow) replaced the old list's rows.
 const appliances = ["one", "two", "three"].map((id) => ({
   id,
   assetNumber: `A-${id}`,
@@ -28,7 +29,10 @@ const appliances = ["one", "two", "three"].map((id) => ({
   model: null,
   color: null,
   currentLocation: null,
-  applianceType: { name: "Washer" },
+  typeName: "Washer",
+  typeSlug: "washer",
+  awayForRepair: false,
+  custody: null,
 }));
 beforeEach(() => {
   vi.clearAllMocks();
@@ -61,11 +65,12 @@ it("reports each skipped asset and retains only those selections after partial s
       { applianceId: "three", reason: "This unit changed elsewhere." },
     ],
   });
-  render(<InventoryList appliances={appliances} canManage />);
+  render(<FleetList rows={appliances} canManage />);
   fireEvent.click(screen.getByLabelText("Select all on this page"));
+  fireEvent.click(screen.getByRole("button", { name: "Change status…" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply" }));
   const status = await screen.findByRole("status");
-  expect(status).toHaveTextContent("Updated 1. Skipped 2.");
+  expect(status).toHaveTextContent("1 changed, 2 skipped.");
   expect(within(status).getByRole("link", { name: "A-two" })).toHaveAttribute(
     "href",
     "/desk/inventory/two",
@@ -79,8 +84,9 @@ it("reports each skipped asset and retains only those selections after partial s
 });
 it("keeps selection and reports an unconfirmed response without claiming success", async () => {
   m.bulk.mockRejectedValue(new Error("lost response"));
-  render(<InventoryList appliances={appliances} canManage />);
+  render(<FleetList rows={appliances} canManage />);
   fireEvent.click(screen.getByLabelText("Select A-one"));
+  fireEvent.click(screen.getByRole("button", { name: "Change status…" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply" }));
   expect(await screen.findByRole("status")).toHaveTextContent("not confirmed");
   expect(screen.getByLabelText("Select A-one")).toBeChecked();
@@ -98,6 +104,6 @@ it("denies non-manager actions and validates inputs before changing inventory", 
     await bulkUpdateApplianceStatusAction(["one"], "invalid"),
   ).toMatchObject({ status: "error" });
   expect(m.bulk).not.toHaveBeenCalled();
-  render(<InventoryList appliances={appliances} />);
+  render(<FleetList rows={appliances} />);
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 });

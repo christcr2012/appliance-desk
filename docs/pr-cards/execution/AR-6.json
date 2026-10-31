@@ -108,7 +108,7 @@
    "purpose": "The low-stock rule getPartsList must reproduce in SQL so the low tab can page"
   },
   {
-   "anchor": "<ReminderSetting days={followUpDays} />",
+   "anchor": "<ScreenHeader title=\"Retired appliances\" />",
    "path": "src/app/desk/inventory/retired/page.tsx",
    "purpose": "Drift: the retired page's local follow-up-days setting block \u2014 REMOVED in this card because AR-8 shipped the Settings row"
   },
