@@ -81,8 +81,13 @@ async function fixtureAppServer() {
       const method = incoming.method ?? "GET";
       const bytes: Uint8Array[] = [];
       for await (const piece of incoming) bytes.push(piece as Uint8Array);
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(incoming.headers)) {
+        if (typeof value === "string") headers.set(key, value);
+        else if (Array.isArray(value)) headers.set(key, value.join(", "));
+      }
       const input = new Request("http://localhost" + url.pathname + url.search, {
-        method, headers: incoming.headers as HeadersInit,
+        method, headers,
         ...(method === "POST" ? { body: Buffer.concat(bytes) } : {}),
       });
       let response: Response;
