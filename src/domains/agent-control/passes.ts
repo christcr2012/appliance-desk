@@ -20,6 +20,8 @@ export function newRtcPassSecret(): string {
 
 export async function issueRtcPass(ownerId: string, input: {
   label: string; scopes: McpScope[]; expiresDays?: number; areas?: string[];
+  /** Internal/test grant only until full RTC write conformance; owner UI remains read-only. */
+  allowWrites?: boolean;
 }, now = new Date()) {
   const days = input.expiresDays ?? 1;
   if (!Number.isInteger(days) || days < 1 || days > 30)
@@ -36,6 +38,9 @@ export async function issueRtcPass(ownerId: string, input: {
   if (areas.length > validAreas.length || areas.some(area =>
       !validAreas.includes(area as (typeof validAreas)[number])))
     throw new Error("INVALID_RTC_PASS_AREAS");
+  if (input.allowWrites && (!unique.includes("ops:maintain") ||
+      (areas.length > 0 && !areas.includes("automation"))))
+    throw new Error("INVALID_RTC_PASS_WRITE_SCOPE");
   const secret = newRtcPassSecret();
   const d = digest(secret);
   const connectionClientId = "rtc-pass:" + randomUUID();
@@ -53,7 +58,8 @@ export async function issueRtcPass(ownerId: string, input: {
     });
     const pass = await tx.agentPass.create({
       data: { connectionId: connection.id, digest: d, label, scopes: unique,
-        areas, profile: "read_only", allowWrites: false, allowProduction: false,
+        areas, profile: input.allowWrites ? "full" : "read_only",
+        allowWrites: input.allowWrites === true, allowProduction: false,
         expiresAt },
     });
     await tx.auditLog.create({ data: {
@@ -108,7 +114,8 @@ export async function authenticateRtcPass(request: Request): Promise<AgentContex
   if (pass.connection.kind !== "PASS" || pass.connection.user.archivedAt ||
       pass.connection.user.role !== "OWNER" ||
       pass.connection.userId !== pass.connection.user.id ||
-      pass.profile !== "read_only" || pass.allowWrites ||
+      !((pass.profile === "read_only" && !pass.allowWrites) ||
+        (pass.profile === "full" && pass.allowWrites)) ||
       (process.env.VERCEL_ENV === "production" && !pass.allowProduction))
     return reject();
   if (await twoFactorEnrollmentRequired(pass.connection.userId, "OWNER")) return reject();
@@ -127,8 +134,11 @@ export async function authenticateRtcPass(request: Request): Promise<AgentContex
     connectionId: pass.connectionId,
     connectionLabel: pass.label,
     rtcAreas: pass.areas,
+    rtcAllowWrites: pass.profile === "full" && pass.allowWrites,
     scopes: grantedMcpScopes(pass.scopes, pass.connection.scopes).filter(
-      scope => scope === "ops:read" || scope === "decisions:read",
+      scope => scope === "ops:read" || scope === "decisions:read" ||
+        scope === "feedback:triage" || (scope === "ops:maintain" &&
+          pass.profile === "full" && pass.allowWrites),
     ),
   };
 }

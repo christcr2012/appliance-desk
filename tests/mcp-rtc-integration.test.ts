@@ -88,6 +88,24 @@ describe("MCP-9 read-only RTC passes and handle ownership on disposable PostgreS
     await expect(readRtcResult(context, handle)).rejects.toThrow("RTC_RESULT_NOT_FOUND");
   });
 
+  it("a test-only write pass is explicitly scoped and still requires the journal", async () => {
+    await expect(issueRtcPass(ownerId, { label: "Unscoped synthetic write",
+      scopes: ["ops:read"], allowWrites: true })).rejects.toThrow("INVALID_RTC_PASS_WRITE_SCOPE");
+    const created = await issueRtcPass(ownerId, { label: "Synthetic write pass",
+      scopes: ["ops:read", "ops:maintain"], areas: ["automation"], allowWrites: true });
+    const pass = await prisma.agentPass.findUniqueOrThrow({ where: { id: created.id } });
+    expect(pass.profile).toBe("full");
+    expect(pass.allowWrites).toBe(true);
+    expect(pass.allowProduction).toBe(false);
+    const context = await authenticateRtcPass(authReq(created.secret));
+    if (context instanceof Response) throw new Error("Test write pass unexpectedly rejected");
+    expect(context.rtcAllowWrites).toBe(true);
+    expect(context.rtcAreas).toEqual(["automation"]);
+    expect(context.scopes).toContain("ops:maintain");
+    expect(context.scopes).not.toContain("decisions:apply");
+    await revokeRtcPass(ownerId, created.id);
+  });
+
   it("atomic rate limiting shares one database bucket across parallel requests", async () => {
     // Distinct concurrent callers represent separate stateless instances.
     const { isRateLimited } = await import("@/lib/rate-limit");
