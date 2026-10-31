@@ -6,6 +6,7 @@ import { storeRtcResult, readRtcResult } from "@/domains/agent-control/rtc-resul
 import { parseRtcReadInput, projectRtcRead } from "./rtc-projection";
 import { rtcCanDiscoverRead } from "./rtc-read-scopes";
 import { RTC_JOURNALED_WRITES, rtcWriteDecision } from "./rtc-write-policy";
+import { collectFullRtcIssues } from "./rtc-full-issues";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 
 type ClientTool = Awaited<ReturnType<Client["listTools"]>>["tools"][number];
@@ -121,14 +122,30 @@ export async function rtcToolCall(ctx: AgentContext, name: string,
     } };
   }
   const { domainArgs, paths } = parseRtcReadInput(args);
-  const result = await mcpRead(ctx, client => client.callTool({ name, arguments: domainArgs }));
-  if (result.isError) throw new Error("refused_by_guard");
-  const payload = projectRtcRead(result.structuredContent ?? { content: result.content }, paths);
+  let safeResult: unknown;
+  if (name === "appliance_health_list_issues" && args.detail === "full") {
+    safeResult = await collectFullRtcIssues(domainArgs, async pageArgs => {
+      const page = await mcpRead(ctx, client => client.callTool({
+        name, arguments: pageArgs,
+      }));
+      if (page.isError || !page.structuredContent)
+        throw new Error("refused_by_guard");
+      return page.structuredContent;
+    });
+  } else {
+    const result = await mcpRead(ctx, client => client.callTool({ name, arguments: domainArgs }));
+    if (result.isError) throw new Error("refused_by_guard");
+    safeResult = result.structuredContent ?? { content: result.content };
+  }
+  const payload = projectRtcRead(safeResult, paths);
   const serialized = JSON.stringify(payload);
   if (Buffer.byteLength(serialized, "utf8") <= 8192) return { ok: true, result: payload };
   // Keep the raw sanitized MCP output owned by this pass; never cut mid-JSON.
   const handle = await storeRtcResult(ctx, payload as Record<string, unknown>);
-  return { ok: true, result: { summary: "Result saved for 24 hours", count: 1, preview: serialized.slice(0, 512) },
+  return { ok: true, result: { summary: "Result saved for 24 hours",
+    count: typeof payload === "object" && payload !== null && "issues" in payload &&
+      Array.isArray(payload.issues) ? payload.issues.length : 1,
+    preview: serialized.slice(0, 512) },
     handle };
 }
 
