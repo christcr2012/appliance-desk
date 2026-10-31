@@ -47,7 +47,11 @@ test.describe("equipment — owner", () => {
       await page.getByRole("button", { name: "Retire…" }).click();
       await page.getByLabel("Why is it being retired?").fill("CI: motor failed");
       await page.getByRole("button", { name: "Retire it" }).click();
-      await expect(page.getByText("Retired", { exact: true }).first()).toBeVisible();
+      // The retire action + refresh land asynchronously: the Retire…
+      // button unmounts only once the refreshed record reads RETIRED.
+      // (A bare "Retired" text match would hit the sidebar link instantly
+      // and race the action — rehearsal on the Workshop bench caught it.)
+      await expect(page.getByRole("button", { name: "Retire…" })).toHaveCount(0, { timeout: 15_000 });
       const row = await prisma.appliance.findUniqueOrThrow({ where: { id: ids[0] } });
       expect(row.status).toBe("RETIRED");
     } finally {
@@ -79,7 +83,7 @@ test.describe("equipment — staff", () => {
         },
       });
       await page.goto(`/desk/inventory/${id}`);
-      await expect(page.getByText(asset)).toBeVisible();
+      await expect(page.getByRole("heading", { name: new RegExp(asset) })).toBeVisible();
       await expect(page.getByText(`SN-${tag}`)).toBeVisible();
       await expect(page.getByText("Earned")).toHaveCount(0);
       await expect(page.getByText("$420")).toHaveCount(0);
