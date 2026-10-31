@@ -127,7 +127,7 @@ export default async function VisitsPage({
 
   const views = [
     { id: "all", label: "All visits", href: "/desk/jobs?status=upcoming", builtIn: true },
-    ...builtInViewsFor("visits", { role }),
+    ...builtInViewsFor("jobs", { role }),
   ];
 
   const filtered = Boolean(params.q || params.type || params.who || params.when);
