@@ -101,7 +101,7 @@ const ROW_SELECT = {
     orderBy: [{ scheduledAt: "asc" }],
     take: 5,
   },
-} as const;
+};
 
 type RawRow = Prisma.MaintenanceRequestGetPayload<{ select: typeof ROW_SELECT }>;
 

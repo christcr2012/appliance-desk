@@ -149,9 +149,6 @@ export default async function JobDetailPage({
     ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}`
     : null;
   const personLabel =
-    ("assignedTo" in job && job.assignedTo
-      ? (job.assignedTo.name ?? job.assignedTo.email)
-      : null) ??
     assignedLabel(job.assignedToUserId, teamMembers) ??
     (job.assignedToUserId ? "Assigned" : "Not assigned");
   const nextStep = visitNextStep(

@@ -1,4 +1,4 @@
-import type { JobStatus, JobType } from "@prisma/client";
+import type { JobStatus, JobType, Role } from "@prisma/client";
 import { relativeBusinessDay } from "@/lib/business-date";
 
 /**
@@ -21,7 +21,7 @@ export type NextStepJob = {
 
 export function visitNextStep(
   job: NextStepJob,
-  scope: { role: "OWNER" | "ADMIN" | "STAFF" },
+  scope: { role: Role },
   now: Date = new Date(),
 ): VisitNextStep | null {
   const ownerOrAdmin = scope.role === "OWNER" || scope.role === "ADMIN";

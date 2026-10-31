@@ -4,7 +4,7 @@ import { getVisitCounts, getVisits, type VisitListParams, type VisitRow } from "
 import { parseVisitsParams } from "./params";
 import { visitPill, visitTitle, visitWhen } from "@/domains/jobs/words";
 import { getAssignableTeamMembers } from "@/domains/staff";
-import { EmptyState } from "@/components/ui";
+import { EmptyState } from "@/components/kit";
 import {
   DataTable,
   InfoTip,
@@ -127,7 +127,9 @@ export default async function VisitsPage({
 
   const views = [
     { id: "all", label: "All visits", href: "/desk/jobs?status=upcoming", builtIn: true },
-    ...builtInViewsFor("jobs", { role }),
+    ...builtInViewsFor("jobs", {
+      role: role === "OWNER" || role === "ADMIN" || role === "STAFF" ? role : undefined,
+    }),
   ];
 
   const filtered = Boolean(params.q || params.type || params.who || params.when);

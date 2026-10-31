@@ -12,7 +12,7 @@ import {
   type Column,
   type FilterDef,
 } from "@/components/kit";
-import { EmptyState } from "@/components/ui";
+import { EmptyState } from "@/components/kit";
 import { parseRepairsParams } from "./params";
 import type { RepairRow } from "@/domains/maintenance/list";
 
@@ -163,6 +163,7 @@ export default async function RepairsPage({
             !row.hasOpenVisit
               ? [
                   {
+                    kind: "link" as const,
                     label: "Schedule a visit",
                     href: `/desk/jobs/new?maintenanceRequestId=${row.id}`,
                   },

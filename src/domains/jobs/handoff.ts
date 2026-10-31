@@ -1,4 +1,4 @@
-import type { JobOutcome, JobType } from "@prisma/client";
+import type { JobOutcome, JobType, Role } from "@prisma/client";
 
 /**
  * AR-5 section 7: what the desk says right after a visit is finished. The completion action
@@ -25,7 +25,7 @@ export type HandoffToast = {
 
 export function handoffToast(
   handoff: JobHandoff,
-  role: "OWNER" | "ADMIN" | "STAFF",
+  role: Role,
 ): HandoffToast {
   const ownerOrAdmin = role === "OWNER" || role === "ADMIN";
   const openRental: HandoffToast["action"] = handoff.agreementId

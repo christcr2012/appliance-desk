@@ -27,7 +27,7 @@ export async function getVisitTimeline(jobId: string): Promise<TimelineItem[]> {
     take: 100,
   });
   const known = rows.filter((row) => TITLES[row.action]);
-  const userIds = [...new Set(known.map((row) => row.userId).filter(Boolean))];
+  const userIds = [...new Set(known.map((row) => row.userId).filter((id): id is string => Boolean(id)))];
   const users = userIds.length
     ? await prisma.user.findMany({
         where: { id: { in: userIds } },
