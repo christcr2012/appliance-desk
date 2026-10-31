@@ -7,7 +7,8 @@ export async function RtcPassConnections({ ownerId }: { ownerId: string }) {
   const issuer = getMcpIssuer();
   const passes = await prisma.agentPass.findMany({
     where: { connection: { userId: ownerId } },
-    select: { id: true, label: true, scopes: true, expiresAt: true, revokedAt: true },
+    select: { id: true, label: true, scopes: true, expiresAt: true,
+      revokedAt: true, allowWrites: true, allowProduction: true },
     orderBy: { createdAt: "desc" }, take: 30,
   });
   return (
@@ -27,6 +28,8 @@ export async function RtcPassConnections({ ownerId }: { ownerId: string }) {
           return <li key={pass.id} className="min-w-0 max-w-full rounded-control border border-line p-3 text-sm [overflow-wrap:anywhere]">
             <span className="font-medium">{pass.label}</span> — {active ? "Active" : "Expired or revoked"}
             <p className="text-ink-soft">{pass.scopes.join(", ")} · Expires {pass.expiresAt.toISOString().slice(0, 10)}</p>
+            <p className="text-ink-soft">{pass.allowWrites ? "Test-only journaled actions" : "Read-only"}
+              {" · "}{pass.allowProduction ? "Owner-authorized live reads" : "No live access"}</p>
             {active ? <form action={revokeRtcPassAction} className="mt-2">
               <input type="hidden" name="id" value={pass.id} />
               <button type="submit" className="min-h-11 rounded-control border border-line-strong px-3 py-2">

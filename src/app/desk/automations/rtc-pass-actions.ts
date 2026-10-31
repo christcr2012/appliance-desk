@@ -16,6 +16,7 @@ export async function createRtcPassAction(
       label: String(form.get("label") ?? ""),
       scopes: rtcReadScopesForArea(area, form.get("decisionsRead") === "on"),
       expiresDays: Number(form.get("days") ?? 1),
+      allowProduction: form.get("allowProduction") === "on",
       areas: area === "all" ? [] : [area],
     });
     revalidatePath("/desk/automations");

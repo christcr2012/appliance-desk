@@ -13,9 +13,14 @@ const context: AgentContext = {
   scopes: ["ops:read"],
 };
 vi.mock("@/domains/agent-control/passes", () => ({
-  authenticateRtcPass: vi.fn(async (request: Request) =>
-    request.headers.get("authorization") === "Bearer test-fixture"
-      ? context : new Response("RTC pass required.", { status: 401 })),
+  authenticateRtcPass: vi.fn(async (request: Request) => {
+    const bearer = request.headers.get("authorization");
+    if (bearer === "Bearer synthetic-full")
+      return { ...context, scopes: ["ops:read", "ops:maintain"],
+        rtcAllowWrites: true, rtcAreas: ["automation"] };
+    return bearer === "Bearer test-fixture" ? context :
+      new Response("RTC pass required.", { status: 401 });
+  }),
 }));
 
 const req = (path: string, method: "GET" | "POST" = "GET", json?: unknown) =>
@@ -147,6 +152,19 @@ describe("MCP-9 RTC read-only HTTP adapter uses the actual MCP catalog", () => {
     } });
     await expect(rtcToolCall(full, "appliance_feedback_reply", {}))
       .rejects.toThrow("outside_scope");
+  });
+  it("refuses writes from the batch door even for a test-only full pass", async () => {
+    const request = new Request("http://localhost/api/tools/_batch", {
+      method: "POST",
+      headers: { Authorization: "Bearer synthetic-full",
+        "Content-Type": "application/json" },
+      body: JSON.stringify({ calls: [{ name: "appliance_action_preview",
+        args: { dryRun: true, action: "PAUSE_AUTOMATION",
+          requestKey: "synthetic-request-01", args: {} } }] }),
+    });
+    const response = await toolBatch(request);
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.code).toBe("refused_by_guard");
   });
   it("whoami never returns a reusable credential", async () => {
     const response = await rtcWhoami(req("/api/whoami"));

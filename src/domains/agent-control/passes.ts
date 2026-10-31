@@ -22,6 +22,8 @@ export async function issueRtcPass(ownerId: string, input: {
   label: string; scopes: McpScope[]; expiresDays?: number; areas?: string[];
   /** Internal/test grant only until full RTC write conformance; owner UI remains read-only. */
   allowWrites?: boolean;
+  /** Explicit owner choice for read-only live access. Off by default. */
+  allowProduction?: boolean;
 }, now = new Date()) {
   const days = input.expiresDays ?? 1;
   if (!Number.isInteger(days) || days < 1 || days > 30)
@@ -38,6 +40,8 @@ export async function issueRtcPass(ownerId: string, input: {
   if (areas.length > validAreas.length || areas.some(area =>
       !validAreas.includes(area as (typeof validAreas)[number])))
     throw new Error("INVALID_RTC_PASS_AREAS");
+  if (input.allowProduction && input.allowWrites)
+    throw new Error("RTC_LIVE_WRITES_NOT_ALLOWED");
   // The owner UI is read-only until the pinned RTC 1 write probes pass.
   // Internal synthetic test passes must never become live write credentials.
   if (input.allowWrites && process.env.VERCEL_ENV === "production")
@@ -63,13 +67,14 @@ export async function issueRtcPass(ownerId: string, input: {
     const pass = await tx.agentPass.create({
       data: { connectionId: connection.id, digest: d, label, scopes: unique,
         areas, profile: input.allowWrites ? "full" : "read_only",
-        allowWrites: input.allowWrites === true, allowProduction: false,
+        allowWrites: input.allowWrites === true,
+        allowProduction: input.allowProduction === true,
         expiresAt },
     });
     await tx.auditLog.create({ data: {
       userId: ownerId, action: "rtc.pass.created", entityType: "AgentPass",
       entityId: pass.id, newValue: { expiresAt: expiresAt.toISOString(),
-        scopes: unique, label },
+        scopes: unique, label, allowProduction: input.allowProduction === true },
     } });
     return { id: pass.id, connectionId: connection.id };
   });

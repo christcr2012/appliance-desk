@@ -1,4 +1,4 @@
-import { rtcAuthorized, rtcError, rtcJson, rtcToolCall } from "@/mcp/rtc-adapter";
+import { rtcAuthorized, rtcError, rtcJson, rtcToolCall, rtcToolDescribe } from "@/mcp/rtc-adapter";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
@@ -17,6 +17,9 @@ export async function POST(req: Request) {
     if (typeof name !== "string" || !/^appliance_[a-z0-9_]{1,80}$/.test(name) ||
         (args !== undefined && (!args || Array.isArray(args) || typeof args !== "object")))
       return rtcError("invalid_args");
+    // RTC 1 batches are reads-only, even when a full pass could invoke a write directly.
+    const tool = await rtcToolDescribe(auth.ctx, name);
+    if (!tool || tool.writes) return rtcError("refused_by_guard", 403);
     try { results.push(await rtcToolCall(auth.ctx, name, (args ?? {}) as Record<string, unknown>)); }
     catch (error) { return error instanceof Error && error.message === "invalid_args"
       ? rtcError("invalid_args", 400) : rtcError("refused_by_guard", 403); }

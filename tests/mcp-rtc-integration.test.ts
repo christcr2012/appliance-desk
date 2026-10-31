@@ -58,6 +58,7 @@ describe("MCP-9 read-only RTC passes and handle ownership on disposable PostgreS
     expect(pass.digest).toBe(createHash("sha256").update(created.secret).digest("hex"));
     expect(JSON.stringify(pass)).not.toContain(created.secret);
     expect(pass.allowWrites).toBe(false);
+    expect(pass.allowProduction).toBe(false);
     expect(pass.profile).toBe("read_only");
     expect(created.expiresAt.getTime() - Date.now()).toBeGreaterThan(80_000_000);
     const context = await authenticateRtcPass(authReq(created.secret));
@@ -86,6 +87,21 @@ describe("MCP-9 read-only RTC passes and handle ownership on disposable PostgreS
     await revokeRtcPass(ownerId, created.id);
     expect((await authenticateRtcPass(authReq(created.secret))) instanceof Response).toBe(true);
     await expect(readRtcResult(context, handle)).rejects.toThrow("RTC_RESULT_NOT_FOUND");
+  });
+
+  it("requires owner opt-in for live read and prohibits live writes", async () => {
+    const created = await issueRtcPass(ownerId, {
+      label: "Synthetic live-read pass", scopes: ["ops:read"], allowProduction: true,
+    });
+    const stored = await prisma.agentPass.findUniqueOrThrow({ where: { id: created.id } });
+    expect(stored.allowProduction).toBe(true);
+    expect(stored.allowWrites).toBe(false);
+    expect(stored.profile).toBe("read_only");
+    await expect(issueRtcPass(ownerId, {
+      label: "Unsafe live write", scopes: ["ops:read", "ops:maintain"],
+      allowWrites: true, allowProduction: true,
+    })).rejects.toThrow("RTC_LIVE_WRITES_NOT_ALLOWED");
+    await revokeRtcPass(ownerId, created.id);
   });
 
   it("a test-only write pass is explicitly scoped and still requires the journal", async () => {

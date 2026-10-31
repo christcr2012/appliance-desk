@@ -39,6 +39,11 @@ export function CreateRtcPassForm() {
           <input type="checkbox" name="decisionsRead" className="mt-1 shrink-0" />
           Include decision statuses when All areas is selected (never private answers)
         </label>
+        <label className="flex min-w-0 items-start gap-2 text-sm">
+          <input type="checkbox" name="allowProduction" className="mt-1 shrink-0" />
+          Explicitly allow this read-only pass to access live Appliance Desk system
+          information if created on the live app. Leave unchecked for testing only.
+        </label>
         <button type="submit" disabled={pending}
           className="min-h-11 rounded-control border border-line-strong px-3 py-2 disabled:opacity-50">
           {pending ? "Issuing..." : "Create read-only pass"}
