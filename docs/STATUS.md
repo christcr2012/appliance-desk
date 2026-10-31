@@ -100,6 +100,31 @@ full date and time. Perf failed again on the same marginal line (rent-desc
 160.5 ms vs the 150 ms budget; the query is unchanged) — not a required
 check, no budget change; the numbers stand as the recorded owner question.
 
+**Fix cycle 5 (from CI at 09cd695e, all failures read once):** the cycle-4
+batch landed as head 09cd695e (merge of the batch with main 94aee6be after
+Lane 5's MCP-5-CLOSEOUT made the PR read dirty; STATUS resolved as a union
+of both entries, shards and work-index unions verified — all 126 spec
+registrations present). Because app-token pushes fire no workflow runs,
+that head was pushed once from the Workshop under Chris's standing
+exception for firing CI. Its run failed three browser-e tests and one
+browser-b test. (1) feedback (browser-e) is a cycle-4 CI regression: the
+throwaway photo-store identity was set per-JOB for browser-e, and
+feedback — same job — pins the no-store product behavior ("Your report
+was sent, but pictures can't be saved right now."); with a store
+configured it takes the per-file retry path instead. Cure: portal.spec.ts
+moves intact from browser-e to browser-c (the lightest group), and the
+ci.yml identity step follows it to browser-c; browser-e returns to its
+previously green no-store configuration. (2) location-contacts
+(browser-b): the customer half still read the pre-redesign Properties
+heading; PORTAL-1 section 5.5 set that header to "My properties", so the
+spec now expects exactly that. (3) portal spanish ("Cargando…" never
+attached) and decisions ("Their answer was saved" never appeared) are
+timing-shaped and passed in the Workshop verification of this cycle;
+they are treated as CI-load suspects, with the one guarded rerun of
+failed jobs as the verdict route if they recur. No assertion weakened:
+feedback, portal and location-contacts all check the same product
+behavior as before.
+
 **Next:** merge on green CI + review gate; then a close-out records PR marks the card
 complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
 docs land.
