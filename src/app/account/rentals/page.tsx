@@ -111,11 +111,16 @@ export default async function AccountRentalsPage({
 
   const visitItems: TimelineItem[] = (visitPage?.items ?? []).map((job) => ({
     id: job.id,
-    at: job.scheduledAt ?? job.performedOn ?? new Date(0),
+    // An unscheduled, unperformed visit falls back to the day it was
+    // requested — never the epoch, which renders as "Dec 31, 1969".
+    at: job.scheduledAt ?? job.performedOn ?? job.createdAt,
     title: jobKindLabel(job, locale),
     detail: jobStatusLabel(job.status, locale),
     tone: jobTone(job.status),
-    actor: job.serviceAddress ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}` : "",
+    // The actor line names the town, not the street address: the rental
+    // cards above are headed by the street address, and repeating the
+    // full address here made it appear twice on the page.
+    actor: job.serviceAddress ? `${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}` : "",
   }));
 
   return (
