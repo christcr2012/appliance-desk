@@ -47,7 +47,16 @@ pass in GitHub CI: uploads go to Vercel Blob and CI has no Blob store by
 design, so the token route fails closed. The spec now stubs only the two
 Blob network legs at the route level (token + PUT, with a client token
 shaped like the real one); the form, the upload() call and the submit all
-still run for real. signature-focus reads the help card by its §7 name
+still run for real. The Workshop debug run then showed why the upload
+stalled even with a store stubbed: the app's own Content-Security-Policy
+(connect-src 'self' + Sentry) refuses the browser's direct PUT to
+https://vercel.com/api/blob in every environment, so no browser photo
+upload could ever complete — next.config.ts now allows https://vercel.com
+in connect-src, with the reason written into the policy's comment block.
+The pickup test also closes the modal sheet before reading the saved
+request list: while the sheet is open the page behind it is hidden from
+the accessibility tree, so the list item the save revalidates into place
+was unreachable until the sheet closed. signature-focus reads the help card by its §7 name
 ("Need help?") and the rentals visit line again carries a scheduled visit's
 full date and time. Perf failed again on the same marginal line (rent-desc
 160.5 ms vs the 150 ms budget; the query is unchanged) — not a required

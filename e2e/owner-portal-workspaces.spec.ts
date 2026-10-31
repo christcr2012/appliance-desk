@@ -305,8 +305,14 @@ for (const role of ["owner", "customer"] as const) {
         const text = `Pickup request: ${details}`;
         await page.getByLabel("What's going on?").fill(details);
         await page.getByRole("button", { name: "Submit request" }).click();
-        // The textarea already contains this text before the save finishes.
-        // Wait for the server-backed request list before testing persistence.
+        // The save lands when the sheet shows its confirmation. The sheet
+        // is modal — the page behind it is hidden from the accessibility
+        // tree while it is open — so close it before reading the
+        // server-backed request list the save revalidates into place.
+        await expect(
+          page.getByRole("status").filter({ hasText: "Got it" }),
+        ).toContainText("schedule your pickup");
+        await page.getByRole("button", { name: "Close" }).click();
         const savedRequest = page.getByRole("listitem").getByText(text, { exact: true });
         await expect(savedRequest).toBeVisible();
         await page.reload();
