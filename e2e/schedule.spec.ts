@@ -228,6 +228,23 @@ test.describe("owner finishes a visit and hears the hand-off", () => {
       await rental.prisma.deposit.create({
         data: { agreementId: rental.agreement.id, amountCents: 15000 },
       });
+      // A real pickup closes two records the fixture must stand up first: the appliance's
+      // open stay with the customer (custody), and the rental's agreed ending — with the
+      // ending already arrived, picking up the last appliance ends the agreement.
+      await rental.prisma.applianceCustodyEpisode.create({
+        data: {
+          applianceId: rental.appliance.id,
+          customerId: rental.customer.id,
+          serviceAddressId: rental.address.id,
+          agreementId: rental.agreement.id,
+          startedOn: new Date(Date.now() - 86_400_000),
+          startEvidence: "JOB",
+        },
+      });
+      await rental.prisma.rentalAgreement.update({
+        where: { id: rental.agreement.id },
+        data: { endDate: new Date(Date.now() - 86_400_000) },
+      });
       await page.goto(`/desk/jobs/${rental.job.id}`);
       await page.getByRole("button", { name: "Complete job", exact: true }).click();
       await expect(
