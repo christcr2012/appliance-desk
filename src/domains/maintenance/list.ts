@@ -87,7 +87,7 @@ function filtersWhere(params: RepairListParams): Prisma.MaintenanceRequestWhereI
   return parts.length ? { AND: parts } : {};
 }
 
-const ROW_SELECT: Prisma.MaintenanceRequestSelect = {
+const ROW_SELECT = {
   id: true,
   status: true,
   priority: true,
@@ -98,7 +98,9 @@ const ROW_SELECT: Prisma.MaintenanceRequestSelect = {
   jobs: {
     where: { status: { in: [...ACTIVE_VISIT] } },
     select: { id: true, scheduledAt: true },
-    orderBy: [{ scheduledAt: "asc" }],
+    // The literal stays a literal for the payload type below; only the sort word needs
+    // pinning, or it widens to string and Prisma's order type rejects it.
+    orderBy: [{ scheduledAt: "asc" as const }],
     take: 5,
   },
 };
