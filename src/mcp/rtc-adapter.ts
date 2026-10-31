@@ -5,6 +5,7 @@ import { authenticateRtcPass } from "@/domains/agent-control/passes";
 import { storeRtcResult, readRtcResult } from "@/domains/agent-control/rtc-results";
 import { parseRtcReadInput, projectRtcRead } from "./rtc-projection";
 import { rtcCanDiscoverRead } from "./rtc-read-scopes";
+import { RTC_JOURNALED_WRITES, rtcWriteDecision } from "./rtc-write-policy";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 
 type ClientTool = Awaited<ReturnType<Client["listTools"]>>["tools"][number];
@@ -35,20 +36,40 @@ async function mcpRead<T>(ctx: AgentContext, fn: (client: Client) => Promise<T>)
     await Promise.allSettled([client.close(), server.close()]);
   }
 }
-const publicTool = (tool: ClientTool) => ({
-  name: tool.name, description: tool.description ?? "",
-  inputSchema: tool.inputSchema, annotations: tool.annotations ?? {},
-  area: tool.name.replace(/^appliance_/, "").split("_")[0],
-  profiles: ["read_only"], audience: ["owner", "operator"],
-  writes: false, money: false, destructive: false,
-});
+function rtcArea(name: string) {
+  if (name.startsWith("appliance_action_") || name === "appliance_operation_get")
+    return "automation";
+  if (name === "appliance_where_is_setting") return "configuration";
+  return name.replace(/^appliance_/, "").split("_")[0];
+}
+const publicTool = (tool: ClientTool) => {
+  const writes = tool.annotations?.readOnlyHint !== true;
+  const destructive = tool.annotations?.destructiveHint === true;
+  return {
+    name: tool.name, description: (tool.description ?? "").slice(0, 160),
+    inputSchema: tool.inputSchema,
+    annotations: {
+      readOnlyHint: !writes, destructiveHint: destructive,
+      idempotentHint: tool.annotations?.idempotentHint === true,
+      openWorldHint: tool.annotations?.openWorldHint === true,
+    },
+    area: rtcArea(tool.name),
+    profiles: writes ? ["full"] : ["read_only", "full"],
+    audience: ["owner", "operator"], writes, money: false, destructive,
+  };
+};
 
 export async function rtcTools(ctx: AgentContext) {
   return mcpRead(ctx, async client => {
     const result = await client.listTools();
-    return result.tools.filter(tool => tool.annotations?.readOnlyHint === true &&
-      rtcCanDiscoverRead(ctx, tool.name) &&
-      (!ctx.rtcAreas?.length || ctx.rtcAreas.includes(tool.name.replace(/^appliance_/, "").split("_")[0])));
+    return result.tools.filter(tool => {
+      const read = tool.annotations?.readOnlyHint === true &&
+        rtcCanDiscoverRead(ctx, tool.name);
+      const journalWrite = ctx.rtcAllowWrites === true && ctx.scopes.includes("ops:maintain") &&
+        RTC_JOURNALED_WRITES.includes(tool.name as (typeof RTC_JOURNALED_WRITES)[number]);
+      return (read || journalWrite) &&
+        (!ctx.rtcAreas?.length || ctx.rtcAreas.includes(rtcArea(tool.name)));
+    });
   });
 }
 
@@ -69,6 +90,36 @@ export async function rtcToolCall(ctx: AgentContext, name: string,
   args: Record<string, unknown> = {}) {
   const tool = (await rtcTools(ctx)).find(item => item.name === name);
   if (!tool) throw new Error("outside_scope");
+  if (tool.annotations?.readOnlyHint !== true) {
+    const decision = rtcWriteDecision(name, args, ctx.rtcAllowWrites === true);
+    if (!decision.call) return { ok: true, result: decision.result };
+    // This is the *existing* MCP-5 journal handler, including owner approval,
+    // immutable preview hash, revocation fences, idempotence and readback.
+    const write = await mcpRead(ctx, client => client.callTool({
+      name, arguments: decision.domainArgs,
+    }));
+    if (write.isError) throw new Error("refused_by_guard");
+    const payload: Record<string, unknown> =
+      write.structuredContent ?? { content: write.content };
+    if (name === "appliance_action_preview") {
+      if (typeof payload.previewId !== "string") throw new Error("refused_by_guard");
+      return { ok: true, result: {
+        done: false, needsConfirmation: true,
+        summary: payload.summary ?? "Preview recorded; separate owner approval is required",
+        previewId: payload.previewId, state: payload.state,
+        logged: { id: payload.previewId },
+      } };
+    }
+    if (typeof payload.id !== "string" || typeof payload.state !== "string")
+      throw new Error("refused_by_guard");
+    return { ok: true, result: {
+      done: payload.state === "SUCCEEDED",
+      confirmed: payload.state === "SUCCEEDED" ? true :
+        payload.state === "UNKNOWN" ? null : false,
+      state: payload.state, operation: payload,
+      logged: { id: payload.id },
+    } };
+  }
   const { domainArgs, paths } = parseRtcReadInput(args);
   const result = await mcpRead(ctx, client => client.callTool({ name, arguments: domainArgs }));
   if (result.isError) throw new Error("refused_by_guard");

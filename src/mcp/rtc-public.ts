@@ -115,7 +115,7 @@ export function rtcPublicManifest() {
     areas: ["health", "automation", "decisions", "configuration", "backup", "feedback", "repair", "optimization"],
     counts: { tools: RTC_PUBLIC_CATALOG.length,
       writes: RTC_PUBLIC_CATALOG.filter(item => !item.readOnly).length, money: 0 },
-    profiles: ["read_only"], listingModes: ["catalog", "compact"],
+    profiles: ["read_only", "full"], listingModes: ["catalog", "compact"],
     modes: ["test", "production"], devTools: false,
   };
 }

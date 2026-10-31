@@ -20,9 +20,9 @@ export async function POST(req: Request, { params }: Context) {
   try { raw = await req.json(); } catch { return rtcError("invalid_args"); }
   if (!raw || Array.isArray(raw) || typeof raw !== "object") return rtcError("invalid_args");
   const args = raw as Record<string, unknown>;
-  if ("confirm" in args || "dryRun" in args || "previewId" in args)
-    return rtcError("refused_by_guard", 403); // read-only initial contract: no writes
   try { return rtcJson(await rtcToolCall(auth.ctx, name, args)); }
   catch (error) { return error instanceof Error && error.message === "invalid_args"
-    ? rtcError("invalid_args", 400) : rtcError("refused_by_guard", 403); }
+    ? rtcError("invalid_args", 400) :
+    error instanceof Error && error.message === "outside_scope"
+      ? rtcError("outside_scope", 403) : rtcError("refused_by_guard", 403); }
 }
