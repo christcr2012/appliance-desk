@@ -27,7 +27,7 @@ diff passes ~1,500 changed lines, split Purchases/Parts/Suppliers into AR-6b and
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+AR-6 STARTED 2026-10-31 (Lane 6) — execution packet `docs/pr-cards/execution/AR-6.json` (baseline `02b35050`, main after the AR-5b close-out #792); branch `ai/vivienne/ar-6` in a fresh native GitHub MCP workspace. The card's split rule is invoked at packet time: six pages plus the eight section 1 fixes cannot stay reviewable in one PR, so this PR is S1 section 1 domain fixes (all twelve role checks, the RETIRED refusal, `purchaseReceiptTotalCents`, the role-shaped `getPartsList`) + S2 shared words and Fleet + S3 the appliance record + S4 Retired and registration; Purchases/Parts/Suppliers pages (spec sections 5–7) follow as AR-6b over the reads this PR lands. Drift found at packet time: spec section 8 says the retired follow-up-days setting stays on the Retired page "until AR-8" — AR-8 has shipped it as the Settings catalog row `retiredFollowUpDays` (writer `setRetiredFollowUpDays`), so this PR REMOVES the page's local `ReminderSetting` block instead of restyling it; the built-in views registry already maps the `inventory` ListKey to `/desk/inventory`, so the fleet views register under that key; spec section 9's "opens an appliance in the side panel" is read against the post-AR-1 record navigation at build time (the record is a full page; the browser test follows the real navigation).
 
 ## Implementation route (reconciled October 28, 2026)
 
