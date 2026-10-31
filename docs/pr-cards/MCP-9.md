@@ -52,6 +52,13 @@ during tests.
 - [ ] Prove revocation is denied by both servers after the probe, remove synthetic pass/user/audit/limiter records, never log or encode the pass in source or command-line arguments, and never touch production data.
 - [ ] Keep MCP-9 draft unless the remaining **upstream journaled-write and OAuth-refresh** probes are actually proven; a green new test does not change the status of skipped probes. Capture exact-head test and review evidence before checking a box.
 
+## Real-database RTC journal acceptance addition — October 31, 2026
+
+- [ ] In throwaway PostgreSQL create a synthetic OWNER with two-factor and an **internal test-only** full RTC pass; no live, UI-issued or production-writable credential is created.
+- [ ] Call the actual RTC HTTP tool route and shared MCP-5 journal: preview without `dryRun: true` must not persist a preview; a real preview must require an independent owner approval for a guarded synthetic backup-retry operation; execution without wire `confirm: true` or owner approval must have **no** business effect.
+- [ ] After explicit test-owner approval, simultaneous confirmed executions and replays must yield exactly one durable, independently verified synthetic effect and a single journal claim. Revocation must deny subsequent RTC use, with fixture/limiter/audit cleanup.
+- [ ] This proves the **application-specific journal**, not the upstream generic write/refresh probes. Keep RTC 1 conformance and client acceptance NOT_PROVEN until each distinct protocol requirement is actually exercised.
+
 ## Implementation route (reconciled October 28, 2026)
 
 This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
