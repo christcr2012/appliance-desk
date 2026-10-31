@@ -39,7 +39,22 @@ No checklist row. Decisions & reviews gets one translator subject ("Portal wordi
 strings; Spanish stays off until the reviewed copy is re-recorded (existing IN-83 rule). Never blocks merging.
 
 ## Progress
-Not started.
+Built by Lane 4 on 2026-10-30 (branch ai/vivienne/portal-1), after W-11 parked at IN-61.
+All five steps are in: totals moved into src/domains/agreements/totals.ts and the
+workspace reads; the kit words provider with the portal's Spanish kit words; the shell,
+Home, Rentals, Repairs, Bills + bill page, Properties, Account + Privacy on the kit;
+the 8 pages registered in migrated-pages.json with zero new allow-list entries; the
+packet's tests (agreement totals, kit words, portal home workspace, the customer
+isolation suite extended to the new surfaces, new e2e/portal.spec.ts in browser-e);
+and the translator subject "Portal wording, October 30, 2026"
+(PORTAL-WORDING-2026-10-30) filed in Decisions & reviews. Isolation testing caught
+and fixed one real leak (the raw stripeInvoiceId reached the home page payload).
+Verified locally: full typecheck, lint 0 errors, guards 186/186, packet suites and
+decisions suites green, plain-words pass. Local browser evidence is degraded by the
+environment (production build OOM-killed under multi-lane box load), so CI's browser
+shards at the exact head carry the portal spec. Drift from the spec is recorded in
+the pull request (kit icon names, server-component kit words as props, the
+NextStepCard form-kind limit, and seven smaller items).
 
 ## Implementation route (reconciled October 28, 2026)
 

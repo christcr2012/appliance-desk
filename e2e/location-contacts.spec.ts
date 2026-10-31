@@ -44,7 +44,7 @@ test("W-23 owner and customer can update the same owned site; guest cannot see p
     try {
       const clientPage = await clientCtx.newPage();
       await clientPage.goto("/account/properties");
-      await expect(clientPage.getByRole("heading", { name: /my properties and on-site contacts/i })).toBeVisible();
+      await expect(clientPage.getByRole("heading", { name: "My properties", exact: true })).toBeVisible();
       await expect(clientPage.getByText("W23 Tenant Browser")).toBeVisible();
       await expect(clientPage.getByRole("textbox", { name: "Private access notes" }).last())
         .toHaveValue("Keep gate locked.");

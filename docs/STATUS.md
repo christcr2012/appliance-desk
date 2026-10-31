@@ -46,6 +46,166 @@ shard; the local checks phase (lint, typecheck, shard registration) passed.
 Approval gating and the action surface are unchanged; later cards' REPAIR_*
 (MCP-6) and FEEDBACK_* (MCP-11) journal actions are their own scope.
 
+
+## October 30 — PORTAL-1: Customer portal redesign built, in review (Lane 4)
+
+**What changed:** every customer portal page (Home, Rentals, Repairs, Bills + the bill
+page, Properties, Account + Privacy) is redesigned on the kit in one PR: money totals
+moved out of page code into the domain, kit fixed words became translatable (the portal
+passes the Spanish set), "Report a problem" is now "Ask for a repair", the duplicate
+`<main>` is fixed, and the translator subject "Portal wording, October 30, 2026" is
+filed in Decisions & reviews. Isolation testing caught and fixed one real leak (a raw
+Stripe invoice id reached the home page payload).
+
+**How it was checked:** full typecheck and lint clean locally; kit guards 186/186;
+packet unit/db suites and decisions suites green on real Postgres; plain-words pass.
+Local browser evidence is degraded (the sandbox production build was OOM-killed under
+multi-lane load), so CI's browser shards at the exact head carry the new portal spec.
+
+**Fix cycle 3 + merge lap (replacement seat, 2026-10-30 evening):** CI at aacb4252
+failed browser-b on one real bug — the portal Home (a server component) called
+`actionButtonClass()`, which lived in the "use client" kit module, so the page
+crashed at render ("Attempted to call actionButtonClass() from the server"; the
+location-contacts spec's portal visit caught it). The helper now lives in the
+server-safe `src/components/kit/action-button-class.ts`, re-exported from the
+client module and the kit index. The same batch dates an unscheduled Rentals
+visit by its `createdAt` instead of the epoch and stops the visit timeline
+repeating the property address. Current main (efda8171: MCP-8 #764, CU1-VIEW
+#783) is merged in for real; the only conflicts were STATUS and the work index,
+resolved as unions. Re-verified at the merged tree on Lane 4's own Postgres
+(5434): fresh full typecheck clean (exit code read directly), kit guards and
+packet unit suites 200/200, customer isolation 15/15, portal completion 4/4
+(incl. the new createdAt DTO pin), customer-list integration 7/7, migrations
+applied. The Performance Baselines failure at aacb4252 (customers-list
+rent-desc 158.28 ms vs the 150 ms budget) is not portal code and the list
+query is byte-identical at this head (CU1-VIEW touched comments and the test
+oracle only; the same perf workflow passed at eb42a17f) — it is the known
+marginal-measurement family, not a budget change in this PR; perf is not a
+required merge check.
+
+**Fix cycle 4 (from CI at 6fa43ced, all failures read once):** two browser
+tests still failed and both are fixed in this push. (1) The workspaces pickup
+test asserted a bare getByRole("status") for the pickup sheet's "does not
+cancel" intro; the redesign leaves two status regions on the page (that
+intro, restored as a status by announceIntro, plus the kit Toaster's
+always-present one), so the locator is now scoped with a hasText filter —
+same contract, no longer "the only status on the page". Verified on the
+Workshop with a live probe: the sheet opens ~1.2 s after the click with the
+intro announced as a status. (2) The portal spec's photo step could never
+pass in GitHub CI: uploads go to Vercel Blob and CI has no Blob store by
+design, so the token route fails closed. The spec now stubs only the two
+Blob network legs at the route level (token + PUT, with a client token
+shaped like the real one); the form, the upload() call and the submit all
+still run for real. The Workshop debug run then showed why the upload
+stalled even with a store stubbed: the app's own Content-Security-Policy
+(connect-src 'self' + Sentry) refuses the browser's direct PUT to
+https://vercel.com/api/blob in every environment, so no browser photo
+upload could ever complete — next.config.ts now allows https://vercel.com
+in connect-src, with the reason written into the policy's comment block.
+The pickup test also closes the modal sheet before reading the saved
+request list: while the sheet is open the page behind it is hidden from
+the accessibility tree, so the list item the save revalidates into place
+was unreachable until the sheet closed (the same close is repeated after
+the reload, whose deep link auto-opens the sheet again). The photo submit
+also needed the server to recognize the stubbed upload as the customer's
+own: the browser-e CI job now sets a throwaway private-store identity
+(assembled in the workflow like the other test keys, browser-e only, so
+the other shards keep the no-store behavior), and the spec's stubbed URL
+uses that store's host. With the photo test passing, the serial file's
+later tests ran for the first time and the bills test's "$103.00" literal
+met the house money format (formatCents renders whole dollars without
+cents, so the statement reads "$103"); the spec now asserts the total in
+that format. signature-focus reads the help card by its §7 name
+("Need help?") and the rentals visit line again carries a scheduled visit's
+full date and time. Perf failed again on the same marginal line (rent-desc
+160.5 ms vs the 150 ms budget; the query is unchanged) — not a required
+check, no budget change; the numbers stand as the recorded owner question.
+
+**Fix cycle 5 (from CI at 09cd695e, all failures read once):** the cycle-4
+batch landed as head 09cd695e (merge of the batch with main 94aee6be after
+Lane 5's MCP-5-CLOSEOUT made the PR read dirty; STATUS resolved as a union
+of both entries, shards and work-index unions verified — all 126 spec
+registrations present). Because app-token pushes fire no workflow runs,
+that head was pushed once from the Workshop under Chris's standing
+exception for firing CI. Its run failed three browser-e tests and one
+browser-b test. (1) feedback (browser-e) is a cycle-4 CI regression: the
+throwaway photo-store identity was set per-JOB for browser-e, and
+feedback — same job — pins the no-store product behavior ("Your report
+was sent, but pictures can't be saved right now."); with a store
+configured it takes the per-file retry path instead. Cure: portal.spec.ts
+moves intact from browser-e to browser-c (the lightest group), and the
+ci.yml identity step follows it to browser-c; browser-e returns to its
+previously green no-store configuration. (2) location-contacts
+(browser-b): the customer half still read the pre-redesign Properties
+heading; PORTAL-1 section 5.5 set that header to "My properties", so the
+spec now expects exactly that. (3) portal spanish ("Cargando…" never
+attached) and decisions ("Their answer was saved" never appeared) are
+timing-shaped and passed in the Workshop verification of this cycle;
+they are treated as CI-load suspects, with the one guarded rerun of
+failed jobs as the verdict route if they recur. No assertion weakened:
+feedback, portal and location-contacts all check the same product
+behavior as before.
+
+**Fix cycle 6 (from CI at 34cf6d53 + Workshop placement trials):** the
+cycle-5 placement itself failed in CI — business-records (browser-c) is
+photo-store-sensitive too: with the identity configured, its small-file
+attach reaches the real Blob API and surfaces "This store does not
+exist.", neither of its two accepted outcomes. Workshop trials of the
+remaining groups then closed the placement question for good:
+portal.spec.ts is a bad group neighbor everywhere — in browser-b its
+presence deterministically starved the w22 signing poll (pair run
+reproduced it; w22 alone with the identity passes, so the identity was
+never the cause there), and in browser-a three timing failures appeared
+under its load, including the portal spanish test's own rentals heading.
+The durable shape is isolation, not placement: portal.spec.ts now lives
+in its own group "browser-e-portal", run as a dedicated second step of
+the browser-e job with the throwaway identity prefixed onto that step's
+command only — its own server process, no shared job environment, no
+neighbors. The group is not a sixth matrix shard (the CI layout policy
+pins five); e2e-shard.mjs validates it like any group (126 files, each
+in exactly one). The step first resets the job's database (drop and
+recreate under the same name, then migrate and seed in the step):
+Playwright's global setup enrolls the fixture accounts' two-factor
+auth on first login, so a second global setup against the job's main
+database stalls at the two-factor challenge — the same reason the
+Workshop run-checks harness uses a fresh database per group. The
+reset keeps the name appliance_desk_test because prisma/seed.ts
+refuses its admin fixture on any other database name.
+Browser-e's main step returns to the exact configuration that was
+green at 6fa43ced and 34cf6d53. One spec fix rides along, intent
+unchanged: the spanish test's "Cargando…" skeleton assertion raced
+the renderer. Request logging on the Workshop proved the router
+paints the skeleton at navigation commit, not while the fetch is
+in flight, so on a fast machine the loaded page replaces it
+within a frame (it failed in browser-e CI, in browser-a, and
+isolated; it passed only under heavier server load). The test now
+registers its rentals-fetch hold before the billing page loads
+(so no prefetch can make the click instant) and also holds the
+rentals page's lazy chunk — the one request its content still
+needs after commit — so the skeleton stays on screen for the
+whole hold while the label is read. Every assertion is
+untouched.
+
+**Fix cycle 7 (from CI at 0f4a1f83):** all browser shards passed at the
+merge head, including the new two-step browser-e job; unit shard 1/3
+failed on two pre-existing expectations in
+tests/w5-w6-integration.test.ts (Lane 5's W-6 lead To dos) that the
+calendar exposed: they computed expected due dates with millisecond
+DAY arithmetic, which lands a day short across the November 1
+fall-back (a 25-hour Denver day), while the app correctly adds
+calendar days via addBusinessDays. The expectations now use
+addBusinessDays too — assertion intent unchanged (the defaults are
+still pinned to the same calendar-day counts). Verified on the
+Workshop: the file passes 11/11 on the merged tree. The same failure
+would meet main's next CI run unchanged; it is fixed here because
+this PR's CI is where it blocks. The cycle-5
+Workshop pass for business-records is also corrected here: the box's
+network path surfaced the fake-store error through the accepted
+fallback, so that part of the cycle-5 pass was degraded evidence.
+
+**Next:** merge on green CI + review gate; then a close-out records PR marks the card
+complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
+docs land.
 ## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
 
 MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.

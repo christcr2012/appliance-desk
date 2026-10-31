@@ -166,6 +166,9 @@ describe.skipIf(!enabled)("W-5 payment links and W-6 lead To dos on real Postgre
   it("the follow-up date defaults to two days out, rejects past dates, and becomes a dated To do", async () => {
     const lead = await prisma.lead.create({ data: { contactName: "Fran Follow " + tag.slice(0, 6), phone: "970-555-0101", status: "CONTACTED" } });
     leadIds.push(lead.id);
+    // Expected keys use addBusinessDays (calendar days in America/Denver),
+    // never millisecond DAY arithmetic: across a DST change a 25-hour day
+    // makes getTime() + n * DAY land on the wrong date (fix cycle 7, PR #781).
     expect(defaultFollowUpKey(now)).toBe(businessDateKey(addBusinessDays(now, 2)));
     expect(() => parseFollowUpKey("2020-01-01", now)).toThrow(/past/);
     expect(() => parseFollowUpKey("nope", now)).toThrow(/real/);

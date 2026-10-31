@@ -4,6 +4,7 @@
 // History in a Sheet — plus PanelRow (the existing editor behind a summary
 // row) and the section list that renders them in order.
 
+import { useKitWords } from "./words";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -144,6 +145,7 @@ function EditorInput({ row, draft, setDraft }: { row: SettingRowData; draft: unk
 }
 
 export function SettingRow({ row }: { row: SettingRowData }) {
+  const words = useKitWords();
   const router = useRouter();
   const [sheet, setSheet] = useState<"change" | "history" | null>(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
@@ -227,7 +229,7 @@ export function SettingRow({ row }: { row: SettingRowData }) {
       <Sheet open={sheet === "change"} onOpenChange={(o) => !o && setSheet(null)} title={row.label} footer={
         <div className="flex gap-2">
           <button type="button" disabled={busy} onClick={() => save(draft)} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save</button>
-          <button type="button" onClick={() => setSheet(null)} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink">Cancel</button>
+          <button type="button" onClick={() => setSheet(null)} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink">{words.cancel}</button>
         </div>
       }>
         <div className="space-y-4">
@@ -248,7 +250,7 @@ export function SettingRow({ row }: { row: SettingRowData }) {
 
       <Sheet open={sheet === "history"} onOpenChange={(o) => !o && setSheet(null)} title={`History — ${row.label}`}>
         {history === null ? (
-          <p className="text-sm text-ink-soft">Loading…</p>
+          <p className="text-sm text-ink-soft">{words.loading}</p>
         ) : history.length === 0 ? (
           <p className="text-sm text-ink-soft">Not changed yet.</p>
         ) : (
@@ -262,7 +264,7 @@ export function SettingRow({ row }: { row: SettingRowData }) {
                     const r = await undoSettingRowAction(h.auditId, row.key);
                     if (r.status === "success") { setSheet(null); toast({ message: `Undid ${row.label}` }); router.refresh(); }
                     else toast({ message: r.message, tone: "danger" });
-                  }}>Undo</button>
+                  }}>{words.undo}</button>
                 ) : h.undoReason ? (
                   <p className="mt-1 text-ink-soft">{h.undoReason}</p>
                 ) : null}

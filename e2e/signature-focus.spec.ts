@@ -89,9 +89,12 @@ test.describe("customer portal home", () => {
   test("has no sideways scrolling and the help card keeps a complete focus ring", async ({ page }) => {
     await page.goto("/account", { waitUntil: "load" });
     await noSideways(page, "/account");
-    const help = page.getByRole("region", { name: "How do I get help?" });
+    // PORTAL-1 (PORTAL.md section 7) renamed the help card from
+    // "How do I get help?" to "Need help?"; the region takes its name
+    // from that heading.
+    const help = page.getByRole("region", { name: "Need help?" });
     await expect(help).toBeVisible();
-    const report = help.getByRole("link", { name: "Report a problem" });
+    const report = help.getByRole("link", { name: "Ask for a repair" });
     await expect(async () => {
       await report.focus();
       await expect(report).toBeFocused({ timeout: 1000 });

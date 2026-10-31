@@ -1,4 +1,5 @@
 import type { CustomerLanguage } from "./copy";
+import type { KitWords } from "@/components/kit/words";
 
 export const PORTAL_TRANSLATIONS = {
   "Welcome": "Bienvenido",
@@ -60,8 +61,8 @@ export const PORTAL_TRANSLATIONS = {
   "Pay as arranged with Robinson Appliance Rentals.": "Pague según lo acordado con Robinson Appliance Rentals.",
   "This invoice is recorded in Appliance Desk, but card payment for local invoices is not enabled yet.": "Esta factura está registrada en Appliance Desk, pero el pago con tarjeta de facturas locales todavía no está disponible.",
   "The frozen invoice record remains in its original English form.": "El registro de factura definitivo permanece en su versión original en inglés.",
-  "Report a problem": "Informar un problema",
-  "Request pickup": "Solicitar recogida",
+  "Ask for a repair": "Solicitar una reparación",
+  "Ask for a pickup": "Solicitar una recogida",
   "View rentals": "Ver alquileres",
   "Visit history": "Historial de visitas",
   "This is the recorded visit time. Contact the business if you need an updated arrival time.": "Esta es la hora registrada de la visita. Comuníquese con la empresa si necesita actualizarla.",
@@ -83,7 +84,7 @@ export const PORTAL_TRANSLATIONS = {
   "Delivery & visit history": "Historial de entregas y visitas",
   "No delivery or visit history yet.": "Todavía no hay historial de entregas o visitas.",
   "Contact the business if you expected to see service requests here.": "Comuníquese con la empresa si esperaba ver solicitudes de servicio aquí.",
-  "Report a problem, request a pickup, and review your service requests.": "Informe un problema, solicite una recogida y consulte sus solicitudes de servicio.",
+  "Ask for a repair, ask for a pickup, and review your service requests.": "Solicite una reparación, solicite una recogida y consulte sus solicitudes de servicio.",
   "Give us the details and preferred timing. We will review the request and contact you.": "Indique los detalles y su horario preferido. Revisaremos la solicitud y nos comunicaremos con usted.",
   "Tell us what is happening and add photos if they help explain the problem.": "Explique qué sucede y adjunte fotos si ayudan a describir el problema.",
   "New service requests will appear here after you submit them.": "Las nuevas solicitudes de servicio aparecerán aquí después de enviarlas.",
@@ -412,11 +413,73 @@ export const PORTAL_TRANSLATIONS = {
   "We haul it away": "Nosotros lo retiramos",
   "No thanks": "No, gracias",
   "Free": "Gratis",
+  "Started": "Inició",
+  "Ending or renewing": "Finalización o renovación",
+  "End this rental": "Terminar este alquiler",
+  "The recorded English terms below control this rental agreement.": "Las condiciones registradas en inglés que se muestran abajo rigen este contrato de alquiler.",
+  "Your account": "Tu cuenta",
+  "Requests are reviewed by the business.": "Las solicitudes son revisadas por el negocio.",
+  "A pickup request doesn't end your rental or change your bills by itself — we'll confirm with you.": "Una solicitud de recogida no termina tu alquiler ni cambia tus facturas por sí sola — lo confirmaremos contigo.",
+  "You owe": "Debes",
+  "Monthly rent": "Renta mensual",
+  "Sign": "Firmar",
+  "Open bill": "Ver la factura",
+  "Needs you": "Requiere tu atención",
+  "Your rental is ready to sign": "Tu alquiler está listo para firmar",
+  "No rental account is linked to this sign-in": "Ninguna cuenta de alquiler está vinculada a este inicio de sesión",
+  "Property": "Propiedad",
+  "None booked": "Ninguna reservada",
+  "Pickup requests": "Solicitudes de recogida",
+  "Sent": "Enviado",
+  "No repair requests yet": "Aún no hay solicitudes de reparación",
+  "Open": "Abiertas",
+  "Monthly statement": "Estado de cuenta mensual",
+  "Card or bank details": "Datos de tarjeta o banco",
+  "Bill": "Factura",
+  "To pay": "Por pagar",
+  "Paid": "Pagado",
+  "Next bill": "Próxima factura",
+  "No bills to pay": "No hay facturas por pagar",
+  "No paid bills yet": "Aún no hay facturas pagadas",
+  "Bills can include deposits, fees and tax, so they can differ from your monthly rent.": "Las facturas pueden incluir depósitos, cargos e impuestos, por lo que pueden diferir de su alquiler mensual.",
+  "The payment page couldn't open. Try again, or call us.": "No se pudo abrir la página de pago. Inténtelo de nuevo o llámenos.",
+  "Language / Idioma": "Idioma / Language",
+  "Your information": "Su información",
+  "Add the people at each property so we can reach them about visits. They never see your bills or account.": "Agregue a las personas de cada propiedad para que podamos contactarlas sobre las visitas. Ellas nunca ven sus facturas ni su cuenta.",
+  "Go to my account": "Ir a mi cuenta",
+  "Repairs": "Reparaciones",
+  "Bills": "Facturas",
+  "Call us": "Llámanos",
+  "Load more": "Cargar más",
+  "Undo": "Deshacer",
+  "Next step": "Siguiente paso",
+  "Narrow your filters to see more": "Reduce los filtros para ver más",
+  "Something went wrong loading this page.": "Algo salió mal al cargar esta página.",
+  "Try again": "Intentar de nuevo",
 } as const;
 
 export type PortalLabel = keyof typeof PORTAL_TRANSLATIONS;
 export function portalLabel(language: CustomerLanguage, english: PortalLabel): string {
   return language === "es" ? PORTAL_TRANSLATIONS[english] : english;
+}
+
+/**
+ * The kit's fixed words in the customer's language (PORTAL-1 section 4).
+ * The portal shell passes this set to KitWordsProvider and to the kit
+ * server components that take word props; every English key is a
+ * KIT_WORDS_EN value, so a missing translation is a type error here.
+ */
+export function portalKitWords(language: CustomerLanguage): KitWords {
+  return {
+    loadMore: portalLabel(language, "Load more"),
+    loading: portalLabel(language, "Loading…"),
+    cancel: portalLabel(language, "Cancel"),
+    undo: portalLabel(language, "Undo"),
+    nextStep: portalLabel(language, "Next step"),
+    narrowFilters: portalLabel(language, "Narrow your filters to see more"),
+    pageLoadFailed: portalLabel(language, "Something went wrong loading this page."),
+    tryAgain: portalLabel(language, "Try again"),
+  };
 }
 
 /** Grammatical dynamic quantity; not a status or money calculation. */
@@ -440,6 +503,13 @@ export const PORTAL_DYNAMIC_COPY = {
   rentalSingular:"active rental", rentalPlural:"active rentals",
   rentalCount: "{{count}} active rental{{plural}} {{scope}}.",
   property: "at this property", account: "on this account", visitProperty: "for this property",
+  daysLate: "{{count}} day{{plural}} late",
+  photoCount: "{{count}} photo{{plural}}",
+  endingOn: "Ending {{date}}",
+  greeting: "Hi {{name}}",
+  billLate: "Bill #{{number}} is {{days}} days late",
+  billDueSoon: "Bill #{{number}} is due {{when}}",
+  seeAllRentals: "See all {{count}} rentals",
  },
  es: {
   idle: "No ha habido actividad. La sesión se cerrará en {{seconds}} segundo{{plural}} para proteger su cuenta.",
@@ -455,6 +525,13 @@ export const PORTAL_DYNAMIC_COPY = {
   rentalSingular:"alquiler activo", rentalPlural:"alquileres activos",
   rentalCount: "{{count}} {{noun}} {{scope}}.",
   property: "en esta propiedad", account: "en esta cuenta", visitProperty: "en esta propiedad",
+  daysLate: "{{count}} día{{plural}} de retraso",
+  photoCount: "{{count}} foto{{plural}}",
+  endingOn: "Termina el {{date}}",
+  greeting: "Hola {{name}}",
+  billLate: "La factura #{{number}} tiene {{days}} días de atraso",
+  billDueSoon: "La factura #{{number}} vence {{when}}",
+  seeAllRentals: "Ver los {{count}} alquileres",
  },
 } as const;
 export function portalStatement(language: CustomerLanguage,key:keyof typeof PORTAL_DYNAMIC_COPY.en,values:Record<string,string|number>={}) {

@@ -1,0 +1,125 @@
+{
+ "acceptance": [
+  "Every portal page is on the kit, in migrated-pages.json, with no header paragraph",
+  "No money math in portal page code (monthlyTotalCents, balanceCents come from the domain; unit test)",
+  "\"Needs you\" shows the right first item (late bill → Pay now, unsigned rental → Sign, due soon → Open bill)",
+  "Rentals' ending and renewal forms open in sheets and call the same actions (browser test)",
+  "Repairs ?request=repair and ?request=pickup open the right sheet; repair wording never says \"Report a problem\"",
+  "Bills tabs and property filter work from the loaded statement; Pay now uses the existing route",
+  "Customer A never reaches B's data through any portal page, action or download (extended isolation tests)",
+  "Every new string has Spanish; kit words appear in Spanish when Spanish is active (test)",
+  "axe + keyboard at 360, 390, 820, 1280, 1920 px, light and dark; no sideways scrolling",
+  "ci green at the exact head; every review comment read"
+ ],
+ "baseline": "b5761c3fac596b9af3d2eb9c153ac973c73a6931",
+ "card": "docs/pr-cards/PORTAL-1.md",
+ "checks": {
+  "browser": [
+   "e2e/portal.spec.ts"
+  ],
+  "db": [
+   "tests/customer-isolation.test.ts"
+  ],
+  "node": [],
+  "unit": [
+   "tests/agreement-totals.test.ts",
+   "tests/kit-words.test.ts",
+   "tests/portal-home-workspace.test.ts"
+  ]
+ },
+ "completedOn": null,
+ "gates": [],
+ "id": "PORTAL-1",
+ "invariants": [
+  "Every portal read and action resolves the customer from the signed-in user id; a customer id is never accepted from the URL; an address param only narrows within the customer's own addresses",
+  "Money stays integer cents through existing calculation functions; no financial math in UI code",
+  "Pay now keeps using the existing /account/billing/invoice/{id}/pay route; no Stripe path, webhook or payment-state behavior changes (docs/AI-PR-READ-FIRST.md honored and stated in the PR)",
+  "Spanish strings are added for every new English string in the same commit; Spanish display stays off until the reviewed copy is re-recorded (IN-83) — merging never waits on the translator review",
+  "The legal English terms readback, consent records, the privacy retention sentence and the printable bill document keep their legal wording (allow-listed with reasons)",
+  "Kit components default to English words, so the desk needs no change; only the portal shell passes translated kit words",
+  "No live payments, live SMS or live customer email is turned on; no production data is touched"
+ ],
+ "next": "PORTAL-1 built and verified locally (2026-10-30); the pull request is the merge lap (CI at the exact head is the browser evidence — the local production build was OOM-killed under multi-lane box load, declared in the PR). On merge, a close-out records PR marks the card complete.",
+ "outcome": "Customer portal redesign in one PR: every page under src/app/account (Home, Rentals, Repairs, Bills + the bill page, Properties, Account + Privacy) moves onto the kit with the portal dictionary (section 3 of the spec), the kit words provider makes kit fixed words translatable and the portal shell passes the Spanish set, money totals move out of page code into src/domains/agreements/totals.ts and the workspace reads, the duplicate <main> is fixed, repair wording becomes 'Ask for a repair', header paragraphs become InfoTips, and the spec's tests land (agreement totals, kit words, extended customer isolation, portal home workspace, new e2e/portal.spec.ts). Same URLs, same server actions, same domain reads, same Stripe paths; Spanish display stays governed by the IN-83 reviewed-copy rule.",
+ "parent": "PORTAL-1",
+ "proposedFiles": [
+  "docs/STATUS.md",
+  "docs/pr-cards/PORTAL-1.md",
+  "docs/pr-cards/execution/PORTAL-1.json",
+  "docs/pr-cards/work-index.json",
+  "docs/build-specs/migrated-pages.json",
+  "src/domains/agreements/totals.ts",
+  "src/domains/portal/workspace.ts",
+  "src/components/kit/words.tsx",
+  "src/components/account-shell.tsx",
+  "src/app/account/page.tsx",
+  "src/app/account/rentals/page.tsx",
+  "src/app/account/maintenance/page.tsx",
+  "src/app/account/billing/page.tsx",
+  "src/app/account/billing/invoice/[invoiceId]/page.tsx",
+  "src/app/account/properties/page.tsx",
+  "src/app/account/settings/page.tsx",
+  "src/app/account/settings/privacy/page.tsx",
+  "src/app/account/loading.tsx",
+  "src/app/account/error.tsx",
+  "src/domains/language/portal-copy.ts",
+  "scripts/kit-guard-allowlist.json",
+  "tests/agreement-totals.test.ts",
+  "tests/kit-words.test.ts",
+  "tests/customer-isolation.test.ts",
+  "tests/portal-home-workspace.test.ts",
+  "e2e/portal.spec.ts",
+  "e2e/shards.json",
+  "e2e/owner-portal-workspaces.spec.ts"
+ ],
+ "pullRequest": null,
+ "references": [
+  {
+   "anchor": "# PORTAL-1 — Customer portal redesign",
+   "path": "docs/pr-cards/PORTAL-1.md",
+   "purpose": "The card: one-PR scope, steps, acceptance, owner/translator handling"
+  },
+  {
+   "anchor": "## 1. Fixes found while specifying (do these in this unit)",
+   "path": "docs/build-specs/screens/PORTAL.md",
+   "purpose": "The deciding spec: fixes 1.1-1.5, data, dictionary, shell, pages, guards, tests"
+  },
+  {
+   "anchor": "## Required interpretation for future PRs",
+   "path": "docs/AI-PR-READ-FIRST.md",
+   "purpose": "Security/billing baseline the PR must honor (isolation, payments) and state in the PR body"
+  },
+  {
+   "anchor": "export async function getPortalHome(rawAddressId?: string) {",
+   "path": "src/domains/portal/workspace.ts",
+   "purpose": "The portal workspace reads that gain monthlyTotalCents, balanceCents and signingWaiting"
+  },
+  {
+   "anchor": "const ACCOUNT_LINKS: AccountLink[] = [",
+   "path": "src/components/account-shell.tsx",
+   "purpose": "The current portal shell (tabs, icons) the redesign restyles with kit tokens"
+  },
+  {
+   "anchor": "export const PORTAL_TRANSLATIONS = {",
+   "path": "src/domains/language/portal-copy.ts",
+   "purpose": "The portal dictionary: every new string gains a Spanish entry in the same commit"
+  },
+  {
+   "anchor": "export type IconName = \"today\" | \"home\"",
+   "path": "src/components/kit/icons.tsx",
+   "purpose": "The kit icon set: the five tab shapes already exist under AR-0 names (drift d1)"
+  }
+ ],
+ "risk": "Customer-facing pages with a payments route and Spanish copy. The risks are a customer-isolation regression (mitigated: every read stays session-keyed and the isolation suite is extended before page conversion is trusted), kit-word changes leaking into the desk (mitigated: provider defaults to English; desk-tested), and Spanish copy shipping unreviewed (mitigated by the existing IN-83 digest rule — display stays English until re-recorded).",
+ "sequence": [
+  "Step 0 packet + drift check",
+  "Step 1 fixes 1.1-1.5: totals module + workspace fields, duplicate <main> fix, 'Ask for a repair' rename, header paragraphs to InfoTips, dictionary strings with Spanish",
+  "Step 2 kit words provider + portal Spanish kit words (spec section 4)",
+  "Step 3 shell, then Home, Rentals, Repairs, Bills, Properties, Account (spec section 5)",
+  "Step 4 guards: migrated-pages.json entries + kit-guard allow-list reasons (spec section 7)",
+  "Step 5 tests (spec section 8): totals, kit words, isolation extension, portal home workspace, e2e/portal.spec.ts + shard, owner-portal-workspaces selector updates; file the translator subject; PR, CI, merge"
+ ],
+ "startedOn": "2026-10-30",
+ "status": "in progress",
+ "version": 1
+}

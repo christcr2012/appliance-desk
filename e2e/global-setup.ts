@@ -210,6 +210,53 @@ async function seedAccessibilityFixtures(): Promise<void> {
       },
       update: {},
     });
+    // PORTAL-1: a second property with its own active rental and bill,
+    // plus a delinquent Stripe bill on the first property — the portal
+    // spec's Needs-you / Pay now / tabs / property-filter fixtures.
+    await prisma.serviceAddress.upsert({
+      where: { id: "ci-a11y-address2" },
+      create: {
+        id: "ci-a11y-address2", customerId: customer.id, line1: "200 Portal Way",
+        city: "Greeley", zip: "80631",
+      },
+      update: {},
+    });
+    await prisma.rentalAgreement.upsert({
+      where: { id: "ci-a11y-agreement2" },
+      create: {
+        id: "ci-a11y-agreement2", customerId: customer.id, serviceAddressId: "ci-a11y-address2",
+        status: "ACTIVE", nextBillingDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+      },
+      update: {},
+    });
+    await prisma.rentalLine.upsert({
+      where: { id: "ci-a11y-line2" },
+      create: {
+        id: "ci-a11y-line2", agreementId: "ci-a11y-agreement2", label: "CI portal dryer",
+        monthlyPriceCents: 6100, listPriceCents: 6100,
+      },
+      update: {},
+    });
+    await prisma.invoice.upsert({
+      where: { id: "ci-a11y-overdue" },
+      create: {
+        id: "ci-a11y-overdue", customerId: customer.id, agreementId: agreement.id,
+        status: "DELINQUENT", stripeInvoiceId: "in_ci_a11y_overdue",
+        subtotalCents: 4200, taxCents: 0, amountDueCents: 4200, amountPaidCents: 0,
+        dueDate: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+      },
+      update: {},
+    });
+    await prisma.invoice.upsert({
+      where: { id: "ci-a11y-bill2" },
+      create: {
+        id: "ci-a11y-bill2", customerId: customer.id, agreementId: "ci-a11y-agreement2",
+        status: "OPEN", stripeInvoiceId: "in_ci_a11y_bill2",
+        subtotalCents: 6100, taxCents: 0, amountDueCents: 6100, amountPaidCents: 0,
+        dueDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+      },
+      update: {},
+    });
     await prisma.taxFilingAccount.upsert({
       where: { id: "ci-a11y-tax-account" },
       create: { id: "ci-a11y-tax-account", name: "CI accessibility sales tax account", kind: "SALES_RETURN", frequency: "MONTHLY" },

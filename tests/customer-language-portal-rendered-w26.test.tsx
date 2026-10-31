@@ -50,7 +50,7 @@ describe.each(["en","es"] as const)("W-26 actual nested customer rendering in %s
   m.language=language;const output=html(await AccountBillingPage(),language);
   expect(output).toContain("123");expect(output).toContain("$108.50");
   expect(output).toContain(language==="es"?"Pagado parcialmente":"Partially paid");
-  expect(output).toContain(language==="es"?"pendiente de pago":"currently owed");
+  expect(output).toContain(language==="es"?"Debes":"You owe");
  });
  it("renders customer location permissions without owner retention/purge controls",()=>{
   const permission={deliveryPickup:false,maintenance:false,swaps:false,copyClient:false,appointmentConfirmer:"CLIENT" as const};
@@ -61,7 +61,7 @@ describe.each(["en","es"] as const)("W-26 actual nested customer rendering in %s
   expect(output).not.toContain("Irreversible erasure");
  });
  it("renders complete maintenance priority and upload controls",()=>{
-  const output=html(createElement(NewRequestForm,{customerId:"own-customer",appliances:[],requestTitle:language==="es"?"Informar un problema":"Report a problem"}),language);
+  const output=html(createElement(NewRequestForm,{customerId:"own-customer",appliances:[],requestTitle:language==="es"?"Solicitar una reparación":"Ask for a repair"}),language);
   expect(output).toContain(language==="es"?"Baja — cuando sea conveniente":"Low — whenever&#x27;s convenient");
   expect(output).toContain(language==="es"?"Enviar solicitud":"Submit request");expect(output).toContain(language==="es"?"Agregar una foto":"Add a photo");
  });

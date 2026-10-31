@@ -131,7 +131,7 @@ for (const role of ["owner", "customer"] as const) {
 
           const nav = page.getByRole("navigation", { name: "Main" });
           await expect(nav).toBeVisible();
-          const labels = ["Home", "Rentals", "Maintenance", "Billing", "Account"];
+          const labels = ["Home", "Rentals", "Repairs", "Bills", "Account"];
           for (const label of labels) {
             await expect(
               nav.getByRole("link", { name: label, exact: true }),
@@ -149,14 +149,13 @@ for (const role of ["owner", "customer"] as const) {
             ).toBeFocused();
           }
 
-          for (const question of [
-            "What do I rent?",
-            "What's next?",
-            "Do I owe anything?",
-            "How do I get help?",
-          ]) {
+          // PORTAL-1 home: greeting + Rentals / Next visit / Need help?
+          await expect(
+            page.getByRole("heading", { level: 1, name: /^Hi / }),
+          ).toBeVisible();
+          for (const heading of ["Rentals", "Next visit", "Need help?"]) {
             await expect(
-              page.getByRole("heading", { name: question, exact: true }),
+              page.getByRole("heading", { name: heading, exact: true }),
             ).toBeVisible();
           }
 
@@ -289,11 +288,16 @@ for (const role of ["owner", "customer"] as const) {
       }) => {
         await page.goto("/account");
         await page
-          .getByRole("link", { name: "Request pickup", exact: true })
+          .getByRole("link", { name: "Ask for a pickup", exact: true })
           .first()
           .click();
         await expect(page).toHaveURL(/request=pickup$/);
-        await expect(page.getByRole("status")).toContainText("does not cancel");
+        // The pickup sheet's intro is announced as a status region; scope to
+        // it — the kit Toaster is a second, always-present status region on
+        // the redesigned portal, so a bare getByRole("status") is ambiguous.
+        await expect(
+          page.getByRole("status").filter({ hasText: "does not cancel" }),
+        ).toBeVisible();
         await expect(page.getByLabel("What's going on?")).toHaveValue("");
         await page.getByRole("button", { name: "Submit request" }).click();
         await expect(page.getByLabel("What's going on?")).toBeFocused();
@@ -301,11 +305,20 @@ for (const role of ["owner", "customer"] as const) {
         const text = `Pickup request: ${details}`;
         await page.getByLabel("What's going on?").fill(details);
         await page.getByRole("button", { name: "Submit request" }).click();
-        // The textarea already contains this text before the save finishes.
-        // Wait for the server-backed request list before testing persistence.
+        // The save lands when the sheet shows its confirmation. The sheet
+        // is modal — the page behind it is hidden from the accessibility
+        // tree while it is open — so close it before reading the
+        // server-backed request list the save revalidates into place.
+        await expect(
+          page.getByRole("status").filter({ hasText: "Got it" }),
+        ).toContainText("schedule your pickup");
+        await page.getByRole("button", { name: "Close" }).click();
         const savedRequest = page.getByRole("listitem").getByText(text, { exact: true });
         await expect(savedRequest).toBeVisible();
         await page.reload();
+        // The deep link auto-opens the sheet again after the reload; close
+        // it so the persisted list is reachable in the accessibility tree.
+        await page.getByRole("button", { name: "Close" }).click();
         await expect(savedRequest).toBeVisible();
       });
     }

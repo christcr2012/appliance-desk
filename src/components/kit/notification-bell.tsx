@@ -4,6 +4,7 @@
 // rule (refreshPermitted): fetched on mount, when the tab becomes visible again, and every 60 s
 // only while the page is visible and the person used it in the last 10 minutes — an idle tab
 // never keeps the database awake.
+import { useKitWords } from "./words";
 import * as Popover from "@radix-ui/react-popover";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,6 +49,7 @@ const BELL_BUTTON =
   "relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-field text-ink hover:bg-tint focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring lg:min-h-10 lg:min-w-10";
 
 export function NotificationBell() {
+  const words = useKitWords();
   const router = useRouter();
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const [count, setCount] = useState<number | null>(null);
@@ -183,7 +185,7 @@ export function NotificationBell() {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {rows === null ? (
-          <p className="px-2 py-6 text-sm text-ink-soft">Loading…</p>
+          <p className="px-2 py-6 text-sm text-ink-soft">{words.loading}</p>
         ) : rows.length === 0 ? (
           <p className="px-2 py-6 text-sm text-ink-soft">Nothing new.</p>
         ) : (
@@ -222,7 +224,7 @@ export function NotificationBell() {
             disabled={loadingMore}
             className="mt-1 inline-flex min-h-11 w-full items-center justify-center rounded-field text-sm font-bold text-primary hover:bg-tint disabled:opacity-60 lg:min-h-10"
           >
-            {loadingMore ? "Loading…" : "Load more"}
+            {loadingMore ? words.loading : words.loadMore}
           </button>
         ) : null}
       </div>
