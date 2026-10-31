@@ -73,6 +73,9 @@ describe("MCP-9 read-only RTC passes and handle ownership on disposable PostgreS
     const tokenShaped = await authenticateRtcPass(authReq("not-an-rtc-pass"));
     expect((tokenShaped as Response).status).toBe(401);
 
+    // A multibyte result must be rejected by byte count before storing an unreadable handle.
+    await expect(storeRtcResult(context, { rows: ["🧰".repeat(130_000)] }))
+      .rejects.toThrow("RTC_RESULT_SIZE_INVALID");
     const handle = await storeRtcResult(context, { rows: ["sanitized"] });
     expect(await readRtcResult(context, handle)).toEqual({ rows: ["sanitized"] });
     await expect(readRtcResult({ ...context, connectionId: "someone-else" }, handle))

@@ -10,7 +10,8 @@ const TTL_MS = 24 * 60 * 60_000;
 export async function storeRtcResult(ctx: AgentContext, value: Record<string, unknown>,
   now = new Date()): Promise<string> {
   const payload = JSON.stringify(value);
-  if (payload.length > 512_000 || payload.length < 2) throw new Error("RTC_RESULT_SIZE_INVALID");
+  if (Buffer.byteLength(payload, "utf8") > 512_000 || payload.length < 2)
+    throw new Error("RTC_RESULT_SIZE_INVALID");
   const handle = "rtc_result_" + randomBytes(32).toString("base64url");
   await prisma.agentResult.create({
     data: { connectionId: ctx.connectionId, digest: DIGEST(handle),

@@ -1,18 +1,6 @@
-## October 29 — Lane 2: MCP-9 RTC read-only gateway in development
+## October 30 — Lane 2: MCP-8 merged; MCP-9 read-only RTC gateway remains unmerged
 
-MCP-9 branch `ai/chatgpt/mcp-9-rtc-contract` pins the upstream RTC 1
-contract at `Robinson-AI-Systems/robinsons-toolkit-hub`
-`e6cfb98266728ce0e986ab068569a5d1117a4334` (read-only reference).
-Digest-only 256-bit passes, separate OAuth/pass doors, revocation, owner-only
-one-time pass controls, 24-hour scoped result handles, shared database rate
-limits, and a first read-only HTTPS adapter reuse the real MCP SDK registry.
-Initial local/unit and disposable-PostgreSQL test cases are committed but
-**not yet executed**. The pinned upstream full conformance suite, two actual
-server processes, controlled write/confirmation contract, owner matrix and
-review remain pending; no RTC 1 compatibility is claimed yet. No real pass
-has been issued by development. MCP-8 PR #764 has full CI green at exact
-head `af074cef`, self-review recorded and guarded auto-merge armed, awaiting
-normal review-gate completion.
+MCP-8 performance observations and settings coverage **merged** as PR #764 after conflict reconciliation and all 12 GitHub CI jobs passed on `c3278384`, followed by protected review-gate completion. MCP-9 is currently draft PR #780 on `ai/chatgpt/mcp-9-rtc-clean` (successor of #766). It implements owner-issued digest-only passes, separate OAuth/pass doors, revocation, area/scope-limited read tools, 24-hour owned results and two-process database limits. The earlier clean-history branch passed secret scanning and browser checks; CI run 41151453085 was dispatched on `8f80cbcb` and had not concluded when this note was written. The upstream RTC 1 full conformance, write confirmation and connected-client acceptance are **not yet proven**, so MCP-9 must not be called complete or fully compatible. This update is source/CI evidence only; no live provider activation or real customer action.
 
 ## October 29 — Lane 2: MCP-11 merged, MCP-7b delegated monitoring under review
 

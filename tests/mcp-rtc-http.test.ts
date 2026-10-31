@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentContext } from "@/domains/agent-control/authorization";
 import { GET as manifestGet } from "@/app/api/contract/route";
+import { rtcToolList } from "@/mcp/rtc-adapter";
 import { GET as toolSearch } from "@/app/api/tools/route";
 import { GET as toolDescribe, POST as toolCall } from "@/app/api/tools/[name]/route";
 import { POST as toolBatch } from "@/app/api/tools/_batch/route";
@@ -100,6 +101,12 @@ describe("MCP-9 RTC read-only HTTP adapter uses the actual MCP catalog", () => {
       fields: "constructor",
     }), toolCtx("appliance_whoami"));
     expect(denied.status).toBe(400);
+  });
+  it("an area-restricted pass cannot enumerate tools from another area", async () => {
+    const healthOnly = await rtcToolList({ ...context, rtcAreas: ["health"] }, "", 100);
+    expect(healthOnly.length).toBeGreaterThan(0);
+    expect(healthOnly.every(tool => tool.area === "health")).toBe(true);
+    expect(healthOnly.some(tool => tool.name === "appliance_whoami")).toBe(false);
   });
   it("whoami never returns a reusable credential", async () => {
     const response = await rtcWhoami(req("/api/whoami"));
