@@ -16,6 +16,7 @@ export function RequestSheet({
   intro,
   autoOpen = false,
   primary = false,
+  announceIntro = false,
   children,
 }: {
   buttonLabel: string;
@@ -23,6 +24,10 @@ export function RequestSheet({
   intro?: string;
   autoOpen?: boolean;
   primary?: boolean;
+  /** Render the intro as a status region (the pickup deep link's
+   *  pre-kit banner carried role="status"; specs and assistive tech
+   *  announce it on arrival). */
+  announceIntro?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(autoOpen);
@@ -40,7 +45,7 @@ export function RequestSheet({
         {buttonLabel}
       </button>
       <Sheet open={open} onOpenChange={setOpen} title={title}>
-        {intro ? <p className="mb-4 text-sm text-ink-soft">{intro}</p> : null}
+        {intro ? <p role={announceIntro ? "status" : undefined} className="mb-4 text-sm text-ink-soft">{intro}</p> : null}
         {children}
       </Sheet>
     </>

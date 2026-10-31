@@ -82,6 +82,51 @@ test.describe("PORTAL-1 customer portal", () => {
   });
 
   test("repairs deep link opens the sheet; a request with a photo submits", async ({ page }) => {
+    // CI runs with no real Blob store (no repository secrets), so the two
+    // Blob network legs are stubbed at the route level: the app's own token
+    // request and its @vercel/blob upload() call still run, and the request
+    // still submits with the uploaded photo URL. The client token is shaped
+    // exactly like the real one (vercel_blob_client_<store>_<base64 wrapper
+    // whose payload names the requested pathname), built from the pathname
+    // the app asks for so the client's own payload checks pass. The browser-e
+    // CI job configures a matching throwaway private-store identity so the
+    // server accepts the stubbed URL as this customer's own upload.
+    const blobStoreId = "e2eteststore";
+    await page.route("**/api/uploads/photo", async (route) => {
+      const body = route.request().postDataJSON() as {
+        payload?: { pathname?: string };
+      };
+      const pathname = body.payload?.pathname ?? "maintenance-requests/test/washer.png";
+      const payload = Buffer.from(
+        JSON.stringify({ pathname, validUntil: Date.now() + 10 * 60 * 1000 }),
+      ).toString("base64");
+      const wrapped = Buffer.from(`v1.${payload}.sig`).toString("base64");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          clientToken: `vercel_blob_client_${blobStoreId}_${wrapped}`,
+        }),
+      });
+    });
+    await page.route("https://vercel.com/api/blob/**", async (route) => {
+      const pathname =
+        new URL(route.request().url()).searchParams.get("pathname") ??
+        "maintenance-requests/test/washer.png";
+      const url = `https://${blobStoreId}.private.blob.vercel-storage.com/${pathname}`;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          url,
+          downloadUrl: url,
+          pathname,
+          contentType: "image/png",
+          contentDisposition: 'inline; filename="washer.png"',
+          etag: "e2e-test-etag",
+        }),
+      });
+    });
     await page.goto("/account/maintenance?request=repair");
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
@@ -112,7 +157,9 @@ test.describe("PORTAL-1 customer portal", () => {
     await page.goto("/account/billing");
     const overdue = page.locator('a[href="/account/billing/invoice/ci-a11y-overdue"]');
     const bill2 = page.locator('a[href="/account/billing/invoice/ci-a11y-bill2"]');
-    await expect(page.getByText("$103.00")).toBeVisible();
+    // Total owed across the two open fixture bills ($42 + $61), rendered
+    // in the house money format: whole dollars show no cents (formatCents).
+    await expect(page.getByText("$103", { exact: true })).toBeVisible();
     await expect(overdue).toBeVisible();
     await expect(bill2).toBeVisible();
 

@@ -34,6 +34,44 @@ oracle only; the same perf workflow passed at eb42a17f) — it is the known
 marginal-measurement family, not a budget change in this PR; perf is not a
 required merge check.
 
+**Fix cycle 4 (from CI at 6fa43ced, all failures read once):** two browser
+tests still failed and both are fixed in this push. (1) The workspaces pickup
+test asserted a bare getByRole("status") for the pickup sheet's "does not
+cancel" intro; the redesign leaves two status regions on the page (that
+intro, restored as a status by announceIntro, plus the kit Toaster's
+always-present one), so the locator is now scoped with a hasText filter —
+same contract, no longer "the only status on the page". Verified on the
+Workshop with a live probe: the sheet opens ~1.2 s after the click with the
+intro announced as a status. (2) The portal spec's photo step could never
+pass in GitHub CI: uploads go to Vercel Blob and CI has no Blob store by
+design, so the token route fails closed. The spec now stubs only the two
+Blob network legs at the route level (token + PUT, with a client token
+shaped like the real one); the form, the upload() call and the submit all
+still run for real. The Workshop debug run then showed why the upload
+stalled even with a store stubbed: the app's own Content-Security-Policy
+(connect-src 'self' + Sentry) refuses the browser's direct PUT to
+https://vercel.com/api/blob in every environment, so no browser photo
+upload could ever complete — next.config.ts now allows https://vercel.com
+in connect-src, with the reason written into the policy's comment block.
+The pickup test also closes the modal sheet before reading the saved
+request list: while the sheet is open the page behind it is hidden from
+the accessibility tree, so the list item the save revalidates into place
+was unreachable until the sheet closed (the same close is repeated after
+the reload, whose deep link auto-opens the sheet again). The photo submit
+also needed the server to recognize the stubbed upload as the customer's
+own: the browser-e CI job now sets a throwaway private-store identity
+(assembled in the workflow like the other test keys, browser-e only, so
+the other shards keep the no-store behavior), and the spec's stubbed URL
+uses that store's host. With the photo test passing, the serial file's
+later tests ran for the first time and the bills test's "$103.00" literal
+met the house money format (formatCents renders whole dollars without
+cents, so the statement reads "$103"); the spec now asserts the total in
+that format. signature-focus reads the help card by its §7 name
+("Need help?") and the rentals visit line again carries a scheduled visit's
+full date and time. Perf failed again on the same marginal line (rent-desc
+160.5 ms vs the 150 ms budget; the query is unchanged) — not a required
+check, no budget change; the numbers stand as the recorded owner question.
+
 **Next:** merge on green CI + review gate; then a close-out records PR marks the card
 complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
 docs land.

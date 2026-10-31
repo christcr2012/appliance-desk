@@ -115,7 +115,11 @@ export default async function AccountRentalsPage({
     // requested — never the epoch, which renders as "Dec 31, 1969".
     at: job.scheduledAt ?? job.performedOn ?? job.createdAt,
     title: jobKindLabel(job, locale),
-    detail: jobStatusLabel(job.status, locale),
+    // A scheduled visit's line carries its full date and time, as the
+    // pre-kit list did ("Tuesday, October 20, 2026 · 10:00 AM").
+    detail: job.scheduledAt
+      ? `${jobStatusLabel(job.status, locale)} · ${formatBusinessDate(job.scheduledAt)} · ${formatBusinessTime(job.scheduledAt)}`
+      : jobStatusLabel(job.status, locale),
     tone: jobTone(job.status),
     // The actor line names the town, not the street address: the rental
     // cards above are headed by the street address, and repeating the

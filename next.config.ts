@@ -64,7 +64,12 @@ import { TAX_ROUTE_REDIRECTS } from "./src/lib/tax-route-redirects";
 //     it, not assumed.
 //   - connect-src: 'self' (this app's own API routes/server actions)
 //     + Sentry's ingest domain (error monitoring reports from the
-//     browser — instrumentation-client.ts).
+//     browser — instrumentation-client.ts) + vercel.com: the
+//     @vercel/blob client's upload() sends the file bytes straight
+//     from the browser to the Blob API (https://vercel.com/api/blob)
+//     after this app's own /api/uploads/photo route hands it a client
+//     token, so without the entry the browser refuses the upload and
+//     every photo field stalls at "Uploading…".
 //   - Stripe needs NO entry anywhere in this policy: this app only
 //     ever does a full-page `window.location.href` redirect to
 //     Stripe's own hosted Checkout/Billing Portal pages
@@ -78,7 +83,7 @@ const cspHeader = `
   style-src 'self' 'unsafe-inline';
   img-src 'self';
   font-src 'self';
-  connect-src 'self' https://*.sentry.io;
+  connect-src 'self' https://*.sentry.io https://vercel.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
