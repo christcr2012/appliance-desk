@@ -18,16 +18,16 @@ it("a completed swap offers no manual status buttons, because completing it alre
   expect(screen.queryByText(/no recorded replacement appliance/)).toBeNull();
   expect(m.appliance).not.toHaveBeenCalled();
 });
-it.each(["SWAP", "MAINTENANCE_VISIT", "DELIVERY", "INSTALLATION", "REMOVAL"] as const)("sends completed %s visits to the job page, where each item gets a result", async type => {
-  render(<DriverJobCard job={{ id: "job", type, status: "IN_PROGRESS", scheduledAt: null, notes: null, customerName: null, customerPhone: null, address: null, appliances: [] }} />);
-  fireEvent.click(screen.getByRole("button", { name: "Mark complete" }));
-  await waitFor(() => expect(m.push).toHaveBeenCalledWith("/desk/jobs/job"));
+it.each(["SWAP", "MAINTENANCE_VISIT", "DELIVERY", "INSTALLATION", "REMOVAL"] as const)("sends completed %s visits to the job page, where each item gets a result", type => {
+  render(<DriverJobCard stopNumber={1} job={{ id: "job", type, status: "IN_PROGRESS", noShowAt: null, scheduledAt: null, notes: null, customerName: null, customerPhone: null, unitLabel: null, accessNotes: null, address: null, appliances: [], canWork: true, assignedToName: null }} />);
+  // AR-5 section 5: "Finish visit…" links to the visit record's completion form (#finish).
+  expect(screen.getByRole("link", { name: "Finish visit…" })).toHaveAttribute("href", "/desk/jobs/job#finish");
   // The driver screen never completes a job by itself.
   expect(m.status).not.toHaveBeenCalled();
 });
 it("shows a failed start and does not navigate away", async () => {
   m.status.mockResolvedValue({ status: "error", message: "Job changed" });
-  render(<DriverJobCard job={{ id: "job", type: "SWAP", status: "SCHEDULED", scheduledAt: null, notes: null, customerName: null, customerPhone: null, address: null, appliances: [] }} />);
+  render(<DriverJobCard stopNumber={1} job={{ id: "job", type: "SWAP", status: "SCHEDULED", noShowAt: null, scheduledAt: null, notes: null, customerName: null, customerPhone: null, unitLabel: null, accessNotes: null, address: null, appliances: [], canWork: true, assignedToName: null }} />);
   fireEvent.click(screen.getByRole("button", { name: "Start" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Job changed");
   expect(m.push).not.toHaveBeenCalled(); expect(m.refresh).not.toHaveBeenCalled();

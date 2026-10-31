@@ -7,6 +7,7 @@ import { useActionState, useRef, useState, type ReactNode } from "react";
 import { Icon, type IconName, Toaster, KitWordsProvider } from "@/components/kit";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOut } from "@/lib/auth-client";
+import { deleteRouteSnapshotDatabase } from "@/lib/route-snapshot";
 import { portalKitWords, portalLabel } from "@/domains/language/portal-copy";
 import type { CustomerLanguage } from "@/domains/language/copy";
 import { CustomerLanguageProvider } from "@/domains/language/client-portal";
@@ -92,6 +93,8 @@ export function AccountShell({
     try {
       const result = await signOut();
       if (result.error) throw new Error("Sign out failed");
+      // AR-5 section 5: never leave a saved route copy behind on a shared device.
+      deleteRouteSnapshotDatabase();
       router.push(language === "es" ? "/login?language=es" : "/login");
       router.refresh();
     } catch {

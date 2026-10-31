@@ -26,7 +26,7 @@ import {
   findConflictingJobIds,
 } from "@/domains/jobs/dispatch";
 import { addBusinessDays } from "@/lib/business-date";
-import { getDispatchBoardJobs, getDriverJobsForToday } from "@/domains/jobs";
+import { getDispatchBoardJobs, getRouteForToday } from "@/domains/jobs";
 import DispatchPage from "@/app/desk/dispatch/page";
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.useRealTimers());
@@ -60,7 +60,7 @@ it("queries the driver's current Colorado day including its DST boundary", async
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-11-02T01:00:00Z"));
   m.jobs.mockResolvedValue([]);
-  await getDriverJobsForToday();
+  await getRouteForToday({ actor: { userId: "owner", role: "OWNER" }, who: "everyone" });
   expect(m.jobs.mock.calls[0][0].where.scheduledAt).toEqual({
     gte: new Date("2026-11-01T06:00:00Z"),
     lt: new Date("2026-11-02T07:00:00Z"),
