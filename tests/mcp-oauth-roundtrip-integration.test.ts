@@ -179,7 +179,7 @@ describe.skipIf(!enabled)("MCP OAuth local loopback client on disposable Postgre
           const token = decodeJwt(accessToken);
           expect(token.sub).toBe(current.userId);
           expect(token.appliance_connection_version).toBe(current.grantVersion);
-          const grantedScopes = (typeof token.scope === "string" ? token.scope.split(/\\s+/) : [])
+          const grantedScopes = (typeof token.scope === "string" ? token.scope.split(/\s+/) : [])
             .filter(scope => MCP_SCOPES.includes(scope as typeof MCP_SCOPES[number]));
           expect(grantedScopes.sort()).toEqual(current.scopes.slice().sort());
         }
