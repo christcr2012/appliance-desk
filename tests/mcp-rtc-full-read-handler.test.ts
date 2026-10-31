@@ -31,8 +31,8 @@ describe("MCP-9 large-result handle uses the actual authenticated MCP read handl
     fakes.issues.mockReset();
     fakes.saved.mockClear();
     fakes.issues.mockImplementation(async (_ctx: unknown, options: { cursor?: string }) =>
-      options.cursor ? { issues: [issue("synthetic-second", "B".repeat(5100))], nextCursor: null } :
-        { issues: [issue("synthetic-first", "A".repeat(5100))], nextCursor: "synthetic-first" });
+      options.cursor ? { issues: [issue("c22222222222222222222", "B".repeat(5100))], nextCursor: null } :
+        { issues: [issue("c11111111111111111111", "A".repeat(5100))], nextCursor: "c11111111111111111111" });
   });
   it("summary stays one page, full read fetches both guarded pages and stores an owned handle", async () => {
     const summary = await rtcToolCall(ctx, "appliance_health_list_issues", { detail: "summary" });
@@ -50,7 +50,7 @@ describe("MCP-9 large-result handle uses the actual authenticated MCP read handl
     const savedPayload = fakes.saved.mock.calls[0]?.[1] as
       { issues: { id: string }[] } | undefined;
     expect(savedPayload?.issues.map(row => row.id))
-      .toEqual(["synthetic-first", "synthetic-second"]);
+      .toEqual(["c11111111111111111111", "c22222222222222222222"]);
     expect(JSON.stringify(savedPayload)).not.toContain("rtc_pass_");
   });
 });
