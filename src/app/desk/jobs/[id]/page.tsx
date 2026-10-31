@@ -167,7 +167,7 @@ export default async function JobDetailPage({
   const tabHref = (value: VisitTab) =>
     `/desk/jobs/${job.id}?tab=${value}${fromBoard ? "&from=board" : ""}`;
   const tabClass = (active: boolean) =>
-    `rounded-control px-3 py-2 text-sm font-semibold ${active ? "bg-ink text-white" : "text-ink-soft hover:bg-subtle"}`;
+    `rounded-control px-3 py-2 text-sm font-semibold ${active ? "bg-ink text-canvas" : "text-ink-soft hover:bg-subtle"}`;
 
   return (
     <div className="max-w-2xl">

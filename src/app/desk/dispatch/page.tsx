@@ -249,7 +249,7 @@ export default async function BoardPage({
       </div>
 
       {waitingRows.length > 0 && (
-        <details className="mb-6 rounded-card border border-line bg-surface" open={waitingCapped}>
+        <details className="mb-6 rounded-card border border-line bg-surface" open={waitingRows.length <= 5}>
           <summary className="cursor-pointer px-4 py-3 font-medium text-ink">
             Waiting for a time ({waitingCapped ? "50+" : waitingRows.length})
           </summary>

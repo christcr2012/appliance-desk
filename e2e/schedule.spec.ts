@@ -2,6 +2,8 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 
+import { seedTaxReadyContext } from "../tests/helpers/tax-ready";
+
 // AR-5 section 9: the Schedule area end to end — an owner books waiting visits from the Board
 // (including confirming a double-booking), staff get a read-only Board and Visits list, and
 // finishing a visit announces its hand-off (billing for a delivery, the deposit for a pickup).
@@ -48,6 +50,9 @@ test.describe("owner books from the Board", () => {
     test.skip(!enabled || !fs.existsSync(owner), "Disposable CI database only");
     const tag = randomUUID().slice(0, 8);
     const { prisma, user, customer, address } = await makeCustomer(tag);
+    // Scheduling a delivery re-checks the address's tax readiness (FEETAX-2), so the fixture
+    // address stands up the same verified tax context the unit suites use.
+    const tax = await seedTaxReadyContext(address.id);
     const jobIds: string[] = [];
     try {
       for (let i = 0; i < 2; i++) {
@@ -58,10 +63,16 @@ test.describe("owner books from the Board", () => {
       }
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto("/desk/dispatch");
-      await page.getByText(/Waiting for a time/).click();
+      // This test's own waiting rows (the seeded board carries other waiting visits too, so
+      // every click below is scoped to rows naming this test's customer).
+      const myRow = page.locator("li").filter({ hasText: `AR5 Schedule ${tag}` });
+      if (!(await myRow.first().isVisible().catch(() => false))) {
+        await page.getByText(/Waiting for a time/).click();
+      }
+      await expect(myRow).toHaveCount(2);
 
       // Book the first waiting visit for the first team member at tomorrow 10:00.
-      await page.getByRole("button", { name: "Schedule", exact: true }).first().click();
+      await myRow.first().getByRole("button", { name: "Schedule", exact: true }).click();
       const when = page.getByLabel("When");
       await when.fill(denverTomorrowAt("10:00"));
       const who = page.getByLabel("Who is doing it");
@@ -73,7 +84,8 @@ test.describe("owner books from the Board", () => {
 
       // Book the second waiting visit for the SAME person at 10:30 — the board warns, and
       // "Book it anyway" is the deliberate confirm.
-      await page.getByRole("button", { name: "Schedule", exact: true }).first().click();
+      await expect(myRow).toHaveCount(1);
+      await myRow.first().getByRole("button", { name: "Schedule", exact: true }).click();
       await page.getByLabel("When").fill(denverTomorrowAt("10:30"));
       await page.getByLabel("Who is doing it").selectOption(assignee);
       await page.getByRole("button", { name: "Book the visit" }).click();
@@ -87,6 +99,7 @@ test.describe("owner books from the Board", () => {
     } finally {
       await prisma.auditLog.deleteMany({ where: { entityId: { in: jobIds } } });
       await prisma.job.deleteMany({ where: { id: { in: jobIds } } });
+      await tax.cleanup();
       await prisma.serviceAddress.deleteMany({ where: { id: address.id } });
       await prisma.customer.deleteMany({ where: { id: customer.id } });
       await prisma.user.deleteMany({ where: { id: user.id } });

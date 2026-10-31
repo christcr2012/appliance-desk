@@ -44,7 +44,7 @@ export default async function MaintenanceDetailPage({
     .sort((a, b) => a.scheduledAt!.getTime() - b.scheduledAt!.getTime())[0];
   const tabHref = (value: RepairTab) => `/desk/maintenance/${request.id}?tab=${value}`;
   const tabClass = (active: boolean) =>
-    `rounded-control px-3 py-2 text-sm font-semibold ${active ? "bg-ink text-white" : "text-ink-soft hover:bg-subtle"}`;
+    `rounded-control px-3 py-2 text-sm font-semibold ${active ? "bg-ink text-canvas" : "text-ink-soft hover:bg-subtle"}`;
 
   return (
     <div className="max-w-2xl">
