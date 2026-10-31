@@ -26,7 +26,7 @@ const enabled =
 // supplier's name, the typed seller name and the receipt reference; rows
 // carry the domain receipt total and the Tax question flag.
 const MARK = "AR6BP";
-const OWNER_ID = "8c1bea0e-b847-42a8-a6a9-cef8021420aa"; // seeded CI owner fixture
+let OWNER_ID = ""; // the seeded OWNER row's id — the seed generates it, so resolve it in beforeAll
 const DAY = new Date("2026-03-15T10:00:00.000Z");
 
 let supplierId = "";
@@ -67,6 +67,7 @@ async function purchase(data: {
 
 describe.skipIf(!enabled)("AR-6b listPurchases (cursor)", () => {
   beforeAll(async () => {
+    OWNER_ID = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
     const supplier = await prisma.supplier.create({ data: { name: `${MARK} Supply Co` } });
     supplierId = supplier.id;
     // Three receipts on the same date AND the same createdAt instant —

@@ -28,7 +28,7 @@ const enabled =
 // (open = DRAFT + ORDERED), the supplier filter, cursor paging over
 // same-instant orders, and the known total computed in the domain.
 const MARK = "AR6BO";
-const OWNER_ID = "8c1bea0e-b847-42a8-a6a9-cef8021420aa"; // seeded CI owner fixture
+let OWNER_ID = ""; // the seeded OWNER row's id — the seed generates it, so resolve it in beforeAll
 let supplierId = "";
 let otherSupplierId = "";
 const ids: string[] = [];
@@ -57,6 +57,7 @@ async function order(data: {
 
 describe.skipIf(!enabled)("AR-6b getPurchaseOrdersPage", () => {
   beforeAll(async () => {
+    OWNER_ID = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
     supplierId = (await prisma.supplier.create({ data: { name: `${MARK} Parts` } })).id;
     otherSupplierId = (await prisma.supplier.create({ data: { name: `${MARK} Other` } })).id;
     const same = new Date("2026-03-16T09:00:00.000Z");
