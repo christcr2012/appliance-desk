@@ -59,6 +59,13 @@ during tests.
 - [ ] After explicit test-owner approval, simultaneous confirmed executions and replays must yield exactly one durable, independently verified synthetic effect and a single journal claim. Revocation must deny subsequent RTC use, with fixture/limiter/audit cleanup.
 - [ ] This proves the **application-specific journal**, not the upstream generic write/refresh probes. Keep RTC 1 conformance and client acceptance NOT_PROVEN until each distinct protocol requirement is actually exercised.
 
+## OAuth refresh selection preservation ºw^~)Þt follow-up acceptance (October 31, 2026)
+
+- [ ] Use the existing locally registered PKCE OAuth client and disposable PostgreSQL integration test to renew a real granted access token, not a fabricated token or mock provider.
+- [ ] Independently read the persisted McpConnection id, grantVersion and approved scopes before and after refresh; verify that no additional permission appears in either the record or signed refreshed JWT and that the refreshed client still reaches only authorized MCP reads.
+- [ ] Run the unchanged pinned RTC verifyRefreshSettings oracle against an actual local OAuth refresh adapter, using explicit per-client selections and persisted identity as the before/after source. Assert denied or revoked authorization stays denied after refresh. Distinguish client-owned selections from server-enforced scopes.
+- [ ] Record whether this proves the pinned OAuth refresh probe; do not treat synthetic client settings as authorized real-client acceptance, upstream generic-write conformance, or deployment evidence. Update STATUS and acceptance notes honestly. Exact-head CI/review required before merge.
+
 ## Implementation route (reconciled October 28, 2026)
 
 This adds execution detail to the approved spec, not new scope. Proposed files/tests below must be created
