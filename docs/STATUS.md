@@ -13,9 +13,67 @@ packet unit/db suites and decisions suites green on real Postgres; plain-words p
 Local browser evidence is degraded (the sandbox production build was OOM-killed under
 multi-lane load), so CI's browser shards at the exact head carry the new portal spec.
 
+**Fix cycle 3 + merge lap (replacement seat, 2026-10-30 evening):** CI at aacb4252
+failed browser-b on one real bug — the portal Home (a server component) called
+`actionButtonClass()`, which lived in the "use client" kit module, so the page
+crashed at render ("Attempted to call actionButtonClass() from the server"; the
+location-contacts spec's portal visit caught it). The helper now lives in the
+server-safe `src/components/kit/action-button-class.ts`, re-exported from the
+client module and the kit index. The same batch dates an unscheduled Rentals
+visit by its `createdAt` instead of the epoch and stops the visit timeline
+repeating the property address. Current main (efda8171: MCP-8 #764, CU1-VIEW
+#783) is merged in for real; the only conflicts were STATUS and the work index,
+resolved as unions. Re-verified at the merged tree on Lane 4's own Postgres
+(5434): fresh full typecheck clean (exit code read directly), kit guards and
+packet unit suites 200/200, customer isolation 15/15, portal completion 4/4
+(incl. the new createdAt DTO pin), customer-list integration 7/7, migrations
+applied. The Performance Baselines failure at aacb4252 (customers-list
+rent-desc 158.28 ms vs the 150 ms budget) is not portal code and the list
+query is byte-identical at this head (CU1-VIEW touched comments and the test
+oracle only; the same perf workflow passed at eb42a17f) — it is the known
+marginal-measurement family, not a budget change in this PR; perf is not a
+required merge check.
+
 **Next:** merge on green CI + review gate; then a close-out records PR marks the card
 complete. W-11 stays parked at IN-61 until the LLC is formed and the SUTS method
 docs land.
+## October 30 — Lane 2: MCP-8 conflict reconciliation, guarded CI and review pending
+
+MCP-8 PR #764 adds privacy-safe sampled performance observations, generated settings discovery, owner-reviewed improvement proposals and their MCP-6 engineering-case handoff. Its earlier exact-head full CI passed, but newer main changes required reconciling this PR's status, database notes, notification cleanup and backup policy. The feature is NOT merged; after this conflict resolution, GitHub CI and review-gate must pass on the new exact head before protected squash merge. MCP-9 remains a separate unverified draft, with the new clean-history branch and CI in progress.
+## October 30 — CU1-VIEW COMPLETE: customer_list_v1 view retired (Workshop card)
+
+**What changed:** the `customer_list_v1` view is dropped (migration
+`20261218000000_customer_list_view_retire`; PR #783). CU1-PERF had moved every
+production Customers read to grouped base-table aggregates and left the view
+"for other readers until a separate card retires it" — a repo-wide drift grep
+at main `f7794889` showed its only remaining readers were the two oracle
+queries in `tests/customer-list-integration.test.ts` (the CU-1 close-out
+guessed "the record page facts"; the record page reads no view at current
+main). The suite's oracle now computes the six segment facts from the base
+tables with plain Prisma reads, written from the fixture semantics and the
+CUSTOMERS spec definitions, sharing no SQL with `list.ts` (the one shared
+helper is `billOwedWhere`, the Bills money rule the suite already pins
+independently). Two stale comments in `segments.ts` were corrected; the
+facts type's origin sentence stays verbatim because a registered packet
+anchors on it. No table, column, index or data changes; no production
+behavior change. The CU-1 chain (AR-4c, CU1-PERF, CU1-VIEW) is closed.
+
+**How it was checked:** the whole card ran on the Workshop (chris-agent-01)
+end to end — clone, packet, build, verification and a real git push from the
+box. Packet CU1-VIEW registered and validated (`work-session check`).
+Workshop run-checks at head `9eb10646` in CI's shape (static + three unit
+shards, fresh databases via `prisma migrate deploy`, so the drop migration
+ran on every shard database): static green; unit shards 1 and 2 fully green
+(2,249 and 1,922 tests); `tests/customer-list-integration.test.ts` passed in
+both Workshop runs (7 tests). Declared honestly: Workshop shard 3 (and one
+shard-1 axe test) fail in unrelated suites (com-n1c, jobs-status-concurrency,
+ops5-dispute-rules, plus a rotating fourth) — the identical pattern
+reproduces on pristine main `f7794889` in the same runner on the same box
+(baseline run `checks-20261030T231705Z-f7794889`), so they are this box's
+parallel-load flakes, not this change; the merge gate is CI at the exact
+head. Gitleaks range scan (CI's pinned 8.28.0) clean; pre-push
+conflict-marker grep clean. Browser phase not run locally — no UI, route or
+browser surface changes; CI runs all five browser groups at the exact head.
 
 ## October 30 — CU1-PERF COMPLETE: Customers list query redesign merged (Lane 5)
 

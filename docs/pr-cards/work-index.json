@@ -6165,6 +6165,10 @@
     {
       "id": "PORTAL-1",
       "path": "docs/pr-cards/execution/PORTAL-1.json"
+    },
+    {
+      "id": "CU1-VIEW",
+      "path": "docs/pr-cards/execution/CU1-VIEW.json"
     }
   ]
 }
