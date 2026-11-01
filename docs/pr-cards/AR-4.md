@@ -21,10 +21,10 @@ Reason: each list is an independent, usable screen with its own data and risks; 
 - Rental ending → "Decide…" next step opens "End this rental" (AR-4a).
 
 ## Acceptance (per PR; each PR's spec "Tests" section is its checklist)
-- [ ] Old URLs keep working (params tests).
-- [ ] Staff see what they see today and no money (browser specs).
-- [ ] Every money or irreversible action goes through its existing confirmation.
-- [ ] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
+- [x] Old URLs keep working (params tests).
+- [x] Staff see what they see today and no money (browser specs).
+- [x] Every money or irreversible action goes through its existing confirmation.
+- [x] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
 
 ## Progress
 AR-4a (Rentals) is merged (PR #723). AR-4b (Leads) is merged — see the top
@@ -49,3 +49,13 @@ oracle queries in `tests/customer-list-integration.test.ts`, which now
 compute the segment facts from the base tables directly. Migration
 `20261218000000_customer_list_view_retire` drops the view; no table, column
 or data changes. See the top STATUS entry.
+
+## Close-out — October 31 (work-index audit, Lane 5)
+
+All four units merged — AR-4a Rentals (PR #723), AR-4b Leads (PR #760),
+AR-4c Customers list (PR #761) and AR-4d Quotes and Messages (PR #773) — each
+through its own packet, focused suites, browser specs and exact-head CI, as
+the card's Progress section records. The per-PR acceptance lines above were
+verified inside those four PRs; they were simply never ticked on the parent
+card, and the work-index still read APPROVED. Ticked and corrected in the
+2026-10-31 work-index audit; no behavior changed.
