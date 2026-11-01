@@ -4749,7 +4749,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "SOURCE MERGED — #693 controls/views, #695 status/words, #702 searchable Help, #716 Features and guarded Practice; owner-only test-app URL and smoke checklist remain",
+      "status": "MERGED — #693 controls/views, #695 status/words, #702 searchable Help, #716 Features and guarded Practice; acceptance verified in source and closed out 2026-10-31 (Lane 5 evidence pass); remainder is owner-only: the card’s two checklist rows (feature choices; PRACTICE_APP_URL setting)",
       "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [
