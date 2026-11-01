@@ -657,7 +657,7 @@
       "dependencies": [
         "F2-D"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED (engineering) — PR #498; confirmed in the STATUS reconciliation ('K-1A/B and K-2A/B are merged engineering'); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "batch_k_books",
       "budget": 490,
       "units": [
@@ -684,7 +684,7 @@
       "dependencies": [
         "K-1A"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED (engineering) — PR #498 (with K-1A); confirmed in the STATUS reconciliation; index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -711,7 +711,7 @@
       "dependencies": [
         "K-1B"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED (engineering) — journal posting on main (STATUS reconciliation: 'K-1A/B and K-2A/B are merged engineering'); deployment and owner accounting activation are separate launch-ledger items, not this card; index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -738,7 +738,7 @@
       "dependencies": [
         "K-2A"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED (engineering) — owner Books screens on main (STATUS reconciliation: 'K-1A/B and K-2A/B are merged engineering'); deployment and owner accounting activation are separate launch-ledger items, not this card; index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -766,7 +766,7 @@
       "dependencies": [
         "K-2B"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED — PR #499 (STATUS: completed all exact-head CI and review, merged as 7ee4d2de); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "books_stripe_clearing_issue",
       "budget": 470,
       "units": [
@@ -794,7 +794,7 @@
       "dependencies": [
         "K-3"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED — PR #500 (STATUS, October 18: K-4A/B ENGINEERING MERGED, merge commit 3dd2dfca); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "batch_k_expense_photo_scope_if_needed",
       "budget": 470,
       "units": [
@@ -824,7 +824,7 @@
       "dependencies": [
         "K-4A"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED — PR #500 (STATUS, October 18: K-4A/B ENGINEERING MERGED, merge commit 3dd2dfca); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "batch_k_recurring_expense_identity",
       "budget": 450,
       "units": [
@@ -854,7 +854,7 @@
       "dependencies": [
         "K-4B"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED — STATUS, October 18 ('K-5 merged; K-6 complete implementation authored'); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "batch_k_export_provenance",
       "budget": 470,
       "units": [
@@ -883,7 +883,7 @@
       "dependencies": [
         "K-5"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED — STATUS, October 18 ('K-6 merged; K-7 full-scope report source authored'); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "20261019010000_batch_k6_book_assets",
       "budget": 430,
       "units": [
@@ -912,7 +912,7 @@
       "dependencies": [
         "K-6"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED — PR #506 (STATUS: main 78b3de99 after merged PR #506); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -940,7 +940,7 @@
       "dependencies": [
         "K-7"
       ],
-      "status": "IMPLEMENTED",
+      "status": "MERGED — PR #505 (STATUS: reconciled main 72bdfc5b, PR #505 merged K-8); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "none",
       "budget": 470,
       "units": [
