@@ -1,0 +1,106 @@
+{
+  "acceptance": [
+    "The pinned upstream two-instance oracle passes unchanged against the real /api/whoami handler on one disposable PostgreSQL database.",
+    "ci green at the exact head; review-gate green; every review comment read."
+  ],
+  "baseline": "3776193b8ab5e4bd3209bc3599040085d564e3fd",
+  "card": "docs/pr-cards/MCP-9.md",
+  "checks": {
+    "browser": [],
+    "db": [
+      "tests/mcp-rtc-two-process-http-integration.test.ts",
+      "tests/mcp-rtc-integration.test.ts",
+      "tests/mcp-rtc-journal-integration.test.ts"
+    ],
+    "node": [
+      "scripts/work-session.test.mjs"
+    ],
+    "unit": [
+      "tests/mcp-rtc-http.test.ts",
+      "tests/mcp-rtc-pass.test.ts",
+      "tests/mcp-rtc-public-contract.test.ts",
+      "tests/mcp-rtc-read-scopes.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "MCP-9",
+  "invariants": [
+    "Admission semantics never change: same keys, same windows, same limits; only the claim's ability to wait out a legitimate queue changes.",
+    "No credential appears in a URL, result, log or test argument; synthetic passes live only in the disposable test database and are cleaned up.",
+    "Client matrix honesty: nothing is marked PASSED from tests alone; real clients stay NOT_TRIED until a witnessed connection.",
+    "The limiter's other callers (public forms, uploads, decisions guard) keep their existing behavior and limits."
+  ],
+  "next": "After this lands: the owner trial (a real authorized client connection) and hosted redeployment remain, recorded NOT_TRIED/NOT_PROVEN on the card; they never block merging.",
+  "outcome": "MCP-9's remaining conformance proof is finished honestly: the shared rate limiter admits exactly the configured limit across two server processes and answers the rest with clean 429s (the pinned upstream two-instance oracle passes against the real /api/whoami handler on one disposable database), the local RTC probe suites are run and recorded, and the acceptance ledger is reconciled to proven facts as the landed successor of draft PR #798 \u2014 real-client entries stay NOT_TRIED until an owner-witnessed connection exists.",
+  "parent": "MCP-9",
+  "proposedFiles": [
+    "src/lib/rate-limit.ts",
+    "docs/pr-cards/execution/MCP-9.json",
+    "docs/pr-cards/MCP-9.md",
+    "docs/mcp/acceptance.json",
+    "docs/mcp/RTC-CONFORMANCE-PIN.md",
+    "docs/mcp/ROADMAP.md",
+    "docs/MASTER-ROADMAP.md",
+    "docs/STATUS.md",
+    "docs/pr-cards/work-index.json"
+  ],
+  "references": [
+    {
+      "anchor": "export async function isRateLimited",
+      "path": "src/lib/rate-limit.ts",
+      "purpose": "The shared database-backed limiter whose claim transaction times out under a two-process queue"
+    },
+    {
+      "anchor": "verifyTwoInstanceRateLimit",
+      "path": "tests/mcp-rtc-two-process-http-integration.test.ts",
+      "purpose": "The acceptance suite that runs the pinned upstream two-instance oracle against the real handler"
+    },
+    {
+      "anchor": "successes",
+      "path": "tests/fixtures/rtc-upstream/src/rate-limit.js",
+      "purpose": "The unchanged pinned upstream oracle (120 successes, all excess valid 429s)"
+    },
+    {
+      "anchor": "Too many requests",
+      "path": "src/domains/agent-control/passes.ts",
+      "purpose": "The RTC pass door's rate_limited refusal the oracle expects to see"
+    },
+    {
+      "anchor": "Two-process HTTP acceptance addition",
+      "path": "docs/pr-cards/MCP-9.md",
+      "purpose": "The card's own acceptance terms for this proof"
+    }
+  ],
+  "risk": "A limiter change that weakens admission control on the public forms that share it, a timeout raised so far that a genuinely stuck claim hangs a request, or an evidence record that claims more than the probes proved.",
+  "sequence": [
+    "S1: size the limiter claim transaction so a two-process queue drains instead of timing out; prove with the unchanged pinned two-instance oracle (120 successes, 60 valid 429s, revocation denied by both servers).",
+    "S2: run the local RTC suite set per-file on the lane database and record each verdict.",
+    "S3: reconcile the card, acceptance ledger, conformance pin and STATUS as the successor of draft PR #798; close #798 with the reason recorded."
+  ],
+  "slices": [
+    {
+      "acceptance": [
+        "tests/mcp-rtc-two-process-http-integration.test.ts passes end-to-end on the lane database: exactly 120 successes, 60 valid 429s, revoked pass denied by both servers.",
+        "Existing rate-limit and RTC suites still pass; public-form limiter callers unchanged in behavior."
+      ],
+      "id": "S1",
+      "title": "Two-process limiter fix"
+    },
+    {
+      "acceptance": [
+        "Every suite in the card's RTC set is run per-file and its verdict recorded; anything not locally provable is written NOT_PROVEN with its reason."
+      ],
+      "id": "S2",
+      "title": "Local RTC probe verdicts"
+    },
+    {
+      "acceptance": [
+        "Card boxes ticked only where proven; acceptance.json MCP-9 unit matches the evidence; STATUS entry tells the whole story including what remains NOT_TRIED.",
+        "Draft PR #798 closed with the successor reason recorded."
+      ],
+      "id": "S3",
+      "title": "Evidence reconciliation landed"
+    }
+  ],
+  "version": 1
+}

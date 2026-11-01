@@ -1,6 +1,6 @@
 # MCP roadmap — finite outcomes for Sol 5.6
 
-Owner-requested scope, approved to build by Chris 2026-10-25; engineering NOT STARTED. Stable sections MCP-1…MCP-11 below are the design; the implementation-ready build specs are in `docs/build-specs/engines/` (HEALTH-BACKUP, CONNECT-AGENT, AGENT-ACTIONS, REPAIR-CASES, MONITORING, OPTIMIZATION-COVERAGE, RTC, FEEDBACK, FEEDBACK-AGENT) with cards `docs/pr-cards/MCP-*.md`, all registered in `docs/pr-cards/work-index.json`. The people-only feedback box (MCP-10a) can be built first; it needs no MCP connection.
+Owner-requested scope, approved to build by Chris 2026-10-25; the original design remains below, but engineering is underway. Consult the cards and evidence ledger for merged source versus incomplete upstream, real-client and owner acceptance. Stable sections MCP-1…MCP-11 below are the design; the implementation-ready build specs are in `docs/build-specs/engines/` (HEALTH-BACKUP, CONNECT-AGENT, AGENT-ACTIONS, REPAIR-CASES, MONITORING, OPTIMIZATION-COVERAGE, RTC, FEEDBACK, FEEDBACK-AGENT) with cards `docs/pr-cards/MCP-*.md`, all registered in `docs/pr-cards/work-index.json`. The people-only feedback box (MCP-10a) can be built first; it needs no MCP connection.
 
 ## Delivery order and dependencies
 
