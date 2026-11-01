@@ -1,3 +1,9 @@
+## November 1 — MCP-9 two-process remainder CLOSED OUT (Lane 5)
+
+**What changed:** PR #829 merged on the owner's release (squash `dfb1eed5`): the rate limiter's claim transaction now waits out a legitimate queue instead of aborting into HTTP 500s under a two-instance burst, and the MCP-9 evidence record was reconciled to proven facts. This close-out ticks the card's two-process acceptance lines and marks ledger criterion MCP-9-A2 PASS on #829's exact-head evidence (CI run 41287468472: all 12 jobs SUCCESS including the two-process suite; Performance Baselines and review-gate SUCCESS; 0 unresolved threads), and records #829 in the ledger's merged slices.
+
+**What remains open on MCP-9 (unchanged, honestly recorded):** A1 PARTIAL — the pinned upstream generic direct-setter write probe is still NOT_PROVEN; A3 NOT_RUN — every real client NOT_TRIED (the owner trial, never a merge blocker), hosted redeployment and the optional Hub. MCP-9 is not complete and is not marked accepted.
+
 ## November 1 — Nov 1 date-boundary test hardening (Lane 4, branch ai/vivienne/nov1-date-tests)
 
 Five books/tax/insurance tests failed only because the calendar rolled to November 1 (one across the fall-back DST day): their fixtures silently relied on the real date — millisecond day arithmetic in the insurance fixtures, and rows dated by their real creation time in the books/tax fixtures. All five are test-only fixes that pin the fixtures to their scenario dates; no product code changed and every assertion keeps its original intent. Found by the PC bench's full run at 3776193b; reproduced standalone there before fixing.
