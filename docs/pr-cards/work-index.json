@@ -4806,7 +4806,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — DEC-1a merged PR #600 (2026-10-25); DEC-1b in PR #603",
+      "status": "MERGED — DEC-1a PR #600, DEC-1b PR #603; closed out in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "20261026030000_decision_record",
       "budget": 460,
       "units": [
