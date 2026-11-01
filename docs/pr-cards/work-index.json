@@ -4384,7 +4384,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "SOURCE PR #720 OPEN — five-area navigation and command search implemented; exact-head CI and review required before merge, owner phone look-over pending",
+      "status": "MERGED — PR #720 (five-area navigation, profile menu, command search); the card's acceptance boxes were fully ticked by its lane; index corrected in the 2026-10-31 work-index audit (Lane 5)", owner phone look-over pending",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4776,7 +4776,7 @@
         "AR-1",
         "AR-2"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #765, close-out PR #775 (card complete; STATUS records completion 2026-10-30); index corrected in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "20261031000000_notifications",
       "budget": 450,
       "units": [
