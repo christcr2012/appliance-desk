@@ -348,3 +348,13 @@ export async function updateReceiptTaxAction(raw: unknown): Promise<PurchasingAc
   for (const path of [`/desk/purchase-orders/${parsed.data.purchaseOrderId}`, "/desk/tasks", "/desk/today", "/desk/sales-tax"]) revalidatePath(path);
   return { status: "success" };
 }
+
+/** AR-6b: restore a supplier from the record page's header overflow (a
+ * plain link, so it runs as its own action rather than the state-shaped
+ * setSupplierArchivedAction the forms use). */
+export async function restoreSupplierAction(supplierId: string): Promise<void> {
+  const session = await requireRole("OWNER", "ADMIN");
+  await restoreSupplier(session.user.id, supplierId);
+  revalidatePath("/desk/suppliers");
+  revalidatePath(`/desk/suppliers/${supplierId}`);
+}
