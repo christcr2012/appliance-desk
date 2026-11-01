@@ -1,3 +1,7 @@
+## November 1 — Nov 1 date-boundary test hardening (Lane 4, branch ai/vivienne/nov1-date-tests)
+
+Five books/tax/insurance tests failed only because the calendar rolled to November 1 (one across the fall-back DST day): their fixtures silently relied on the real date — millisecond day arithmetic in the insurance fixtures, and rows dated by their real creation time in the books/tax fixtures. All five are test-only fixes that pin the fixtures to their scenario dates; no product code changed and every assertion keeps its original intent. Found by the PC bench's full run at 3776193b; reproduced standalone there before fixing.
+
 ## October 31 — MCP-9 remainder: two-process limiter fixed, evidence reconciled (Lane 5)
 
 **What changed:** `src/lib/rate-limit.ts` — the shared database limiter's claim transaction now waits out a legitimate queue (`maxWait` 20 s, `timeout` 30 s) instead of aborting at Prisma's defaults. Plus the MCP-9 evidence reconciliation drafted in PR #798, extended: card, acceptance ledger, conformance pin and roadmaps now match proven facts, with a new execution packet (`docs/pr-cards/execution/MCP-9.json`). No admission semantics changed for any caller; no live pass, provider or production setting was touched.
