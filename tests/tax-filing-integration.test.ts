@@ -127,6 +127,12 @@ describe.skipIf(!enabled)("T-6b1 filing load (real Postgres)", () => {
           taxCents: 290, amountDueCents: 10290,
         },
       });
+      // The packet dates a local (non-Stripe) invoice by its creation time;
+      // pin creation inside the scenario period so the test does not depend
+      // on the real calendar.
+      await prisma.invoice.update({
+        where: { id: invoiceId }, data: { createdAt: day("2026-10-15") },
+      });
       const line = await prisma.invoiceTaxLine.create({
         data: {
           invoiceId, jurisdictionId, rateVersionId: rateId,
@@ -236,8 +242,13 @@ describe.skipIf(!enabled)("T-6b1 filing load (real Postgres)", () => {
 
       await prisma.taxFilingAccount.update({ where: { id: accountId }, data: { basis: "ACCRUAL" } });
       await prisma.invoice.update({ where: { id: invoiceId }, data: { amountPaidCents: 10290 } });
-      await prisma.refund.create({
+      const refundRow = await prisma.refund.create({
         data: { invoiceId, amountCents: 10290, reason: "OTHER" },
+      });
+      // A refund belongs to the reporting period of its creation time; pin
+      // it inside the scenario period like the invoice above.
+      await prisma.refund.update({
+        where: { id: refundRow.id }, data: { createdAt: day("2026-10-20") },
       });
       const refunded = await loadFilingPacket(periodId, day("2026-11-15"));
       expect(refunded.status).toBe("READY");

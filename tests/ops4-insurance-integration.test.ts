@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { businessDateKey } from "@/lib/business-date";
+import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { archivePolicy, keepCertificateOnRecord, requestCertificate, savePolicy, saveReminderDays, saveWorkersComp } from "@/domains/insurance/actions";
 import { renewRecord } from "@/domains/paperwork/records";
 import { loadInsuranceOverview } from "@/domains/insurance/reads";
@@ -10,7 +10,14 @@ import { listInsuranceAttention } from "@/domains/exceptions/insurance-attention
 // OPS-4 on real Postgres.
 const target = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(target.hostname) && target.pathname === "/appliance_desk_test";
-const key = (offsetDays: number) => businessDateKey(new Date(Date.now() + offsetDays * 86_400_000));
+// Calendar-day offsets from today's Denver date key. Millisecond day
+// arithmetic (Date.now() + n * 86_400_000) lands a day short across the
+// fall-back transition (a 25-hour Denver day) — the product counts calendar
+// days between date keys, so the fixtures must be built the same way.
+const key = (offsetDays: number) => {
+  const [year, month, dayOfMonth] = businessDateKey(new Date()).split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, dayOfMonth + offsetDays)).toISOString().slice(0, 10);
+};
 
 describe.skipIf(!enabled)("insurance (real Postgres)", () => {
   const tag = randomUUID().replaceAll("-", "").slice(0, 8);
@@ -105,7 +112,7 @@ describe.skipIf(!enabled)("insurance (real Postgres)", () => {
     const id = await savePolicy(ownerId, null, { ...base, kind: "OTHER", policyNumber: "KEY-OPS4", expiresOnKey: key(50) });
     policies.push(id);
     const today = (await listInsuranceAttention(new Date())).find((r) => r.detail.includes("policy KEY-OPS4."));
-    const tomorrow = (await listInsuranceAttention(new Date(Date.now() + 86_400_000))).find((r) => r.detail.includes("policy KEY-OPS4."));
+    const tomorrow = (await listInsuranceAttention(businessDateFromKey(key(1))!)).find((r) => r.detail.includes("policy KEY-OPS4."));
     expect(today?.title).not.toBe(tomorrow?.title);
     expect(today?.todoKey).toBe(`insurance-renewal:${id}:first`);
     expect(tomorrow?.todoKey).toBe(today?.todoKey);
