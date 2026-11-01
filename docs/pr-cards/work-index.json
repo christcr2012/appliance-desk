@@ -4566,7 +4566,7 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "MERGED — PR #797 (squash baeaabf2) + close-out #799, 2026-10-31; sections 5–7 follow as AR-6b",
+      "status": "MERGED — PR #797 (squash baeaabf2) + close-out #799, 2026-10-31; sections 5–7 merged as AR-6b, PR #805 (squash 4dae0312), 2026-10-31",
       "migration": "none",
       "budget": 600,
       "units": [
