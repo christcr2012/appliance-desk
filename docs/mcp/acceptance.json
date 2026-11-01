@@ -1,7 +1,7 @@
 {
   "version": 1,
   "designBaseline": "ef8af2cdd2e7dcd1322ff0163b32ca6ab34c42fe",
-  "state": "PLANNED_NOT_IMPLEMENTED",
+  "state": "IMPLEMENTATION_IN_PROGRESS",
   "scopeAuthority": "Owner planning request October 17, 2026, including in-app feedback extension. No live activation authority.",
   "units": [
     {
@@ -417,19 +417,26 @@
       "roadmapAcceptance": [
         "M9"
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "criteria": [
         {
           "id": "MCP-9-A1",
           "requirement": "RTC doors conform to pinned upstream contract and use the same native authorization as direct MCP.",
-          "status": "NOT_RUN",
-          "evidence": []
+          "status": "PARTIAL",
+          "evidence": [
+            "PR #787 read-only RTC and native authorization; exact-head CI https://github.com/christcr2012/appliance-desk/actions/runs/41180116792. Pinned upstream generic direct-setter write probe remains NOT_PROVEN.",
+            "PR #793 local PKCE OAuth refresh-settings oracle; exact-head CI https://github.com/christcr2012/appliance-desk/actions/runs/41206019621. No real external-client proof.",
+            "Lane 5 remainder pass 2026-10-31 (this PR): wire-conformance 1/1, vendored pin byte-identical 3/3, write-policy 4/4, journal-integration 1/1 (preview/approval/confirm semantics, eight simultaneous executions dispatch exactly once, replay safe), public-contract 1/1, read-scopes 3/3 — all per-file on the lane database. The application-specific journal is proven; the pinned upstream generic direct-setter write probe remains NOT_PROVEN, so A1 stays PARTIAL."
+          ]
         },
         {
           "id": "MCP-9-A2",
           "requirement": "Two-process shared-database limits, pass lifecycle, result ownership and leak probes pass.",
-          "status": "NOT_RUN",
-          "evidence": []
+          "status": "PARTIAL",
+          "evidence": [
+            "PR #787 two independent HTTP processes with one disposable PostgreSQL limiter, pass revocation, owned result handles and application-specific journal; exact-head CI https://github.com/christcr2012/appliance-desk/actions/runs/41180116792. Does not certify every upstream write/leak probe.",
+            "Lane 5 remainder pass 2026-10-31 (this PR): the two-process limiter was found defective under burst — queued claims aborted at Prisma's default transaction waits and surfaced as HTTP 500s instead of admissions/429s (reproduced: 84 then 63 successes, 0 valid 429s). src/lib/rate-limit.ts now sizes the claim transaction (maxWait 20s, timeout 30s); a warm two-server probe against the real /api/whoami handler then returned the exact oracle counts (120 admissions, 60 valid 429s). The acceptance suite itself still exceeds the oracle's 10s per-request budget on this VM's cold tsx fixture servers, so its decisive run is this PR's exact-head CI; A2 flips to PASS in the close-out citing that run. Remaining suites per-file on the lane database: RTC set 45/45 green, limiter set 9/9 green."
+          ]
         },
         {
           "id": "MCP-9-A3",
@@ -440,14 +447,40 @@
       ],
       "testPaths": [
         "tests/mcp-rtc-integration.test.ts",
-        "tests/mcp-two-instance-limits.test.ts",
-        "tests/mcp-client-contract.test.ts"
+        "tests/mcp-rtc-wire-conformance.test.ts",
+        "tests/mcp-rtc-journal-integration.test.ts",
+        "tests/mcp-rtc-two-process-http-integration.test.ts",
+        "tests/mcp-oauth-roundtrip-integration.test.ts",
+        "tests/mcp-rtc-client-matrix.test.tsx"
       ],
-      "testPathsArePlanned": true,
-      "sourceRevision": null,
+      "testPathsArePlanned": false,
+      "sourceRevision": "2b189e5c79077d46c8583518b37d23c4650e099c",
       "pr": null,
       "ci": null,
-      "deployedRevision": null
+      "deployedRevision": null,
+      "mergedEngineeringSlices": [
+        {
+          "pr": 787,
+          "head": "c45c3d90463fbcba5575f7c7f61a8ba8c04ec90e",
+          "ciRun": 41180116792,
+          "reviewRun": 41180116750,
+          "scope": "read-only RTC foundation, two-process limiter and app-specific journal"
+        },
+        {
+          "pr": 793,
+          "head": "c52f194f7c74fdf0b9e56db5452743850b87ba31",
+          "ciRun": 41206019621,
+          "reviewRun": 41206019642,
+          "scope": "local PKCE OAuth refresh-settings preservation"
+        },
+        {
+          "pr": 794,
+          "head": "d05f7c9b461253d2d7f2a5da277a50bdaf55405f",
+          "ciRun": 41209589527,
+          "reviewRun": 41209589596,
+          "scope": "truthful client matrix and owner trial runbook"
+        }
+      ]
     }
   ],
   "externalAcceptance": [
@@ -507,11 +540,43 @@
     }
   ],
   "rtcClients": [
-    { "client": "Official MCP SDK", "status": "NOT_TRIED", "revision": null, "evidence": [] },
-    { "client": "Claude remote connector", "status": "NOT_TRIED", "revision": null, "evidence": [] },
-    { "client": "ChatGPT or Codex remote client", "status": "NOT_TRIED", "revision": null, "evidence": [] },
-    { "client": "Other MCP clients", "status": "NOT_TRIED", "revision": null, "evidence": [] },
-    { "client": "RTC CLI", "status": "NOT_TRIED", "revision": null, "evidence": [] },
-    { "client": "Optional Robinson Hub", "status": "NOT_TRIED", "revision": null, "evidence": [] }
-  ]
+    {
+      "client": "Official MCP SDK",
+      "status": "NOT_TRIED",
+      "revision": null,
+      "evidence": []
+    },
+    {
+      "client": "Claude remote connector",
+      "status": "NOT_TRIED",
+      "revision": null,
+      "evidence": []
+    },
+    {
+      "client": "ChatGPT or Codex remote client",
+      "status": "NOT_TRIED",
+      "revision": null,
+      "evidence": []
+    },
+    {
+      "client": "Other MCP clients",
+      "status": "NOT_TRIED",
+      "revision": null,
+      "evidence": []
+    },
+    {
+      "client": "RTC CLI",
+      "status": "NOT_TRIED",
+      "revision": null,
+      "evidence": []
+    },
+    {
+      "client": "Optional Robinson Hub",
+      "status": "NOT_TRIED",
+      "revision": null,
+      "evidence": []
+    }
+  ],
+  "evidenceReconciledOn": "2026-10-31",
+  "evidenceScope": "Only MCP-9 merged engineering slices reconciled here; other units retain legacy planning statuses pending independent evidence review. No deployed-client, Hub or owner acceptance inferred."
 }
