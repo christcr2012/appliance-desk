@@ -17,13 +17,13 @@ kit.
 - **DEC-1b** — spec 6–7 (screens, forms, import) + browser spec. MCP tools (spec 8) ship with MCP-3.
 
 ## Acceptance
-- [ ] Every `UNDECIDED`-capable field is covered by a registry subject (test).
-- [ ] Keep / Change / Ask / Enter answer / Reopen work for the owner, read-only for admins, refused for staff.
-- [ ] A provisional tax value calculates and is labelled "not confirmed"; confirming keeps history.
-- [ ] Downloaded .docx and PDF forms contain every open code; a filled .docx imports back to the same answers; the
+- [x] Every `UNDECIDED`-capable field is covered by a registry subject (test).
+- [x] Keep / Change / Ask / Enter answer / Reopen work for the owner, read-only for admins, refused for staff.
+- [x] A provisional tax value calculates and is labelled "not confirmed"; confirming keeps history.
+- [x] Downloaded .docx and PDF forms contain every open code; a filled .docx imports back to the same answers; the
       preview token prevents applying anything different from what was shown.
-- [ ] Nothing can be applied to the past; signed and billed history unchanged (test).
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Nothing can be applied to the past; signed and billed history unchanged (test).
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 - **DEC-1a (spec 1–5) — built, PR open (branch `ai/claude/dec-1a-decisions-data`), not merged.**
@@ -56,3 +56,13 @@ kit.
   setting's own screen (tax rules, Tax setup, filing basis, record keeping, Signing charges) cancel a waiting decision
   for it (audited); the attached form is bound to the preview and kept with a previewed question; a preview applies
   once; a waiting change whose decider lost owner access is cancelled with a To do instead of failing nightly.
+
+## Close-out — October 31 (work-index audit, Lane 5)
+
+Both halves merged — DEC-1a (PR #600, 2026-10-25) and DEC-1b (PR #603,
+Decisions & reviews screens, questionnaire forms and import) — and the
+decisions registry they shipped is load-bearing today (the MCP-8 settings
+map derives from its subjects; AR-8's page data carries DEC-1 states). The
+acceptance boxes were never ticked and the work-index still read
+"IN PROGRESS — DEC-1b in PR #603"; ticked and corrected in the 2026-10-31
+work-index audit. No behavior changed.
