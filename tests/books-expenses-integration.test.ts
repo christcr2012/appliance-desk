@@ -183,6 +183,12 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
       name: "Synthetic storage", vendorName: "Storage locker", amountCents: 7500,
       categoryId, paidFromAccountId, dayOfMonth: 8, active: true,
     });
+    // The scenario is set in October 2026: catch-up starts from the month the
+    // template was created, so pin the row's creation into the scenario month.
+    // Without this the test silently depends on the real calendar month.
+    await prisma.recurringExpense.update({
+      where: { id: templateId }, data: { createdAt: new Date("2026-10-05T13:00:00Z") },
+    });
     await Promise.allSettled(Array.from({ length: 4 }, () =>
       createDueRecurringExpenses(new Date("2026-10-18T13:00:00Z"))));
     expect(await prisma.expense.count({ where: { recurringExpenseId: templateId } })).toBe(1);

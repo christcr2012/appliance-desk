@@ -57,6 +57,12 @@ describe.skipIf(!enabled)("T-6b2 original filing and amendments (real Postgres)"
         data: { id: invoiceId, customerId, status: "OPEN",
           subtotalCents: 10000, amountDueCents: 10290, taxCents: 290 },
       });
+      // The packet dates a local (non-Stripe) invoice by its creation time;
+      // pin creation inside the scenario period so the test does not depend
+      // on the real calendar.
+      await prisma.invoice.update({
+        where: { id: invoiceId }, data: { createdAt: day("2026-10-15") },
+      });
       const line = await prisma.invoiceTaxLine.create({
         data: { invoiceId, jurisdictionId, rateVersionId: rateId, category: "RENTAL",
           taxableCents: 10000, exemptCents: 0, taxCents: 290, source: "ENGINE" },

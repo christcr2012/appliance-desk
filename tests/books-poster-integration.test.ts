@@ -69,6 +69,7 @@ describe("K-2A+K-2B source to immutable books",()=>{
   });
   it("posts receipt, invoice and settled allocation as distinct balanced unique events",async()=>{
     await prisma.invoice.create({data:{id:invoiceId,customerId,status:"OPEN",amountDueCents:2500,
+      issuedAt:new Date("2026-10-17T18:00:00Z"),
       lineItems:{create:{kind:"RENTAL",description:"Synthetic rental",amountCents:2500}}}});
     await prisma.receipt.create({data:{id:receiptId,customerId,source:"MANUAL",method:"CHECK",
       amountCents:2500,receivedOn:new Date("2026-10-17T18:00:00Z")}});
