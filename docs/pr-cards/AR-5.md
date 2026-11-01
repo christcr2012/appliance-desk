@@ -17,17 +17,17 @@ Reason: the route's on-device copy is a separate privacy/safety boundary with it
 - **AR-5b** — spec section 5 (My route with the person filter and the offline copy) + `e2e/route-offline.spec.ts`.
 
 ## Acceptance
-- [ ] Every fix in spec section 1 is done, each with a test (route filter, labels, Denver times, maintenance role
+- [x] Every fix in spec section 1 is done, each with a test (route filter, labels, Denver times, maintenance role
       check, visits order/cursor, repairs tabs, "Finish visit…").
-- [ ] Board: day/week/agenda, "Waiting for a time" capped, Schedule sheet books a visit including the double-booked
+- [x] Board: day/week/agenda, "Waiting for a time" capped, Schedule sheet books a visit including the double-booked
       confirm; staff see no schedule controls.
-- [ ] Visits list tabs, search by appliance number and cursor paging work (integration test).
-- [ ] My route: staff see only their own visits (plus unassigned when the setting allows); owner can switch to
+- [x] Visits list tabs, search by appliance number and cursor paging work (integration test).
+- [x] My route: staff see only their own visits (plus unassigned when the setting allows); owner can switch to
       Everyone; the saved copy shows offline, only for the same person and today, and is removed on sign-out.
-- [ ] Finishing a delivery/pickup/repair shows the hand-off toast from the spec table (staff never see money words).
-- [ ] Repairs list and record use plain words and the existing status transitions.
-- [ ] Axe, five sizes, light/dark, keyboard on every redesigned page; pages added to `migrated-pages.json`.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Finishing a delivery/pickup/repair shows the hand-off toast from the spec table (staff never see money words).
+- [x] Repairs list and record use plain words and the existing status transitions.
+- [x] Axe, five sizes, light/dark, keyboard on every redesigned page; pages added to `migrated-pages.json`.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 AR-5a started 2026-10-30 (Lane 6) — execution packet `docs/pr-cards/execution/AR-5A.json` (baseline `fa170dbd`, main after CU1-PERF #776); branch `ai/vivienne/ar-5a` in a native GitHub MCP workspace. AR-5a builds spec sections 1–4, 6–8 in slices S1–S6 per the packet; AR-5b (section 5) follows as its own PR. Drift found at packet time: section 1 fix 6 (Repairs area layout) is already delivered by AR-1's AreaLayout; the remaining section 1 fixes verified live against the tree (the maintenance read has no role check; `maintenancePriorityLabel` does not exist yet).
@@ -57,3 +57,11 @@ only when absent; inspect the final prerequisite exports once before coding.
    on the next online request, plus the spec’s poor-signal read path.
 5. Run affected jobs/maintenance regressions and the new route-offline spec on the supported launcher.
    New browser paths go in `e2e/shards.json`; follow the card’s existing size/keyboard/axe acceptance.
+
+## Close-out — October 31 (work-index audit, Lane 5)
+
+Both halves merged under Lane 6 — AR-5a (PR #782, close-out #786) and AR-5b
+(PR #791, close-out #792) — and the card's own Progress entry already records
+"Card AR-5 is complete". The acceptance boxes were never ticked and the
+work-index still read APPROVED; ticked and corrected in the 2026-10-31
+work-index audit. No behavior changed.
