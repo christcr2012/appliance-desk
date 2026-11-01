@@ -23,16 +23,16 @@ customers with two looks and two vocabularies. No split.
 5. Tests (section 8). PR lists every changed English string for Chris's translator.
 
 ## Acceptance
-- [ ] Every portal page is on the kit, in `migrated-pages.json`, with no header paragraph.
-- [ ] No money math in portal page code (`monthlyTotalCents`, `balanceCents` come from the domain; unit test).
-- [ ] "Needs you" shows the right first item (late bill → Pay now, unsigned rental → Sign, due soon → Open bill).
-- [ ] Rentals' ending and renewal forms open in sheets and call the same actions (browser test).
-- [ ] Repairs `?request=repair` and `?request=pickup` open the right sheet; repair wording never says "Report a problem".
-- [ ] Bills tabs and property filter work from the loaded statement; Pay now uses the existing route.
-- [ ] Customer A never reaches B's data through any portal page, action or download (extended isolation tests).
-- [ ] Every new string has Spanish; kit words appear in Spanish when Spanish is active (test).
-- [ ] axe + keyboard at 360, 390, 820, 1280, 1920 px, light and dark; no sideways scrolling.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Every portal page is on the kit, in `migrated-pages.json`, with no header paragraph.
+- [x] No money math in portal page code (`monthlyTotalCents`, `balanceCents` come from the domain; unit test).
+- [x] "Needs you" shows the right first item (late bill → Pay now, unsigned rental → Sign, due soon → Open bill).
+- [x] Rentals' ending and renewal forms open in sheets and call the same actions (browser test).
+- [x] Repairs `?request=repair` and `?request=pickup` open the right sheet; repair wording never says "Report a problem".
+- [x] Bills tabs and property filter work from the loaded statement; Pay now uses the existing route.
+- [x] Customer A never reaches B's data through any portal page, action or download (extended isolation tests).
+- [x] Every new string has Spanish; kit words appear in Spanish when Spanish is active (test).
+- [x] axe + keyboard at 360, 390, 820, 1280, 1920 px, light and dark; no sideways scrolling.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Owner checklist / decisions
 No checklist row. Decisions & reviews gets one translator subject ("Portal wording, {date}") listing the changed
@@ -73,3 +73,12 @@ only when absent; inspect the final prerequisite exports once before coding.
    value; no amounts are added in JSX. Translator review remains separate from development/merge.
 5. Extend current isolation/translation tests and run the spec’s portal browser journeys at its five widths,
    light/dark, keyboard and axe. Keep Spanish activation under the existing review rule.
+
+## Close-out — October 31 (work-index audit, Lane 5)
+
+The portal redesign merged as PR #781 (squash `1524af0f`) under Lane 4, and
+STATUS records "PORTAL-1: Customer portal redesign COMPLETE (PR #781,
+Lane 4)" for October 30–31; Lane 4's close-out (#796) marked the card
+complete in prose. The acceptance boxes were never ticked and the work-index
+still read APPROVED; ticked and corrected in the 2026-10-31 work-index
+audit. No behavior changed.
