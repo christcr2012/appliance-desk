@@ -5109,7 +5109,7 @@
         "MCP-5",
         "MCP-6"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #748 (2026-10-29); verified and closed out 2026-10-31 by Lane 5 (MCP-11-CLOSEOUT): feedback suites 24/24 green on current main",
       "migration": "additive (FeedbackEntry.authorKind, FeedbackCaseLink)",
       "budget": 450,
       "units": [
@@ -5120,8 +5120,8 @@
         "docs/mcp/README.md"
       ],
       "tests": [
-        "tests/mcp-feedback-integration.test.ts",
-        "tests/feedback-workflow-integration.test.ts"
+        "tests/mcp-feedback-agent-integration.test.ts",
+        "tests/feedback-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/MCP-11.md"
@@ -6195,6 +6195,10 @@
     {
       "id": "MCP-8-CLOSEOUT",
       "path": "docs/pr-cards/execution/MCP-8-CLOSEOUT.json"
+    },
+    {
+      "id": "MCP-11-CLOSEOUT",
+      "path": "docs/pr-cards/execution/MCP-11-CLOSEOUT.json"
     },
     {
       "id": "AR-5B",
