@@ -4722,7 +4722,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — React, offline shell, swipe and shortcuts merged via #608/#647/#649/#651/#652/#662/#663/#665; measured JavaScript CI guard PR #691 awaiting fresh exact-head CI and review",
+      "status": "MERGED — PRs #608 (shell), #647 (keyboard/refresh), #649 (skeletons), #651 (pull-to-refresh), #652 (remembered lists), #662 (swipe), #663 (optimistic snooze), #665 (React 19.3 + view transitions), #691 (bundle budget guard); remainders verified discharged and closed out 2026-10-31 (Lane 6)",
       "migration": "none",
       "budget": 480,
       "units": [
