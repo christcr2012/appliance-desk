@@ -8,7 +8,7 @@ second way in (passes)** — same catalog, same checks. The Robinson toolkit/hub
 - [x] Rate limits hold across two server instances (test): PR #787, exact-head full CI #41180116792.
 - [x] Results over 8 KB use owned 24-hour handles, re-authorized on read: PR #787, exact-head full CI #41180116792.
 - [x] The client list shows only clients actually tried; nothing marked passed from tests alone: PR #794, exact-head full CI #41209589527. No external clients have been tried.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] `ci` green at the exact head; every review comment read. Satisfied for PR #829 at `15626ec9`: ci SUCCESS (all 12 jobs), review-gate SUCCESS, every review comment read and answered (comments on #827/#829).
 
 ## Owner checklist
 "Try your assistant connection"; "Optional: connect through the Robinson hub". Never block merging.
@@ -31,9 +31,9 @@ MCP remains at `/api/mcp`, using a different credential kind.
 - [x] Introduce OWNER-issued pass-only HTTPS credentials: 32 random bytes, `rtc_pass_` plus 43 base64url characters, hash-only persistence, one-time display outside chat, revocation, scope/profile/area limits and definite expiry. The existing OAuth credentials must fail at the RTC door and RTC passes must fail at MCP.
 - [x] Reuse current app MCP catalog and guarded journal/dispatch; reject unknown tools and wrong scopes, read-only pass writes and RTC writes without both wire confirmation and the existing MCP-5 preview/approval. Every allowed change is independently read back and journaled. Never enable live payment/email/SMS/providers.
 - [x] Return RTC 1 manifest, metadata, search/describe, read-only batch (at most ten), scoped calls, owner whoami and OpenAPI; bound outputs to 8 KB and persist handles for 24 hours with same-pass reauthorization. No credential can appear in a URL, result, log or field filter.
-- [ ] Persist atomic database-backed rate limits and prove overlapping calls against two processes on one disposable PostgreSQL database. Also prove pass revocation/expiry, scope narrowing, idempotence, 8 KB boundary and connector refresh preserving selected settings.
+- [x] Persist atomic database-backed rate limits and prove overlapping calls against two processes on one disposable PostgreSQL database. Also prove pass revocation/expiry, scope narrowing, idempotence, 8 KB boundary and connector refresh preserving selected settings. Proven: two-process proof in PR #829 exact-head CI (run 41287468472) plus Lane 6 independent verification; revocation/expiry and scope narrowing in the pass/read-scopes suites; idempotence in the journal suite; 8 KB boundary in the HTTP suite; connector refresh in PR #793.
 - [x] Vendor/pin the upstream RTC 1 named probes under CI at the verified SHA; all applicable probes pass or explicitly remain NOT_PROVEN. Owner System health client matrix and `docs/mcp/acceptance.json` remain NOT_TRIED until a real authorized client connection is witnessed. Runbooks and owner guide describe optional Hub setup without changing other repos.
-- [ ] Exact-head CI, required review gate, drift/roadmap/status/database notes and merge requirements all pass before marking complete.
+- [x] Exact-head CI, required review gate, drift/roadmap/status/database notes and merge requirements all pass before marking complete. Satisfied for the PR #829 engineering slice (merged `dfb1eed5`); the card itself remains open on A1 (generic-write NOT_PROVEN) and A3 (clients NOT_TRIED).
 
 **Resolved specification difference:** The older local MCP-9 build draft proposed 30/90/365-day passes (90 days initially).
 Pinned RTC 1 §2 instead specifies 24 hours by default, maximum 30 days for ordinary passes
@@ -47,9 +47,9 @@ during tests.
 
 ## Two-process HTTP acceptance addition — October 31, 2026
 
-- [ ] Launch **two independently started Node HTTP servers** running the real `/api/whoami` handler against **one disposable PostgreSQL database**; issue one synthetic, two-factor-enrolled owner pass in that same database and send concurrent requests through both ports.
-- [ ] Run the **unchanged pinned upstream** `verifyTwoInstanceRateLimit` oracle at the existing 120 requests/10 minutes policy: exactly 120 successful replies, all excess replies HTTP 429 with RTC `rate_limited` and a positive Retry-After. A single-process limiter unit test is not sufficient evidence.
-- [ ] Prove revocation is denied by both servers after the probe, remove synthetic pass/user/audit/limiter records, never log or encode the pass in source or command-line arguments, and never touch production data.
+- [x] Launch **two independently started Node HTTP servers** running the real `/api/whoami` handler against **one disposable PostgreSQL database**; issue one synthetic, two-factor-enrolled owner pass in that same database and send concurrent requests through both ports. Done by `tests/mcp-rtc-two-process-http-integration.test.ts` as shipped (PR #787) and re-proven in PR #829 CI.
+- [x] Run the **unchanged pinned upstream** `verifyTwoInstanceRateLimit` oracle at the existing 120 requests/10 minutes policy: exactly 120 successful replies, all excess replies HTTP 429 with RTC `rate_limited` and a positive Retry-After. A single-process limiter unit test is not sufficient evidence. Proven in PR #829 exact-head CI at `15626ec9` (CI run 41287468472, all unit shards green) after the limiter fix in `src/lib/rate-limit.ts`; independently reproduced by Lane 6 on port 5435 (120 admitted / 60 clean 429s / zero 500s).
+- [x] Prove revocation is denied by both servers after the probe, remove synthetic pass/user/audit/limiter records, never log or encode the pass in source or command-line arguments, and never touch production data. Proven by the same suite (post-probe revocation denied by both servers; fixture cleanup in-suite); no production data touched at any point.
 - [ ] Keep MCP-9 draft unless the remaining **upstream journaled-write and OAuth-refresh** probes are actually proven; a green new test does not change the status of skipped probes. Capture exact-head test and review evidence before checking a box.
 
 ## Real-database RTC journal acceptance addition — October 31, 2026
@@ -125,3 +125,15 @@ the pinned upstream **generic** direct-setter write oracle, every real client
 (NOT_TRIED), hosted redeployment and the optional Hub. This PR is the landed
 successor of draft PR #798 (same reconciliation, rebased and extended);
 #798 is closed with that reason recorded.
+
+## Close-out of the two-process remainder — November 1, 2026 (Lane 5)
+
+PR #829 merged at exact head `15626ec9` (squash `dfb1eed5`) on the owner's
+release, with ci, Performance Baselines and review-gate all SUCCESS and zero
+unresolved threads. The two-process acceptance lines above are ticked on that
+exact-head CI evidence (run 41287468472) and Lane 6's independent
+verification. Ledger criterion MCP-9-A2 is now PASS. What remains open on
+this card is unchanged and honestly recorded: A1 PARTIAL (the pinned upstream
+generic direct-setter write probe is still NOT_PROVEN), A3 NOT_RUN (every
+real client NOT_TRIED — the owner trial), hosted redeployment and the
+optional Hub. MCP-9 is not complete and is not marked accepted.

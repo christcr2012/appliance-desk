@@ -432,10 +432,11 @@
         {
           "id": "MCP-9-A2",
           "requirement": "Two-process shared-database limits, pass lifecycle, result ownership and leak probes pass.",
-          "status": "PARTIAL",
+          "status": "PASS",
           "evidence": [
             "PR #787 two independent HTTP processes with one disposable PostgreSQL limiter, pass revocation, owned result handles and application-specific journal; exact-head CI https://github.com/christcr2012/appliance-desk/actions/runs/41180116792. Does not certify every upstream write/leak probe.",
-            "Lane 5 remainder pass 2026-10-31 (this PR): the two-process limiter was found defective under burst — queued claims aborted at Prisma's default transaction waits and surfaced as HTTP 500s instead of admissions/429s (reproduced: 84 then 63 successes, 0 valid 429s). src/lib/rate-limit.ts now sizes the claim transaction (maxWait 20s, timeout 30s); a warm two-server probe against the real /api/whoami handler then returned the exact oracle counts (120 admissions, 60 valid 429s). The acceptance suite itself still exceeds the oracle's 10s per-request budget on this VM's cold tsx fixture servers, so its decisive run is this PR's exact-head CI; A2 flips to PASS in the close-out citing that run. Remaining suites per-file on the lane database: RTC set 45/45 green, limiter set 9/9 green."
+            "Lane 5 remainder pass 2026-10-31 (this PR): the two-process limiter was found defective under burst — queued claims aborted at Prisma's default transaction waits and surfaced as HTTP 500s instead of admissions/429s (reproduced: 84 then 63 successes, 0 valid 429s). src/lib/rate-limit.ts now sizes the claim transaction (maxWait 20s, timeout 30s); a warm two-server probe against the real /api/whoami handler then returned the exact oracle counts (120 admissions, 60 valid 429s). The acceptance suite itself still exceeds the oracle's 10s per-request budget on this VM's cold tsx fixture servers, so its decisive run is this PR's exact-head CI; A2 flips to PASS in the close-out citing that run. Remaining suites per-file on the lane database: RTC set 45/45 green, limiter set 9/9 green.",
+            "Close-out 2026-11-01: PR #829 merged at exact head 15626ec9 (squash dfb1eed5) on the owner release; exact-head CI run 41287468472 all 12 jobs SUCCESS including the two-process suite, Performance Baselines SUCCESS, review-gate SUCCESS, 0 unresolved threads. A2 is PASS on that evidence; A1 stays PARTIAL and A3 NOT_RUN."
           ]
         },
         {
@@ -454,7 +455,7 @@
         "tests/mcp-rtc-client-matrix.test.tsx"
       ],
       "testPathsArePlanned": false,
-      "sourceRevision": "2b189e5c79077d46c8583518b37d23c4650e099c",
+      "sourceRevision": "dfb1eed5557052fb3bee19271aa7cd434e7ec9b5",
       "pr": null,
       "ci": null,
       "deployedRevision": null,
@@ -472,6 +473,13 @@
           "ciRun": 41206019621,
           "reviewRun": 41206019642,
           "scope": "local PKCE OAuth refresh-settings preservation"
+        },
+        {
+          "pr": 829,
+          "head": "15626ec96758bb2442b0c5efefa98097c79cfc1e",
+          "ciRun": 41287468472,
+          "reviewRun": null,
+          "scope": "two-process limiter fix (claim transaction waits) and evidence reconciliation; successor of #826/#827, carrying draft #798"
         },
         {
           "pr": 794,
