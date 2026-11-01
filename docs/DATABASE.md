@@ -1,3 +1,17 @@
+## October 31 — PB-FIX-1 maintained customer owed total (additive migration 20261219000000_customer_owed_total)
+
+`Customer.owedCents` (integer, default 0, backfilled in the same migration) holds
+`SUM(GREATEST(0, amountDueCents - amountPaidCents))` over the customer's invoices in
+(`OPEN`, `PARTIALLY_PAID`, `DELINQUENT`, `FAILED`) — the value the customers list's owed-desc
+ordering used to re-aggregate from the whole Invoice table on every call. The
+`Invoice_maintain_customer_owed` AFTER trigger (function `maintain_customer_owed_cents`)
+adjusts the total by the change in each written invoice's contribution inside the writing
+transaction — inserts, updates (including customer reassignment), and deletes, from any
+writer — so there is no application path to miss. Sort/display total only; invoices remain
+the money source of truth, and no billing computation reads the column. Backup policy: no
+change (the column rides with the Customer row; a restore recomputes nothing — if drift is
+ever suspected, re-running the migration's backfill UPDATE is the repair).
+
 ## October 30 — MCP-9 RTC passes and owned results (additive)
 
 Migration `20261030030000_mcp9_rtc_passes` adds a `McpConnection.kind` selector (existing rows default CONNECTOR), `AgentPass` containing only a 64-character SHA-256 digest of a one-time owner-issued 256-bit pass, scopes/profile, connection, expiry and revocation, and `AgentResult` with hashed opaque 24-hour handles and scoped payloads. Both new models are **excluded from business backups**: credentials and short-lived reply handles must not be restored or reactivated. This migration neither issues a live pass nor broadens an existing OAuth connection's authority.
