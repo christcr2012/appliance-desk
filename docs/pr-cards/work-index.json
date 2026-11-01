@@ -5151,7 +5151,7 @@
         "tests/customer-isolation.test.ts",
         "e2e/portal.spec.ts"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #781 (squash 1524af0f), Lane 4; STATUS records the redesign COMPLETE 2026-10-30/31, close-out #796; closed out in the 2026-10-31 work-index audit (Lane 5)",
       "units": [
         "PORTAL-1"
       ]
