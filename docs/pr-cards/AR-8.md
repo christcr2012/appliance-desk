@@ -33,14 +33,14 @@ row he can find by search, with its explanation, "Restore recommended" and its h
    card Progress.
 
 ## Acceptance
-- [ ] Every BusinessSettings field is a row, part of a panel, or listed as not a setting with a reason (test).
-- [ ] Every row explains what it does, its starting value and why, and who can change it; Restore recommended works.
-- [ ] The eight stored settings that had no screen can be changed and are audited (tests).
-- [ ] Saving from an old page is refused with the conflict message, for rows and sections (test).
-- [ ] Each row shows who changed it last and when; History and Undo work from the row.
-- [ ] Search finds rows by name and keyword; old section links land in the right place.
-- [ ] ADMIN sees owner-only rows read-only and the server refuses their saves; STAFF never reaches Settings.
-- [ ] Axe + 5 sizes, keyboard; `ci` green at the exact head; every review comment read.
+- [x] Every BusinessSettings field is a row, part of a panel, or listed as not a setting with a reason (test).
+- [x] Every row explains what it does, its starting value and why, and who can change it; Restore recommended works.
+- [x] The eight stored settings that had no screen can be changed and are audited (tests).
+- [x] Saving from an old page is refused with the conflict message, for rows and sections (test).
+- [x] Each row shows who changed it last and when; History and Undo work from the row.
+- [x] Search finds rows by name and keyword; old section links land in the right place.
+- [x] ADMIN sees owner-only rows read-only and the server refuses their saves; STAFF never reaches Settings.
+- [x] Axe + 5 sizes, keyboard; `ci` green at the exact head; every review comment read.
 
 ## Not in this card
 New settings from later cards (they add their catalog rows); notification preferences (AR-13); the banner.
@@ -71,3 +71,15 @@ Packet + drift check written 2026-10-28 by Lane 6 (prep only — no code yet). B
 
 - 2026-10-28 — Built on `ai/vivienne/ar-8` (Lane 6) in six steps: S1 spec §1 fixes (bounded `checkUndo`, self-guarding `listSettingsHistory`, the no-revision `updateSettingsAction` fallback deleted); S2 the catalog (`src/domains/settings/catalog.ts` — all 214 BusinessSettings fields are a row, a panel cover, or NOT_A_SETTING with a reason; coverage test reads the Prisma model); S3 the revisioned row save (`saveSettingRowAction`, keys-form `expectedRevision`, the delivery-window cross-field rule inside the locked save, `{ after, auditId }` return, `setApprovalExpiryDays` exported); S4 `getSettingsPage` (role/feature-shaped rows, one-query last-change walk, DEC-1 states); S5 the kit `SettingRow`/`SettingsLayout`, the settings frame layout, the catalog page (old section ids redirect; every existing editor opens from its panel row), command-bar entries; S6 registration (`migrated-pages.json`, `e2e/ar8-settings.spec.ts` in browser-a) and these docs. Verified locally: the new unit/integration suites green on Lane 6's own cluster (catalog 5/5, history bounds 5/5, row save 8/8, page data 4/4), preflight exit 0, full typecheck clean.
 - 2026-10-28 — Review rounds on PR #726 (successor of #724 after AR-4a landed): round 1 fixed the CI fallout (catalog coverage for AR-4a's `rentalEndReasons`; the settings frame moved from the settings layout into the catalog page so sub-pages keep their own headings; Change-sheet number inputs labeled by kind; five specs open their panel first; the remember-device spec uses the settings row). Round 2 fixed all four Codex findings: undo enforces the catalog's owner-only rule (P1) and the delivery-window cross-field rule (P2); the three domain-writer row saves (`setRetiredFollowUpDays`, `setApprovalExpiryDays`, `updateTrustedDeviceSettings`) check the page revision inside their locked transactions (P2); the driving-origin panel is wired to a real form over `setVerifiedDrivingOrigin` (P2, it opened empty). More specs ported to the panel/row UI (job roles, mandatory signing policy, delivery zones, scenario-10 price step, settings-history preview + stale-save now exercise the row Change sheet). New regression tests: admin-undo refusal, invalid-window undo refusal, stale domain-writer save refusal.
+
+## Close-out — October 31 (work-index audit, Lane 5)
+
+The Settings rebuild merged as PR #743 ("AR-8: Settings rebuild — one
+catalog of every setting", successor of #739) under Lane 6, after the build
+and two review rounds recorded in this card's Progress. The catalog it
+shipped is the live source the MCP-8 settings map derives from. The two
+close-out items once owed alongside the merge are both done: the
+DQ-CONT-SUCCESSOR owner answer is filed in `docs/OWNER-INPUTS.md` (Chris's
+direction, recorded 2026-10-28), and this PR supplies the merged wording for
+STATUS and the work-index, which still read "BUILT — successor PR … CI
+pending". No behavior changed.
