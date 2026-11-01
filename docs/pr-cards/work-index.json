@@ -4623,7 +4623,7 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "BUILT — successor PR of #732 opened 2026-10-28 from main after the CI timeout fix (#737); CI pending",
+      "status": "MERGED — PR #743 (Settings rebuild, one catalog of every setting), Lane 6; DQ-CONT-SUCCESSOR filed in OWNER-INPUTS; closed out in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "none",
       "budget": 520,
       "units": [
