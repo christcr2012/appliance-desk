@@ -16,15 +16,15 @@ fixes touch the same functions. Expected size is reviewable (mostly page restyle
 diff passes ~1,500 changed lines, split Purchases/Parts/Suppliers into AR-6b and write the reason in the PR.
 
 ## Acceptance
-- [ ] Every fix in spec section 1 is done, each with a test (role checks, staff parts DTO, retire guard, purchase
+- [x] Every fix in spec section 1 is done, each with a test (role checks, staff parts DTO, retire guard, purchase
       total in the domain, Denver dates and plain status words, bounded reads, stable cursor order).
-- [ ] Fleet tabs, search by appliance number/serial/model, bulk status change with allowed statuses only.
-- [ ] Appliance record: header, stat strip, next step, status-based primary action, retire behind a confirmation
+- [x] Fleet tabs, search by appliance number/serial/model, bulk status change with allowed statuses only.
+- [x] Appliance record: header, stat strip, next step, status-based primary action, retire behind a confirmation
       with a reason, tabs; staff see the operational view only.
-- [ ] Purchases with the Parts orders view; `/desk/purchase-orders` redirects; Parts and Suppliers cursor lists.
-- [ ] Retired tab restyled with counts and bulk "Mark done".
-- [ ] Axe, five sizes, light/dark, keyboard; pages added to `migrated-pages.json`.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Purchases with the Parts orders view; `/desk/purchase-orders` redirects; Parts and Suppliers cursor lists.
+- [x] Retired tab restyled with counts and bulk "Mark done".
+- [x] Axe, five sizes, light/dark, keyboard; pages added to `migrated-pages.json`.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 AR-6 STARTED 2026-10-31 (Lane 6) — execution packet `docs/pr-cards/execution/AR-6.json` (baseline `02b35050`, main after the AR-5b close-out #792); branch `ai/vivienne/ar-6` in a fresh native GitHub MCP workspace. The card's split rule is invoked at packet time: six pages plus the eight section 1 fixes cannot stay reviewable in one PR, so this PR is S1 section 1 domain fixes (all twelve role checks, the RETIRED refusal, `purchaseReceiptTotalCents`, the role-shaped `getPartsList`) + S2 shared words and Fleet + S3 the appliance record + S4 Retired and registration; Purchases/Parts/Suppliers pages (spec sections 5–7) follow as AR-6b over the reads this PR lands. Drift found at packet time: spec section 8 says the retired follow-up-days setting stays on the Retired page "until AR-8" — AR-8 has shipped it as the Settings catalog row `retiredFollowUpDays` (writer `setRetiredFollowUpDays`), so this PR REMOVES the page's local `ReminderSetting` block instead of restyling it; the built-in views registry already maps the `inventory` ListKey to `/desk/inventory`, so the fleet views register under that key; spec section 9's "opens an appliance in the side panel" is read against the post-AR-1 record navigation at build time (the record is a full page; the browser test follows the real navigation).
@@ -53,3 +53,11 @@ only when absent; inspect the final prerequisite exports once before coding.
 
 - 2026-10-31 (CI cycle 1, head 731c14df): four red shards. Ours, fixed together and verified (kit-guards 182/182 after returning the fleet+retired registry kinds to their pre-AR-6 "other" — kind "list" is the guard's DataTable contract; built-in-views green after the inventory views went back to status params, which the fleet parser maps to tabs, keeping the AR-12 invariant; fleet-report green on the Workshop bench after its earnings assertions moved to the record's Money tab). Not ours: staff-security's dispatch-board case (passed in full on the bench; queue-volume-dependent, the family main's STATUS already records) and website-editor's edit/preview case (fails on the bench with a different symptom; no shared file or domain with this PR). Cycle 2 decides.
 - 2026-10-31: MERGED — PR #797, squash baeaabf2, exact head 40921fbb. CI cycle 2 (run 41221721768) fully green after the cycle-1 fix set; the App-push head fired zero runs, so the final head was pushed once from the Workshop under Chris's standing CI exception (verified tree c58b0ce4 both sides). Review gate waived (self-reviewed; Codex at its usage limit). AR-6b (spec sections 5–7: Purchases, Parts, Suppliers pages over these reads, plus the listPurchases cursor conversion and the staff Parts-without-prices browser case) is the follow-on card.
+
+## Close-out — October 31 (work-index audit, Lane 5)
+
+The card's full scope is on main: sections 1–4 via AR-6 (PR #797, close-out
+#799) and sections 5–7 via AR-6b (PR #805, close-out #813), and the
+work-index already records the card MERGED with that split. The acceptance
+boxes above were the last unticked paperwork in the audit; ticked here on
+the two PRs' recorded evidence. No behavior changed.
