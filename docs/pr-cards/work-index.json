@@ -4501,7 +4501,7 @@
         "AR-12",
         "LD-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — all four units: AR-4a PR #723, AR-4b PR #760, AR-4c PR #761, AR-4d PR #773; closed out in the 2026-10-31 work-index audit (Lane 5)",
       "migration": "additive (RentalAgreement.endReason/endReasonNote, BusinessSettings.rentalEndReasons)",
       "budget": 500,
       "units": [
