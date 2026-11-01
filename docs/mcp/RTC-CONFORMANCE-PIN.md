@@ -13,7 +13,6 @@ database (120 admitted and 60 refused), and tested the app's synthetic HTTP jour
 with separate owner approval and idempotent confirmation. The upstream generic
 direct-setter write probe still does not match Appliance Desk's mandatory owner journal,
 and real-client acceptance is NOT_TRIED. The local PKCE OAuth refresh selection-preservation test executes the unmodified
-pinned oracle against the actual OAuth token endpoint and persisted grants; first
-full CI passed at `5462fad2` (run #41203243797). This remains local synthetic
+pinned oracle against the actual OAuth token endpoint and persisted grants; final merged PR #793 head `c52f194` passed full CI #41206019621 and Review Gate #41206019642. This remains local synthetic
 engineering evidence, not proof of any external client or full upstream write compatibility.
-No real owner credentials, production accounts or outside repository changes are involved.
+PR #794 also merged the evidence-gated client matrix with exact-head full CI #41209589527 and Review Gate #41209589596; all declared external clients remain NOT_TRIED. No real owner credentials, production accounts or outside repository changes are involved.

@@ -49,6 +49,15 @@ export async function isRateLimited(
   const nowMs = Date.now();
   const cutoff = nowMs - windowMs;
 
+  // The advisory lock below serializes claims for one key across every
+  // server process, so a burst routed to two instances forms a queue.
+  // Prisma's default transaction waits (2 s to acquire a connection, 5 s
+  // to finish) abort queued claims long before the queue drains, and the
+  // caller surfaces that abort as a server error instead of an admission
+  // or a clean rate_limited refusal. These bounds let a legitimate queue
+  // drain: a claim's own database work is a lock, one read and one write,
+  // so even a few hundred queued claims finish well inside them, while a
+  // genuinely stuck claim still fails instead of hanging forever.
   return prisma.$transaction(async (tx) => {
     // pg_advisory_xact_lock returns void. Execute it as a statement rather
     // than asking the adapter to deserialize a result column.
@@ -86,5 +95,5 @@ export async function isRateLimited(
     });
 
     return limited;
-  });
+  }, { maxWait: 20_000, timeout: 30_000 });
 }
