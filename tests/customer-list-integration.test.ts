@@ -18,6 +18,7 @@ import {
   CUSTOMER_SEGMENTS,
 } from "@/domains/customers/segments";
 import { customerContactKeys } from "@/domains/customers/keys";
+import { ensureWalkInCustomer } from "@/domains/sales/walk-in";
 import { getRentalEndingNoticeDays } from "@/domains/agreements/ending-notice";
 import { billOwedWhere } from "@/domains/billing/bill-status";
 
@@ -186,10 +187,12 @@ describe.skipIf(!ready)("CU-1 customer list (integration)", () => {
       data: { rentalLineId: line.id, applianceId: appliance.id },
     });
 
-    // The walk-in: the seed's built-in counter-sale customer (the database
-    // allows at most one) — it must never appear in the view or the list.
-    const walkIn = await prisma.customer.findFirst({ where: { isWalkIn: true }, select: { id: true } });
-    walkInId = walkIn?.id ?? "";
+    // The walk-in: the built-in counter-sale customer (the database allows
+    // at most one). It is created lazily by the sales domain, so ensure it
+    // here instead of assuming an earlier suite already made one — on a
+    // fresh database this file can run first. It must never appear in the
+    // view or the list.
+    walkInId = (await prisma.$transaction((tx) => ensureWalkInCustomer(tx))).customerId;
   });
 
   afterAll(async () => {

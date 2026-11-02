@@ -122,15 +122,18 @@ function filtersSql(p: CustomerListParams, staff: boolean): Prisma.Sql {
       JOIN "Appliance" ap ON ap."id" = aa."applianceId"
       WHERE ra."customerId" = c."id" AND aa."unassignedAt" IS NULL
         AND ra."status" = 'ACTIVE' AND ap."assetNumber" ILIKE ${q})`;
-    if (digits.length >= 4) {
-      parts.push(Prisma.sql`(c."phoneDigits" LIKE ${`%${digits}%`} OR ${asset})`);
-    } else {
-      parts.push(Prisma.sql`(u."name" ILIKE ${like} OR lower(u."email") ILIKE ${`%${q.toLowerCase()}%`}
-        OR c."companyName" ILIKE ${like}
-        OR EXISTS (SELECT 1 FROM "ServiceAddress" sa WHERE sa."customerId" = c."id"
-          AND (sa."line1" ILIKE ${like} OR sa."city" ILIKE ${like}))
-        OR ${asset})`);
-    }
+    // One OR group over every searchable field: a mixed query ("Perf … 19999")
+    // is a name search that happens to contain digits, so the phone-digits
+    // branch ADDS to the text branches instead of replacing them.
+    const phone =
+      digits.length >= 4
+        ? Prisma.sql` OR c."phoneDigits" LIKE ${`%${digits}%`}`
+        : Prisma.empty;
+    parts.push(Prisma.sql`(u."name" ILIKE ${like} OR lower(u."email") ILIKE ${`%${q.toLowerCase()}%`}
+      OR c."companyName" ILIKE ${like}
+      OR EXISTS (SELECT 1 FROM "ServiceAddress" sa WHERE sa."customerId" = c."id"
+        AND (sa."line1" ILIKE ${like} OR sa."city" ILIKE ${like}))${phone}
+      OR ${asset})`);
   }
   if (p.city?.length) {
     parts.push(Prisma.sql`EXISTS (SELECT 1 FROM "ServiceAddress" sc
@@ -294,12 +297,17 @@ function pastDueLateral(startToday: Date): Prisma.Sql {
   ) pd ON true`;
 }
 
+const NULL_JOB_LATERAL = Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::int AS "nextVisitDurationMinutes") nj ON true`;
+const NULL_PD_LATERAL = Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::int AS "pastDueCents") pd ON true`;
+const NULL_OB_LATERAL = Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::text AS "obId", NULL::text AS "obStatus", NULL::int AS "obOwed", NULL::text AS "obStripe", NULL::text AS "obSale") ob ON true`;
+
 async function fetchRows(
   where: Prisma.Sql,
   sort: CustomerSort,
   staff: boolean,
   startToday: Date,
   windowEnd: Date,
+  hydrate = true,
 ): Promise<RawRow[]> {
   const money = staff
     ? Prisma.sql`NULL::int AS "monthlyRentCents", NULL::int AS "owedCents",
@@ -316,11 +324,42 @@ async function fetchRows(
       v."nextBillOn", v."endingOn", v."pickupAt", v."propertyCount", v."city",
       ob."obId", ob."obStatus", ob."obOwed", ob."obStripe", ob."obSale"
     ${BASE_FROM}
-    ${nextJobLateral()}
-    ${staff ? Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::int AS "pastDueCents") pd ON true` : pastDueLateral(startToday)}
-    ${staff ? Prisma.sql`LEFT JOIN LATERAL (SELECT NULL::text AS "obId", NULL::text AS "obStatus", NULL::int AS "obOwed", NULL::text AS "obStripe", NULL::text AS "obSale") ob ON true` : oldestBillLateral()}
+    ${hydrate ? nextJobLateral() : NULL_JOB_LATERAL}
+    ${staff || !hydrate ? NULL_PD_LATERAL : pastDueLateral(startToday)}
+    ${staff || !hydrate ? NULL_OB_LATERAL : oldestBillLateral()}
     WHERE ${where}
     ${order}`);
+}
+
+type Hydration = Pick<
+  RawRow,
+  "nextVisitDurationMinutes" | "pastDueCents" | "obId" | "obStatus" | "obOwed" | "obStripe" | "obSale"
+>;
+
+/**
+ * The per-row detail laterals (next-visit duration, past-due sum, oldest open
+ * bill) for just the rows a list window actually shows. Running them over the
+ * whole segment cost three extra per-customer probes on every row; the window
+ * is at most WINDOW_CAP ids, so they run there instead. Staff never receives
+ * the money laterals.
+ */
+async function hydrateWindow(
+  ids: string[],
+  staff: boolean,
+  startToday: Date,
+): Promise<Map<string, Hydration>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma.$queryRaw<(Hydration & { id: string })[]>(Prisma.sql`
+    SELECT v."id",
+      nj."nextVisitDurationMinutes",
+      pd."pastDueCents",
+      ob."obId", ob."obStatus", ob."obOwed", ob."obStripe", ob."obSale"
+    FROM "customer_list_v1" v
+    ${nextJobLateral()}
+    ${staff ? NULL_PD_LATERAL : pastDueLateral(startToday)}
+    ${staff ? NULL_OB_LATERAL : oldestBillLateral()}
+    WHERE v."id" IN (${Prisma.join(ids)})`);
+  return new Map(rows.map((r) => [r.id, r]));
 }
 
 export async function getCustomerList(
@@ -342,7 +381,7 @@ export async function getCustomerList(
       : (p.sort ?? "attention");
 
   const where = Prisma.sql`${filtersSql(p, staff)} AND ${segmentSql({ ...p, segment }, startToday, windowEnd)}`;
-  const all = await fetchRows(where, sort, staff, startToday, windowEnd);
+  const all = await fetchRows(where, sort, staff, startToday, windowEnd, false);
 
   const ordered: CursorValue[] = all.map((r) => ({
     v: sortValueOf(sort, r, startToday, windowEnd),
@@ -354,6 +393,15 @@ export async function getCustomerList(
     0,
     Math.min(through + (p.pageSize ?? PAGE_SIZE), WINDOW_CAP),
   );
+  const hydration = await hydrateWindow(
+    windowValues.map((w) => w.id),
+    staff,
+    startToday,
+  );
+  for (const r of all) {
+    const h = hydration.get(r.id);
+    if (h) Object.assign(r, h);
+  }
   const capped = windowValues.length >= WINDOW_CAP && ordered.length > windowValues.length;
   const hasMore = !capped && ordered.length > windowValues.length;
   const nextCursor = hasMore
