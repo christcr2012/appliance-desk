@@ -1,3 +1,9 @@
+## November 2 — Billing deadlock correction under review (draft PR #831)
+
+**In progress:** Scheduled CI #41510210056 on unchanged main exposed PostgreSQL 40P01 when a Stripe invoice.paid webhook raced an invoice write-off. The webhook takes Customer → Invoice locks; write-off previously took Invoice first, and the invoice owed-total trigger also updates Customer. Draft PR #831 changes write-off to lock Customer before Invoice and rechecks the invoice's current customer and paid status, preserving held-payment, receipt, audit and approval behavior. The existing race integration test uses the canonical lock order; its 20-round webhook race assertions are unchanged.
+
+**Verification / next:** Initial PR #831 CI #41529806520 passed static/type checks, two unit shards and all five browser shards, including the previously timed-out Schedule scenario. Unit shard 3 failed because the write-off unit fake lacked the newly used invoice.findUnique; the docs check required this STATUS entry. Both are corrected together in the next commit. No merge until corrected exact-head CI and required review gate are green and all comments are handled. MCP-9 remains A1 PARTIAL / A2 PASS / A3 NOT_RUN; this separate billing fix is not RTC conformance evidence.
+
 ## November 1 — MCP-9 two-process remainder CLOSED OUT (Lane 5)
 
 **What changed:** PR #829 merged on the owner's release (squash `dfb1eed5`): the rate limiter's claim transaction now waits out a legitimate queue instead of aborting into HTTP 500s under a two-instance burst, and the MCP-9 evidence record was reconciled to proven facts. This close-out ticks the card's two-process acceptance lines and marks ledger criterion MCP-9-A2 PASS on #829's exact-head evidence (CI run 41287468472: all 12 jobs SUCCESS including the two-process suite; Performance Baselines and review-gate SUCCESS; 0 unresolved threads), and records #829 in the ledger's merged slices.
