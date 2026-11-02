@@ -193,22 +193,32 @@ export async function writeOffInvoiceInTx(
 ): Promise<void> {
   {
     await assertCapability(tx, actingUserId, "WRITE_OFF");
+    // Stripe's paid-invoice webhook and the invoice owed-total trigger acquire
+    // Customer before Invoice. Use the same order for write-offs: taking the
+    // invoice lock first can deadlock a paid webhook and lose its receipt.
+    const target = await tx.invoice.findUnique({
+      where: { id: invoiceId }, select: { customerId: true },
+    });
+    if (!target) throw new Error("Couldn't find that invoice.");
+    await lockCustomerLedger(tx, target.customerId);
     const rows = await tx.$queryRaw<
       Array<{
         id: string;
+        customerId: string;
         status: InvoiceStatus;
         amountDueCents: number;
         amountPaidCents: number;
       }>
     >`
-      SELECT "id", "status", "amountDueCents", "amountPaidCents"
+      SELECT "id", "customerId", "status", "amountDueCents", "amountPaidCents"
       FROM "Invoice"
       WHERE "id" = ${invoiceId}
       FOR UPDATE
     `;
     const invoice = rows[0];
-    if (!invoice) {
-      throw new Error("Couldn't find that invoice.");
+    if (!invoice) throw new Error("Couldn't find that invoice.");
+    if (invoice.customerId !== target.customerId) {
+      throw new Error("The invoice changed customers. Reload and try again.");
     }
     if (invoice.status === "PAID" || invoice.amountPaidCents >= invoice.amountDueCents) {
       throw new Error("This invoice is already fully paid — nothing to write off.");
