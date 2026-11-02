@@ -1,3 +1,11 @@
+## November 2 — MCP-9: hosted assistant door switched on; owner trial staged at the sign-in step
+
+**What changed:** no app code. Both hosted apps (the live site and the dedicated testing app) were missing the one setting that turns the built-in assistant connection on, so the connection answered "not found" everywhere even though the code shipped weeks ago. The setting was added for each app and the current build (main `ed78f50d`) redeployed unchanged on both. The acceptance record now carries that redeploy evidence, criterion MCP-9-A3 moves from NOT_RUN to PARTIAL, and the owner's 2026-11-02 ruling is recorded: the assistant connection is an owner-only tool, so the optional hub connection is ruled out for good — closed as a decision, not left untried.
+
+**How it was checked:** before/after requests against both apps — the assistant address went from 404 to the proper 401 sign-in challenge, and both OAuth discovery documents answer with the right addresses; the public storefront still returns 200. A real sign-in client was also registered on the testing app through its live registration endpoint, and starting sign-in lands on the app's login page exactly as designed.
+
+**What remains open on MCP-9 (honestly recorded):** the last leg of the trial — signing in as the testing owner, approving the connection and making the first real calls — needs Chris's own sign-in, so it stays on his checklist ("Connect your preferred AI assistant to Appliance Desk"); the record marks that client NOT_PROVEN, not passed. A1's upstream generic-write probe now has a live hosted target but still needs an owner-issued writable pass. MCP-9 stays IN_PROGRESS.
+
 ## November 1 — MCP-9 two-process remainder CLOSED OUT (Lane 5)
 
 **What changed:** PR #829 merged on the owner's release (squash `dfb1eed5`): the rate limiter's claim transaction now waits out a legitimate queue instead of aborting into HTTP 500s under a two-instance burst, and the MCP-9 evidence record was reconciled to proven facts. This close-out ticks the card's two-process acceptance lines and marks ledger criterion MCP-9-A2 PASS on #829's exact-head evidence (CI run 41287468472: all 12 jobs SUCCESS including the two-process suite; Performance Baselines and review-gate SUCCESS; 0 unresolved threads), and records #829 in the ledger's merged slices.
