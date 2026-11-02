@@ -389,23 +389,96 @@ export function purchaseReceiptTotalCents(purchase: {
   return purchase.subtotalCents + purchase.sellerTaxCents + purchase.otherChargesCents;
 }
 
-export async function listPurchases(options: { supplierId?: string; take?: number; skip?: number } = {}) {
+export type PurchaseListCursor = { purchasedOn: string; createdAt: string; id: string };
+
+export type PurchaseListOptions = {
+  supplierId?: string;
+  /** Matches the linked supplier's name, the typed seller name, or the receipt reference. */
+  q?: string;
+  cursor?: PurchaseListCursor;
+  take?: number;
+};
+
+export type PurchaseListRow = Awaited<ReturnType<typeof listPurchases>>["rows"][number];
+
+function purchaseListWhere(options: PurchaseListOptions): Prisma.PurchaseWhereInput {
+  const q = options.q?.trim();
+  return {
+    ...(options.supplierId ? { supplierId: options.supplierId } : {}),
+    ...(q
+      ? {
+          OR: [
+            { supplier: { name: { contains: q, mode: "insensitive" as const } } },
+            { sellerName: { contains: q, mode: "insensitive" as const } },
+            { reference: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+}
+
+/**
+ * AR-6b section 5: the purchases list read — cursor-paged on the total
+ * order (purchasedOn desc, createdAt desc, id desc), so receipts recorded
+ * for the same day in the same instant appear once each across pages
+ * (the fleet fix-7 rule). Rows carry the domain receipt total and whether
+ * any appliance on the purchase still has an unanswered purchase-tax
+ * question, for the list's "Tax question" chip.
+ */
+export async function listPurchases(options: PurchaseListOptions = {}) {
   await requireRole("OWNER", "ADMIN");
+  const take = Math.min(Math.max(options.take ?? 50, 1), 200);
+  const where = purchaseListWhere(options);
+  if (options.cursor) {
+    const purchasedOn = new Date(options.cursor.purchasedOn);
+    const createdAt = new Date(options.cursor.createdAt);
+    where.AND = [
+      {
+        OR: [
+          { purchasedOn: { lt: purchasedOn } },
+          { purchasedOn, createdAt: { lt: createdAt } },
+          { purchasedOn, createdAt, id: { lt: options.cursor.id } },
+        ],
+      },
+    ];
+  }
   const rows = await prisma.purchase.findMany({
-    where: options.supplierId ? { supplierId: options.supplierId } : undefined,
+    where,
     orderBy: [{ purchasedOn: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-    take: Math.min(options.take ?? 50, 200), skip: options.skip ?? 0,
+    take: take + 1,
     include: {
       supplier: { select: { id: true, name: true } },
       _count: { select: { appliances: true, documents: true } },
+      appliances: {
+        where: { acquisitionTaxStatus: "UNKNOWN" },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
-  return rows.map((row) => ({ ...row, receiptTotalCents: purchaseReceiptTotalCents(row) }));
+  const hasMore = rows.length > take;
+  const page = hasMore ? rows.slice(0, take) : rows;
+  const last = page[page.length - 1];
+  return {
+    rows: page.map(({ appliances, ...row }) => ({
+      ...row,
+      receiptTotalCents: purchaseReceiptTotalCents(row),
+      hasTaxQuestion: appliances.length > 0,
+    })),
+    nextCursor:
+      hasMore && last
+        ? {
+            purchasedOn: last.purchasedOn.toISOString(),
+            createdAt: last.createdAt.toISOString(),
+            id: last.id,
+          }
+        : null,
+  };
 }
 
-export async function countPurchases(options: { supplierId?: string } = {}) {
+export async function countPurchases(options: { supplierId?: string; q?: string } = {}) {
   await requireRole("OWNER", "ADMIN");
-  return prisma.purchase.count({ where: options.supplierId ? { supplierId: options.supplierId } : undefined });
+  return prisma.purchase.count({ where: purchaseListWhere(options) });
 }
 
 export type PurchaseDetail = NonNullable<Awaited<ReturnType<typeof getPurchaseDetail>>>;

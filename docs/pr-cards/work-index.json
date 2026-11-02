@@ -4566,11 +4566,12 @@
         "AR-1",
         "AR-12"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #797 (squash baeaabf2) + close-out #799, 2026-10-31; sections 5–7 follow as AR-6b",
       "migration": "none",
       "budget": 600,
       "units": [
-        "AR-6"
+        "AR-6",
+        "AR-6b"
       ],
       "evidence": [
         "docs/build-specs/screens/EQUIPMENT.md",
@@ -4981,7 +4982,7 @@
       "dependencies": [
         "MCP-5"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #738, squash cad8f9cd (2026-10-29); verified and closed out 2026-10-31 by Lane 5 (MCP-6-CLOSEOUT): four repair suites green on current main, browser line green in CI browser-e",
       "migration": "additive (RepairCase, RepairEvidence)",
       "budget": 450,
       "units": [
@@ -6185,12 +6186,20 @@
       "path": "docs/pr-cards/execution/MCP-5-CLOSEOUT.json"
     },
     {
+      "id": "MCP-6-CLOSEOUT",
+      "path": "docs/pr-cards/execution/MCP-6-CLOSEOUT.json"
+    },
+    {
       "id": "AR-5B",
       "path": "docs/pr-cards/execution/AR-5B.json"
     },
     {
       "id": "AR-6",
       "path": "docs/pr-cards/execution/AR-6.json"
+    },
+    {
+      "id": "AR-6B",
+      "path": "docs/pr-cards/execution/AR-6B.json"
     },
     {
       "id": "W-12",

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/session";
 import { getPartMovementHistory } from "@/domains/inventory/part-history";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import { formatMoney } from "@/lib/money-ui";
 import { RecordHeader } from "@/components/kit";
 
 export const metadata = { title: "Part history" };
@@ -22,10 +24,15 @@ export default async function PartHistoryPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ page?: string }>;
 }) {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const page = positivePage(query.page);
   const history = await getPartMovementHistory(id, page);
   if (!history) notFound();
+  const canManage = session.user.role === "OWNER" || session.user.role === "ADMIN";
+  // AR-6b section 6: the domain computes the average cost; this page
+  // only decides whether the role may see it.
+  const averageCostCents = history.part.averageResaleCostCents;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -36,6 +43,16 @@ export default async function PartHistoryPage({
           back={{ href: "/desk/parts", label: "Parts" }}
         />
         <p className="mt-2 text-sm font-medium text-ink">Current on hand: {history.part.quantityOnHand}</p>
+        {canManage && (
+          <p className="mt-1 text-sm text-ink-soft">
+            {averageCostCents !== null
+              ? `Average cost of the ones bought to resell: ${formatMoney(averageCostCents)} each`
+              : "No units bought to resell on hand"}
+            {history.part.sellable && history.part.retailPriceCents !== null
+              ? ` · Sells at ${formatMoney(history.part.retailPriceCents)}`
+              : ""}
+          </p>
+        )}
       </div>
 
       <section aria-labelledby="movement-history-heading">

@@ -53,15 +53,9 @@ export async function getSuppliers(options: { includeArchived?: boolean } = {}) 
 
 export async function getSupplierById(id: string) {
   await requireRole("OWNER", "ADMIN");
-  return prisma.supplier.findUnique({
-    where: { id },
-    include: {
-      purchaseOrders: {
-        orderBy: [{ createdAt: "desc" }],
-        include: { lines: true },
-      },
-    },
-  });
+  // AR-6b: the record's Orders tab reads getPurchaseOrdersPage({ supplierId })
+  // — the old embed (every order with every line) is gone.
+  return prisma.supplier.findUnique({ where: { id } });
 }
 
 export async function createSupplier(input: NewSupplierInput) {
@@ -168,14 +162,6 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
       },
     });
     return order;
-  });
-}
-
-export async function getPurchaseOrders() {
-  await requireRole("OWNER", "ADMIN");
-  return prisma.purchaseOrder.findMany({
-    include: { supplier: true, lines: true },
-    orderBy: [{ createdAt: "desc" }],
   });
 }
 
@@ -608,7 +594,20 @@ export const restoreSupplier = (userId: string, supplierId: string) => setArchiv
  * "flag when a part I use often is low on hand" ask. A part with no
  * threshold set (the default) never appears here, since Chris hasn't
  * told the system he tracks stock of it. */
-export { getPartsList, type PartsListParams, type PartsListStatus, type PartListRow, type PartsActor } from "./parts-list";
+export { getPartsList, getPartsTypeOptions, type PartsListParams, type PartsListStatus, type PartListRow, type PartsActor } from "./parts-list";
+export {
+  PURCHASE_ORDER_PILL,
+  getPurchaseOrdersPage,
+  type PurchaseOrderListStatus,
+  type PurchaseOrderPageParams,
+  type PurchaseOrderPageRow,
+} from "./orders-page";
+export {
+  getSuppliersPage,
+  type SupplierListStatus,
+  type SupplierPageParams,
+  type SupplierPageRow,
+} from "./suppliers-page";
 
 export async function getLowStockParts() {
   await requireRole("OWNER", "ADMIN", "STAFF");

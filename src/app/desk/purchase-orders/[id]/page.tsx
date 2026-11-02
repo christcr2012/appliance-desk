@@ -1,15 +1,14 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
-import { getPurchaseOrderById } from "@/domains/purchasing";
+import { getPurchaseOrderById, PURCHASE_ORDER_PILL } from "@/domains/purchasing";
 import { formatCents } from "@/domains/pricing";
+import { formatShortDate } from "@/lib/business-date";
 import {
   Card,
   DataList,
-  StatusPill,
   type DataListColumn,
 } from "@/components/ui";
-import { RecordHeader } from "@/components/kit";
-import type { StatusTone } from "@/components/status-badge";
+import { RecordHeader, StatusPill } from "@/components/kit";
 import { PurchaseOrderActionsPanel } from "./purchase-order-actions-panel";
 import { loadReceiptTaxSteps } from "@/domains/purchasing/receipt-tax";
 import { prisma } from "@/lib/prisma";
@@ -21,13 +20,6 @@ async function loadReceiptTaxStepsForOrder(orderId: string) {
 }
 
 export const metadata = { title: "Purchase order" };
-
-const STATUS_TONE: Record<string, StatusTone> = {
-  DRAFT: "pending",
-  ORDERED: "progress",
-  RECEIVED: "success",
-  CANCELLED: "stopped",
-};
 
 type PurchaseOrderRecord = NonNullable<
   Awaited<ReturnType<typeof getPurchaseOrderById>>
@@ -101,12 +93,10 @@ export default async function PurchaseOrderDetailPage({
     <div className="max-w-4xl">
       <RecordHeader
         title={order.supplier.name}
-        subtitle={`Created ${new Date(
-          order.createdAt,
-        ).toLocaleDateString()} by ${
+        subtitle={`Created ${formatShortDate(order.createdAt)} by ${
           order.createdBy.name ?? order.createdBy.email
         }`}
-        back={{ href: "/desk/purchase-orders", label: "Purchase orders" }}
+        back={{ href: "/desk/purchases?view=orders", label: "Purchases" }}
         actions={[
           {
             kind: "link",
@@ -118,13 +108,12 @@ export default async function PurchaseOrderDetailPage({
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <StatusPill
-          tone={STATUS_TONE[order.status] ?? "pending"}
-          label={order.status}
+          tone={PURCHASE_ORDER_PILL[order.status].tone}
+          label={PURCHASE_ORDER_PILL[order.status].label}
         />
         {order.status === "RECEIVED" && order.receivedAt && (
           <span className="text-sm font-medium text-success">
-            Fully received{" "}
-            {new Date(order.receivedAt).toLocaleDateString()}
+            Fully received {formatShortDate(order.receivedAt)}
           </span>
         )}
         {order.status === "CANCELLED" && (

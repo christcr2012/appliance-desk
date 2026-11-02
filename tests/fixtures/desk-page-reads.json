@@ -84,28 +84,6 @@
     "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."
   },
   {
-    "page": "src/app/desk/parts/[id]/page.tsx",
-    "reads": [
-      {
-        "name": "getPartMovementHistory",
-        "guard": "requireRole"
-      }
-    ]
-  },
-  {
-    "page": "src/app/desk/parts/page.tsx",
-    "reads": [
-      {
-        "name": "getAllPartRecords",
-        "guard": "requireRole"
-      },
-      {
-        "name": "getLowStockParts",
-        "guard": "requireRole"
-      }
-    ]
-  },
-  {
     "page": "src/app/desk/revenue/page.tsx",
     "reads": [],
     "reason": "Redirect stub: renders no data and sends the visitor to a guarded page."

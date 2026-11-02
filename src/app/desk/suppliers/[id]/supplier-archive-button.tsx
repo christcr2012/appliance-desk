@@ -2,55 +2,64 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card } from "@/components/ui";
+import { ConfirmDialog } from "@/components/kit";
 import { setSupplierArchivedAction } from "../../purchasing-actions";
 
+/**
+ * AR-6b section 7: archiving a supplier asks first, from the record's
+ * header overflow ("Archive {name}? You can restore it later."). The
+ * caller mounts this only while the confirmation should be open (the
+ * ?archive=1 state); closing returns to the plain record URL. Restoring
+ * needs no confirmation — it is a plain link in the same overflow menu.
+ */
 export function SupplierArchiveButton({
   supplierId,
-  archived,
+  name,
 }: {
   supplierId: string;
-  archived: boolean;
+  name: string;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  return (
-    <Card
-      title={archived ? "Archived supplier" : "Archive supplier"}
-      description={
-        archived
-          ? "This supplier is hidden from the order form and cannot take new orders. Its past orders are kept."
-          : "Archive this supplier to hide it from the order form while keeping its past orders. You can restore it later."
+  function close() {
+    router.replace(`/desk/suppliers/${supplierId}`);
+  }
+
+  function confirm() {
+    setError(null);
+    startTransition(async () => {
+      const result = await setSupplierArchivedAction(supplierId, true);
+      if (result.status === "error") {
+        setError(result.message);
+        return;
       }
-    >
-      <Button
-        type="button"
-        variant={archived ? "secondary" : "danger"}
-        disabled={isPending}
-        onClick={() =>
-          startTransition(async () => {
-            setError(null);
-            const result = await setSupplierArchivedAction(
-              supplierId,
-              !archived,
-            );
-            if (result.status === "error") {
-              setError(result.message);
-              return;
-            }
-            router.refresh();
-          })
-        }
-      >
-        {archived ? "Restore this supplier" : "Archive this supplier"}
-      </Button>
-      {error && (
-        <p role="alert" className="mt-3 text-sm font-semibold text-danger">
-          {error}
-        </p>
-      )}
-    </Card>
+      router.refresh();
+      close();
+    });
+  }
+
+  return (
+    <ConfirmDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
+      spec={{
+        title: `Archive ${name}?`,
+        summary: "You can restore it later. Its past orders and purchases are kept.",
+        confirmLabel: "Archive it",
+        danger: true,
+      }}
+      onConfirm={confirm}
+      details={
+        error ? (
+          <p role="alert" className="text-sm font-semibold text-danger">
+            {error}
+          </p>
+        ) : undefined
+      }
+    />
   );
 }

@@ -19,16 +19,19 @@ export function PartStockPanel({
   reorderThreshold,
   lowStock,
   archived = false,
+  initialMode = "view",
 }: {
   partRecordId: string;
   quantityOnHand: number;
   reorderThreshold: number | null;
   lowStock: boolean;
   archived?: boolean;
+  /** AR-6b: the Parts page's "Adjust stock…" sheet opens straight into settings. */
+  initialMode?: "view" | "settings";
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [mode, setMode] = useState<"view" | "use" | "settings">("view");
+  const [mode, setMode] = useState<"view" | "use" | "settings">(initialMode);
   const [useQuantity, setUseQuantity] = useState("1");
   const [settingsQuantity, setSettingsQuantity] = useState(
     String(quantityOnHand),

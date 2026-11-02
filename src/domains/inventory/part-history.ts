@@ -20,6 +20,12 @@ export async function getPartMovementHistory(partRecordId: string, requestedPage
       partName: true,
       quantityOnHand: true,
       archivedAt: true,
+      // AR-6b: the record header's finance strip (the page renders these
+      // only for OWNER/ADMIN; staff never see them).
+      resaleUnitsOnHand: true,
+      resaleCostOnHandCents: true,
+      retailPriceCents: true,
+      sellable: true,
       applianceType: { select: { name: true } },
     },
   });
@@ -59,7 +65,15 @@ export async function getPartMovementHistory(partRecordId: string, requestedPage
   const actorById = new Map(actors.map((actor) => [actor.id, actor]));
 
   return {
-    part,
+    part: {
+      ...part,
+      // AR-6b: average cost of the units bought to resell that are on the
+      // shelf, computed here so the record page does no money math.
+      averageResaleCostCents:
+        part.resaleUnitsOnHand > 0
+          ? Math.round(part.resaleCostOnHandCents / part.resaleUnitsOnHand)
+          : null,
+    },
     page,
     pageSize: PAGE_SIZE,
     hasMore,

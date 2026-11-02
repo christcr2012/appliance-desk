@@ -292,7 +292,10 @@
   "src/app/desk/paperwork/new/page.tsx",
   "src/app/desk/paperwork/page.tsx",
   "src/app/desk/parts/[id]/page.tsx",
-  "src/app/desk/parts/page.tsx",
+  {
+    "file": "src/app/desk/parts/page.tsx",
+    "kind": "other"
+  },
   "src/app/desk/phone-orders/new/page.tsx",
   "src/app/desk/phone-orders/page.tsx",
   "src/app/desk/privacy-security/page.tsx",
@@ -358,7 +361,10 @@
   },
   "src/app/desk/suppliers/[id]/page.tsx",
   "src/app/desk/suppliers/new/page.tsx",
-  "src/app/desk/suppliers/page.tsx",
+  {
+    "file": "src/app/desk/suppliers/page.tsx",
+    "kind": "other"
+  },
   {
     "file": "src/app/desk/tasks/page.tsx",
     "kind": "other"

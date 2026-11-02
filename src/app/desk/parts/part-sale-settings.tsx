@@ -8,7 +8,7 @@ import { updatePartSaleSettingsAction } from "../purchasing-actions";
 
 /** Batch M: sell this part to customers, at what price, and whether it is usually bought to resell. */
 export function PartSaleSettings({
-  partRecordId, sellable, retailPriceCents, defaultForResale, averageCostCents, archived = false,
+  partRecordId, sellable, retailPriceCents, defaultForResale, averageCostCents, archived = false, initialEditing = false,
 }: {
   partRecordId: string;
   sellable: boolean;
@@ -17,10 +17,12 @@ export function PartSaleSettings({
   /** Average cost of the units bought for resale that are on the shelf, when there are any. */
   averageCostCents: number | null;
   archived?: boolean;
+  /** AR-6b: the Parts page's "Selling…" sheet opens straight into the form. */
+  initialEditing?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const [on, setOn] = useState(sellable);
   const [price, setPrice] = useState(retailPriceCents === null ? "" : moneyInputValue(retailPriceCents));
   const [resale, setResale] = useState(defaultForResale);
