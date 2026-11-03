@@ -1,10 +1,16 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterAll, afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 const m = vi.hoisted(() => ({ portal: vi.fn() }));
 vi.mock("@/lib/session", () => ({ getServerSession: async () => ({ user: { id: "customer-user" } }) }));
 vi.mock("@/domains/portal", () => ({ getPortalData: m.portal }));
 import AccountRentalsPage from "@/app/account/rentals/page";
+import { prisma } from "@/lib/prisma";
 afterEach(cleanup);
+// The page's render path reads deposit terms through the real shared
+// client (see UI_DB_TESTS in vitest.config.mts) — close what it opens.
+afterAll(async () => {
+  await prisma.$disconnect();
+});
 
 it.each(["DRAFT", "AWAITING_SIGNATURE", "ACTIVE"])("does not report configured deposit terms as paid for a %s agreement", async (status) => {
   m.portal.mockResolvedValue({ jobs: [], jobsHasMore: false, rentalAgreements: [{ id: "agreement", status,

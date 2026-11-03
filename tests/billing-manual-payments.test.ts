@@ -5,6 +5,7 @@ const ledger = vi.hoisted(() => ({
   createReceiptWithAllocations: vi.fn(),
 }));
 const invoiceFindMany = vi.fn();
+const invoiceFindUnique = vi.fn();
 const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
 const queryRaw = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("@/lib/prisma", () => ({
         $queryRaw: (...args: unknown[]) => queryRaw(...args),
         invoice: {
           findMany: (...args: unknown[]) => invoiceFindMany(...args),
+          findUnique: (...args: unknown[]) => invoiceFindUnique(...args),
           update: invoiceUpdate,
         },
         auditLog: { create: auditLogCreate },
@@ -174,17 +176,22 @@ describe("writeOffInvoice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     queryRaw.mockReset();
+    invoiceFindUnique.mockReset();
+    invoiceFindUnique.mockResolvedValue({ customerId: "cust-1" });
+    ledger.lockCustomerLedger.mockResolvedValue(undefined);
     invoiceUpdate.mockResolvedValue({});
     auditLogCreate.mockResolvedValue({});
   });
 
   it("marks an invoice WRITTEN_OFF with a reason", async () => {
     queryRaw.mockResolvedValueOnce([
-      { id: "inv-1", status: "DELINQUENT", amountDueCents: 4000, amountPaidCents: 500 },
+      { id: "inv-1", customerId: "cust-1", status: "DELINQUENT", amountDueCents: 4000, amountPaidCents: 500 },
     ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await writeOffInvoice("inv-1", "owner-1", "Tenant vacated, uncollectible");
     expect(queryRaw).toHaveBeenCalledOnce();
+    expect(ledger.lockCustomerLedger).toHaveBeenCalledWith(expect.anything(), "cust-1");
+    expect(ledger.lockCustomerLedger.mock.invocationCallOrder[0]).toBeLessThan(queryRaw.mock.invocationCallOrder[0]);
     expect(postBookSourceAfterCommit).toHaveBeenCalledWith("INVOICE","inv-1");
     expect(invoiceUpdate).toHaveBeenCalledWith({
       where: { id: "inv-1" },
@@ -197,7 +204,7 @@ describe("writeOffInvoice", () => {
 
   it("refuses an invoice that's already fully paid", async () => {
     queryRaw.mockResolvedValueOnce([
-      { id: "inv-1", status: "PAID", amountDueCents: 4000, amountPaidCents: 4000 },
+      { id: "inv-1", customerId: "cust-1", status: "PAID", amountDueCents: 4000, amountPaidCents: 4000 },
     ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/already fully paid/i);
@@ -205,7 +212,7 @@ describe("writeOffInvoice", () => {
 
   it("refuses an invoice that's already written off", async () => {
     queryRaw.mockResolvedValueOnce([
-      { id: "inv-1", status: "WRITTEN_OFF", amountDueCents: 4000, amountPaidCents: 0 },
+      { id: "inv-1", customerId: "cust-1", status: "WRITTEN_OFF", amountDueCents: 4000, amountPaidCents: 0 },
     ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/already written off/i);
@@ -213,7 +220,7 @@ describe("writeOffInvoice", () => {
 
   it("refuses a voided bill and re-checks the acting staff member first", async () => {
     queryRaw.mockResolvedValueOnce([
-      { id: "inv-1", status: "VOID", amountDueCents: 4000, amountPaidCents: 0 },
+      { id: "inv-1", customerId: "cust-1", status: "VOID", amountDueCents: 4000, amountPaidCents: 0 },
     ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/unpaid, open bill/i);
@@ -221,9 +228,21 @@ describe("writeOffInvoice", () => {
     expect(invoiceUpdate).not.toHaveBeenCalled();
   });
 
-  it("refuses an invoice that doesn't exist", async () => {
-    queryRaw.mockResolvedValueOnce([]);
+  it("refuses an invoice that doesn't exist before taking ledger locks", async () => {
+    invoiceFindUnique.mockResolvedValueOnce(null);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("missing", "owner-1", "reason")).rejects.toThrow(/couldn't find that invoice/i);
+    expect(ledger.lockCustomerLedger).not.toHaveBeenCalled();
+    expect(queryRaw).not.toHaveBeenCalled();
+  });
+
+  it("refuses a customer reassignment between lookup and the locked invoice", async () => {
+    queryRaw.mockResolvedValueOnce([{
+      id: "inv-1", customerId: "cust-other", status: "OPEN", amountDueCents: 4000, amountPaidCents: 0,
+    }]);
+    const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
+    await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/changed customers/i);
+    expect(ledger.lockCustomerLedger).toHaveBeenCalledWith(expect.anything(), "cust-1");
+    expect(invoiceUpdate).not.toHaveBeenCalled();
   });
 });
