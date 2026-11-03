@@ -104,8 +104,11 @@ function sharedWhere(params: PaymentsParams, now: Date): Prisma.PaymentWhereInpu
   if (when) parts.push(when);
   const q = params.q?.trim();
   if (q) {
-    if (/^\d+$/.test(q)) {
-      parts.push({ invoice: { invoiceNumber: Number(q) } });
+    // Invoice numbers are PostgreSQL int4; an oversized digit-only search must not reach Prisma as an Int.
+    // Treat those values as text so long numeric customer names can still be found.
+    const invoiceNumber = /^\d+$/.test(q) ? Number(q) : null;
+    if (invoiceNumber !== null && Number.isSafeInteger(invoiceNumber) && invoiceNumber <= 2_147_483_647) {
+      parts.push({ invoice: { invoiceNumber } });
     } else {
       parts.push({
         invoice: {

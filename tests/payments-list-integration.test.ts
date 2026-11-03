@@ -18,7 +18,8 @@ const enabled =
 // AR-3 (MONEY-AREA 2): every query is narrowed by this suite's unique customer name, so other suites'
 // payments never interfere.
 describe.skipIf(!enabled)("Payments list reads", () => {
-  const tag = randomUUID().replaceAll("-", "").slice(0, 16);
+  // Keep the customer-name search fixture nonnumeric; bill-number searches have a distinct path.
+  const tag = `p${randomUUID().replaceAll("-", "").slice(0, 15)}`;
   const userId = `pl-u-${tag}`;
   const customerId = `pl-c-${tag}`;
   const manyUserId = `pl-mu-${tag}`;
@@ -88,6 +89,12 @@ describe.skipIf(!enabled)("Payments list reads", () => {
     expect(counts.failed).toBe(2);
     expect(counts.held).toBe(2);
     expect(counts.receivedSumCents).toBe(4500 + 4500 + 1200 + 5 * 4500);
+  });
+
+  it("handles digit-only search longer than PostgreSQL invoiceNumber int4 without an exception", async () => {
+    // Reproduces CI 2026-11-03: a UUID-derived search tag happened to be all digits.
+    const counts = await getPaymentCounts({ status: "received", q: "8475444520084236", sort: "newest" });
+    expect(counts).toEqual({ received: 0, failed: 0, held: 0, receivedSumCents: 0 });
   });
 
   it("searches by bill number and filters by method", async () => {
