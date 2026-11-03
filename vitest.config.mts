@@ -180,6 +180,27 @@ const SHARED_SETTINGS_TESTS = [
   "tests/payroll-import-integration.test.ts", // CMP-5 sets and restores the shared Books start date and the compliance facts (employees, first hire date).
 ];
 
+// Render suites that execute REAL database queries through the page they
+// render (part of the render tree reads live settings/records and is not
+// mocked). They cannot run in the ui project's vmThreads pool: that pool's
+// jsdom context has no Node `process` global, and the pg driver's
+// connection-end callback calls process.nextTick — so when one of these
+// suites' pooled connections ended after its file finished, the callback
+// threw "ReferenceError: process is not defined" as an unhandled error
+// inside whatever innocent file was then running on that worker (the CI
+// failures on PR #837, attempts 2–3, blamed on mcp-rtc-client-matrix and
+// backup-storage-module-import, which open no connections at all). These
+// suites run in the forks pool instead, where each file is a real Node
+// process, and they close the shared client in afterAll. Census: a
+// connection-logging run of the ui project on 2026-11-03 found exactly
+// these two files opening pg connections. If a future render suite starts
+// hitting the real database, move it here — the symptom is the same
+// ReferenceError surfacing in unrelated files.
+const UI_DB_TESTS = [
+  "tests/portal-deposit-presentation.test.tsx", // Renders the account rentals page; its render path reads deposit terms from the real database.
+  "tests/portal-signing-readback-w22fin.test.tsx", // Renders the customer rentals page; its render path reads signing evidence from the real database.
+];
+
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -221,10 +242,23 @@ export default defineConfig({
           name: "ui",
           environment: "jsdom",
           include: ["tests/**/*.test.tsx", "tests/theme.test.ts"],
+          exclude: [...UI_DB_TESTS],
           setupFiles: ["./tests/setup.ts"],
           // Vitest 5 keeps per-file isolation while reusing the expensive
           // jsdom environment per worker in this pool.
           pool: "vmThreads",
+        },
+      },
+      {
+        // The render suites listed in UI_DB_TESTS: same jsdom environment
+        // and setup as the ui project, but in the forks pool, where the pg
+        // driver's callbacks find the Node `process` global they require.
+        test: {
+          name: "ui-db",
+          environment: "jsdom",
+          include: UI_DB_TESTS,
+          setupFiles: ["./tests/setup.ts"],
+          pool: "forks",
         },
       },
     ],
