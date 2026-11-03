@@ -141,3 +141,48 @@ this card is unchanged and honestly recorded: A1 PARTIAL (the pinned upstream
 generic direct-setter write probe is still NOT_PROVEN), A3 NOT_RUN (every
 real client NOT_TRIED — the owner trial), hosted redeployment and the
 optional Hub. MCP-9 is not complete and is not marked accepted.
+
+## Trial re-run after the consent Origin fix — November 2, 2026
+
+PR #835 (the consent action's missing-Origin repair) merged at head
+`67125e64` (squash `c9e7e882` on main) on the owner's word, with a genuine
+pull_request CI cycle green at that exact head and the review-gate's waived
+self-review success at the same head. The `testing` branch was synced to
+`c9e7e882`; the dedicated testing app redeployed and its health endpoint
+read back revision `c9e7e8822a47b9a115e857ae0c4fab230502f244`. The production
+app was not deployed.
+
+The acceptance trial was re-run end to end against that revision with the
+official SDK client: dynamic registration (201), synthetic-owner sign-in
+(200, OWNER), authorize → consent page (302), and the consent page rendering
+the client name and both read scopes all pass. **Submitting Allow still
+fails** — HTTP 500, the app's error page, no connection recorded.
+
+A second, independent defect in the same step is now proven. The consent
+page (`src/app/connect/consent/page.tsx`) re-serializes the authorize query
+into the form's hidden `oauthQuery` field keeping only single-valued
+parameters; the authorize query's repeated `ba_param` entries — the
+provider's own list of the parameters its signature covers — are arrays in
+the page's search params and are dropped entirely. The provider therefore
+cannot verify the signed query and refuses the action's consent call with
+400 `invalid_signature`; the action throws its "expired or was rejected"
+error and the owner sees the same error page as before.
+
+Proof (four-cell A/B against the provider's consent endpoint, on a local
+production-mode reproduction of the exact `c9e7e882` build, where the
+server log shows the action's throw directly):
+
+- Page-shaped query (ba_param dropped), with Origin → 400 invalid_signature.
+- Page-shaped query, without Origin → 400 invalid_signature.
+- Complete authorize query, without Origin → 403 MISSING_OR_NULL_ORIGIN
+  (the original defect #835 repaired).
+- Complete authorize query, with Origin → 200, authorization code issued.
+
+So the Origin repair is real and necessary, but not sufficient: the page
+must carry the complete signed query through to the action. That is a
+small page-side fix, not yet commissioned. Until it lands, first scoped
+reads, token refresh and the disconnect proof remain NOT_PROVEN (they sit
+behind consent, and a token without the app-level connection record is
+refused by the assistant door — proven in the first attempt). The SDK
+client row stays NOT_PROVEN, MCP-9-A3 stays PARTIAL and MCP-9 stays
+IN_PROGRESS.
