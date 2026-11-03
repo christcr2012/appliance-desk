@@ -11,6 +11,11 @@
 **Observed:** Main CI #41545358924 timed out on browser-c's owner double-booking scenario. The Playwright evidence showed the "Waiting for a time" details section closed; the test could accidentally close it while trying to find a fixture row.
 
 **Correction:** PR #833 checks the actual details.open state, expands only when closed, and checks again before the second booking. Both booking actions, conflict confirmation, database assertions, cleanup and the original timeout remain unchanged. Earlier exact-head CI passed all 12 jobs at 9be23a6c, but this conflict-reconciliation head requires fresh exact-head CI and review-gate. The PR is not merged; MCP-9 remains A1 PARTIAL / A2 PASS / A3 PARTIAL.
+## November 2 — Billing deadlock correction under review (PR #831)
+
+**Observed:** Scheduled main CI #41510210056 exposed PostgreSQL deadlock 40P01 when a Stripe invoice.paid webhook raced an invoice write-off. The webhook locks Customer before Invoice; write-off previously locked Invoice first while the invoice owed-total trigger also updated Customer, producing a circular lock wait.
+
+**Correction:** PR #831 locks Customer before Invoice and revalidates the invoice's customer and paid state, preserving held-payment, receipt, audit, approval and idempotency behavior. The real-database race test retains its 20-round assertions. Exact-head CI passed all 12 jobs at fd2594f3, as did Performance Baselines, but this conflict-reconciliation head requires fresh exact-head CI and review-gate before merge. The PR is not merged and does not establish MCP-9 RTC conformance (A1 PARTIAL / A2 PASS / A3 PARTIAL).
 
 ## November 2 — MCP-9: the approval-step repair is merged (testing app picks it up overnight)
 

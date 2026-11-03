@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { createReceiptWithAllocations } from "@/domains/billing/ledger";
+import { createReceiptWithAllocations, lockCustomerLedger } from "@/domains/billing/ledger";
 import { writeOffInvoice } from "@/domains/billing/manual-payments";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -76,6 +76,10 @@ describe.skipIf(!enabled)("invoice payment/write-off race in disposable Postgres
 
     const payment = prisma.$transaction(
       async (tx) => {
+        // Match the production ledger's Customer → Invoice order. Taking
+        // Invoice first here would manufacture the inverse lock cycle that
+        // the Stripe/write-off race fix is specifically preventing.
+        await lockCustomerLedger(tx, customerId);
         await tx.$queryRaw`
           SELECT "id"
           FROM "Invoice"
