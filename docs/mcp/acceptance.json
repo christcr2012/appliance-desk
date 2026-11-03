@@ -426,7 +426,8 @@
           "evidence": [
             "PR #787 read-only RTC and native authorization; exact-head CI https://github.com/christcr2012/appliance-desk/actions/runs/41180116792. Pinned upstream generic direct-setter write probe remains NOT_PROVEN.",
             "PR #793 local PKCE OAuth refresh-settings oracle; exact-head CI https://github.com/christcr2012/appliance-desk/actions/runs/41206019621. No real external-client proof.",
-            "Lane 5 remainder pass 2026-10-31 (this PR): wire-conformance 1/1, vendored pin byte-identical 3/3, write-policy 4/4, journal-integration 1/1 (preview/approval/confirm semantics, eight simultaneous executions dispatch exactly once, replay safe), public-contract 1/1, read-scopes 3/3 — all per-file on the lane database. The application-specific journal is proven; the pinned upstream generic direct-setter write probe remains NOT_PROVEN, so A1 stays PARTIAL."
+            "Lane 5 remainder pass 2026-10-31 (this PR): wire-conformance 1/1, vendored pin byte-identical 3/3, write-policy 4/4, journal-integration 1/1 (preview/approval/confirm semantics, eight simultaneous executions dispatch exactly once, replay safe), public-contract 1/1, read-scopes 3/3 — all per-file on the lane database. The application-specific journal is proven; the pinned upstream generic direct-setter write probe remains NOT_PROVEN, so A1 stays PARTIAL.",
+            "2026-11-02: the hosted endpoints now serve the current revision (see MCP-9-A3), so the pinned upstream generic direct-setter write probe can be run against the hosted app; it still needs an owner-issued writable pass or an owner-signed-in session, so it remains NOT_PROVEN."
           ]
         },
         {
@@ -442,8 +443,12 @@
         {
           "id": "MCP-9-A3",
           "requirement": "Declared clients, compatible redeploy and optional Hub routes have truthful individually recorded evidence.",
-          "status": "NOT_RUN",
-          "evidence": []
+          "status": "PARTIAL",
+          "evidence": [
+            "Hosted redeploy 2026-11-02 (owner-ordered): the hosted apps were not serving the assistant connection at all — POST /api/mcp returned 404 on both the live app and the dedicated testing app because the canonical issuer setting (MCP_ISSUER_URL) had never been set on either hosted project, and src/mcp/issuer.ts keeps the OAuth plugin and assistant endpoints unavailable while it is unset. The setting was added with each app's own address as the value and the then-current deployments — both already built from main ed78f50d, which contains the MCP-9 source dfb1eed5 — were redeployed unchanged; no code, schema or data change. Read-back on both apps afterwards: POST /api/mcp without credentials returns 401 with the OAuth challenge, and /.well-known/oauth-protected-resource/api/mcp and /api/auth/.well-known/oauth-authorization-server answer with that app's issuer and endpoints; the public storefront still returns 200.",
+            "Real-client trial 2026-11-02 (runbook docs/runbooks/MCP-9-CLIENT-ACCEPTANCE.md, dedicated testing app): a real client (public PKCE client 'Vivienne MCP-9 trial (Official MCP SDK)') was registered through the live dynamic-registration endpoint, and its authorize request redirects to the app's sign-in exactly as designed. The authenticated leg — testing-owner sign-in, consent, whoami/read, refresh, revoke — is NOT_PROVEN: that sign-in is owner-only and remains on the owner checklist. No client is marked PASSED and no authenticated call is claimed.",
+            "Optional Robinson Hub: RULED OUT by the owner on 2026-11-02 — the assistant connection is an owner-only tool and no hub route will be built or tried. Recorded as an owner decision closing that option, not as trial evidence."
+          ]
         }
       ],
       "testPaths": [
@@ -458,7 +463,7 @@
       "sourceRevision": "dfb1eed5557052fb3bee19271aa7cd434e7ec9b5",
       "pr": null,
       "ci": null,
-      "deployedRevision": null,
+      "deployedRevision": "ed78f50db5aeddeee9d62332d35765d93b046ed3",
       "mergedEngineeringSlices": [
         {
           "pr": 787,
@@ -550,9 +555,11 @@
   "rtcClients": [
     {
       "client": "Official MCP SDK",
-      "status": "NOT_TRIED",
-      "revision": null,
-      "evidence": []
+      "status": "NOT_PROVEN",
+      "revision": "ed78f50db5aeddeee9d62332d35765d93b046ed3",
+      "evidence": [
+        "2026-11-02, dedicated testing app at that revision: a real client (public PKCE client 'Vivienne MCP-9 trial (Official MCP SDK)') was registered through the live dynamic-registration endpoint, and its authorize request reaches the app's sign-in (302 to /login carrying the signed OAuth parameters). Authenticated initialize/whoami/read NOT_PROVEN — waiting on the testing owner's sign-in and consent (owner checklist)."
+      ]
     },
     {
       "client": "Claude remote connector",
@@ -580,11 +587,13 @@
     },
     {
       "client": "Optional Robinson Hub",
-      "status": "NOT_TRIED",
+      "status": "RULED_OUT",
       "revision": null,
-      "evidence": []
+      "evidence": [
+        "Owner decision 2026-11-02: the assistant connection is an owner-only tool; no hub connection will be made or tried. This row is closed by that ruling, not by a trial."
+      ]
     }
   ],
-  "evidenceReconciledOn": "2026-10-31",
-  "evidenceScope": "Only MCP-9 merged engineering slices reconciled here; other units retain legacy planning statuses pending independent evidence review. No deployed-client, Hub or owner acceptance inferred."
+  "evidenceReconciledOn": "2026-11-02",
+  "evidenceScope": "Only MCP-9 merged engineering slices reconciled here; other units retain legacy planning statuses pending independent evidence review. No deployed-client, Hub or owner acceptance inferred. Hosted redeploy evidence and the owner's hub ruling were added 2026-11-02; no client is marked passed and the authenticated owner trial remains open."
 }
