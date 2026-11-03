@@ -34,9 +34,15 @@ export async function respondToAssistantConsent(data: FormData): Promise<void> {
   // The provider requires a real Request context to bind the signed OAuth
   // query, cookies, PKCE and consent. Calling auth.api.oauth2Consent directly
   // drops that context and the provider correctly rejects the request.
+  // The request must also carry this app's own Origin: the provider's CSRF
+  // origin check runs on every POST in production (it is only skipped under
+  // NODE_ENV=test, which is why the test suite cannot see this) and a
+  // cookie-bearing request with no Origin/Referer is refused with
+  // MISSING_OR_NULL_ORIGIN before the consent handler ever runs. This call
+  // is server-to-self, so the app's own issuer origin is the true origin.
   const consentResponse = await auth.handler(new Request(`${getMcpIssuer()}/api/auth/oauth2/consent`, {
     method: "POST",
-    headers: new Headers({ "content-type": "application/json", cookie: (await headers()).get("cookie") ?? "" }),
+    headers: new Headers({ "content-type": "application/json", origin: getMcpIssuer()!, cookie: (await headers()).get("cookie") ?? "" }),
     body: JSON.stringify({ accept: accepted, oauth_query: oauthQuery }),
   }));
   if (!consentResponse.ok) throw new Error("The assistant permission request expired or was rejected. Start again.");
