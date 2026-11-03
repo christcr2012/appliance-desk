@@ -1,3 +1,8 @@
+## November 2 — Schedule CI stability correction under review
+
+**Observed:** Main CI #41545358924 failed only browser-c's owner double-booking scenario (60-second timeout); 121 other tests passed. The captured Playwright page showed the "Waiting for a time" details section closed. The test previously clicked its summary whenever a fixture row was temporarily invisible, even though the server opens short lists by default; that can close the section and hide the booking controls.
+
+**Correction on ai/chatgpt/ci-schedule-details-20261102:** inspect the actual details.open state, expand only when closed, and recheck before the second booking. Keep both bookings, conflict confirmation, database assertions and the original timeout unchanged. Exact-head CI and review are pending; do not merge without them. The separate billing deadlock draft #831 remains open and currently conflicts with main. MCP-9 remains A1 PARTIAL / A2 PASS / A3 PARTIAL after merged hosted-evidence PR #832.
 ## November 2 — MCP-9: hosted assistant door switched on; owner trial staged at the sign-in step
 
 **What changed:** no app code. Both hosted apps (the live site and the dedicated testing app) were missing the one setting that turns the built-in assistant connection on, so the connection answered "not found" everywhere even though the code shipped weeks ago. The setting was added for each app and the current build (main `ed78f50d`) redeployed unchanged on both. The acceptance record now carries that redeploy evidence, criterion MCP-9-A3 moves from NOT_RUN to PARTIAL, and the owner's 2026-11-02 ruling is recorded: the assistant connection is an owner-only tool, so the optional hub connection is ruled out for good — closed as a decision, not left untried.

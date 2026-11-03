@@ -65,10 +65,21 @@ test.describe("owner books from the Board", () => {
       await page.goto("/desk/dispatch");
       // This test's own waiting rows (the seeded board carries other waiting visits too, so
       // every click below is scoped to rows naming this test's customer).
-      const myRow = page.locator("li").filter({ hasText: `AR5 Schedule ${tag}` });
-      if (!(await myRow.first().isVisible().catch(() => false))) {
-        await page.getByText(/Waiting for a time/).click();
+      const waiting = page.locator("details").filter({
+        has: page.locator("summary", { hasText: "Waiting for a time" }),
+      });
+      await expect(waiting).toBeVisible();
+      const myRow = waiting.locator("li").filter({ hasText: `AR5 Schedule ${tag}` });
+      // The board opens short waiting lists by default. A temporarily invisible
+      // row is not evidence the section is closed: blindly clicking its summary
+      // can collapse it and leave the Schedule button unreachable.
+      async function ensureWaitingOpen() {
+        if (!(await waiting.evaluate((node) => (node as HTMLDetailsElement).open))) {
+          await waiting.locator("summary").click();
+        }
+        await expect(waiting).toHaveJSProperty("open", true);
       }
+      await ensureWaitingOpen();
       await expect(myRow).toHaveCount(2);
 
       // Book the first waiting visit for the first team member at tomorrow 10:00.
@@ -85,6 +96,7 @@ test.describe("owner books from the Board", () => {
       // Book the second waiting visit for the SAME person at 10:30 — the board warns, and
       // "Book it anyway" is the deliberate confirm.
       await expect(myRow).toHaveCount(1);
+      await ensureWaitingOpen();
       await myRow.first().getByRole("button", { name: "Schedule", exact: true }).click();
       await page.getByLabel("When").fill(denverTomorrowAt("10:30"));
       await page.getByLabel("Who is doing it").selectOption(assignee);
