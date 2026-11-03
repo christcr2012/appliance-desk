@@ -59,13 +59,17 @@ beforeEach(() => { Object.values(mocks).forEach((m) => m.mockReset()); });
 afterEach(cleanup);
 
 describe("Website editor screen", () => {
+  // Four full-page axe scans in one test: ~3.5s alone on a 4-CPU box, and it
+  // crossed the default 5s test timeout under full-suite parallel load
+  // (observed 2026-11-03) despite the page being correct. The explicit
+  // timeout covers the scan cost only; the assertion is unchanged.
   it("is free of automated accessibility problems for words, a link, a picture and a promotion", async () => {
     for (const key of ["how.intro", "header.cta.live", "home.hero.image", "site.banner.promotion"]) {
       const view = render(workspace({ initialKey: key }));
       expect(await problems(view.container), key).toEqual([]);
       view.unmount();
     }
-  });
+  }, 20_000);
 
   it("shows where an item appears, what is live, a counter and the business facts it can use", () => {
     render(workspace({ initialKey: "how.intro" }));
