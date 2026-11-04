@@ -26,8 +26,19 @@ test.describe("owner AI check-up keys", () => {
       const row = await prisma.opsAgentKey.findFirstOrThrow({ where: { label }, select: { id: true, keyHash: true } });
       id = row.id;
       expect(row.keyHash).not.toBe(await newKey.innerText());
+      // OPS-HANDOFF-1: the hand-off block shows with the key — key, this
+      // deployment's address and the whole assistant briefing in one copy.
+      const handoff = page.getByLabel("AI check-up hand-off block");
+      await expect(handoff).toBeVisible();
+      const handoffText = await handoff.inputValue();
+      expect(handoffText).toContain((await newKey.innerText()).trim());
+      expect(handoffText).toContain("/api/ops/issues");
+      expect(handoffText).toContain("Authorization: Bearer");
+      expect(handoffText).toContain("OWNER_ACTION");
+      expect(handoffText).toContain("60 requests per hour");
       await page.reload();
       await expect(page.getByLabel("New AI check-up key")).toHaveCount(0);
+      await expect(page.getByLabel("AI check-up hand-off block")).toHaveCount(0);
       const listItem = page.getByRole("listitem").filter({ hasText: label });
       await listItem.getByRole("button", { name: "Revoke key" }).click();
       await expect.poll(async () =>

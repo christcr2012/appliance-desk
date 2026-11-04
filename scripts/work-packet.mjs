@@ -8,8 +8,8 @@ const text = (value, label) => {
     throw new Error('Missing/invalid ' + label);
   return value;
 };
-const array = (value, label) => {
-  if (!Array.isArray(value) || value.length > 80) throw new Error('Missing/invalid ' + label);
+const array = (value, label, max = 80) => {
+  if (!Array.isArray(value) || value.length > max) throw new Error('Missing/invalid ' + label);
   return value;
 };
 const idPattern = /^[A-Z][A-Z0-9-]{0,60}$/;
@@ -82,7 +82,10 @@ export function loadPacket(root, index, id = index.activeExecution) {
 }
 
 export function validatePackets(root, index) {
-  const entries = array(index.executionPackets, 'executionPackets');
+  // The registry is a repo-wide ledger that grows by one entry per card, so
+  // it gets a ledger-sized bound; the per-packet fields validated through
+  // array() above keep the tight 80 bound.
+  const entries = array(index.executionPackets, 'executionPackets', 500);
   if (new Set(entries.map(p => p.id)).size !== entries.length) throw new Error('Duplicate execution packet IDs');
   if (!entries.some(p => p.id === index.activeExecution)) throw new Error('Active execution packet is not registered');
   return entries.map(p => loadPacket(root, index, p.id));
