@@ -5886,6 +5886,29 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/PB-FIX-1.md"
+    },
+    {
+      "id": "CI-STRAY-1",
+      "title": "Hunt the remaining stray database connection that fails CI from inside browser-style tests",
+      "batch": "OPS",
+      "dependencies": [
+        "MCP-9"
+      ],
+      "status": "FILED — 2026-11-03 follow-up to PR #838; gates PR #837 under Chris's Option A hard stop",
+      "migration": "none (test infrastructure)",
+      "budget": 400,
+      "units": [
+        "CI-STRAY-1"
+      ],
+      "evidence": [
+        "docs/pr-cards/CI-STRAY-1.md",
+        "docs/STATUS.md"
+      ],
+      "tests": [
+        "CI unit shards (2/3) — zero unhandled errors across three consecutive green ci runs"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CI-STRAY-1.md"
     }
   ],
   "enhancements": [
