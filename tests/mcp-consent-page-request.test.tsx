@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 
 // Regression test for the second hosted consent failure (MCP-9 trial,
@@ -17,6 +17,7 @@ import { renderToString } from "react-dom/server";
 // it and pins what the form carries.
 
 const ISSUER = "https://testing.example.test";
+const issuerOriginal = process.env.MCP_ISSUER_URL;
 // The signed-field names the provider appends, one `ba_param` entry each.
 const SIGNED_NAMES = [
   "ba_iat", "client_id", "code_challenge", "code_challenge_method",
@@ -82,6 +83,21 @@ async function renderedOauthQuery(): Promise<string> {
 
 beforeAll(() => {
   process.env.MCP_ISSUER_URL = ISSUER;
+});
+
+// Restore the issuer afterwards (CI-STRAY-1): in the browser-style
+// (vmThreads) pool every file on a worker shares that worker's real
+// process.env, so a value left set here leaks into every later file on
+// the worker. Any later file whose import graph loads the real auth
+// module then registers the OAuth provider plugin, whose start-up
+// resource seeding opens a real database connection inside that file's
+// context — a connection that outlives the file and fails CI as an
+// unhandled "process is not defined" error in an innocent file when it
+// closes. The sibling MCP suites save and restore this variable for the
+// same reason.
+afterAll(() => {
+  if (issuerOriginal === undefined) delete process.env.MCP_ISSUER_URL;
+  else process.env.MCP_ISSUER_URL = issuerOriginal;
 });
 
 describe("assistant consent page's form request", () => {

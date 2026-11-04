@@ -6268,6 +6268,10 @@
     {
       "id": "PB-FIX-1",
       "path": "docs/pr-cards/execution/PB-FIX-1.json"
+    },
+    {
+      "id": "CI-STRAY-1",
+      "path": "docs/pr-cards/execution/CI-STRAY-1.json"
     }
   ]
 }
