@@ -5909,6 +5909,32 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CI-STRAY-1.md"
+    },
+    {
+      "id": "OPS-HANDOFF-1",
+      "title": "AI check-up key hand-off package: panel briefing block + keyless discovery document",
+      "batch": "S",
+      "dependencies": [
+        "S-2"
+      ],
+      "status": "COMPLETE — merged PR #844 (squash 27f2da21) at exact head c12ef948 with ci green and review-gate green (waived via self-review; Codex silent in its window)",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "OPS-HANDOFF-1"
+      ],
+      "evidence": [
+        "docs/pr-cards/OPS-HANDOFF-1.md",
+        "docs/runbooks/AI-CHECKUP.md"
+      ],
+      "tests": [
+        "tests/ops-contract.test.ts",
+        "tests/ops-discovery-route.test.ts",
+        "tests/ops-api-integration.test.ts",
+        "e2e/system-health-keys.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-HANDOFF-1.md"
     }
   ],
   "enhancements": [
@@ -6272,6 +6298,10 @@
     {
       "id": "CI-STRAY-1",
       "path": "docs/pr-cards/execution/CI-STRAY-1.json"
+    },
+    {
+      "id": "OPS-HANDOFF-1",
+      "path": "docs/pr-cards/execution/OPS-HANDOFF-1.json"
     }
   ]
 }

@@ -22,5 +22,9 @@
   {
     "file": "src/app/api/openapi.json/route.ts",
     "reason": "Public read-only OpenAPI endpoint schema only; protected calls continue to require an RTC pass."
+  },
+  {
+    "file": "src/app/api/ops/route.ts",
+    "reason": "Public AI check-up discovery document (OPS-HANDOFF-1): serves only the fixed contract text from ops-contract.ts — no database access, no issue data, no key material. The data endpoints under /api/ops/issues stay behind the check-up key (authorizeOpsRequest)."
   }
 ]
