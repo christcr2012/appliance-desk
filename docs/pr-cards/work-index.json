@@ -5917,7 +5917,7 @@
       "dependencies": [
         "S-2"
       ],
-      "status": "IN PROGRESS — Lane 6, 2026-11-04 (owner-found gap: a key alone tells an assistant nothing; key + one paste must make a working check-up agent)",
+      "status": "COMPLETE — merged PR #844 (squash 27f2da21) at exact head c12ef948 with ci green and review-gate green (waived via self-review; Codex silent in its window)",
       "migration": "none",
       "budget": 0,
       "units": [

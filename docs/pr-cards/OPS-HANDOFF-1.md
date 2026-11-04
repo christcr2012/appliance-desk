@@ -1,6 +1,6 @@
 # OPS-HANDOFF-1 — AI check-up key hand-off package: panel briefing block + keyless discovery document
 
-Status: **APPROVED** (Chris, via the main chat, 2026-11-04 — he found the gap himself). Baseline inspected: `92688d1b` (2026-11-04, #841).
+Status: **COMPLETE** — merged PR #844 (squash `27f2da21`) at exact head `c12ef948`, `ci` green and `review-gate` green (waived via self-review; Codex silent in its window). Approved by Chris, via the main chat, 2026-11-04 — he found the gap himself. Baseline inspected: `92688d1b` (2026-11-04, #841).
 Batch: S follow-on · Prerequisites: S-2 (merged, PR #334). One PR, no migration, no schema change.
 
 ## The gap (owner's words, 2026-11-04)
@@ -40,8 +40,8 @@ Key + one paste makes a working check-up agent for an assistant with no repo acc
 
 ## Acceptance
 
-- [ ] Creating a key on the System health page shows the hand-off block; one copy action copies key + address + briefing as one text.
-- [ ] The block's address is the deployment the key was created on (verified on a non-production origin in tests).
-- [ ] `GET /api/ops` with no key returns the full contract and nothing else; with any key it returns the same document (the key is ignored, never echoed).
-- [ ] Panel no longer says "Setup is manual."
-- [ ] `ci` and `review-gate` green at the exact head; merged under the no-taps rule.
+- [x] Creating a key on the System health page shows the hand-off block; one copy action copies key + address + briefing as one text.
+- [x] The block's address is the deployment the key was created on (verified on a non-production origin in tests).
+- [x] `GET /api/ops` with no key returns the full contract and nothing else; with any key it returns the same document (the key is ignored, never echoed).
+- [x] Panel no longer says "Setup is manual."
+- [x] `ci` and `review-gate` green at the exact head; merged under the no-taps rule.
