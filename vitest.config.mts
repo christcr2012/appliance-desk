@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
@@ -201,6 +202,23 @@ const UI_DB_TESTS = [
   "tests/portal-signing-readback-w22fin.test.tsx", // Renders the customer rentals page; its render path reads signing evidence from the real database.
 ];
 
+// CI-STRAY-1 in-runner connection census wiring. The census instruments
+// (tests/stray-census.setup.ts in every worker, scripts/stray-census-global.mjs
+// as globalSetup) are ALWAYS listed but are inert unless the census is
+// active: STRAY_CENSUS=1 in the environment, or the scripts/stray-census.ACTIVE
+// marker file (which exists only on the CI-STRAY-1 diagnostic branch and is
+// never merged to main). When active, the flag is also handed to each project
+// as a test env var so vmThreads workers — whose contexts have no Node
+// `process` global — can see it via import.meta.env. The census only observes
+// pg connections; it never changes what a test does and is not a check.
+const strayCensusActive =
+  process.env.STRAY_CENSUS === "1" ||
+  existsSync(path.resolve(import.meta.dirname, "scripts/stray-census.ACTIVE"));
+const strayCensusWiring = {
+  globalSetup: ["./scripts/stray-census-global.mjs"],
+  ...(strayCensusActive ? { env: { STRAY_CENSUS: "1" } } : {}),
+};
+
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -217,6 +235,8 @@ export default defineConfig({
           environment: "node",
           include: ["tests/**/*.test.ts"],
           exclude: ["tests/theme.test.ts", ...SHARED_SETTINGS_TESTS],
+          setupFiles: ["./tests/stray-census.setup.ts"],
+          ...strayCensusWiring,
           pool: "forks",
         },
       },
@@ -233,6 +253,8 @@ export default defineConfig({
           name: "node-shared-settings",
           environment: "node",
           include: SHARED_SETTINGS_TESTS,
+          setupFiles: ["./tests/stray-census.setup.ts"],
+          ...strayCensusWiring,
           pool: "forks",
           fileParallelism: false,
         },
@@ -243,7 +265,8 @@ export default defineConfig({
           environment: "jsdom",
           include: ["tests/**/*.test.tsx", "tests/theme.test.ts"],
           exclude: [...UI_DB_TESTS],
-          setupFiles: ["./tests/setup.ts"],
+          setupFiles: ["./tests/setup.ts", "./tests/stray-census.setup.ts"],
+          ...strayCensusWiring,
           // Vitest 5 keeps per-file isolation while reusing the expensive
           // jsdom environment per worker in this pool.
           pool: "vmThreads",
@@ -257,7 +280,8 @@ export default defineConfig({
           name: "ui-db",
           environment: "jsdom",
           include: UI_DB_TESTS,
-          setupFiles: ["./tests/setup.ts"],
+          setupFiles: ["./tests/setup.ts", "./tests/stray-census.setup.ts"],
+          ...strayCensusWiring,
           pool: "forks",
         },
       },

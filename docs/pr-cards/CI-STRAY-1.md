@@ -94,3 +94,41 @@ What Phase 1 (PR #838, main `9ea1f198`) already established:
       hard-stop condition; it is not re-run again). Only then do the MCP-9 steps resume:
       merge, testing promotion through the checked promoter, and the trial remainder on
       the testing app only.
+
+## Route decision for the in-Actions census (2026-11-04)
+
+The first-choice instrument was a dispatch-only census workflow, but a workflow
+file lives under `.github/`, and the repo's execution-packet guard
+(`scripts/work-packet.mjs` `safePath`) refuses any dot-directory path in a
+packet — so that workflow could not be packeted work. Two legitimate routes
+were considered:
+
+- **Amend the guard** to allow `.github` paths under a narrow scope. Rejected
+  for this hunt: the guard's wholesale refusal of dot-paths is what protects
+  `.git`, `.env*` and generated trees from packet references, and weakening a
+  safety guard — even narrowly — should stand or fall on its own merits, not
+  ride along as a side effect of a test hunt.
+- **Ride the existing `ci` workflow (chosen).** `.github/workflows/ci.yml`
+  already triggers on `pull_request` and `workflow_dispatch`, in exactly the
+  runner shape where the fault fires (4 of 4 in Actions, 0 of 5 everywhere
+  else). The census instruments therefore live entirely in ordinary packetable
+  paths and need no workflow change at all:
+  - `tests/stray-census.setup.ts` — a per-worker setup file (wired into all
+    four vitest projects) that patches `pg`'s `Client.connect`, recording the
+    creating stack and the active test file for every connection, logging
+    closes with their age, and naming at each file's teardown any connection
+    that file opened and never closed.
+  - `scripts/stray-census-global.mjs` — a `globalSetup` sampler in vitest's
+    main process that polls `pg_stat_activity` on the CI database and
+    summarises long-lived backends and backends still alive at run end.
+  - Both are **inert by default**: they activate only when `STRAY_CENSUS=1`
+    is set, or when the `scripts/stray-census.ACTIVE` marker file exists.
+    The marker exists only on the diagnostic branch
+    (`ai/vivienne/ci-stray-1-census`) and is never merged to main.
+
+The guard is therefore neither amended nor bypassed: nothing under `.github`
+is added, changed, or referenced by the packet, and the required `ci`
+workflow's behaviour is unchanged (the packet's standing invariant). The
+conviction must come from the census output in Actions itself — a CONNECT
+record naming the file and stack that opened the connection which later
+closes inside an innocent browser-style file's window — not from inference.
