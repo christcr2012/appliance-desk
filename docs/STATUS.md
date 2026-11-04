@@ -1,10 +1,10 @@
-## November 4 — Main CI triage: the client-evidence guard test now asserts the record's new truth (in progress, Lane 6)
+## November 4 — Main CI triage: the client-evidence guard test now asserts the record's new truth (merged, PR #848)
 
 **What changed:** main's CI failed twice at `93513972` on the same two tests in `tests/mcp-rtc-client-matrix.test.tsx`. Diagnosis (reproduced locally, exactly as CI showed): the evidence record in `docs/mcp/acceptance.json` moved this morning when PR #846 recorded the witnessed testing-app trial — the Official MCP SDK row is PASSED at app revision `d9c402e5` with four evidence items — but the guard test still asserted the old state (no verified clients, empty-state panel). The gate itself worked; the record-keeping PR did not update it. The fix updates the guard to assert the truthful current state: exactly one verified client (Official MCP SDK, pinned to its recorded revision), the untried rows still present and still never listed by the panel, and the empty state still proven against an all-untried list. Nothing was weakened — a future silent change to the record fails this test loudly, which is its job.
 
 **How it was checked:** both failures reproduced locally at `93513972` before the fix (2 failed / 2 passed, with the rendered panel HTML showing exactly the one evidenced client and no untried names); after the fix the file passes 5/5 locally. The record is the only input: it is consumed by one source module and this one test file, and both full CI runs at `93513972` failed on nothing else, so nothing else is hiding behind these two.
 
-**What remains open:** the PR's own CI run at the exact head and the review gate; merge on green, then watch main's next CI run go green.
+**What remains open:** nothing. PR #848 merged at exact head `aa8ec820` (squash `cc30afa4`) with `ci` green and `review-gate` green (waived via self-review — Codex posted nothing in its window), and main's own CI run at `cc30afa4` completed fully green (all unit shards, all browser groups, typecheck/lint, secret scan), closing the two-failure streak at `93513972`.
 
 ## November 4 — MCP-9: the assistant-connection trial PASSED on the testing app (PR #837 merged)
 
