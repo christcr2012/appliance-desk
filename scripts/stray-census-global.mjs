@@ -4,9 +4,9 @@
 // test worker and names the file/stack that opened a connection). This
 // globalSetup runs in vitest's main process, where a real Node `process`
 // exists, and independently watches the CI Postgres from the database side:
-// it polls pg_stat_activity for the shared test database and records every
-// backend's first-seen / last-seen time. At teardown it prints a summary —
-// how many distinct backends existed, which ones lived long enough to cross
+// it polls pg_stat_activity for EVERY database (v3: the stray may not be
+// on the test database at all) and records every backend's server-side
+// backend_start. At teardown it prints a summary — how many distinct backends existed, which ones lived long enough to cross
 // test-file boundaries (a pooled connection's idle close is the suspected
 // stray), and which were still alive when the run ended (those close during
 // worker shutdown — the exact moment the fault's errors cluster).
@@ -61,7 +61,7 @@ export async function setup() {
       state.polling = true;
       try {
         const { rows } = await state.client.query(
-          "SELECT pid, application_name, backend_start, state FROM pg_stat_activity WHERE datname = 'appliance_desk_test' AND pid <> pg_backend_pid()",
+          "SELECT pid, datname, application_name, backend_start, state FROM pg_stat_activity WHERE pid <> pg_backend_pid()",
         );
         const now = Date.now();
         const seen = new Set();
@@ -76,6 +76,7 @@ export async function setup() {
               firstSeen: now,
               lastSeen: now,
               backendStart: row.backend_start,
+              datname: row.datname,
               applicationName: row.application_name,
               state: row.state,
             });
@@ -117,24 +118,35 @@ export async function teardown() {
   const endedAt = Date.now();
   const rows = [...state.backends.entries()].map(([pid, rec]) => ({
     pid,
+    datname: rec.datname || "(none)",
     applicationName: rec.applicationName || "(none)",
-    lifetimeMs: (rec.goneAt ?? rec.lastSeen) - rec.firstSeen,
+    // Lifetime is measured from the server's own backend_start, so a
+    // sampler poll that was starved near teardown cannot make a
+    // long-lived backend look newborn.
+    lifetimeMs:
+      (rec.goneAt ?? rec.lastSeen) - new Date(rec.backendStart).getTime(),
     aliveAtEnd: !rec.goneAt,
     state: rec.state,
   }));
   const longLived = rows.filter((r) => r.lifetimeMs > 8000);
   const aliveAtEnd = rows.filter((r) => r.aliveAtEnd);
+  const otherDb = rows.filter((r) => r.datname !== "appliance_desk_test");
   console.log(
-    `STRAY-CENSUS-SUMMARY runMs=${endedAt - state.startedAt} distinctBackends=${rows.length} longLivedOver8s=${longLived.length} aliveAtEnd=${aliveAtEnd.length}`,
+    `STRAY-CENSUS-SUMMARY runMs=${endedAt - state.startedAt} distinctBackends=${rows.length} longLivedOver8s=${longLived.length} aliveAtEnd=${aliveAtEnd.length} otherDb=${otherDb.length}`,
   );
   for (const r of longLived) {
     console.log(
-      `STRAY-CENSUS-SUMMARY long-lived pid=${r.pid} app=${r.applicationName} lifetimeMs=${r.lifetimeMs} aliveAtEnd=${r.aliveAtEnd} lastState=${r.state}`,
+      `STRAY-CENSUS-SUMMARY long-lived pid=${r.pid} db=${r.datname} app=${r.applicationName} lifetimeMs=${r.lifetimeMs} aliveAtEnd=${r.aliveAtEnd} lastState=${r.state}`,
     );
   }
   for (const r of aliveAtEnd) {
     console.log(
-      `STRAY-CENSUS-SUMMARY alive-at-end pid=${r.pid} app=${r.applicationName} lifetimeMs=${r.lifetimeMs} lastState=${r.state}`,
+      `STRAY-CENSUS-SUMMARY alive-at-end pid=${r.pid} db=${r.datname} app=${r.applicationName} lifetimeMs=${r.lifetimeMs} lastState=${r.state}`,
+    );
+  }
+  for (const r of otherDb) {
+    console.log(
+      `STRAY-CENSUS-SUMMARY other-db pid=${r.pid} db=${r.datname} app=${r.applicationName} lifetimeMs=${r.lifetimeMs} aliveAtEnd=${r.aliveAtEnd} lastState=${r.state}`,
     );
   }
   try {

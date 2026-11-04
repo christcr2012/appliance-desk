@@ -203,14 +203,18 @@ const UI_DB_TESTS = [
 ];
 
 // CI-STRAY-1 in-runner connection census wiring. The census instruments
-// (tests/stray-census.setup.ts in every worker, scripts/stray-census-global.mjs
-// as globalSetup) are ALWAYS listed but are inert unless the census is
-// active: STRAY_CENSUS=1 in the environment, or the scripts/stray-census.ACTIVE
-// marker file (which exists only on the CI-STRAY-1 diagnostic branch and is
-// never merged to main). When active, the flag is also handed to each project
-// as a test env var so vmThreads workers — whose contexts have no Node
-// `process` global — can see it via import.meta.env. The census only observes
-// pg connections; it never changes what a test does and is not a check.
+// (a per-worker setup, scripts/stray-census-global.mjs as globalSetup)
+// are ALWAYS listed but are inert unless the census is active:
+// STRAY_CENSUS=1 in the environment, or the scripts/stray-census.ACTIVE
+// marker file (which exists only on the CI-STRAY-1 diagnostic branch and
+// is never merged to main). When active, the flag is also handed to each
+// project as a test env var so vmThreads workers — whose contexts have no
+// Node `process` global — can see it via import.meta.env. The census only
+// observes pg connections; it never changes what a test does and is not
+// a check. Node-pool projects use the lean per-file counter
+// (tests/stray-census.setup.ts, v2); the browser-style projects use the
+// real-time instrument (tests/stray-census-ui.setup.ts, v3), which prints
+// every connection the moment it opens and again when its socket closes.
 const strayCensusActive =
   process.env.STRAY_CENSUS === "1" ||
   existsSync(path.resolve(import.meta.dirname, "scripts/stray-census.ACTIVE"));
@@ -265,7 +269,7 @@ export default defineConfig({
           environment: "jsdom",
           include: ["tests/**/*.test.tsx", "tests/theme.test.ts"],
           exclude: [...UI_DB_TESTS],
-          setupFiles: ["./tests/setup.ts", "./tests/stray-census.setup.ts"],
+          setupFiles: ["./tests/setup.ts", "./tests/stray-census-ui.setup.ts"],
           ...strayCensusWiring,
           // Vitest 5 keeps per-file isolation while reusing the expensive
           // jsdom environment per worker in this pool.
@@ -280,7 +284,7 @@ export default defineConfig({
           name: "ui-db",
           environment: "jsdom",
           include: UI_DB_TESTS,
-          setupFiles: ["./tests/setup.ts", "./tests/stray-census.setup.ts"],
+          setupFiles: ["./tests/setup.ts", "./tests/stray-census-ui.setup.ts"],
           ...strayCensusWiring,
           pool: "forks",
         },

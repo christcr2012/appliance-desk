@@ -132,3 +132,45 @@ workflow's behaviour is unchanged (the packet's standing invariant). The
 conviction must come from the census output in Actions itself — a CONNECT
 record naming the file and stack that opened the connection which later
 closes inside an innocent browser-style file's window — not from inference.
+
+## Census v3 and the mechanism (2026-11-04)
+
+The v2 census fired once in Actions (dispatch run `41827247363` on this
+branch's content): one unhandled error at the run's last instant, blamed on
+`tests/info-tip-w18.test.tsx`; the sampler saw exactly one test-database
+backend still alive at the end. But no browser-style file's per-file census
+line could be found in the readable log — and part of that log could not be
+read at all (the read route rate-limited mid-extraction; that gap is declared,
+not papered over). V2's one-line-at-teardown design is too easy to lose, so
+the census was rebuilt around the mechanism, which is now pinned down in
+vitest's own vm worker source: **the worker installs `context.process` on a
+file's jsdom vm context before running the file, and strips the globals it
+installed back out when that file's environment is torn down.** A pg client
+created in the file's context keeps its callbacks bound to that context's
+global — so a pooled connection that outlives its file throws
+`ReferenceError: process is not defined` (pg's connection-'end' handler,
+`process.nextTick`) when its socket finally ends, and vitest blames whatever
+file the worker happens to be running at that moment. Locally the timing
+never lines up (workers exit first); in Actions the shard runs long enough
+for pool idle closes to land mid-run.
+
+V3 changes, on this diagnostic branch only:
+
+- `tests/stray-census-ui.setup.ts` — a real-time instrument for the two
+  browser-style projects (ui, ui-db): every connection prints the moment it
+  opens (owning file tag + stack), and a probe on the socket's own `close`
+  event prints the owner again when the connection dies — with the log
+  function bound at setup time, before vitest's teardown strip can remove
+  it. Node-pool projects keep the lean v2 counter (they open hundreds of
+  legitimate connections; real-time printing there would flood the log).
+- `scripts/stray-census-global.mjs` — the sampler now watches **every**
+  database (the stray may not live on the test database) and measures each
+  backend's lifetime from the server's own `backend_start`, so a sampler
+  poll starved near teardown cannot make a long-lived backend look newborn.
+
+Local proofs for v3: the instrument names a synthetic browser-style
+connection in real time and again at its close; a two-file probe proved pg
+instances are per-context (a mark planted on one file's pg prototype is
+invisible to the next file on the same worker); a full local ui-project run
+(87 files, 440 tests) opened zero connections — the opener acts only under
+Actions timing, which is why the census has to catch it there.
