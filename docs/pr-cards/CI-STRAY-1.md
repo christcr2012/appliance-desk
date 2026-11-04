@@ -174,3 +174,15 @@ instances are per-context (a mark planted on one file's pg prototype is
 invisible to the next file on the same worker); a full local ui-project run
 (87 files, 440 tests) opened zero connections — the opener acts only under
 Actions timing, which is why the census has to catch it there.
+
+**First catch (v3, run `41832138589`):** the fault fired — 3 unhandled errors
+at worker shutdown across three browser-style workers — and the instrument
+recorded exactly 3 connections in browser-style contexts, **all opened during
+module import**, all through the Prisma adapter's query path. So the opener
+is a module in the browser-style import graph that runs a real query while
+being imported; its pooled connection outlives the file and throws when it
+closes into the stripped context. The traces stopped one frame short of the
+module's name (the default 10-frame stack limit ends inside the Prisma
+runtime), so v3.1 raises `Error.stackTraceLimit` inside the instrument and
+reads the file tag at connect time — locally proven to reach the exact
+application call site (file and line). One more dispatch names it.

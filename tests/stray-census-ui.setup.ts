@@ -35,6 +35,15 @@
 // throws "ReferenceError: process is not defined" (pg client.js, the
 // connection-'end' handler's process.nextTick) when its socket finally
 // ends, and vitest blames whatever file the worker is running then.
+//
+// FIRST CATCH (run 41832138589, 2026-11-04): the fault fired (3 unhandled
+// errors at worker shutdown) and this instrument recorded exactly 3
+// CONNECTs — all during module import ("import-phase") in browser-style
+// contexts, all through PrismaPgAdapter.performIO — but the default
+// 10-frame stack limit cut each trace inside the Prisma runtime, one
+// frame short of the application code. V3.1 raises Error.stackTraceLimit
+// in this setup and reads the file tag lazily at connect time, so the
+// next firing run names the importing module and file.
 
 import { beforeAll, expect } from "vitest";
 
@@ -57,13 +66,22 @@ if (censusActive) {
   // up `console` at print time could be stripped along with it; the
   // bound function keeps working.
   const censusLog = console.log.bind(console);
+  // The default stack limit (10) cuts the trace off inside the Prisma
+  // runtime, just short of the application frame that names the opener
+  // (seen in run 41832138589: three import-phase connects, stacks ending
+  // at @prisma/client internals). Raise it before capturing.
+  Error.stackTraceLimit = 50;
   let tag = "(import-phase)";
-  beforeAll(() => {
+  const readTag = () => {
     try {
       tag = expect.getState().testPath ?? tag;
     } catch {
-      // Keep the import-phase tag; stacks still name the module chain.
+      // Keep the last known tag.
     }
+    return tag;
+  };
+  beforeAll(() => {
+    readTag();
   });
 
   const pg = await import("pg");
@@ -82,14 +100,14 @@ if (censusActive) {
       " | ",
     );
     censusLog(
-      `STRAY-CENSUS CONNECT tag=${tag} at=${new Date().toISOString()} stack=${stack}`,
+      `STRAY-CENSUS CONNECT tag=${readTag()} at=${new Date().toISOString()} stack=${stack}`,
     );
     const client = this;
     const armCloseProbe = () => {
       try {
         client.connection?.stream?.once("close", () => {
           censusLog(
-            `STRAY-CENSUS CLIENT-CLOSE tag=${tag} at=${new Date().toISOString()} connectStack=${stack}`,
+            `STRAY-CENSUS CLIENT-CLOSE tag=${readTag()} at=${new Date().toISOString()} connectStack=${stack}`,
           );
         });
       } catch {
