@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { getAutomationHealth, LATE_GRACE_MAX, LATE_GRACE_MIN, RECOMMENDED_LATE_GRACE_MINUTES } from "@/domains/automation/health";
+import { opsOriginFromHost } from "@/domains/system-issues/ops-contract";
 import { requireRole } from "@/lib/session";
 import { listSystemIssues } from "@/domains/system-issues/queries";
 import { SystemIssuesSection } from "./system-issues-section";
@@ -42,6 +44,12 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
   const [health, issueList, backup, monitorRules, repairCases] = await measure("PAGE", "desk:system-health", () => Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard(), listMonitorRules(), listRepairCases(session.user.id)]));
   const canPause = session.user.role === "OWNER";
   const keys = canPause ? await listOpsAgentKeys(session.user.id) : [];
+  // The check-up hand-off must name the deployment the key belongs to —
+  // the one answering this request — never a hard-coded address.
+  const headerList = await headers();
+  const baseUrl = opsOriginFromHost(headerList.get("x-forwarded-host") ?? headerList.get("host"))
+    ?? process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "")
+    ?? "http://localhost:3000";
   const monitorConnections = canPause ? await listMonitorConnections(session.user.id) : [];
   const grace = health[0]?.graceMinutes ?? RECOMMENDED_LATE_GRACE_MINUTES;
 
@@ -57,7 +65,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
 
       <SystemIssuesSection issues={issueList.rows} nextCursor={issueList.nextCursor} canManage={canPause} />
       <RepairCasesSection rows={repairCases} canManage={canPause} />
-      {canPause ? <OpsKeyPanel keys={keys.map(key => ({
+      {canPause ? <OpsKeyPanel baseUrl={baseUrl} keys={keys.map(key => ({
         id: key.id, label: key.label, createdAt: timestamp(key.createdAt),
         lastUsedAt: key.lastUsedAt ? timestamp(key.lastUsedAt) : null,
         revokedAt: key.revokedAt ? timestamp(key.revokedAt) : null,

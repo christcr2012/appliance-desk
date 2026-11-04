@@ -3,16 +3,14 @@ import { resolve, sep } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { verifyOpsAgentKey } from "./ops-auth";
+import {
+  OPS_NOTE_CATEGORIES, OPS_RATE_LIMIT, OPS_RECOMMENDATIONS, type OpsRecommendationKey,
+} from "./ops-contract";
 import { failureExplanation } from "@/domains/automation/failures";
 
-const RECOMMENDATIONS = {
-  INVESTIGATE_CODE: "Review the affected code and reproduce the reported behavior with regression tests.",
-  OWNER_CONFIGURATION: "Owner action: review the related settings; do not paste access credentials.",
-  VERIFY_PROVIDER: "The provider outcome is uncertain. Reconcile durable provider evidence before retrying.",
-  REVIEW_SOURCE: "Verify the official source manually before changing any business or tax setting.",
-} as const;
-type RecommendationKey = keyof typeof RECOMMENDATIONS;
-const CATEGORIES = ["OWNER_ACTION", "CODE_FINDING", "QUESTION"] as const;
+// The note categories, fixed recommendations and rate limit live in
+// ops-contract.ts — the same module the hand-off block and the keyless
+// discovery document publish — so enforcement and publication cannot drift.
 
 export class OpsRequestError extends Error {
   constructor(public readonly status: number) { super("Invalid check-up request."); }
@@ -22,7 +20,7 @@ export async function authorizeOpsRequest(header: string | null) {
   if (!header?.startsWith("Bearer ")) throw new OpsRequestError(404);
   const key = await verifyOpsAgentKey(header.slice(7));
   if (!key) throw new OpsRequestError(404);
-  if (await isRateLimited(`ops-checkup:${key.id}`, { max: 60, windowMs: 3_600_000 }))
+  if (await isRateLimited(`ops-checkup:${key.id}`, OPS_RATE_LIMIT))
     throw new OpsRequestError(429);
   return key;
 }
@@ -57,9 +55,9 @@ export function parseStructuredAgentNote(input: unknown) {
   const expectedVersion = data.expectedVersion;
   const prUrl = data.prUrl;
   if (Object.keys(data).some(k => !["category", "codeReferences", "recommendationKey", "expectedVersion", "prUrl"].includes(k)) ||
-    !CATEGORIES.some(c => c === category) ||
+    !OPS_NOTE_CATEGORIES.some(c => c === category) ||
     !Array.isArray(codeReferences) || codeReferences.length > 5 ||
-    !(typeof recommendationKey === "string" && Object.prototype.hasOwnProperty.call(RECOMMENDATIONS, recommendationKey)) ||
+    !(typeof recommendationKey === "string" && Object.prototype.hasOwnProperty.call(OPS_RECOMMENDATIONS, recommendationKey)) ||
     !Number.isInteger(expectedVersion) || (expectedVersion as number) < 1 ||
     (prUrl !== undefined && (typeof prUrl !== "string" ||
       !/^https:\/\/github\.com\/christcr2012\/appliance-desk\/pull\/[1-9]\d{0,8}$/.test(prUrl))))
@@ -77,7 +75,7 @@ export function parseStructuredAgentNote(input: unknown) {
     paths.push(file);
   }
   const body = [
-    `${category}: ${RECOMMENDATIONS[recommendationKey as RecommendationKey]}`,
+    `${category}: ${OPS_RECOMMENDATIONS[recommendationKey as OpsRecommendationKey]}`,
     ...(paths.length ? [`Code: ${paths.join(", ")}`] : []),
     ...(prUrl ? [`PR: ${prUrl}`] : []),
   ].join("\n");

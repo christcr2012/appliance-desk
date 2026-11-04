@@ -46,6 +46,23 @@ test('existing integration anchors, parent ownership and active packet are check
   } finally { f.cleanup(); }
 });
 
+test('the packet registry is a repo-wide ledger: more than 80 registered packets validate', () => {
+  const f = fixture(); try {
+    // 80 further packets beside A-1, each a clone with its own id, card and parent.
+    for (let n = 2; n <= 81; n++) {
+      const id = `P-${n}`;
+      const packet = structuredClone(f.packet);
+      packet.id = id; packet.parent = id; packet.card = `docs/pr-cards/${id}.md`;
+      f.write(`docs/pr-cards/${id}.md`, `# Card ${id}`);
+      f.write(`docs/pr-cards/execution/${id}.json`, JSON.stringify(packet));
+      f.index.cards.push({ id });
+      f.index.executionPackets.push({ id, path: `docs/pr-cards/execution/${id}.json` });
+    }
+    f.save();
+    assert.equal(validatePackets(f.root, f.index).length, 81);
+  } finally { f.cleanup(); }
+});
+
 test('no arbitrary shell commands, option injection, traversal or missing existing tests in packets', () => {
   const f = fixture(); try {
     for (const file of ['tests/../outside.test.ts', '--all', 'tests/a.test.ts;touch', '/tmp/a.test.ts']) {
