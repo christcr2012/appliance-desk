@@ -1,0 +1,6 @@
+CI-STRAY-1 diagnostic branch marker. Its presence activates the in-runner
+connection census (tests/stray-census.setup.ts + scripts/stray-census-global.mjs)
+inside GitHub Actions, where the stray-connection fault fires and nowhere
+else. This file exists ONLY on the diagnostic branch; the census tooling as
+landed for permanent use is inert unless STRAY_CENSUS=1 is set in the
+environment. Do not merge this marker to main.
