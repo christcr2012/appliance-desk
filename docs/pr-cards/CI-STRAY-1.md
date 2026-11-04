@@ -94,3 +94,50 @@ What Phase 1 (PR #838, main `9ea1f198`) already established:
       hard-stop condition; it is not re-run again). Only then do the MCP-9 steps resume:
       merge, testing promotion through the checked promoter, and the trial remainder on
       the testing app only.
+
+## Conviction and fix (2026-11-04)
+
+The opener is named, from the in-Actions census output itself (diagnostic
+branch PR #843; runs `41832138589` and `41835316608`, "unit tests (2/3)"):
+
+- **Source:** `tests/mcp-consent-page-request.test.tsx` (PR #837's own new
+  suite) set `process.env.MCP_ISSUER_URL` in `beforeAll` and never restored
+  it. Browser-style (vmThreads) workers share one real `process.env` across
+  every file they run, so the value leaked into all later files on that
+  worker.
+- **Mechanism:** with an issuer set, any later browser-style file whose
+  import graph loads the real `src/lib/auth.ts` registers the OAuth
+  provider plugin (`src/lib/auth.ts`, gated on `getMcpIssuer()`). Better
+  Auth's context init runs the plugin's `seedResources`, which queries the
+  database through the Prisma adapter (`findOne`) — opening a real pooled
+  connection inside that file's context. Census CONNECT records name
+  `tests/system-health-rows.test.tsx`, `tests/kit/status-tabs.test.tsx`
+  and `tests/kit/side-panel.test.tsx` with that exact stack. The file ends;
+  vitest strips the globals it installed (including `process`) from the
+  file's context; when the pooled socket later closes, pg's
+  connection-'end' handler (`process.nextTick`, pg/lib/client.js:226)
+  throws `ReferenceError: process is not defined`, and vitest blames
+  whatever innocent file the worker is running at that moment. This is
+  also why the fault fired only on PR #837's runs (the polluting suite is
+  #837's own) and never anywhere off GitHub's runners (the race needs the
+  runners' timing; locally the seeding query does not land in a
+  browser-style context).
+- **Fix (on PR #837's branch, with its refresh onto main `92688d1b`):** the
+  consent-page suite saves the previous `MCP_ISSUER_URL` value and restores
+  it in `afterAll` (deleting it when it was originally unset) — the same
+  save/restore pattern already used by `tests/mcp-oauth-security.test.ts`
+  and `tests/mcp-oauth-roundtrip-integration.test.ts`. With the leak
+  closed, no later browser-style file registers the plugin, the seeding
+  query never runs in a browser-style context, and no connection is
+  opened. No error suppression, no suite moved, no test skipped.
+- **Acceptance mapping:** box 1 (opener named) is met by the census
+  evidence above. Box 2 is met in substance — the owning suite no longer
+  causes the connections at all (stronger than closing them in teardown;
+  its own context never opened one, since it mocks `@/lib/prisma`). Boxes
+  3–4 are adapted to where the convicted file lives: the fix rides PR
+  #837's own branch, so the three consecutive green `ci` runs are taken at
+  #837's refreshed-and-fixed head, and that head is the merge-ready head.
+  A sibling observation, deliberately NOT fixed here: the node-pool suite
+  `tests/mcp-consent-action-request.test.ts` sets the same variable
+  without restoring it — harmless to CI in the forks pool (its contexts
+  have a real `process`), and a separate tidy-up.

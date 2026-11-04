@@ -11,8 +11,18 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
   if (!getMcpIssuer()) notFound();
   const session = await requireRole("OWNER", "ADMIN");
   const params = await searchParams;
+  // Carry the provider's sealed request into the form WHOLE. The provider
+  // signs the request and names every signed field in a repeated `ba_param`
+  // entry; Next delivers a repeated field as a string array, so keeping only
+  // plain string values silently drops that list (and any other repeated
+  // field). The signature then no longer verifies, the provider refuses the
+  // consent submission ("invalid signature"), and Allow can never record a
+  // connection. Append every entry, repeats included, in order.
   const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) if (typeof value === "string") query.set(key, value);
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") query.append(key, value);
+    else if (Array.isArray(value)) for (const entry of value) query.append(key, entry);
+  }
   const clientId = query.get("client_id") ?? "";
   const client = clientId ? await prisma.oauthClient.findFirst({ where: { clientId, disabled: { not: true } } }) : null;
   if (!client) notFound();
