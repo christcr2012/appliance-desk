@@ -1,4 +1,4 @@
-// CI-STRAY-1 in-runner connection census — per-worker instrument.
+// CI-STRAY-1 in-runner connection census — per-worker instrument (v2, lean).
 //
 // WHY THIS EXISTS: the required unit job intermittently fails with every test
 // passing, on 2–3 unhandled errors: `ReferenceError: process is not defined`
@@ -7,31 +7,34 @@
 // worker context, which has no Node `process` global. The file the error is
 // blamed on is the victim — whichever file that worker is running when a
 // stray connection finally closes. The opener is the file whose code opened
-// the connection and left it open. Local hunts (per-file census, whole ui
-// project serially, exact shard-2 shape on a VM and on a clean bench) never
-// reproduced it; it fires only in GitHub's runners. This instrument therefore
-// runs inside the CI run itself: it patches pg's Client.connect in every
-// worker, records the creating stack and the test file active at connect
-// time, logs closes with their age, and at each file's teardown names any
-// connection that file opened and never closed.
+// the connection and left it pooled. Local hunts never reproduced the fault;
+// it fires only in GitHub's runners, so the census runs there too.
+//
+// V2 IS DELIBERATELY LEAN. V1 logged a full stack for every connection plus
+// every close, which tripled the job log (~1.06M chars vs ~300k) and dragged
+// worker I/O enough to plausibly calm the very race being hunted (two
+// census runs passed without the fault firing, after four straight firings
+// without it). V2 emits exactly ONE line per test file that opened at least
+// one pg connection, printed at that file's teardown:
+//
+//   STRAY-CENSUS FILE file=<path> connects=<n> firstStack=<one-line stack>
+//
+// Any such line naming a browser-style (.tsx / ui project) file is the
+// smoking gun: ui files are not supposed to open connections at all, and the
+// first stack names the code path that did it. Connection lifetimes and
+// closes are covered out-of-process by the pg_stat_activity sampler in
+// scripts/stray-census-global.mjs, which adds no load inside the workers.
 //
 // ACTIVATION: inert unless STRAY_CENSUS=1 reaches the worker (vitest.config
 // sets it from the STRAY_CENSUS env var, or from the scripts/stray-census.ACTIVE
-// marker that exists only on the diagnostic branch). This file never changes
-// what a test does; it only observes pg client connections.
+// marker that exists only on the diagnostic branches). This file never
+// changes what a test does; it only counts pg client connections.
 //
 // NOTE: never read the bare `process` global here — in the vmThreads context
 // that global does not exist (that absence IS the fault). Activation arrives
 // via import.meta.env, which vitest populates in every pool.
 
-import { afterAll, beforeEach, expect } from "vitest";
-
-type CensusConnection = {
-  bornAt: number;
-  stack: string;
-  file: string;
-  closedAt?: number;
-};
+import { afterAll, beforeAll, expect } from "vitest";
 
 const importMetaEnv = (
   import.meta as unknown as { env?: Record<string, string | undefined> }
@@ -45,32 +48,23 @@ const censusActive =
   importMetaEnv?.STRAY_CENSUS === "1" || processEnv?.STRAY_CENSUS === "1";
 
 if (censusActive) {
-  const registry = new Set<CensusConnection>();
-  let currentFile = "(import time)";
+  let currentFile = "(unknown file)";
+  let connects = 0;
+  let firstStack = "";
 
-  beforeEach(() => {
+  beforeAll(() => {
     try {
       currentFile = expect.getState().testPath ?? currentFile;
     } catch {
-      // No test state yet (module import): keep the last known file; the
-      // connect stack below still names the importing module chain.
+      // No test state yet; the stack below still names the module chain.
     }
   });
 
-  afterAll(async () => {
-    // Brief grace: a connection this file closed properly in teardown can
-    // deliver its 'end' event a few milliseconds after afterAll begins; a
-    // genuinely stray (pooled, idle) connection will not close in this
-    // window, so the report below stays specific to real strays. Any
-    // STILL-OPEN line should still be cross-checked against the CLOSE lines
-    // in the run log before it is treated as a conviction.
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    for (const conn of registry) {
-      if (!conn.closedAt && conn.file === currentFile) {
-        console.log(
-          `STRAY-CENSUS STILL-OPEN file=${conn.file} ageMs=${Date.now() - conn.bornAt}\n${conn.stack}`,
-        );
-      }
+  afterAll(() => {
+    if (connects > 0) {
+      console.log(
+        `STRAY-CENSUS FILE file=${currentFile} connects=${connects} firstStack=${firstStack.replace(/\s*\n\s*/g, " | ")}`,
+      );
     }
   });
 
@@ -80,24 +74,10 @@ if (censusActive) {
   };
   const originalConnect = clientPrototype.connect;
   clientPrototype.connect = function patchedConnect(...args: unknown[]) {
-    const self = this as unknown as {
-      once: (event: string, listener: () => void) => void;
-    };
-    const record: CensusConnection = {
-      bornAt: Date.now(),
-      stack: new Error("stray-census connect trace").stack ?? "",
-      file: currentFile,
-    };
-    registry.add(record);
-    console.log(
-      `STRAY-CENSUS CONNECT file=${record.file}\n${record.stack}`,
-    );
-    self.once("end", () => {
-      record.closedAt = Date.now();
-      console.log(
-        `STRAY-CENSUS CLOSE file=${record.file} ageMs=${record.closedAt - record.bornAt}`,
-      );
-    });
+    connects += 1;
+    if (!firstStack) {
+      firstStack = new Error("stray-census connect trace").stack ?? "";
+    }
     return originalConnect.apply(this, args);
   };
 }
