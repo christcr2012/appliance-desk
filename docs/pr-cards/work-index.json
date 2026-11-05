@@ -5865,6 +5865,27 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/ZONE-1.md"
+    },
+    {
+      "id": "PB-FIX-1",
+      "title": "Customers-list owed-desc: trigger-maintained Customer.owedCents ends the per-call invoice re-aggregation",
+      "batch": "PERF",
+      "dependencies": [],
+      "status": "COMPLETE — Lane 6 (PB-FIX-1, this PR: trigger-maintained Customer.owedCents; owed-desc database phase at 40,000 customers back under the 150 ms budget with budgets unchanged)",
+      "migration": "additive (Customer.owedCents column + backfill + Invoice trigger, one transaction)",
+      "budget": 0,
+      "units": [
+        "PB-FIX-1"
+      ],
+      "evidence": [
+        "docs/PERF-BASELINES-INVESTIGATION-2026-10-31.md",
+        "docs/build-specs/screens/CUSTOMERS.md"
+      ],
+      "tests": [
+        "tests/perf/customers-list.perf.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/PB-FIX-1.md"
     }
   ],
   "enhancements": [
@@ -6216,6 +6237,10 @@
     {
       "id": "W-12",
       "path": "docs/pr-cards/execution/W-12.json"
+    },
+    {
+      "id": "PB-FIX-1",
+      "path": "docs/pr-cards/execution/PB-FIX-1.json"
     }
   ]
 }

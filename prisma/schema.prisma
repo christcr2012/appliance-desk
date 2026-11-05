@@ -231,6 +231,14 @@ model Customer {
   // customerContactKeys (src/domains/customers/keys.ts) at every write that
   // sets phone — the LD-1 lead pattern. Backfilled by the migration.
   phoneDigits     String?
+  // PB-FIX-1: the customer's total currently owed across open invoices
+  // (status OPEN/PARTIALLY_PAID/DELINQUENT/FAILED, due minus paid, floored
+  // at zero per invoice), maintained by the Invoice_maintain_customer_owed
+  // database trigger (migration 20261219000000_customer_owed_total) inside
+  // the writing transaction — never written by application code. It is a
+  // sort/display total only (the customers list owed-desc ordering);
+  // invoices remain the money source of truth.
+  owedCents       Int      @default(0)
   isBusiness      Boolean  @default(false)
   isPropertyManager Boolean @default(false)
   companyName     String?

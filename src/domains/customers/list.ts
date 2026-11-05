@@ -235,15 +235,14 @@ async function fetchOrderedIds(
         order = Prisma.sql`ORDER BY COALESCE(r."monthlyRentCents", 0) DESC, ${nameKey} ASC, c."id" ASC`;
         break;
       case "owed-desc":
-        joins = Prisma.sql`
-          LEFT JOIN (
-            SELECT inv."customerId" AS "cid",
-              COALESCE(SUM(GREATEST(0, inv."amountDueCents" - inv."amountPaidCents")), 0)::int AS "owedCents"
-            FROM "Invoice" inv
-            WHERE inv."status" IN ('OPEN', 'PARTIALLY_PAID', 'DELINQUENT', 'FAILED')
-            GROUP BY inv."customerId"
-          ) i ON i."cid" = c."id"`;
-        order = Prisma.sql`ORDER BY COALESCE(i."owedCents", 0) DESC, ${nameKey} ASC, c."id" ASC`;
+        // PB-FIX-1: order by the trigger-maintained Customer.owedCents
+        // (migration 20261219000000_customer_owed_total) instead of
+        // re-aggregating every open invoice per call — the investigation
+        // measured that aggregate as the one sort cost that breaks its
+        // budget by book growth alone. The stored total is defined as
+        // exactly the aggregate it replaces (0 with no open invoices),
+        // so ordering and tie-breaks are unchanged.
+        order = Prisma.sql`ORDER BY c."owedCents" DESC, ${nameKey} ASC, c."id" ASC`;
         break;
       case "attention":
         joins = Prisma.sql`

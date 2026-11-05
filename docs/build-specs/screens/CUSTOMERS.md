@@ -20,6 +20,17 @@ amend the budget rather than commission the stored summary: **the attention sort
 300 ms budget at the 20,000-customer seed; every other measurement keeps 150 ms.** The summary/cache design
 remains the escalation if the amended budget is ever breached — written up first, per the rule above.
 
+**Amendment (PB-FIX-1, 2026-10-31, owner direction after the Performance Baselines investigation):** the
+investigation (`docs/PERF-BASELINES-INVESTIGATION-2026-10-31.md`) proved the owed-desc sort is the one
+measurement that breaks its budget by book growth alone — at 40,000 customers its database phase alone
+exceeds the whole 150 ms budget — and the owner commissioned the fix with budgets unchanged. The escalation
+is narrowed to a single value and maintained by the database, answering this section's missed-write
+objection: `Customer.owedCents` (migration `20261219000000_customer_owed_total`) is kept in step by the
+`Invoice_maintain_customer_owed` trigger inside every writing transaction, for every writer, so no
+application path can be missed; the owed-desc ordering reads the column. It is a sort/display total only —
+invoices remain the money source of truth, the other sorts and the segment counts still compute live, and
+the full stored-summary table remains unbuilt.
+
 ## 2. Data (additive migration `20261026040000_customer_list`)
 
 - `Customer.phoneDigits String?` + `@@index([phoneDigits])`, maintained by the same `contactKeys()` helper pattern as
