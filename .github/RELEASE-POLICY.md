@@ -77,3 +77,7 @@ actual app behavior separately. Documentation-only builds may be skipped. An add
 manual branch advance or environment-only rebuild needs an explicit owner instruction; this initial setup
 is authorized by the owner's October 24 request. No test rows or fixture tax confirmations migrate into
 production. See [the testing runbook](../docs/TESTING-ENVIRONMENT.md).
+
+## Release authority — owner's standing rule (2026-11-04)
+
+Release authority: this project gets ONE automatic release per day (the nightly promotion). Every additional release requires the owner's authority — granted in advance with conditions, in the moment, or by any other scheme the owner specifies. Release machinery must encode the owner's permission scheme; no machinery may impose its own numeric cap on owner-ordered releases. Checks (exact-head green, ancestry, receipts) govern HOW an authorized release runs, never WHETHER the owner may order one. The once-per-Denver-day receipt described in this document binds the automatic route only; an owner-authorized release runs the same checked promotion and carries its own receipt.
