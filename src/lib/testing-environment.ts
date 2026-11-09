@@ -6,6 +6,14 @@ export function isTestingEnvironment(env: TestingEnvironment = process.env): boo
   return env.APP_ENV === "testing";
 }
 
+/** The rack copy of the testing database (Neon Level 2 Workstream A,
+ * 2026-11-08): the Development Rack's Postgres container, reached on the
+ * rack instance network under this exact name. Verified before adoption
+ * by a full copy + per-table reconciliation against the Neon branch it
+ * replaced (244 tables, 811 rows, schema fingerprint match). The rack
+ * endpoint has no pooled variant: both URLs use this host directly. */
+export const RACK_TESTING_DATABASE_HOST = "rack-postgres";
+
 /** Check before migrations, runtime connections, and fixture writes. Never
  * print URLs; both the database and role must belong to the empty test DB. */
 export function assertTestingDatabaseUrls(env: TestingEnvironment = process.env): void {
@@ -18,7 +26,8 @@ export function assertTestingDatabaseUrls(env: TestingEnvironment = process.env)
     return;
   }
   const host = env.TEST_DATABASE_HOST;
-  if (!host || !/^[a-z0-9-]+\.[a-z0-9.-]+\.neon\.tech$/.test(host) || host.includes("-pooler.")) {
+  const rackHost = host === RACK_TESTING_DATABASE_HOST;
+  if (!rackHost && (!host || !/^[a-z0-9-]+\.[a-z0-9.-]+\.neon\.tech$/.test(host) || host.includes("-pooler."))) {
     throw new Error("The independently verified testing database host is required.");
   }
   if (env.VERCEL === "1" && (!env.TEST_VERCEL_PROJECT_ID || env.VERCEL_PROJECT_ID !== env.TEST_VERCEL_PROJECT_ID)) {
@@ -28,7 +37,7 @@ export function assertTestingDatabaseUrls(env: TestingEnvironment = process.env)
     let url: URL;
     try { url = new URL(env[key] ?? ""); }
     catch { throw new Error("Testing database credentials are missing or invalid."); }
-    const allowed = key === "DIRECT_URL" ? [host] : [host, host.replace(".", "-pooler.")];
+    const allowed = key === "DIRECT_URL" || rackHost ? [host] : [host, host.replace(".", "-pooler.")];
     if (!allowed.includes(url.hostname) || url.pathname !== "/appliance_desk" ||
         url.username !== "appliance_desk_testing" || !["postgres:", "postgresql:"].includes(url.protocol) ||
         (url.port && url.port !== "5432") || url.hash ||

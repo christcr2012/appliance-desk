@@ -32,3 +32,26 @@ describe("isolated hosted testing", () => {
     expect(() => assertTestingDatabaseUrls({ ...env, APP_ENV: undefined })).toThrow();
   });
 });
+
+
+describe("rack-hosted testing (Development Rack copy)", () => {
+  const rackEnv = {
+    APP_ENV: "testing", TEST_DATA_SEED: "synthetic-only",
+    TEST_DATABASE_HOST: "rack-postgres",
+    DATABASE_URL: "postgresql://appliance_desk_testing:fake@rack-postgres:5432/appliance_desk",
+    DIRECT_URL: "postgresql://appliance_desk_testing:fake@rack-postgres:5432/appliance_desk",
+  };
+  it("accepts the verified rack endpoint with its dedicated role and database", () => {
+    expect(() => assertTestingSeedEnvironment(rackEnv)).not.toThrow();
+    expect(isNonProductionDeployment(rackEnv)).toBe(true);
+  });
+  it.each([
+    { TEST_DATABASE_HOST: "rack-postgres.example.com" },
+    { TEST_DATABASE_HOST: "rack-postgres-pooler" },
+    { DATABASE_URL: "postgresql://appliance_desk_testing:fake@rack-postgres:5433/appliance_desk" },
+    { DATABASE_URL: "postgresql://neondb_owner:fake@rack-postgres:5432/appliance_desk" },
+    { DIRECT_URL: "postgresql://appliance_desk_testing:fake@ep-example.c-1.us-east-1.aws.neon.tech/appliance_desk" },
+  ])("refuses unverified or mixed rack targets", patch => {
+    expect(() => assertTestingSeedEnvironment({ ...rackEnv, ...patch })).toThrow();
+  });
+});
