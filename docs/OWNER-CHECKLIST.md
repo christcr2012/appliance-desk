@@ -68,6 +68,14 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   app displays its MCP address. You'll know it worked when the app lists the assistant as Connected and the assistant
   can report its own connected identity. To test instant disconnect, use the app's Disconnect button and confirm the
   next assistant request is refused. Do not check this row from local developer tests alone.
+- [ ] **Point your Muse connector for the TESTING app at the rack (about 2 minutes).** The testing app
+  now also runs on the Development Rack at home. In Muse: open Settings → Connectors, find the
+  Appliance Desk **testing** connector, and change its address to
+  `https://appliance-desk-testing.robinsonaisystems.com` — if it will not let you edit the address,
+  delete that connector entry and add a fresh custom connector with the rack address instead. Sign in
+  as the testing owner if it asks, read the permissions, and tap Allow. You'll know it worked when
+  the assistant can say who it is connected as (the testing owner). The old Vercel address keeps
+  working as a backup, and the real business app is not affected.
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 

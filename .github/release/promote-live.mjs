@@ -53,8 +53,18 @@ export function decide({ main, live, alreadyToday, ancestor, green }) {
 
 /** Newest Vercel commit status for one project on one commit: success,
  * pending, failure, error, or 'missing'. Only statuses written by Vercel count. */
+// The account allowed to report each deployment status. The Vercel testing
+// deployment reports as vercel[bot]; the rack testing instance's acceptance
+// is posted through GitHub Unleashed, which acts as the repository owner.
+// Any other context is unknown and never counts, so the promotion waits.
+const DEPLOYMENT_STATUS_CREATORS = {
+  'Vercel – appliance-desk-testing': 'vercel[bot]',
+  'Rack – appliance-desk-testing': 'christcr2012',
+};
+
 export function latestDeploymentState(statuses, context) {
-  const mine = statuses.filter(s => s.context === context && s.creator?.login === 'vercel[bot]')
+  const expectedCreator = DEPLOYMENT_STATUS_CREATORS[context];
+  const mine = statuses.filter(s => s.context === context && expectedCreator !== undefined && s.creator?.login === expectedCreator)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
   return mine[0]?.state ?? 'missing';
 }

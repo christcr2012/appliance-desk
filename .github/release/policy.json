@@ -5,5 +5,5 @@
     "ci"
   ],
   "candidateBranch": "testing",
-  "requiredDeploymentStatus": "Vercel – appliance-desk-testing"
+  "requiredDeploymentStatus": "Rack – appliance-desk-testing"
 }

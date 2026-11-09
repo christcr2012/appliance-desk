@@ -225,7 +225,7 @@ test('live ships the testing version only after the testing app built it', async
 test('the deployed policy ships testing, gated on the testing app build', () => {
   const policy = JSON.parse(readFileSync(new URL('./policy.json', import.meta.url), 'utf8'));
   assert.equal(policy.candidateBranch, 'testing');
-  assert.equal(policy.requiredDeploymentStatus, 'Vercel – appliance-desk-testing');
+  assert.equal(policy.requiredDeploymentStatus, 'Rack – appliance-desk-testing');
 });
 
 test('a docs-only release does not wait for a testing build Vercel skipped', async () => {
