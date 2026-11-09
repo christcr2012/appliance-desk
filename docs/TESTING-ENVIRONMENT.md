@@ -6,9 +6,9 @@ directed resetting and seeding the **existing preview database**. This is ongoin
 | Concern | Public business app | Dedicated testing app |
 |---|---|---|
 | Vercel project | `appliance-desk` | `appliance-desk-testing` |
-| Canonical URL | https://robinsonappliancerentals.com | https://appliance-desk-testing.vercel.app |
+| Canonical URL | https://robinsonappliancerentals.com | https://appliance-desk-testing.robinsonaisystems.com (Development Rack, since 2026-11-09); https://appliance-desk-testing.vercel.app (Vercel, rollback) |
 | Git branch | `live` | `testing` |
-| Database | Existing production database | Existing `vercel-preview-2`, database `appliance_desk` |
+| Database | Existing production database | Rack copy of `vercel-preview-2`, database `appliance_desk` (the Neon branch stays the refresh source and rollback target) |
 | Database role | Existing production credential | Independent `appliance_desk_testing` role |
 | App environment | Business production | `APP_ENV=testing`, even on Vercel's Production target |
 | Build command | `npm run vercel-build` | `npm run vercel-build:testing` |

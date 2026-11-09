@@ -35,3 +35,12 @@ test('production waits for, or refuses, the testing app build of the same commit
   assert.equal(latestDeploymentState([s('success', '2026-10-24T13:05:46Z', { context: 'Vercel' })], ctx), 'missing');
   assert.equal(latestDeploymentState([], ctx), 'missing');
 });
+
+test('the rack testing status counts only from the owner account', () => {
+  const ctx = 'Rack – appliance-desk-testing';
+  const s = (state, at, extra = {}) => ({ id: 1, context: ctx, state, created_at: at, creator: { login: 'christcr2012' }, ...extra });
+  assert.equal(latestDeploymentState([s('success', '2026-11-09T13:05:46Z')], ctx), 'success');
+  assert.equal(latestDeploymentState([s('success', '2026-11-09T13:05:46Z', { creator: { login: 'vercel[bot]' } })], ctx), 'missing');
+  assert.equal(latestDeploymentState([s('success', '2026-11-09T13:05:46Z', { creator: { login: 'someone' } })], ctx), 'missing');
+  assert.equal(latestDeploymentState([s('success', '2026-11-09T13:05:46Z')], 'Unknown – context'), 'missing');
+});

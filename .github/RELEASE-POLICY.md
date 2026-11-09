@@ -44,8 +44,10 @@ No provider production permission, plan, spending limit or preview setting chang
 
 ## Dedicated testing deployment (owner-approved 2026-10-24)
 
-The `appliance-desk-testing` project tracks the `testing` Git branch, uses the existing
+The `appliance-desk-testing` project tracks the `testing` Git branch, used the
 `vercel-preview-2` database with an independent testing role, and runs `vercel-build:testing`.
+Since 2026-11-09 the testing app also runs on the Development Rack (below); the Vercel
+testing deployment remains in place as the rollback target.
 This Vercel project's Production target is still a **testing application** (`APP_ENV=testing`).
 The public `appliance-desk` project continues to track `live`; its credentials and daily policy are unchanged.
 
@@ -53,10 +55,20 @@ The public `appliance-desk` project continues to track `live`; its credentials a
 newest first-parent `main` commit with green exact-head `ci` and `release-policy` checks, fast-forwards `testing`
 and creates an atomic dated `testing-promotion/<Denver date>` marker, at most once per scheduled Denver day (an
 owner-dispatched run gets its own marker). The nightly live promotion then uses `testing`, not `main`, as its
-candidate (`policy.json` `candidateBranch`) and also requires the newest `Vercel – appliance-desk-testing`
-commit status from `vercel[bot]` on that exact commit to be `success` (`requiredDeploymentStatus`); a failed
+candidate (`policy.json` `candidateBranch`) and also requires the newest `Rack – appliance-desk-testing`
+commit status from `christcr2012` on that exact commit to be `success` (`requiredDeploymentStatus`); a failed
 testing build stops the release, a pending one is waited for. Docs/tests-only differences skip that wait because
 Vercel's ignore step never builds them. Forks, PR runs, failed/missing checks and divergent history are refused.
+
+**Posting the rack testing status (the other half of the gate).** The `Rack – appliance-desk-testing`
+status is posted by the rack-acceptance step, through GitHub Unleashed (which posts as the
+repository owner, `christcr2012` — the only creator the gate accepts for this context). When the
+rack testing instance built from a candidate commit passes readiness and the acceptance battery
+(health, sign-in, and the assistant door answering as the testing owner), post a commit status
+for that exact commit: context `Rack – appliance-desk-testing`, state `success`, target URL
+`https://appliance-desk-testing.robinsonaisystems.com`. Until that status exists the nightly
+promotion waits — fail-closed, exactly as it did for the Vercel build status. A failed battery
+posts `failure` instead, which stops the release.
 Neither job can use repository secrets or deploy a PR. Automatic per-PR previews remain disabled on both Vercel
 projects, and each project builds only its own branch (`scripts/vercel-ignore-build.mjs`).
 
