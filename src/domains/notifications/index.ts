@@ -88,19 +88,31 @@ export async function notify(event: NotificationEvent): Promise<void> {
   const inApp = recipients.filter((r) => prefByUser.get(r.id)?.inApp ?? true);
   if (inApp.length > 0) {
     // The (userId, dedupeKey) unique plus skipDuplicates makes webhook retries and double views harmless.
-    await prisma.notification.createMany({
-      data: inApp.map((r) => ({
-        userId: r.id,
-        kind: event.kind,
-        title,
-        body,
-        href: event.href,
-        entityType: event.entityType,
-        entityId: event.entityId,
-        dedupeKey: event.dedupeKey,
-      })),
-      skipDuplicates: true,
-    });
+    const writeRows = (ids: string[]) =>
+      prisma.notification.createMany({
+        data: ids.map((userId) => ({
+          userId,
+          kind: event.kind,
+          title,
+          body,
+          href: event.href,
+          entityType: event.entityType,
+          entityId: event.entityId,
+          dedupeKey: event.dedupeKey,
+        })),
+        skipDuplicates: true,
+      });
+    const ids = inApp.map((r) => r.id);
+    try {
+      await writeRows(ids);
+    } catch (error) {
+      // A recipient removed between the read above and this write fails the user foreign key
+      // for the whole batch. Keep the people who still exist and write once more, so one
+      // removed account never costs everyone else the notification.
+      if ((error as { code?: string } | null)?.code !== "P2003") throw error;
+      const still = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true } });
+      if (still.length > 0) await writeRows(still.map((u) => u.id));
+    }
   }
 
   // Email is per person and independent of the in-app switch; it rides the existing internal email
