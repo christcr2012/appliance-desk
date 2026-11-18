@@ -6,13 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   userFindMany: vi.fn(),
-  prefFindMany: vi.fn(async () => []),
+  prefFindMany: vi.fn(async (): Promise<{ userId: string; inApp: boolean; email: boolean }[]> => []),
   createMany: vi.fn(),
+  deliverMessage: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => fn }));
 vi.mock("@/lib/report-error", () => ({ reportBackgroundError: vi.fn() }));
-vi.mock("@/domains/messaging/deliver", () => ({ deliverMessage: vi.fn() }));
+vi.mock("@/domains/messaging/deliver", () => ({ deliverMessage: mocks.deliverMessage }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findMany: mocks.userFindMany },
@@ -43,6 +44,9 @@ describe("notify when a recipient disappears mid-send", () => {
   beforeEach(() => {
     mocks.userFindMany.mockReset();
     mocks.createMany.mockReset();
+    mocks.prefFindMany.mockReset();
+    mocks.prefFindMany.mockResolvedValue([]);
+    mocks.deliverMessage.mockReset();
   });
 
   it("retries once with only the people who still exist", async () => {
@@ -65,5 +69,22 @@ describe("notify when a recipient disappears mid-send", () => {
     mocks.createMany.mockRejectedValueOnce(Object.assign(new Error("boom"), { code: "P1001" }));
     await expect(notify(event)).rejects.toThrow("boom");
     expect(mocks.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not email a recipient removed after the read, even one outside the in-app batch", async () => {
+    // Both people have email on and in-app off, so no in-app write ever trips the
+    // foreign key for the removed person; the email path must check for itself.
+    mocks.prefFindMany.mockResolvedValue([
+      { userId: "owner-1", inApp: false, email: true },
+      { userId: "admin-gone", inApp: false, email: true },
+    ]);
+    mocks.userFindMany.mockResolvedValueOnce(people).mockResolvedValueOnce([{ id: "owner-1" }]);
+
+    await notify(event);
+
+    const sentTo = mocks.deliverMessage.mock.calls.map(
+      (c) => (c[0] as { recipient: { id: string } }).recipient.id,
+    );
+    expect(sentTo).toEqual(["owner-1"]);
   });
 });

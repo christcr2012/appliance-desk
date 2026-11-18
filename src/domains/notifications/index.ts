@@ -119,21 +119,34 @@ export async function notify(event: NotificationEvent): Promise<void> {
   // path (deliverMessage with customerFacing: false), which respects the email switches. One bad
   // send is reported and never stops the others.
   const emailById = new Map(people.map((p) => [p.id, p.email]));
-  for (const recipient of recipients) {
-    if (!(prefByUser.get(recipient.id)?.email ?? false)) continue;
-    try {
-      await deliverMessage({
-        idempotencyKey: `notification:${event.dedupeKey}:${recipient.id}`,
-        channel: "EMAIL",
-        purpose: "TRANSACTIONAL",
-        templateKey: "notification",
-        customerFacing: false,
-        recipient: { type: "Staff", id: recipient.id, address: emailById.get(recipient.id) ?? "" },
-        subject: { type: "Notification", id: event.dedupeKey },
-        render: () => ({ subject: title, text: `${body}\n\nOpen it in the desk: ${event.href}` }),
-      });
-    } catch (error) {
-      await reportBackgroundError(error, `notify:email:${event.kind}`);
+  const emailRecipients = recipients.filter((r) => prefByUser.get(r.id)?.email ?? false);
+  if (emailRecipients.length > 0) {
+    // The recipient list is a snapshot from the read at the top, and the email loop sends to
+    // captured addresses, so a person removed since that read would still be emailed. Re-read
+    // who still exists before sending, the same existence check the in-app retry makes: a
+    // removed person who is not in the in-app batch never trips the foreign key, so the email
+    // path needs its own check.
+    const still = await prisma.user.findMany({
+      where: { id: { in: emailRecipients.map((r) => r.id) } },
+      select: { id: true },
+    });
+    const stillIds = new Set(still.map((u) => u.id));
+    for (const recipient of emailRecipients) {
+      if (!stillIds.has(recipient.id)) continue;
+      try {
+        await deliverMessage({
+          idempotencyKey: `notification:${event.dedupeKey}:${recipient.id}`,
+          channel: "EMAIL",
+          purpose: "TRANSACTIONAL",
+          templateKey: "notification",
+          customerFacing: false,
+          recipient: { type: "Staff", id: recipient.id, address: emailById.get(recipient.id) ?? "" },
+          subject: { type: "Notification", id: event.dedupeKey },
+          render: () => ({ subject: title, text: `${body}\n\nOpen it in the desk: ${event.href}` }),
+        });
+      } catch (error) {
+        await reportBackgroundError(error, `notify:email:${event.kind}`);
+      }
     }
   }
 }
