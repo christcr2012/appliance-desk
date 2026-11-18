@@ -9,8 +9,9 @@
 // "212 migration folders", "906 top-level entries"); counts are checked as
 // number+label pairs, so swapping two counts' numbers is caught, not just a
 // missing or extra number. Grouped numbers (1,243) are read whole, never as
-// their suffix, and signed, decimal-prefixed or spaced-approximation forms
-// (-243, 0.243, "~ 243") never count as the plain statement. "how" is one of:
+// their suffix, and signed, decimal-prefixed, letter-prefixed or
+// approximation-marked forms (-243, 0.243, 1e243, "~ 243", "about 243")
+// never count as the plain statement. "how" is one of:
 //   { "files": "src/tools/*.js" }                       how many files match a simple glob (* and **)
 //   { "matches": "regex", "in": "glob", "flags": "gm" } how many regex matches across those files
 //   { "command": "...", "match": "regex with one (\\d+)" } a number read from a command's output
@@ -67,7 +68,7 @@ const labelRe = (label) => norm(label).split(' ').map(esc).join('\\s+');
 const problems = [];
 const spec = JSON.parse(readFileSync(join(MAP, 'counts.json'), 'utf8'));
 const labels = [...new Set(spec.counts.map((c) => norm(c.label)))].sort((a, b) => b.length - a.length);
-const COUNT_RE = new RegExp(`(?<![\\w.\\-/#:,])(?:~\\s*)?(\\d{1,3}(?:,\\d{3})+|\\d+)\\s+(?:(?:registered|hand-built|catalog(?:ue)?|visible|MCP|vendored|schema)\\s+)?(${[...labels.map(labelRe), GENERIC].join('|')})\\b`, 'gi');
+const COUNT_RE = new RegExp(`(?<![\\w.\\-/#:,])(?:~\\s*|(?:about|around|roughly|approximately)\\s+)?(\\d{1,3}(?:,\\d{3})+|\\d+)\\s+(?:(?:registered|hand-built|catalog(?:ue)?|visible|MCP|vendored|schema)\\s+)?(${[...labels.map(labelRe), GENERIC].join('|')})\\b`, 'gi');
 
 const listed = new Map(); // file -> Set of stated "<value> <label>" pairs
 for (const c of spec.counts) {
@@ -76,7 +77,9 @@ for (const c of spec.counts) {
   if (real !== c.value) problems.push(`${c.name}: the map says ${c.value}, the code has ${real}. Update docs/relational-map/counts.json and the map text.`);
   for (const f of c.files) {
     const text = readFileSync(join(MAP, f), 'utf8');
-    if (!new RegExp(`(?<![\\d,.\\-+])${c.value}\\s+${labelRe(c.label)}(?!\\w)`, 'i').test(text)) problems.push(`${c.name}: ${MAP}/${f} does not state "${c.value} ${c.label}"`);
+    const pairRe = new RegExp(`(?<![\\d,.\\-+a-zA-Z])${c.value}\\s+${labelRe(c.label)}(?!\\w)`, 'gi');
+    const stated = [...text.matchAll(pairRe)].some((m) => !/(?:about|around|roughly|approximately|~)\s*$/i.test(text.slice(Math.max(0, m.index - 16), m.index)));
+    if (!stated) problems.push(`${c.name}: ${MAP}/${f} does not state "${c.value} ${c.label}"`);
     if (!listed.has(f)) listed.set(f, new Set());
     listed.get(f).add(`${c.value} ${norm(c.label)}`);
   }
@@ -85,7 +88,7 @@ for (const f of readdirSync(MAP).filter((n) => n.endsWith('.md'))) {
   const text = readFileSync(join(MAP, f), 'utf8');
   for (const m of text.matchAll(COUNT_RE)) {
     const pair = `${m[1].replace(/,/g, '')} ${norm(m[2])}`;
-    if (m[0].startsWith('~')) problems.push(`${MAP}/${f}: "${m[0]}" is an approximate count; state the exact number and list it in counts.json`);
+    if (/^(?:~|about|around|roughly|approximately)\b/i.test(m[0])) problems.push(`${MAP}/${f}: "${m[0]}" is an approximate count; state the exact number and list it in counts.json`);
     else if (!listed.get(f)?.has(pair)) problems.push(`${MAP}/${f}: "${m[0]}" is a count that counts.json does not check for this file; add it there (with its label) or drop the number`);
   }
 }
