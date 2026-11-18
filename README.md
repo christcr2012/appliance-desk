@@ -39,9 +39,25 @@ npm run db:seed                    # one-time: creates the OWNER account (see pr
 
 ## Deployment
 
-`main` deploys to production automatically on push (Vercel). Every pull
-request gets its own preview deployment. CI (GitHub Actions) must pass
-before merging — see `.github/workflows/ci.yml`.
+Pushing to `main` does not deploy anything. Vercel deployments are
+branch-gated (`vercel.json` → `git.deploymentEnabled`): only the `live`
+and `testing` branches deploy, and the ignore step
+(`scripts/vercel-ignore-build.mjs`) skips builds when nothing the site is
+built from changed. CI (GitHub Actions) must pass before merging — see
+`.github/workflows/ci.yml`. `ci` is the merge gate; pull requests do not
+get Vercel preview deployments.
+
+- **Testing:** the newest fully checked `main` is promoted to `testing`
+  nightly (10 pm Denver) by `.github/workflows/testing-deploy.yml`, and
+  the testing app deploys from that branch.
+- **Production:** `live` is the production branch. Once a day (Denver
+  midnight) `.github/workflows/daily-live.yml` fast-forwards `live` to
+  `main` — only when `main`'s checks are green at that exact head — and
+  Vercel deploys it. The owner can also run a checked release by hand.
+
+Why: Vercel bills every build, so merges accumulate on `main` and ship in
+one checked daily release instead of a build for every push (decided
+2026-10-09 — see `docs/DECISIONS.md`, "Keep Vercel near $20/month").
 
 ## Documentation
 
