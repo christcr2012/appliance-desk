@@ -32,7 +32,7 @@ flowchart TD
   by the `emergency-access` and `access-expiry` crons.
 - **API shape:** most staff work runs through server actions in the
   desk pages and the `/api/desk` group; `/api/cron` holds the 19
-  scheduled routes declared in `vercel.json` (billing reminders,
+  routes declared in `vercel.json` (billing reminders,
   late fees, collections, billing reconcile, start-renewals,
   job reminders, estimate follow-ups, launch emails, books-nightly,
   expense drafts, scheduled prices, backup, telecom sync,
@@ -48,11 +48,11 @@ flowchart TD
   request proxy; `src/lib/prisma.ts` builds the Prisma client over
   the Neon/pg adapters; `src/lib/schema-health.ts` backs the
   build-time schema check.
-- **Tests:** Vitest unit/integration suites in `tests/` (61
+- **Tests:** Vitest unit/integration suites in `tests/` (905
   top-level entries at head `08cf314b`) run through the repo's own
   preflight launcher against per-lane local Postgres clusters
   (`npm run test:db`, `test:browser`); Playwright + axe browser
-  specs live in `e2e/` (74 top-level entries). Repo-tooling tests ride
+  specs live in `e2e/` (135 top-level entries). Repo-tooling tests ride
   in `npm run check:preflight` and `check:session`. CI shape is in
   the README of this map set (parallel jobs behind one `ci` gate);
   a separate `review-gate.yml` workflow runs the fleet review gate

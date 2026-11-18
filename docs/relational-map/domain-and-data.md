@@ -2,7 +2,7 @@
 
 ## The domain areas (`src/domains/`)
 
-69 folders (counted at head `08cf314b`, 2026-11-18), one per business
+72 folders (counted at head `08cf314b`, 2026-11-18), one per business
 area, plus a shared `pagination.ts`. Grouped here by what they serve:
 
 - **Selling & customers:** `customers`, `leads`, `estimates`,
@@ -116,16 +116,23 @@ flowchart LR
   `OptimizationProposal`, `MonitorRule`, `MonitorRun`,
   `RepairCase`).
 
-## Migrations — read this before trusting a count
+## Migrations
 
-`prisma/migrations/` holds 57 folders at head `08cf314b`
-(2026-11-18), the newest dated 2026-10-05
-(`20261005010000_remediation_r2_deposit_provenance`). The schema
-names 243 models, and several of them — `AgentOperation` and the
-`Customer.owedCents` column are visible examples — are described in
-`docs/DATABASE.md`'s dated changelog under migration names that have
-no folder on `main`. In other words, on `main` the schema and
-`docs/DATABASE.md` run ahead of the migration folders; the repo's
-own `check:migrations` script (run by every `vercel-build`) is the
-arbiter of whether that gap is safe, and anyone adding a model here
-should expect to answer for it there.
+`prisma/migrations/` holds 212 folders at head `08cf314b`
+(2026-11-18), plus the `DESTRUCTIVE-MIGRATIONS-REVIEWED.json`
+approval record. Folder names carry dates, and the names run ahead
+of the commit calendar — the newest names are dated 2026-12
+(`20261219000000_customer_owed_total`) on a head committed
+2026-11-09 — so read the names as labels, not as a timeline.
+
+An earlier draft of this map claimed the schema runs ahead of the
+migration folders; re-counting at this head does not bear that out.
+The two examples that draft named are both here: `AgentOperation`
+has the folder `20261130000000_agent_operations`, and
+`Customer.owedCents` has `20261219000000_customer_owed_total`. What
+the repo's `check:migrations` gate (run in CI and by every
+`vercel-build`) actually polices is destructive SQL patterns in
+migrations — drops, truncates, forced NOT NULL — with approvals
+recorded in that reviewed file; schema health against a real
+database is verified separately at build time
+(`db:verify-schema-health`).

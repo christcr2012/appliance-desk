@@ -8,6 +8,15 @@ work stands, `docs/ARCHITECTURE.md` is the architecture record, and
 `docs/DATABASE.md` is the plain-English guide to every data model.
 
 Last refreshed: 2026-11-18, from `main` at head `08cf314b`.
+Every exact count stated in this map set is listed in
+`docs/relational-map/counts.json` and checked against the code by
+`scripts/check-map-counts.mjs` in CI (MAP-COUNTS-1), so a count here
+cannot drift silently. The 2026-11-18 refresh corrected four counts
+from the first survey — domain folders (72, not 69), migration
+folders (212, not 57), and the `tests/` and `e2e/` entry counts —
+and rewrote the migrations note in `domain-and-data.md`: the two
+models the first survey thought had no migration folder
+(`AgentOperation`, `Customer.owedCents`) do have folders on `main`.
 
 ## The system in one picture
 
@@ -20,10 +29,10 @@ flowchart LR
   Assistant["AI assistant<br/>connects over MCP with the<br/>owner's consent (/connect/consent)"]
   App["Next.js 16 app (App Router)<br/>src/app — public site · /desk · customer pages<br/>auth pages · /api routes · /offline fallback"]
   API["API routes — src/app/api/<br/>auth · desk · cron (19) · webhooks (stripe,<br/>resend, twilio) · mcp · communications · contract<br/>documents · photos · uploads · records · results<br/>tools · ops · privacy · health · whoami · openapi.json"]
-  Domains["src/domains/ — business areas (69 folders)<br/>customers · leads · agreements · jobs · billing<br/>books · tax · communications · inventory …<br/>each area owns its rules, actions and screens' data"]
+  Domains["src/domains/ — business areas (72 folders)<br/>customers · leads · agreements · jobs · billing<br/>books · tax · communications · inventory …<br/>each area owns its rules, actions and screens' data"]
   Lib["src/lib/ — shared wiring<br/>auth (better-auth) · prisma · stripe · email<br/>sms · cron-auth · photo-storage · rate-limit<br/>field-crypto · session · schema-health"]
   MCP["src/mcp/ + /api/mcp — the app as an MCP server<br/>OAuth issuer, scopes, read/write policy<br/>tools/ (diagnostics) · rtc-* assistant-connection files"]
-  DB[("Postgres (Neon)<br/>Prisma schema: 243 models, 124 enums<br/>57 migration folders<br/>(counted at head 08cf314b, 2026-11-18)")]
+  DB[("Postgres (Neon)<br/>Prisma schema: 243 models, 124 enums<br/>212 migration folders<br/>(counted at head 08cf314b, 2026-11-18)")]
   Stripe["Stripe<br/>customer payments + agreement<br/>subscriptions (TEST mode until<br/>the owner says go live)"]
   Twilio["Twilio<br/>SMS + phone system in the app<br/>(TelecomAccount, calls, messages)"]
   Resend["Resend<br/>transactional email<br/>+ delivery webhooks"]
@@ -103,7 +112,8 @@ flowchart LR
   at the rack testing instance). The repo-root `README.md` still
   says "main deploys to production automatically", which the
   `vercel.json` in the same repo contradicts — `vercel.json` is the
-  behavior to trust.
+  behavior to trust. (A fix for the root README's deployment section
+  is open as PR #855.)
 - The production build is `vercel-build`: it checks migrations,
   deploys them, verifies schema health, then builds. A separate
   `vercel-build:testing` also seeds the testing data.
