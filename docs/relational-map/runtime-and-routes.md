@@ -16,7 +16,7 @@ flowchart TD
   Root --> Public & Desk & Cust & AuthP & Connect & API
 ```
 
-- **The desk** is where the business runs: 62 top-level entries
+- **The desk** is where the business runs: 62 desk top-level entries
   under `src/app/desk/` (counted at head `08cf314b`) — sections
   listed in the diagram. Shared UI comes from `src/components/kit/`
   first (fleet rule for this repo: kit components before page-local
@@ -48,11 +48,11 @@ flowchart TD
   request proxy; `src/lib/prisma.ts` builds the Prisma client over
   the Neon/pg adapters; `src/lib/schema-health.ts` backs the
   build-time schema check.
-- **Tests:** Vitest unit/integration suites in `tests/` (906
+- **Tests:** Vitest unit/integration suites in `tests/` (906 tests
   top-level entries at head `07fafa97`) run through the repo's own
   preflight launcher against per-lane local Postgres clusters
   (`npm run test:db`, `test:browser`); Playwright + axe browser
-  specs live in `e2e/` (135 top-level entries). Repo-tooling tests ride
+  specs live in `e2e/` (135 e2e top-level entries). Repo-tooling tests ride
   in `npm run check:preflight` and `check:session`. CI shape is in
   the README of this map set (parallel jobs behind one `ci` gate);
   a separate `review-gate.yml` workflow runs the fleet review gate

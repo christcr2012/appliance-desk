@@ -140,8 +140,14 @@ migrations that exist — drops, truncates, forced NOT NULL — with
 approvals recorded in that reviewed file; its limit is that it only
 scans the `migration.sql` files present in `prisma/migrations/`, so
 a model with no migration folder gives it nothing to scan and it
-cannot judge a schema-to-migration gap. That gap is instead caught
-at build time by `db:verify-schema-health`, which `vercel-build`
-runs right after `db:migrate:deploy`: it queries every model in the
-schema against the real database and fails the build when a table,
-column or type is missing or different.
+cannot judge a schema-to-migration gap. What build time adds is
+`db:verify-schema-health`, which `vercel-build` runs right after
+`db:migrate:deploy`: it makes one limited read per model against
+the database the deploy points at and fails the build when that
+read fails — a missing table or column, or a type difference the
+read trips on. Its limits matter too: it validates the configured
+database, not the migration history (a table added by hand, with no
+migration, passes it — and a fresh database built from the
+migrations would still lack that table), and it does not compare
+type metadata, so a difference the read never touches, such as
+decimal precision on an empty table, can pass.

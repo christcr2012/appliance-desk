@@ -9,7 +9,7 @@ settings question — `docs/GO-LIVE-CHECKLIST.md` and
 ```mermaid
 flowchart LR
   AD["Appliance Desk"]
-  Neon["Neon Postgres — production & previews<br/>DATABASE_URL (pooled, app queries)<br/>DIRECT_URL (migrations only)<br/>Prisma 7 via @prisma/adapter-neon / adapter-pg"]
+  Neon["Neon Postgres — production & previews<br/>DATABASE_URL (pooled, app queries)<br/>DIRECT_URL (migrations; preview/testing validate it at runtime too)<br/>Prisma 7 via @prisma/adapter-neon / adapter-pg"]
   Stripe["Stripe — stripe SDK<br/>payments + agreement subscriptions<br/>webhook: /api/webhooks/stripe<br/>TEST mode until the owner says go live"]
   Twilio["Twilio — twilio SDK<br/>SMS + voice for the in-app phone system<br/>webhook: /api/webhooks/twilio (signature-checked)<br/>sender number unset until texting registration completes"]
   Resend["Resend — resend SDK<br/>transactional email from the business domain<br/>webhook: /api/webhooks/resend (fails closed, 503, without its secret)"]
@@ -28,7 +28,13 @@ flowchart LR
   deployments). The running app connects through the pooled
   `DATABASE_URL` using a Prisma driver adapter (`src/lib/prisma.ts`);
   migrations use the direct `DIRECT_URL` and are configured in
-  `prisma.config.ts`, not in the schema. The canonical testing copy
+  `prisma.config.ts`, not in the schema. `DIRECT_URL` is not
+  migrations-only in practice: preview and testing deployments
+  validate both URLs before the Prisma client is created
+  (`src/lib/preview-database-safety.ts`, imported by
+  `src/lib/prisma.ts`, and `src/lib/testing-environment.ts` check
+  both keys), so omitting it there stops the app initialising its
+  database client. The canonical testing copy
   is the exception: it runs on the owner's Development Rack against
   the rack's own Postgres (database `appliance_desk`, role
   `appliance_desk_testing`), and that endpoint has no pooled variant
