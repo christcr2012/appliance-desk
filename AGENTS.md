@@ -203,6 +203,7 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
 | Dated design decisions | [docs/DECISIONS.md](docs/DECISIONS.md) — search it; never read it end to end |
 | Ideas not being built | [docs/ROADMAP.md](docs/ROADMAP.md) |
 | Security/billing constraints | [docs/AI-PR-READ-FIRST.md](docs/AI-PR-READ-FIRST.md) |
+| QuickBooks (Intuit) sandbox | [docs/QUICKBOOKS-SANDBOX.md](docs/QUICKBOOKS-SANDBOX.md) — the Intuit app and sandbox keys are set up; read before any QuickBooks work |
 | Old rules and history | `docs/archive/` — search for a specific question only |
 
 ## 8. CI facts
