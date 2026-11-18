@@ -88,40 +88,65 @@ export async function notify(event: NotificationEvent): Promise<void> {
   const inApp = recipients.filter((r) => prefByUser.get(r.id)?.inApp ?? true);
   if (inApp.length > 0) {
     // The (userId, dedupeKey) unique plus skipDuplicates makes webhook retries and double views harmless.
-    await prisma.notification.createMany({
-      data: inApp.map((r) => ({
-        userId: r.id,
-        kind: event.kind,
-        title,
-        body,
-        href: event.href,
-        entityType: event.entityType,
-        entityId: event.entityId,
-        dedupeKey: event.dedupeKey,
-      })),
-      skipDuplicates: true,
-    });
+    const writeRows = (ids: string[]) =>
+      prisma.notification.createMany({
+        data: ids.map((userId) => ({
+          userId,
+          kind: event.kind,
+          title,
+          body,
+          href: event.href,
+          entityType: event.entityType,
+          entityId: event.entityId,
+          dedupeKey: event.dedupeKey,
+        })),
+        skipDuplicates: true,
+      });
+    const ids = inApp.map((r) => r.id);
+    try {
+      await writeRows(ids);
+    } catch (error) {
+      // A recipient removed between the read above and this write fails the user foreign key
+      // for the whole batch. Keep the people who still exist and write once more, so one
+      // removed account never costs everyone else the notification.
+      if ((error as { code?: string } | null)?.code !== "P2003") throw error;
+      const still = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true } });
+      if (still.length > 0) await writeRows(still.map((u) => u.id));
+    }
   }
 
   // Email is per person and independent of the in-app switch; it rides the existing internal email
   // path (deliverMessage with customerFacing: false), which respects the email switches. One bad
   // send is reported and never stops the others.
   const emailById = new Map(people.map((p) => [p.id, p.email]));
-  for (const recipient of recipients) {
-    if (!(prefByUser.get(recipient.id)?.email ?? false)) continue;
-    try {
-      await deliverMessage({
-        idempotencyKey: `notification:${event.dedupeKey}:${recipient.id}`,
-        channel: "EMAIL",
-        purpose: "TRANSACTIONAL",
-        templateKey: "notification",
-        customerFacing: false,
-        recipient: { type: "Staff", id: recipient.id, address: emailById.get(recipient.id) ?? "" },
-        subject: { type: "Notification", id: event.dedupeKey },
-        render: () => ({ subject: title, text: `${body}\n\nOpen it in the desk: ${event.href}` }),
-      });
-    } catch (error) {
-      await reportBackgroundError(error, `notify:email:${event.kind}`);
+  const emailRecipients = recipients.filter((r) => prefByUser.get(r.id)?.email ?? false);
+  if (emailRecipients.length > 0) {
+    // The recipient list is a snapshot from the read at the top, and the email loop sends to
+    // captured addresses, so a person removed since that read would still be emailed. Re-read
+    // who still exists before sending, the same existence check the in-app retry makes: a
+    // removed person who is not in the in-app batch never trips the foreign key, so the email
+    // path needs its own check.
+    const still = await prisma.user.findMany({
+      where: { id: { in: emailRecipients.map((r) => r.id) } },
+      select: { id: true },
+    });
+    const stillIds = new Set(still.map((u) => u.id));
+    for (const recipient of emailRecipients) {
+      if (!stillIds.has(recipient.id)) continue;
+      try {
+        await deliverMessage({
+          idempotencyKey: `notification:${event.dedupeKey}:${recipient.id}`,
+          channel: "EMAIL",
+          purpose: "TRANSACTIONAL",
+          templateKey: "notification",
+          customerFacing: false,
+          recipient: { type: "Staff", id: recipient.id, address: emailById.get(recipient.id) ?? "" },
+          subject: { type: "Notification", id: event.dedupeKey },
+          render: () => ({ subject: title, text: `${body}\n\nOpen it in the desk: ${event.href}` }),
+        });
+      } catch (error) {
+        await reportBackgroundError(error, `notify:email:${event.kind}`);
+      }
     }
   }
 }

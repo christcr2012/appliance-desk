@@ -131,6 +131,23 @@ vi.mock("@/domains/exceptions/delivery-zone-attention", () => ({
   listDeliveryZoneAttention: vi.fn(async () => ({ unknown: { rows: [], total: 0 }, pickups: { rows: [], total: 0 }, requotes: { rows: [], total: 0 } })),
 }));
 vi.mock("@/domains/exceptions/recall-attention", () => ({ listRecallAttention: vi.fn(async () => []) }));
+// The tax-benefit To do readers are calendar-gated (October/November and
+// November 15 – December 31) and read tables this file does not mock, so
+// leaving them real made this suite fail only during those weeks. They are
+// covered by tests/taxben-*.test.ts; here they are stubbed like every other
+// attention reader so the result never depends on today's date.
+vi.mock("@/domains/taxben/benefits", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/domains/taxben/benefits")>()),
+  listBenefitsAttention: vi.fn(async () => []),
+}));
+vi.mock("@/domains/taxben/elections", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/domains/taxben/elections")>()),
+  listYearEndPlanningAttention: vi.fn(async () => []),
+}));
+vi.mock("@/domains/taxben/policy", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/domains/taxben/policy")>()),
+  listPolicyAttention: vi.fn(async () => []),
+}));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
