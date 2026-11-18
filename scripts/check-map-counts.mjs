@@ -9,7 +9,8 @@
 // "212 migration folders", "906 top-level entries"); counts are checked as
 // number+label pairs, so swapping two counts' numbers is caught, not just a
 // missing or extra number. Grouped numbers (1,243) are read whole, never as
-// their suffix. "how" is one of:
+// their suffix, and signed, decimal-prefixed or spaced-approximation forms
+// (-243, 0.243, "~ 243") never count as the plain statement. "how" is one of:
 //   { "files": "src/tools/*.js" }                       how many files match a simple glob (* and **)
 //   { "matches": "regex", "in": "glob", "flags": "gm" } how many regex matches across those files
 //   { "command": "...", "match": "regex with one (\\d+)" } a number read from a command's output
@@ -66,7 +67,7 @@ const labelRe = (label) => norm(label).split(' ').map(esc).join('\\s+');
 const problems = [];
 const spec = JSON.parse(readFileSync(join(MAP, 'counts.json'), 'utf8'));
 const labels = [...new Set(spec.counts.map((c) => norm(c.label)))].sort((a, b) => b.length - a.length);
-const COUNT_RE = new RegExp(`(?<![\\w.\\-/#:,])~?(\\d{1,3}(?:,\\d{3})+|\\d+)\\s+(?:(?:registered|hand-built|catalog(?:ue)?|visible|MCP|vendored|schema)\\s+)?(${[...labels.map(labelRe), GENERIC].join('|')})\\b`, 'gi');
+const COUNT_RE = new RegExp(`(?<![\\w.\\-/#:,])(?:~\\s*)?(\\d{1,3}(?:,\\d{3})+|\\d+)\\s+(?:(?:registered|hand-built|catalog(?:ue)?|visible|MCP|vendored|schema)\\s+)?(${[...labels.map(labelRe), GENERIC].join('|')})\\b`, 'gi');
 
 const listed = new Map(); // file -> Set of stated "<value> <label>" pairs
 for (const c of spec.counts) {
@@ -75,7 +76,7 @@ for (const c of spec.counts) {
   if (real !== c.value) problems.push(`${c.name}: the map says ${c.value}, the code has ${real}. Update docs/relational-map/counts.json and the map text.`);
   for (const f of c.files) {
     const text = readFileSync(join(MAP, f), 'utf8');
-    if (!new RegExp(`(?<![\\d,])${c.value}\\s+${labelRe(c.label)}(?!\\w)`, 'i').test(text)) problems.push(`${c.name}: ${MAP}/${f} does not state "${c.value} ${c.label}"`);
+    if (!new RegExp(`(?<![\\d,.\\-+])${c.value}\\s+${labelRe(c.label)}(?!\\w)`, 'i').test(text)) problems.push(`${c.name}: ${MAP}/${f} does not state "${c.value} ${c.label}"`);
     if (!listed.has(f)) listed.set(f, new Set());
     listed.get(f).add(`${c.value} ${norm(c.label)}`);
   }
