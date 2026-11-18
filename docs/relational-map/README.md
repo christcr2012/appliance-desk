@@ -29,7 +29,7 @@ flowchart LR
   Assistant["AI assistant<br/>connects over MCP with the<br/>owner's consent (/connect/consent)"]
   App["Next.js 16 app (App Router)<br/>src/app — public site · /desk · customer pages<br/>auth pages · /api routes · /offline fallback"]
   API["API routes — src/app/api/<br/>auth · desk · cron (19) · webhooks (stripe,<br/>resend, twilio) · mcp · communications · contract<br/>documents · photos · uploads · records · results<br/>tools · ops · privacy · health · whoami · openapi.json"]
-  Domains["src/domains/ — business areas (72 folders)<br/>customers · leads · agreements · jobs · billing<br/>books · tax · communications · inventory …<br/>each area owns its rules, actions and screens' data"]
+  Domains["src/domains/ — business areas (72 domain folders)<br/>customers · leads · agreements · jobs · billing<br/>books · tax · communications · inventory …<br/>each area owns its rules, actions and screens' data"]
   Lib["src/lib/ — shared wiring<br/>auth (better-auth) · prisma · stripe · email<br/>sms · cron-auth · photo-storage · rate-limit<br/>field-crypto · session · schema-health"]
   MCP["src/mcp/ + /api/mcp — the app as an MCP server<br/>OAuth issuer, scopes, read/write policy<br/>tools/ (diagnostics) · rtc-* assistant-connection files"]
   DB[("Postgres (Neon)<br/>Prisma schema: 243 models, 124 enums<br/>212 migration folders<br/>(counted at head 08cf314b, 2026-11-18)")]

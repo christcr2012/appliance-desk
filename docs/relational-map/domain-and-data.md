@@ -2,8 +2,8 @@
 
 ## The domain areas (`src/domains/`)
 
-72 folders (counted at head `08cf314b`, 2026-11-18), one per business
-area, plus a shared `pagination.ts`. Grouped here by what they serve:
+72 domain folders (counted at head `08cf314b`, 2026-11-18), one per
+business area, plus a shared `pagination.ts`. Grouped here by what they serve:
 
 - **Selling & customers:** `customers`, `leads`, `estimates`,
   `agreements`, `pricing`, `sales`, `referrals`, `growth`, `launch`,
@@ -27,8 +27,11 @@ area, plus a shared `pagination.ts`. Grouped here by what they serve:
 ## The data model (`prisma/schema.prisma`)
 
 243 models and 124 enums (counted from the schema at head `08cf314b`,
-2026-11-18). Money is always integer cents; timestamps are UTC and
-shown in Mountain Time. The families and how they relate:
+2026-11-18). Money is always integer cents — one exception: telecom
+cost facts (`CommunicationCostFact.amount`, and its `quantity`) are
+`Decimal(24,10)`, not integer cents, because telecom costs and rates
+keep their precision until the aggregate is rounded. Timestamps are
+UTC and shown in Mountain Time. The families and how they relate:
 
 ```mermaid
 flowchart LR
@@ -118,7 +121,7 @@ flowchart LR
 
 ## Migrations
 
-`prisma/migrations/` holds 212 folders at head `08cf314b`
+`prisma/migrations/` holds 212 migration folders at head `08cf314b`
 (2026-11-18), plus the `DESTRUCTIVE-MIGRATIONS-REVIEWED.json`
 approval record. Folder names carry dates, and the names run ahead
 of the commit calendar — the newest names are dated 2026-12
@@ -129,10 +132,16 @@ An earlier draft of this map claimed the schema runs ahead of the
 migration folders; re-counting at this head does not bear that out.
 The two examples that draft named are both here: `AgentOperation`
 has the folder `20261130000000_agent_operations`, and
-`Customer.owedCents` has `20261219000000_customer_owed_total`. What
-the repo's `check:migrations` gate (run in CI and by every
-`vercel-build`) actually polices is destructive SQL patterns in
-migrations — drops, truncates, forced NOT NULL — with approvals
-recorded in that reviewed file; schema health against a real
-database is verified separately at build time
-(`db:verify-schema-health`).
+`Customer.owedCents` has `20261219000000_customer_owed_total`. Two
+different checks guard two different things, and neither does the
+other's job. The repo's `check:migrations` gate (run in CI and by
+every `vercel-build`) polices destructive SQL patterns in the
+migrations that exist — drops, truncates, forced NOT NULL — with
+approvals recorded in that reviewed file; its limit is that it only
+scans the `migration.sql` files present in `prisma/migrations/`, so
+a model with no migration folder gives it nothing to scan and it
+cannot judge a schema-to-migration gap. That gap is instead caught
+at build time by `db:verify-schema-health`, which `vercel-build`
+runs right after `db:migrate:deploy`: it queries every model in the
+schema against the real database and fails the build when a table,
+column or type is missing or different.

@@ -9,7 +9,7 @@ settings question — `docs/GO-LIVE-CHECKLIST.md` and
 ```mermaid
 flowchart LR
   AD["Appliance Desk"]
-  Neon["Neon Postgres<br/>DATABASE_URL (pooled, app queries)<br/>DIRECT_URL (migrations only)<br/>Prisma 7 via @prisma/adapter-neon / adapter-pg"]
+  Neon["Neon Postgres — production & previews<br/>DATABASE_URL (pooled, app queries)<br/>DIRECT_URL (migrations only)<br/>Prisma 7 via @prisma/adapter-neon / adapter-pg"]
   Stripe["Stripe — stripe SDK<br/>payments + agreement subscriptions<br/>webhook: /api/webhooks/stripe<br/>TEST mode until the owner says go live"]
   Twilio["Twilio — twilio SDK<br/>SMS + voice for the in-app phone system<br/>webhook: /api/webhooks/twilio (signature-checked)<br/>sender number unset until texting registration completes"]
   Resend["Resend — resend SDK<br/>transactional email from the business domain<br/>webhook: /api/webhooks/resend (fails closed, 503, without its secret)"]
@@ -18,16 +18,23 @@ flowchart LR
   Sentry["Sentry — @sentry/nextjs<br/>error monitoring (instrumentation.ts)"]
   Metricool["Metricool — public website analytics<br/>tracker hash only; empty disables it"]
   Exports["QuickBooks / Xero / generic<br/>journal CSV exports (AccountExportMapping)<br/>files out — no live API connection"]
-  Vercel["Vercel hosting<br/>git deployments only from live + testing branches<br/>19 crons in vercel.json · testing copy also on the owner's rack"]
+  Vercel["Vercel hosting<br/>git deployments only from live + testing branches<br/>19 cron routes in vercel.json · testing copy also on the owner's rack"]
 
   AD --> Neon & Stripe & Twilio & Resend & BlobPub & BlobPriv & Sentry & Metricool & Vercel
   AD -.->|"CSV files"| Exports
 ```
 
-- **Database:** Neon Postgres. The running app connects through the
-  pooled `DATABASE_URL` using a Prisma driver adapter
-  (`src/lib/prisma.ts`); migrations use the direct `DIRECT_URL` and
-  are configured in `prisma.config.ts`, not in the schema.
+- **Database:** Neon Postgres for production (and the Vercel preview
+  deployments). The running app connects through the pooled
+  `DATABASE_URL` using a Prisma driver adapter (`src/lib/prisma.ts`);
+  migrations use the direct `DIRECT_URL` and are configured in
+  `prisma.config.ts`, not in the schema. The canonical testing copy
+  is the exception: it runs on the owner's Development Rack against
+  the rack's own Postgres (database `appliance_desk`, role
+  `appliance_desk_testing`), and that endpoint has no pooled variant
+  — both of its URLs use the host directly. The Neon development
+  branch stays only as the preview target and rollback target
+  (`docs/STATUS.md`, entries dated November 9).
 - **Payments:** Stripe is the only card/payment rail — checkout for
   rental payments and subscriptions for agreements, with the signed
   webhook at `/api/webhooks/stripe` as the record of what actually

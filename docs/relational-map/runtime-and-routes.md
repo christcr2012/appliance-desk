@@ -1,7 +1,7 @@
 # Runtime and routes — Appliance Desk
 
 Next.js 16 (App Router, TypeScript strict) + React 19, Tailwind 4.
-Surfaces as they exist at head `08cf314b` (2026-11-18).
+Surfaces as they exist at head `07fafa97` (2026-11-18).
 
 ```mermaid
 flowchart TD
@@ -32,7 +32,7 @@ flowchart TD
   by the `emergency-access` and `access-expiry` crons.
 - **API shape:** most staff work runs through server actions in the
   desk pages and the `/api/desk` group; `/api/cron` holds the 19
-  routes declared in `vercel.json` (billing reminders,
+  cron routes declared in `vercel.json` (billing reminders,
   late fees, collections, billing reconcile, start-renewals,
   job reminders, estimate follow-ups, launch emails, books-nightly,
   expense drafts, scheduled prices, backup, telecom sync,
@@ -48,8 +48,8 @@ flowchart TD
   request proxy; `src/lib/prisma.ts` builds the Prisma client over
   the Neon/pg adapters; `src/lib/schema-health.ts` backs the
   build-time schema check.
-- **Tests:** Vitest unit/integration suites in `tests/` (905
-  top-level entries at head `08cf314b`) run through the repo's own
+- **Tests:** Vitest unit/integration suites in `tests/` (906
+  top-level entries at head `07fafa97`) run through the repo's own
   preflight launcher against per-lane local Postgres clusters
   (`npm run test:db`, `test:browser`); Playwright + axe browser
   specs live in `e2e/` (135 top-level entries). Repo-tooling tests ride

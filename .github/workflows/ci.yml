@@ -120,9 +120,6 @@ jobs:
       - name: Project secret and private-identifier scan
         run: node scripts/check-secrets.mjs
 
-      - name: Relational map counts match the code (MAP-COUNTS-1)
-        run: node scripts/check-map-counts.mjs
-
       - name: October 13 answered-owner decision coverage and ordered roadmap map
         run: |
           node --test scripts/check-owner-decisions.test.mjs
@@ -192,6 +189,12 @@ jobs:
           NODE
           fi
           exit "$status"
+
+      # Runs after both secret scanners on purpose: a count mismatch must stay
+      # fatal, but it must never skip the secret scan (a failed step skips the
+      # later steps in this job), and docs-only changes never skip the scan.
+      - name: Relational map counts match the code (MAP-COUNTS-1)
+        run: node scripts/check-map-counts.mjs
 
   static:
     # Type-check and lint share one install and run side by side.
